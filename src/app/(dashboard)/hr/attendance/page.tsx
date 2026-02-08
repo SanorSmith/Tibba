@@ -184,7 +184,7 @@ export default function AttendancePage() {
         <div className="tibbna-card-content">
           <div className="tibbna-grid-4">
             <div style={{ textAlign: 'center', padding: '12px' }}>
-              <p style={{ fontSize: '24px', fontWeight: 700 }}>{monthly.avg_attendance_rate}%</p>
+              <p style={{ fontSize: '24px', fontWeight: 700 }}>{monthly.average_attendance_rate}%</p>
               <p style={{ fontSize: '12px', color: '#a3a3a3' }}>Avg Attendance Rate</p>
             </div>
             <div style={{ textAlign: 'center', padding: '12px' }}>

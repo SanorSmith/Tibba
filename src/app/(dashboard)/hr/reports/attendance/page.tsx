@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, Filter, BarChart3, Clock } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import employeesData from '@/data/hr/employees.json';
 import attendanceData from '@/data/hr/attendance.json';
 
@@ -161,16 +162,22 @@ export default function AttendanceReportPage() {
       {showCharts && (
         <div className="tibbna-card tibbna-section">
           <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><BarChart3 size={16} /> Department Attendance Rate</h3></div>
-          <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {byDepartment.slice(0, 12).map(d => (
-              <div key={d.dept} className="flex items-center gap-2">
-                <span style={{ fontSize: '11px', color: '#525252', width: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{d.dept}</span>
-                <div className="flex-1" style={{ height: '20px', backgroundColor: '#f3f4f6' }}>
-                  <div style={{ width: `${d.rate}%`, height: '100%', backgroundColor: d.rate >= 90 ? '#10B981' : d.rate >= 75 ? '#F59E0B' : '#EF4444', transition: 'width 0.3s' }} />
-                </div>
-                <span style={{ fontSize: '12px', fontWeight: 600, width: '36px', textAlign: 'right' }}>{d.rate}%</span>
-              </div>
-            ))}
+          <div className="tibbna-card-content">
+            <div style={{ width: '100%', height: 320 }}>
+              <ResponsiveContainer>
+                <BarChart data={byDepartment.slice(0, 10).map(d => ({ name: d.dept.length > 14 ? d.dept.substring(0, 14) + '...' : d.dept, rate: d.rate }))} layout="vertical" margin={{ left: 10, right: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: number) => [`${value}%`, 'Attendance Rate']} />
+                  <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
+                    {byDepartment.slice(0, 10).map((d, i) => (
+                      <Cell key={i} fill={d.rate >= 90 ? '#10B981' : d.rate >= 75 ? '#F59E0B' : '#EF4444'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}

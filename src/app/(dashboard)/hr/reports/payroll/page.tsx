@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, Filter, BarChart3, DollarSign } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import employeesData from '@/data/hr/employees.json';
 import payrollData from '@/data/hr/payroll.json';
 
@@ -146,35 +147,37 @@ export default function PayrollReportPage() {
           {/* Department Cost */}
           <div className="tibbna-card">
             <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><BarChart3 size={16} /> Payroll by Department</h3></div>
-            <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {byDepartment.slice(0, 10).map(d => (
-                <div key={d.dept} className="flex items-center gap-2">
-                  <span style={{ fontSize: '11px', color: '#525252', width: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{d.dept}</span>
-                  <div className="flex-1" style={{ height: '18px', backgroundColor: '#f3f4f6' }}>
-                    <div style={{ width: `${(d.gross / maxDeptGross) * 100}%`, height: '100%', backgroundColor: '#618FF5', transition: 'width 0.3s' }} />
-                  </div>
-                  <span style={{ fontSize: '11px', fontWeight: 600, width: '50px', textAlign: 'right' }}>{(d.gross / 1000000).toFixed(1)}M</span>
-                </div>
-              ))}
+            <div className="tibbna-card-content">
+              <div style={{ width: '100%', height: 320 }}>
+                <ResponsiveContainer>
+                  <BarChart data={byDepartment.slice(0, 10).map(d => ({ name: d.dept.length > 14 ? d.dept.substring(0, 14) + '...' : d.dept, gross: Math.round(d.gross / 1000000 * 10) / 10 }))} layout="vertical" margin={{ left: 10, right: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} unit="M" />
+                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(value: number) => [`${value}M IQD`, 'Gross Payroll']} />
+                    <Bar dataKey="gross" fill="#618FF5" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
           {/* Deductions Breakdown */}
           <div className="tibbna-card">
             <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><DollarSign size={16} /> Deductions Breakdown</h3></div>
-            <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {deductionBreakdown.map(d => (
-                <div key={d.label}>
-                  <div className="flex justify-between mb-1">
-                    <span style={{ fontSize: '12px', color: '#525252' }}>{d.label}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600 }}>{fmt(d.value)} IQD</span>
-                  </div>
-                  <div style={{ height: '20px', backgroundColor: '#f3f4f6' }}>
-                    <div style={{ width: `${(d.value / maxDeduction) * 100}%`, height: '100%', backgroundColor: d.color, transition: 'width 0.3s' }} />
-                  </div>
-                </div>
-              ))}
-              <div style={{ borderTop: '1px solid #e4e4e4', paddingTop: '8px' }}>
+            <div className="tibbna-card-content">
+              <div style={{ width: '100%', height: 280 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie data={deductionBreakdown.map(d => ({ name: d.label, value: d.value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3}>
+                      {deductionBreakdown.map((d, i) => (<Cell key={i} fill={d.color} />))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [`${fmt(value)} IQD`, '']} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ borderTop: '1px solid #e4e4e4', paddingTop: '8px', marginTop: '8px' }}>
                 <div className="flex justify-between">
                   <span style={{ fontSize: '13px', fontWeight: 600 }}>Total Deductions</span>
                   <span style={{ fontSize: '13px', fontWeight: 700, color: '#EF4444' }}>{fmt(totals.deductions)} IQD</span>

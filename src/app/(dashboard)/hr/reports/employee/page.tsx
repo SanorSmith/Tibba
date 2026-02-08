@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, Users, Filter, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import employeesData from '@/data/hr/employees.json';
 import departmentsData from '@/data/hr/departments.json';
 
@@ -139,34 +140,36 @@ export default function EmployeeReportPage() {
           {/* By Department Bar Chart */}
           <div className="tibbna-card">
             <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><BarChart3 size={16} /> By Department</h3></div>
-            <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {byDepartment.slice(0, 12).map(([dept, count]) => (
-                <div key={dept} className="flex items-center gap-2">
-                  <span style={{ fontSize: '11px', color: '#525252', width: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{dept}</span>
-                  <div className="flex-1" style={{ height: '16px', backgroundColor: '#f3f4f6' }}>
-                    <div style={{ width: `${(count / maxDeptCount) * 100}%`, height: '100%', backgroundColor: '#618FF5', transition: 'width 0.3s' }} />
-                  </div>
-                  <span style={{ fontSize: '12px', fontWeight: 600, width: '24px', textAlign: 'right' }}>{count}</span>
-                </div>
-              ))}
+            <div className="tibbna-card-content">
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer>
+                  <BarChart data={byDepartment.slice(0, 10).map(([dept, count]) => ({ name: dept.length > 12 ? dept.substring(0, 12) + '...' : dept, count }))} layout="vertical" margin={{ left: 10, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} />
+                    <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#618FF5" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
           {/* By Category */}
           <div className="tibbna-card">
             <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><BarChart3 size={16} /> By Category</h3></div>
-            <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {byCategory.map(([cat, count]) => (
-                <div key={cat}>
-                  <div className="flex justify-between mb-1">
-                    <span style={{ fontSize: '12px', color: '#525252' }}>{cat.replace(/_/g, ' ')}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600 }}>{count} ({((count / filtered.length) * 100).toFixed(0)}%)</span>
-                  </div>
-                  <div style={{ height: '20px', backgroundColor: '#f3f4f6' }}>
-                    <div style={{ width: `${(count / maxCatCount) * 100}%`, height: '100%', backgroundColor: categoryColors[cat] || '#6B7280', transition: 'width 0.3s' }} />
-                  </div>
-                </div>
-              ))}
+            <div className="tibbna-card-content">
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie data={byCategory.map(([cat, count]) => ({ name: cat.replace(/_/g, ' '), value: count, fill: categoryColors[cat] || '#6B7280' }))} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3}>
+                      {byCategory.map(([cat], i) => (<Cell key={i} fill={categoryColors[cat] || '#6B7280'} />))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value, 'Employees']} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </div>

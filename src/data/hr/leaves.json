@@ -1,52 +1,3066 @@
 {
   "leave_types": [
-    { "id": "LT-001", "name": "Annual Leave", "code": "ANNUAL", "category": "PAID", "max_days": 30, "max_consecutive": 15, "carry_forward": true, "max_carry": 10, "accrual_method": "MONTHLY", "accrual_rate": 2.5, "notice_days": 7, "requires_doc": false, "color": "#3B82F6" },
-    { "id": "LT-002", "name": "Sick Leave", "code": "SICK", "category": "PAID", "max_days": 30, "max_consecutive": 30, "carry_forward": false, "max_carry": 0, "accrual_method": "ANNUAL", "accrual_rate": 30, "notice_days": 0, "requires_doc": true, "color": "#EF4444" },
-    { "id": "LT-003", "name": "Emergency Leave", "code": "EMERGENCY", "category": "PAID", "max_days": 5, "max_consecutive": 3, "carry_forward": false, "max_carry": 0, "accrual_method": "ANNUAL", "accrual_rate": 5, "notice_days": 0, "requires_doc": false, "color": "#F59E0B" },
-    { "id": "LT-004", "name": "Maternity Leave", "code": "MATERNITY", "category": "PAID", "max_days": 90, "max_consecutive": 90, "carry_forward": false, "max_carry": 0, "accrual_method": "NONE", "accrual_rate": 0, "notice_days": 30, "requires_doc": true, "gender_specific": "FEMALE", "color": "#EC4899" },
-    { "id": "LT-005", "name": "Paternity Leave", "code": "PATERNITY", "category": "PAID", "max_days": 5, "max_consecutive": 5, "carry_forward": false, "max_carry": 0, "accrual_method": "NONE", "accrual_rate": 0, "notice_days": 7, "requires_doc": true, "gender_specific": "MALE", "color": "#8B5CF6" },
-    { "id": "LT-006", "name": "Unpaid Leave", "code": "UNPAID", "category": "UNPAID", "max_days": 30, "max_consecutive": 15, "carry_forward": false, "max_carry": 0, "accrual_method": "NONE", "accrual_rate": 0, "notice_days": 14, "requires_doc": false, "color": "#6B7280" },
-    { "id": "LT-007", "name": "Hajj Leave", "code": "HAJJ", "category": "UNPAID", "max_days": 30, "max_consecutive": 30, "carry_forward": false, "max_carry": 0, "accrual_method": "NONE", "accrual_rate": 0, "notice_days": 60, "requires_doc": true, "color": "#059669" },
-    { "id": "LT-008", "name": "Study Leave", "code": "STUDY", "category": "HALF_PAID", "max_days": 15, "max_consecutive": 10, "carry_forward": false, "max_carry": 0, "accrual_method": "NONE", "accrual_rate": 0, "notice_days": 14, "requires_doc": true, "color": "#0EA5E9" }
+    {
+      "id": "LT-001",
+      "name": "Annual Leave",
+      "code": "ANNUAL",
+      "category": "PAID",
+      "max_days": 30,
+      "max_consecutive": 15,
+      "carry_forward": true,
+      "max_carry": 10,
+      "accrual_method": "MONTHLY",
+      "accrual_rate": 2.5,
+      "notice_days": 7,
+      "requires_doc": false,
+      "color": "#3B82F6"
+    },
+    {
+      "id": "LT-002",
+      "name": "Sick Leave",
+      "code": "SICK",
+      "category": "PAID",
+      "max_days": 30,
+      "max_consecutive": 30,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "ANNUAL",
+      "accrual_rate": 30,
+      "notice_days": 0,
+      "requires_doc": true,
+      "color": "#EF4444"
+    },
+    {
+      "id": "LT-003",
+      "name": "Emergency Leave",
+      "code": "EMERGENCY",
+      "category": "PAID",
+      "max_days": 5,
+      "max_consecutive": 3,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "ANNUAL",
+      "accrual_rate": 5,
+      "notice_days": 0,
+      "requires_doc": false,
+      "color": "#F59E0B"
+    },
+    {
+      "id": "LT-004",
+      "name": "Maternity Leave",
+      "code": "MATERNITY",
+      "category": "PAID",
+      "max_days": 90,
+      "max_consecutive": 90,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "NONE",
+      "accrual_rate": 0,
+      "notice_days": 30,
+      "requires_doc": true,
+      "gender_specific": "FEMALE",
+      "color": "#EC4899"
+    },
+    {
+      "id": "LT-005",
+      "name": "Paternity Leave",
+      "code": "PATERNITY",
+      "category": "PAID",
+      "max_days": 5,
+      "max_consecutive": 5,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "NONE",
+      "accrual_rate": 0,
+      "notice_days": 7,
+      "requires_doc": true,
+      "gender_specific": "MALE",
+      "color": "#8B5CF6"
+    },
+    {
+      "id": "LT-006",
+      "name": "Unpaid Leave",
+      "code": "UNPAID",
+      "category": "UNPAID",
+      "max_days": 30,
+      "max_consecutive": 15,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "NONE",
+      "accrual_rate": 0,
+      "notice_days": 14,
+      "requires_doc": false,
+      "color": "#6B7280"
+    },
+    {
+      "id": "LT-007",
+      "name": "Hajj Leave",
+      "code": "HAJJ",
+      "category": "UNPAID",
+      "max_days": 30,
+      "max_consecutive": 30,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "NONE",
+      "accrual_rate": 0,
+      "notice_days": 60,
+      "requires_doc": true,
+      "color": "#059669"
+    },
+    {
+      "id": "LT-008",
+      "name": "Study Leave",
+      "code": "STUDY",
+      "category": "HALF_PAID",
+      "max_days": 15,
+      "max_consecutive": 10,
+      "carry_forward": false,
+      "max_carry": 0,
+      "accrual_method": "NONE",
+      "accrual_rate": 0,
+      "notice_days": 14,
+      "requires_doc": true,
+      "color": "#0EA5E9"
+    }
   ],
   "holidays": [
-    { "id": "HOL-001", "name": "New Year's Day", "date": "2026-01-01", "type": "NATIONAL", "recurring": true },
-    { "id": "HOL-002", "name": "Army Day", "date": "2026-01-06", "type": "NATIONAL", "recurring": true },
-    { "id": "HOL-003", "name": "Eid al-Fitr (Day 1)", "date": "2026-03-20", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-004", "name": "Eid al-Fitr (Day 2)", "date": "2026-03-21", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-005", "name": "Eid al-Fitr (Day 3)", "date": "2026-03-22", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-006", "name": "Labour Day", "date": "2026-05-01", "type": "NATIONAL", "recurring": true },
-    { "id": "HOL-007", "name": "Eid al-Adha (Day 1)", "date": "2026-05-27", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-008", "name": "Eid al-Adha (Day 2)", "date": "2026-05-28", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-009", "name": "Eid al-Adha (Day 3)", "date": "2026-05-29", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-010", "name": "Republic Day", "date": "2026-07-14", "type": "NATIONAL", "recurring": true },
-    { "id": "HOL-011", "name": "Islamic New Year", "date": "2026-06-17", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-012", "name": "Prophet's Birthday", "date": "2026-08-26", "type": "RELIGIOUS", "recurring": false },
-    { "id": "HOL-013", "name": "National Day", "date": "2026-10-03", "type": "NATIONAL", "recurring": true }
+    {
+      "id": "HOL-001",
+      "name": "New Year's Day",
+      "date": "2026-01-01",
+      "type": "NATIONAL",
+      "recurring": true
+    },
+    {
+      "id": "HOL-002",
+      "name": "Army Day",
+      "date": "2026-01-06",
+      "type": "NATIONAL",
+      "recurring": true
+    },
+    {
+      "id": "HOL-003",
+      "name": "Eid al-Fitr (Day 1)",
+      "date": "2026-03-20",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-004",
+      "name": "Eid al-Fitr (Day 2)",
+      "date": "2026-03-21",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-005",
+      "name": "Eid al-Fitr (Day 3)",
+      "date": "2026-03-22",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-006",
+      "name": "Labour Day",
+      "date": "2026-05-01",
+      "type": "NATIONAL",
+      "recurring": true
+    },
+    {
+      "id": "HOL-007",
+      "name": "Eid al-Adha (Day 1)",
+      "date": "2026-05-27",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-008",
+      "name": "Eid al-Adha (Day 2)",
+      "date": "2026-05-28",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-009",
+      "name": "Eid al-Adha (Day 3)",
+      "date": "2026-05-29",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-010",
+      "name": "Republic Day",
+      "date": "2026-07-14",
+      "type": "NATIONAL",
+      "recurring": true
+    },
+    {
+      "id": "HOL-011",
+      "name": "Islamic New Year",
+      "date": "2026-06-17",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-012",
+      "name": "Prophet's Birthday",
+      "date": "2026-08-26",
+      "type": "RELIGIOUS",
+      "recurring": false
+    },
+    {
+      "id": "HOL-013",
+      "name": "National Day",
+      "date": "2026-10-03",
+      "type": "NATIONAL",
+      "recurring": true
+    }
   ],
   "leave_requests": [
-    { "id": "LR-001", "request_number": "LR-2026-001", "employee_id": "EMP-2024-011", "employee_name": "Layla Al-Azzawi", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-02-08", "end_date": "2026-02-12", "total_days": 4, "reason": "Family vacation", "status": "APPROVED", "submitted_at": "2026-01-25", "approver_name": "Fatima Hassan", "approved_at": "2026-01-26" },
-    { "id": "LR-002", "request_number": "LR-2026-002", "employee_id": "EMP-2024-056", "employee_name": "Maysoon Al-Azzawi", "leave_type_id": "LT-004", "leave_type": "Maternity Leave", "start_date": "2026-01-15", "end_date": "2026-04-15", "total_days": 90, "reason": "Maternity", "status": "APPROVED", "submitted_at": "2025-12-10", "approver_name": "Suha Al-Jubouri", "approved_at": "2025-12-12" },
-    { "id": "LR-003", "request_number": "LR-2026-003", "employee_id": "EMP-2024-030", "employee_name": "Salam Al-Qaisi", "leave_type_id": "LT-002", "leave_type": "Sick Leave", "start_date": "2026-02-07", "end_date": "2026-02-09", "total_days": 2, "reason": "Flu symptoms", "status": "APPROVED", "submitted_at": "2026-02-07", "approver_name": "Haider Al-Rubaie", "approved_at": "2026-02-07", "document_url": "/docs/medical-cert-030.pdf" },
-    { "id": "LR-004", "request_number": "LR-2026-004", "employee_id": "EMP-2024-008", "employee_name": "Sara Mohammed", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-02-15", "end_date": "2026-02-19", "total_days": 4, "reason": "Personal travel", "status": "PENDING_APPROVAL", "submitted_at": "2026-02-05", "approver_name": "Ali Al-Tamimi" },
-    { "id": "LR-005", "request_number": "LR-2026-005", "employee_id": "EMP-2024-034", "employee_name": "Wafa Al-Samarra", "leave_type_id": "LT-003", "leave_type": "Emergency Leave", "start_date": "2026-02-10", "end_date": "2026-02-11", "total_days": 2, "reason": "Family emergency", "status": "APPROVED", "submitted_at": "2026-02-09", "approver_name": "Suha Al-Jubouri", "approved_at": "2026-02-09" },
-    { "id": "LR-006", "request_number": "LR-2026-006", "employee_id": "EMP-2024-012", "employee_name": "Karim Al-Hamdani", "leave_type_id": "LT-008", "leave_type": "Study Leave", "start_date": "2026-03-01", "end_date": "2026-03-10", "total_days": 8, "reason": "Orthopedic surgery conference in Amman", "status": "PENDING_APPROVAL", "submitted_at": "2026-02-01", "approver_name": "Mustafa Al-Janabi" },
-    { "id": "LR-007", "request_number": "LR-2026-007", "employee_id": "EMP-2024-038", "employee_name": "Zahra Al-Musawi", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-02-22", "end_date": "2026-02-26", "total_days": 4, "reason": "Wedding attendance", "status": "APPROVED", "submitted_at": "2026-02-03", "approver_name": "Suha Al-Jubouri", "approved_at": "2026-02-04" },
-    { "id": "LR-008", "request_number": "LR-2026-008", "employee_id": "EMP-2024-046", "employee_name": "Aws Al-Kinani", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-03-15", "end_date": "2026-03-22", "total_days": 6, "reason": "Eid al-Fitr celebration", "status": "PENDING_APPROVAL", "submitted_at": "2026-02-08", "approver_name": "Raad Al-Taie" },
-    { "id": "LR-009", "request_number": "LR-2026-009", "employee_id": "EMP-2024-021", "employee_name": "Waleed Al-Samarrai", "leave_type_id": "LT-002", "leave_type": "Sick Leave", "start_date": "2026-01-20", "end_date": "2026-01-22", "total_days": 2, "reason": "Back pain", "status": "APPROVED", "submitted_at": "2026-01-20", "approver_name": "Fatima Hassan", "approved_at": "2026-01-20", "document_url": "/docs/medical-cert-021.pdf" },
-    { "id": "LR-010", "request_number": "LR-2026-010", "employee_id": "EMP-2024-029", "employee_name": "Haider Al-Rubaie", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-04-01", "end_date": "2026-04-10", "total_days": 8, "reason": "Family trip to Erbil", "status": "DRAFT", "submitted_at": null },
-    { "id": "LR-011", "request_number": "LR-2026-011", "employee_id": "EMP-2024-004", "employee_name": "Zainab Al-Saadi", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-01-05", "end_date": "2026-01-09", "total_days": 4, "reason": "New Year vacation", "status": "APPROVED", "submitted_at": "2025-12-20", "approver_name": "Omar Al-Bayati", "approved_at": "2025-12-21" },
-    { "id": "LR-012", "request_number": "LR-2026-012", "employee_id": "EMP-2024-042", "employee_name": "Ghada Al-Abadi", "leave_type_id": "LT-002", "leave_type": "Sick Leave", "start_date": "2026-01-28", "end_date": "2026-01-30", "total_days": 2, "reason": "Dental surgery", "status": "APPROVED", "submitted_at": "2026-01-27", "approver_name": "Suha Al-Jubouri", "approved_at": "2026-01-27", "document_url": "/docs/medical-cert-042.pdf" },
-    { "id": "LR-013", "request_number": "LR-2026-013", "employee_id": "EMP-2024-050", "employee_name": "Ruqaya Al-Amiri", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-02-20", "end_date": "2026-02-22", "total_days": 2, "reason": "Personal", "status": "REJECTED", "submitted_at": "2026-02-06", "approver_name": "Hanan Al-Jawahiri", "rejection_reason": "Insufficient coverage during that period" },
-    { "id": "LR-014", "request_number": "LR-2026-014", "employee_id": "EMP-2024-025", "employee_name": "Adel Al-Maliki", "leave_type_id": "LT-001", "leave_type": "Annual Leave", "start_date": "2026-03-20", "end_date": "2026-03-26", "total_days": 4, "reason": "Eid al-Fitr", "status": "APPROVED", "submitted_at": "2026-02-01", "approver_name": "Ahmed Al-Rashidi", "approved_at": "2026-02-02" }
+    {
+      "id": "LR-001",
+      "request_number": "LR-2026-001",
+      "employee_id": "EMP-2024-029",
+      "employee_name": "Haider Al-Rubaie",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-24",
+      "end_date": "2026-04-24",
+      "total_days": 1,
+      "reason": "Eid celebration",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-26",
+      "approver_name": "Nizar Al-Hadithi",
+      "approved_at": "2026-03-11"
+    },
+    {
+      "id": "LR-002",
+      "request_number": "LR-2026-002",
+      "employee_id": "EMP-2024-003",
+      "employee_name": "Omar Al-Bayati",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-11",
+      "end_date": "2026-05-19",
+      "total_days": 9,
+      "reason": "Home renovation",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-04",
+      "approver_name": "Youssef Al-Shammari",
+      "approved_at": "2026-04-08"
+    },
+    {
+      "id": "LR-003",
+      "request_number": "LR-2026-003",
+      "employee_id": "EMP-2024-039",
+      "employee_name": "Raad Al-Taie",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-23",
+      "end_date": "2026-04-24",
+      "total_days": 2,
+      "reason": "Wedding attendance",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-05",
+      "approver_name": "Faisal Al-Nuaimi"
+    },
+    {
+      "id": "LR-004",
+      "request_number": "LR-2026-004",
+      "employee_id": "EMP-2024-012",
+      "employee_name": "Karim Al-Hamdani",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-19",
+      "end_date": "2026-04-23",
+      "total_days": 5,
+      "reason": "Home renovation",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-08",
+      "approver_name": "Adel Al-Maliki",
+      "approved_at": "2026-03-23"
+    },
+    {
+      "id": "LR-005",
+      "request_number": "LR-2026-005",
+      "employee_id": "EMP-2024-034",
+      "employee_name": "Wafa Al-Samarra",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-03",
+      "end_date": "2026-06-08",
+      "total_days": 6,
+      "reason": "Personal travel",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-05-15",
+      "approver_name": "Karim Al-Hamdani"
+    },
+    {
+      "id": "LR-006",
+      "request_number": "LR-2026-006",
+      "employee_id": "EMP-2024-031",
+      "employee_name": "Basim Al-Douri",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-24",
+      "end_date": "2026-03-28",
+      "total_days": 8,
+      "reason": "Eid celebration",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-02-14",
+      "approver_name": "Khalid Al-Ani"
+    },
+    {
+      "id": "LR-007",
+      "request_number": "LR-2026-007",
+      "employee_id": "EMP-2024-037",
+      "employee_name": "Majid Al-Badri",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-04",
+      "end_date": "2026-01-10",
+      "total_days": 7,
+      "reason": "Family visit to Erbil",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-14",
+      "approver_name": "Layla Al-Azzawi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-008",
+      "request_number": "LR-2026-008",
+      "employee_id": "EMP-2024-041",
+      "employee_name": "Imad Al-Shamsi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-12",
+      "end_date": "2026-03-19",
+      "total_days": 8,
+      "reason": "Eid celebration",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-11",
+      "approver_name": "Jamal Al-Hilli",
+      "approved_at": "2026-02-09"
+    },
+    {
+      "id": "LR-009",
+      "request_number": "LR-2026-009",
+      "employee_id": "EMP-2024-031",
+      "employee_name": "Basim Al-Douri",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-15",
+      "end_date": "2026-06-23",
+      "total_days": 9,
+      "reason": "Personal matters",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-24",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-05-25"
+    },
+    {
+      "id": "LR-010",
+      "request_number": "LR-2026-010",
+      "employee_id": "EMP-2024-027",
+      "employee_name": "Faisal Al-Nuaimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-24",
+      "end_date": "2026-04-28",
+      "total_days": 10,
+      "reason": "Home renovation",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-22",
+      "approver_name": "Noor Al-Khafaji"
+    },
+    {
+      "id": "LR-011",
+      "request_number": "LR-2026-011",
+      "employee_id": "EMP-2021-054",
+      "employee_name": "Bushra Al-Hashimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-14",
+      "total_days": 5,
+      "reason": "Family vacation",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-26",
+      "approver_name": "Ali Al-Tamimi",
+      "approved_at": "2026-03-17"
+    },
+    {
+      "id": "LR-012",
+      "request_number": "LR-2026-012",
+      "employee_id": "EMP-2024-025",
+      "employee_name": "Adel Al-Maliki",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-01",
+      "end_date": "2026-04-08",
+      "total_days": 8,
+      "reason": "Family vacation",
+      "status": "REJECTED",
+      "submitted_at": "2026-03-11",
+      "approver_name": "Ali Al-Tamimi",
+      "rejection_reason": "Insufficient coverage"
+    },
+    {
+      "id": "LR-013",
+      "request_number": "LR-2026-013",
+      "employee_id": "EMP-2023-051",
+      "employee_name": "Saad Al-Rawi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-22",
+      "end_date": "2026-05-27",
+      "total_days": 6,
+      "reason": "Rest and recovery",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-04-08",
+      "approver_name": "Ali Al-Tamimi"
+    },
+    {
+      "id": "LR-014",
+      "request_number": "LR-2026-014",
+      "employee_id": "EMP-2024-016",
+      "employee_name": "Huda Ibrahim",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-09",
+      "end_date": "2026-01-11",
+      "total_days": 3,
+      "reason": "Personal matters",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-05",
+      "approver_name": "Noor Al-Khafaji"
+    },
+    {
+      "id": "LR-015",
+      "request_number": "LR-2026-015",
+      "employee_id": "EMP-2023-051",
+      "employee_name": "Saad Al-Rawi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-21",
+      "end_date": "2026-04-27",
+      "total_days": 7,
+      "reason": "Wedding attendance",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-16",
+      "approver_name": "Adel Al-Maliki",
+      "approved_at": "2026-03-19"
+    },
+    {
+      "id": "LR-016",
+      "request_number": "LR-2026-016",
+      "employee_id": "EMP-2024-032",
+      "employee_name": "Aseel Al-Fadhli",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-13",
+      "end_date": "2026-03-13",
+      "total_days": 1,
+      "reason": "Personal matters",
+      "status": "REJECTED",
+      "submitted_at": "2026-02-01",
+      "approver_name": "Omar Al-Bayati",
+      "rejection_reason": "Policy violation"
+    },
+    {
+      "id": "LR-017",
+      "request_number": "LR-2026-017",
+      "employee_id": "EMP-2024-005",
+      "employee_name": "Mustafa Al-Janabi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-09",
+      "end_date": "2026-05-15",
+      "total_days": 7,
+      "reason": "Family vacation",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-24",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-04-03"
+    },
+    {
+      "id": "LR-018",
+      "request_number": "LR-2026-018",
+      "employee_id": "EMP-2024-029",
+      "employee_name": "Haider Al-Rubaie",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-02-11",
+      "end_date": "2026-02-17",
+      "total_days": 7,
+      "reason": "Personal matters",
+      "status": "CANCELLED",
+      "submitted_at": "2026-01-26",
+      "approver_name": "Jamal Al-Hilli"
+    },
+    {
+      "id": "LR-019",
+      "request_number": "LR-2026-019",
+      "employee_id": "EMP-2024-033",
+      "employee_name": "Jamal Al-Hilli",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-20",
+      "end_date": "2026-06-22",
+      "total_days": 3,
+      "reason": "Personal travel",
+      "status": "REJECTED",
+      "submitted_at": "2026-05-26",
+      "approver_name": "Zainab Al-Saadi",
+      "rejection_reason": "Insufficient coverage"
+    },
+    {
+      "id": "LR-020",
+      "request_number": "LR-2026-020",
+      "employee_id": "EMP-2024-011",
+      "employee_name": "Layla Al-Azzawi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-02",
+      "end_date": "2026-04-04",
+      "total_days": 3,
+      "reason": "Wedding attendance",
+      "status": "REJECTED",
+      "submitted_at": "2026-03-09",
+      "approver_name": "Tariq Al-Mousawi",
+      "rejection_reason": "Policy violation"
+    },
+    {
+      "id": "LR-021",
+      "request_number": "LR-2026-021",
+      "employee_id": "EMP-2024-047",
+      "employee_name": "Nizar Al-Hadithi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-07",
+      "end_date": "2026-01-08",
+      "total_days": 2,
+      "reason": "Family vacation",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-27",
+      "approver_name": "Zainab Al-Saadi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-022",
+      "request_number": "LR-2026-022",
+      "employee_id": "EMP-2024-039",
+      "employee_name": "Raad Al-Taie",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-17",
+      "end_date": "2026-01-25",
+      "total_days": 9,
+      "reason": "Family visit to Erbil",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-09",
+      "approver_name": "Haider Al-Rubaie"
+    },
+    {
+      "id": "LR-023",
+      "request_number": "LR-2026-023",
+      "employee_id": "EMP-2022-053",
+      "employee_name": "Karrar Al-Tamimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-12",
+      "end_date": "2026-05-16",
+      "total_days": 5,
+      "reason": "Wedding attendance",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-21",
+      "approver_name": "Fatima Hassan",
+      "approved_at": "2026-04-10"
+    },
+    {
+      "id": "LR-024",
+      "request_number": "LR-2026-024",
+      "employee_id": "EMP-2024-026",
+      "employee_name": "Nadia Al-Khatib",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-02-04",
+      "end_date": "2026-02-11",
+      "total_days": 8,
+      "reason": "Personal travel",
+      "status": "CANCELLED",
+      "submitted_at": "2026-01-16",
+      "approver_name": "Suha Al-Jubouri"
+    },
+    {
+      "id": "LR-025",
+      "request_number": "LR-2026-025",
+      "employee_id": "EMP-2024-022",
+      "employee_name": "Reem Al-Hashimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-21",
+      "end_date": "2026-03-22",
+      "total_days": 2,
+      "reason": "Eid celebration",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-12",
+      "approver_name": "Suha Al-Jubouri",
+      "approved_at": "2026-02-25"
+    },
+    {
+      "id": "LR-026",
+      "request_number": "LR-2026-026",
+      "employee_id": "EMP-2024-027",
+      "employee_name": "Faisal Al-Nuaimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-14",
+      "end_date": "2026-04-20",
+      "total_days": 7,
+      "reason": "Personal travel",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-20",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-03-27"
+    },
+    {
+      "id": "LR-027",
+      "request_number": "LR-2026-027",
+      "employee_id": "EMP-2024-016",
+      "employee_name": "Huda Ibrahim",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-09",
+      "end_date": "2026-04-10",
+      "total_days": 2,
+      "reason": "Eid celebration",
+      "status": "REJECTED",
+      "submitted_at": "2026-03-28",
+      "approver_name": "Layla Al-Azzawi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-028",
+      "request_number": "LR-2026-028",
+      "employee_id": "EMP-2024-034",
+      "employee_name": "Wafa Al-Samarra",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-11",
+      "end_date": "2026-05-14",
+      "total_days": 4,
+      "reason": "Eid celebration",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-04-14",
+      "approver_name": "Fatima Hassan"
+    },
+    {
+      "id": "LR-029",
+      "request_number": "LR-2026-029",
+      "employee_id": "EMP-2024-015",
+      "employee_name": "Tariq Al-Mousawi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-02-16",
+      "end_date": "2026-02-17",
+      "total_days": 2,
+      "reason": "Rest and recovery",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-26",
+      "approver_name": "Waleed Al-Samarrai",
+      "approved_at": "2026-01-27"
+    },
+    {
+      "id": "LR-030",
+      "request_number": "LR-2026-030",
+      "employee_id": "EMP-2021-054",
+      "employee_name": "Bushra Al-Hashimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-23",
+      "end_date": "2026-03-23",
+      "total_days": 1,
+      "reason": "Personal matters",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-01",
+      "approver_name": "Mustafa Al-Janabi",
+      "approved_at": "2026-02-07"
+    },
+    {
+      "id": "LR-031",
+      "request_number": "LR-2026-031",
+      "employee_id": "EMP-2024-040",
+      "employee_name": "Inaam Al-Rikabi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-15",
+      "end_date": "2026-06-17",
+      "total_days": 3,
+      "reason": "Family visit to Erbil",
+      "status": "REJECTED",
+      "submitted_at": "2026-05-16",
+      "approver_name": "Adel Al-Maliki",
+      "rejection_reason": "Insufficient coverage"
+    },
+    {
+      "id": "LR-032",
+      "request_number": "LR-2026-032",
+      "employee_id": "EMP-2024-006",
+      "employee_name": "Noor Al-Khafaji",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-25",
+      "end_date": "2026-05-28",
+      "total_days": 5,
+      "reason": "Wedding attendance",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-24",
+      "approver_name": "Suha Al-Jubouri",
+      "approved_at": "2026-04-24"
+    },
+    {
+      "id": "LR-033",
+      "request_number": "LR-2026-033",
+      "employee_id": "EMP-2024-050",
+      "employee_name": "Ruqaya Al-Amiri",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-09",
+      "total_days": 9,
+      "reason": "Home renovation",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-19",
+      "approver_name": "Tariq Al-Mousawi",
+      "approved_at": "2026-01-06"
+    },
+    {
+      "id": "LR-034",
+      "request_number": "LR-2026-034",
+      "employee_id": "EMP-2024-047",
+      "employee_name": "Nizar Al-Hadithi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-20",
+      "end_date": "2026-05-25",
+      "total_days": 6,
+      "reason": "Family vacation",
+      "status": "REJECTED",
+      "submitted_at": "2026-04-24",
+      "approver_name": "Khalid Al-Ani",
+      "rejection_reason": "Policy violation"
+    },
+    {
+      "id": "LR-035",
+      "request_number": "LR-2026-035",
+      "employee_id": "EMP-2024-045",
+      "employee_name": "Hanan Al-Jawahiri",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-13",
+      "total_days": 6,
+      "reason": "Eid celebration",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-05-07",
+      "approver_name": "Samir Al-Chalabi"
+    },
+    {
+      "id": "LR-036",
+      "request_number": "LR-2026-036",
+      "employee_id": "EMP-2024-042",
+      "employee_name": "Ghada Al-Abadi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-17",
+      "end_date": "2026-04-17",
+      "total_days": 1,
+      "reason": "Family visit to Erbil",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-19",
+      "approver_name": "Hassan Al-Dulaimi",
+      "approved_at": "2026-03-06"
+    },
+    {
+      "id": "LR-037",
+      "request_number": "LR-2026-037",
+      "employee_id": "EMP-2024-005",
+      "employee_name": "Mustafa Al-Janabi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-16",
+      "end_date": "2026-05-17",
+      "total_days": 2,
+      "reason": "Home renovation",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-04-09",
+      "approver_name": "Hassan Al-Dulaimi"
+    },
+    {
+      "id": "LR-038",
+      "request_number": "LR-2026-038",
+      "employee_id": "EMP-2024-030",
+      "employee_name": "Salam Al-Qaisi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-20",
+      "end_date": "2026-06-23",
+      "total_days": 4,
+      "reason": "Home renovation",
+      "status": "CANCELLED",
+      "submitted_at": "2026-05-04",
+      "approver_name": "Fatima Hassan"
+    },
+    {
+      "id": "LR-039",
+      "request_number": "LR-2026-039",
+      "employee_id": "EMP-2024-024",
+      "employee_name": "Maha Al-Zubaidi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-03",
+      "end_date": "2026-03-12",
+      "total_days": 10,
+      "reason": "Home renovation",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-28",
+      "approver_name": "Haider Al-Rubaie",
+      "approved_at": "2026-02-23"
+    },
+    {
+      "id": "LR-040",
+      "request_number": "LR-2026-040",
+      "employee_id": "EMP-2024-010",
+      "employee_name": "Mariam Al-Obaidi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-12",
+      "end_date": "2026-01-18",
+      "total_days": 7,
+      "reason": "Rest and recovery",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-02",
+      "approver_name": "Nizar Al-Hadithi"
+    },
+    {
+      "id": "LR-041",
+      "request_number": "LR-2026-041",
+      "employee_id": "EMP-2024-026",
+      "employee_name": "Nadia Al-Khatib",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-21",
+      "end_date": "2026-03-27",
+      "total_days": 7,
+      "reason": "Family vacation",
+      "status": "REJECTED",
+      "submitted_at": "2026-02-08",
+      "approver_name": "Adel Al-Maliki",
+      "rejection_reason": "Short notice"
+    },
+    {
+      "id": "LR-042",
+      "request_number": "LR-2026-042",
+      "employee_id": "EMP-2024-049",
+      "employee_name": "Muhannad Al-Obeidi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-24",
+      "end_date": "2026-01-27",
+      "total_days": 4,
+      "reason": "Family visit to Erbil",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-16",
+      "approver_name": "Samir Al-Chalabi",
+      "rejection_reason": "Policy violation"
+    },
+    {
+      "id": "LR-043",
+      "request_number": "LR-2026-043",
+      "employee_id": "EMP-2024-003",
+      "employee_name": "Omar Al-Bayati",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-24",
+      "end_date": "2026-06-27",
+      "total_days": 4,
+      "reason": "Home renovation",
+      "status": "REJECTED",
+      "submitted_at": "2026-05-04",
+      "approver_name": "Suha Al-Jubouri",
+      "rejection_reason": "Insufficient coverage"
+    },
+    {
+      "id": "LR-044",
+      "request_number": "LR-2026-044",
+      "employee_id": "EMP-2025-052",
+      "employee_name": "Amal Al-Bayati",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-05",
+      "end_date": "2026-04-14",
+      "total_days": 10,
+      "reason": "Wedding attendance",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-17",
+      "approver_name": "Ali Al-Tamimi"
+    },
+    {
+      "id": "LR-045",
+      "request_number": "LR-2026-045",
+      "employee_id": "EMP-2024-027",
+      "employee_name": "Faisal Al-Nuaimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-02-25",
+      "end_date": "2026-02-28",
+      "total_days": 6,
+      "reason": "Rest and recovery",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-11",
+      "approver_name": "Youssef Al-Shammari",
+      "approved_at": "2026-01-05"
+    },
+    {
+      "id": "LR-046",
+      "request_number": "LR-2026-046",
+      "employee_id": "EMP-2024-020",
+      "employee_name": "Amina Al-Rawi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-02-23",
+      "end_date": "2026-02-23",
+      "total_days": 1,
+      "reason": "Personal matters",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-01",
+      "approver_name": "Hassan Al-Dulaimi"
+    },
+    {
+      "id": "LR-047",
+      "request_number": "LR-2026-047",
+      "employee_id": "EMP-2021-054",
+      "employee_name": "Bushra Al-Hashimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-02",
+      "end_date": "2026-03-04",
+      "total_days": 3,
+      "reason": "Personal travel",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-14",
+      "approver_name": "Karim Al-Hamdani",
+      "approved_at": "2026-02-06"
+    },
+    {
+      "id": "LR-048",
+      "request_number": "LR-2026-048",
+      "employee_id": "EMP-2024-032",
+      "employee_name": "Aseel Al-Fadhli",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-21",
+      "end_date": "2026-04-21",
+      "total_days": 1,
+      "reason": "Personal travel",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-26",
+      "approver_name": "Omar Al-Bayati",
+      "approved_at": "2026-03-15"
+    },
+    {
+      "id": "LR-049",
+      "request_number": "LR-2026-049",
+      "employee_id": "EMP-2024-038",
+      "employee_name": "Zahra Al-Musawi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-06-14",
+      "end_date": "2026-06-14",
+      "total_days": 1,
+      "reason": "Personal travel",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-24",
+      "approver_name": "Layla Al-Azzawi",
+      "approved_at": "2026-05-13"
+    },
+    {
+      "id": "LR-050",
+      "request_number": "LR-2026-050",
+      "employee_id": "EMP-2024-048",
+      "employee_name": "Dalal Al-Tai",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-05-16",
+      "end_date": "2026-05-24",
+      "total_days": 9,
+      "reason": "Family visit to Erbil",
+      "status": "REJECTED",
+      "submitted_at": "2026-04-02",
+      "approver_name": "Saad Al-Rawi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-051",
+      "request_number": "LR-2026-051",
+      "employee_id": "EMP-2024-037",
+      "employee_name": "Majid Al-Badri",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-18",
+      "total_days": 3,
+      "reason": "Post-surgery recovery",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-15",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-03-02"
+    },
+    {
+      "id": "LR-052",
+      "request_number": "LR-2026-052",
+      "employee_id": "EMP-2024-011",
+      "employee_name": "Layla Al-Azzawi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-05-12",
+      "end_date": "2026-05-16",
+      "total_days": 5,
+      "reason": "Stomach illness",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-16",
+      "approver_name": "Khalid Al-Ani",
+      "approved_at": "2026-04-17"
+    },
+    {
+      "id": "LR-053",
+      "request_number": "LR-2026-053",
+      "employee_id": "EMP-2024-043",
+      "employee_name": "Thaer Al-Kubaisi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-13",
+      "total_days": 3,
+      "reason": "Medical checkup",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-20",
+      "approver_name": "Nizar Al-Hadithi"
+    },
+    {
+      "id": "LR-054",
+      "request_number": "LR-2026-054",
+      "employee_id": "EMP-2024-009",
+      "employee_name": "Hassan Al-Dulaimi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-05-03",
+      "end_date": "2026-05-06",
+      "total_days": 4,
+      "reason": "Post-surgery recovery",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-04-13",
+      "approver_name": "Omar Al-Bayati"
+    },
+    {
+      "id": "LR-055",
+      "request_number": "LR-2026-055",
+      "employee_id": "EMP-2024-015",
+      "employee_name": "Tariq Al-Mousawi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-03-10",
+      "end_date": "2026-03-14",
+      "total_days": 5,
+      "reason": "Migraine",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-02-17",
+      "approver_name": "Mustafa Al-Janabi"
+    },
+    {
+      "id": "LR-056",
+      "request_number": "LR-2026-056",
+      "employee_id": "EMP-2024-040",
+      "employee_name": "Inaam Al-Rikabi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-01-10",
+      "end_date": "2026-01-10",
+      "total_days": 1,
+      "reason": "Back pain",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-20",
+      "approver_name": "Nizar Al-Hadithi",
+      "approved_at": "2026-01-24"
+    },
+    {
+      "id": "LR-057",
+      "request_number": "LR-2026-057",
+      "employee_id": "EMP-2024-042",
+      "employee_name": "Ghada Al-Abadi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-02-08",
+      "end_date": "2026-02-11",
+      "total_days": 4,
+      "reason": "Flu symptoms",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-20",
+      "approver_name": "Ali Al-Tamimi"
+    },
+    {
+      "id": "LR-058",
+      "request_number": "LR-2026-058",
+      "employee_id": "EMP-2024-005",
+      "employee_name": "Mustafa Al-Janabi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-05",
+      "total_days": 5,
+      "reason": "Back pain",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-12",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-01-10"
+    },
+    {
+      "id": "LR-059",
+      "request_number": "LR-2026-059",
+      "employee_id": "EMP-2024-021",
+      "employee_name": "Waleed Al-Samarrai",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-04-22",
+      "end_date": "2026-04-26",
+      "total_days": 5,
+      "reason": "Flu symptoms",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-13",
+      "approver_name": "Khalid Al-Ani",
+      "approved_at": "2026-03-24"
+    },
+    {
+      "id": "LR-060",
+      "request_number": "LR-2026-060",
+      "employee_id": "EMP-2024-028",
+      "employee_name": "Lina Al-Saffar",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-17",
+      "total_days": 2,
+      "reason": "Dental surgery",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-26",
+      "approver_name": "Noor Al-Khafaji"
+    },
+    {
+      "id": "LR-061",
+      "request_number": "LR-2026-061",
+      "employee_id": "EMP-2024-031",
+      "employee_name": "Basim Al-Douri",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-06-18",
+      "end_date": "2026-06-20",
+      "total_days": 3,
+      "reason": "Flu symptoms",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-11",
+      "approver_name": "Nizar Al-Hadithi",
+      "approved_at": "2026-05-23"
+    },
+    {
+      "id": "LR-062",
+      "request_number": "LR-2026-062",
+      "employee_id": "EMP-2024-038",
+      "employee_name": "Zahra Al-Musawi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-05",
+      "total_days": 5,
+      "reason": "Post-surgery recovery",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-16",
+      "approver_name": "Layla Al-Azzawi",
+      "approved_at": "2026-04-09"
+    },
+    {
+      "id": "LR-063",
+      "request_number": "LR-2026-063",
+      "employee_id": "EMP-2024-017",
+      "employee_name": "Samir Al-Chalabi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-03-05",
+      "end_date": "2026-03-07",
+      "total_days": 3,
+      "reason": "Migraine",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-14",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-02-10"
+    },
+    {
+      "id": "LR-064",
+      "request_number": "LR-2026-064",
+      "employee_id": "EMP-2024-044",
+      "employee_name": "Lubna Al-Saadi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-03-09",
+      "end_date": "2026-03-13",
+      "total_days": 5,
+      "reason": "Stomach illness",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-02-16",
+      "approver_name": "Tariq Al-Mousawi"
+    },
+    {
+      "id": "LR-065",
+      "request_number": "LR-2026-065",
+      "employee_id": "EMP-2024-003",
+      "employee_name": "Omar Al-Bayati",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-10",
+      "total_days": 3,
+      "reason": "Back pain",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-05",
+      "approver_name": "Saad Al-Rawi",
+      "approved_at": "2026-05-22"
+    },
+    {
+      "id": "LR-066",
+      "request_number": "LR-2026-066",
+      "employee_id": "EMP-2024-028",
+      "employee_name": "Lina Al-Saffar",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-06-01",
+      "end_date": "2026-06-03",
+      "total_days": 3,
+      "reason": "House flooding",
+      "status": "CANCELLED",
+      "submitted_at": "2026-05-19",
+      "approver_name": "Jamal Al-Hilli"
+    },
+    {
+      "id": "LR-067",
+      "request_number": "LR-2026-067",
+      "employee_id": "EMP-2024-019",
+      "employee_name": "Khalid Al-Ani",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-02-15",
+      "end_date": "2026-02-16",
+      "total_days": 2,
+      "reason": "House flooding",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-16",
+      "approver_name": "Waleed Al-Samarrai"
+    },
+    {
+      "id": "LR-068",
+      "request_number": "LR-2026-068",
+      "employee_id": "EMP-2024-026",
+      "employee_name": "Nadia Al-Khatib",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-01-06",
+      "end_date": "2026-01-07",
+      "total_days": 2,
+      "reason": "Family emergency",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-18",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-01-21"
+    },
+    {
+      "id": "LR-069",
+      "request_number": "LR-2026-069",
+      "employee_id": "EMP-2024-045",
+      "employee_name": "Hanan Al-Jawahiri",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-05-25",
+      "end_date": "2026-05-25",
+      "total_days": 1,
+      "reason": "Death in family",
+      "status": "REJECTED",
+      "submitted_at": "2026-04-01",
+      "approver_name": "Adel Al-Maliki",
+      "rejection_reason": "Policy violation"
+    },
+    {
+      "id": "LR-070",
+      "request_number": "LR-2026-070",
+      "employee_id": "EMP-2024-042",
+      "employee_name": "Ghada Al-Abadi",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-03-21",
+      "end_date": "2026-03-21",
+      "total_days": 1,
+      "reason": "Death in family",
+      "status": "REJECTED",
+      "submitted_at": "2026-02-02",
+      "approver_name": "Noor Al-Khafaji",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-071",
+      "request_number": "LR-2026-071",
+      "employee_id": "EMP-2024-012",
+      "employee_name": "Karim Al-Hamdani",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-03-12",
+      "end_date": "2026-03-12",
+      "total_days": 1,
+      "reason": "Family emergency",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-04",
+      "approver_name": "Saad Al-Rawi",
+      "approved_at": "2026-02-13"
+    },
+    {
+      "id": "LR-072",
+      "request_number": "LR-2026-072",
+      "employee_id": "EMP-2024-006",
+      "employee_name": "Noor Al-Khafaji",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-02-12",
+      "end_date": "2026-02-12",
+      "total_days": 1,
+      "reason": "Car accident",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-01",
+      "approver_name": "Tariq Al-Mousawi",
+      "approved_at": "2026-01-14"
+    },
+    {
+      "id": "LR-073",
+      "request_number": "LR-2026-073",
+      "employee_id": "EMP-2024-020",
+      "employee_name": "Amina Al-Rawi",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-06-18",
+      "end_date": "2026-06-19",
+      "total_days": 2,
+      "reason": "Car accident",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-05-21",
+      "approver_name": "Tariq Al-Mousawi"
+    },
+    {
+      "id": "LR-074",
+      "request_number": "LR-2026-074",
+      "employee_id": "EMP-2024-017",
+      "employee_name": "Samir Al-Chalabi",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-02-25",
+      "end_date": "2026-02-26",
+      "total_days": 2,
+      "reason": "Car accident",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-23",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-01-04"
+    },
+    {
+      "id": "LR-075",
+      "request_number": "LR-2026-075",
+      "employee_id": "EMP-2024-002",
+      "employee_name": "Fatima Hassan",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-06-21",
+      "end_date": "2026-06-22",
+      "total_days": 2,
+      "reason": "House flooding",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-27",
+      "approver_name": "Hassan Al-Dulaimi",
+      "approved_at": "2026-05-14"
+    },
+    {
+      "id": "LR-076",
+      "request_number": "LR-2026-076",
+      "employee_id": "EMP-2024-028",
+      "employee_name": "Lina Al-Saffar",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-02-03",
+      "end_date": "2026-02-05",
+      "total_days": 3,
+      "reason": "Hajj pilgrimage",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-12",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-01-12"
+    },
+    {
+      "id": "LR-077",
+      "request_number": "LR-2026-077",
+      "employee_id": "EMP-2024-001",
+      "employee_name": "Ahmed Al-Rashidi",
+      "leave_type_id": "LT-006",
+      "leave_type": "Unpaid Leave",
+      "start_date": "2026-06-13",
+      "end_date": "2026-06-21",
+      "total_days": 9,
+      "reason": "Extended travel",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-05-04",
+      "approver_name": "Khalid Al-Ani"
+    },
+    {
+      "id": "LR-078",
+      "request_number": "LR-2026-078",
+      "employee_id": "EMP-2024-035",
+      "employee_name": "Samira Al-Khazraji",
+      "leave_type_id": "LT-005",
+      "leave_type": "Paternity Leave",
+      "start_date": "2026-01-10",
+      "end_date": "2026-01-14",
+      "total_days": 5,
+      "reason": "Paternity - new baby",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-28",
+      "approver_name": "Karim Al-Hamdani",
+      "rejection_reason": "Short notice"
+    },
+    {
+      "id": "LR-079",
+      "request_number": "LR-2026-079",
+      "employee_id": "EMP-2024-027",
+      "employee_name": "Faisal Al-Nuaimi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-18",
+      "end_date": "2026-01-20",
+      "total_days": 3,
+      "reason": "Eid celebration",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-16",
+      "approver_name": "Youssef Al-Shammari"
+    },
+    {
+      "id": "LR-080",
+      "request_number": "LR-2026-080",
+      "employee_id": "EMP-2024-033",
+      "employee_name": "Jamal Al-Hilli",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-04-06",
+      "end_date": "2026-04-09",
+      "total_days": 4,
+      "reason": "Back pain",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-17",
+      "approver_name": "Nizar Al-Hadithi",
+      "approved_at": "2026-03-21"
+    },
+    {
+      "id": "LR-081",
+      "request_number": "LR-2026-081",
+      "employee_id": "EMP-2024-044",
+      "employee_name": "Lubna Al-Saadi",
+      "leave_type_id": "LT-006",
+      "leave_type": "Unpaid Leave",
+      "start_date": "2026-03-15",
+      "end_date": "2026-03-16",
+      "total_days": 2,
+      "reason": "Personal project",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-02-19",
+      "approver_name": "Fatima Hassan"
+    },
+    {
+      "id": "LR-082",
+      "request_number": "LR-2026-082",
+      "employee_id": "EMP-2024-048",
+      "employee_name": "Dalal Al-Tai",
+      "leave_type_id": "LT-004",
+      "leave_type": "Maternity Leave",
+      "start_date": "2026-05-04",
+      "end_date": "2026-05-28",
+      "total_days": 90,
+      "reason": "Maternity",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-15",
+      "approver_name": "Fatima Hassan",
+      "approved_at": "2026-04-24"
+    },
+    {
+      "id": "LR-083",
+      "request_number": "LR-2026-083",
+      "employee_id": "EMP-2024-018",
+      "employee_name": "Rana Al-Tikrit",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-06-13",
+      "end_date": "2026-06-21",
+      "total_days": 9,
+      "reason": "Hajj pilgrimage",
+      "status": "CANCELLED",
+      "submitted_at": "2026-05-25",
+      "approver_name": "Samir Al-Chalabi"
+    },
+    {
+      "id": "LR-084",
+      "request_number": "LR-2026-084",
+      "employee_id": "EMP-2024-023",
+      "employee_name": "Suha Al-Jubouri",
+      "leave_type_id": "LT-006",
+      "leave_type": "Unpaid Leave",
+      "start_date": "2026-05-06",
+      "end_date": "2026-05-06",
+      "total_days": 1,
+      "reason": "Personal project",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-21",
+      "approver_name": "Noor Al-Khafaji",
+      "approved_at": "2026-04-03"
+    },
+    {
+      "id": "LR-085",
+      "request_number": "LR-2026-085",
+      "employee_id": "EMP-2024-017",
+      "employee_name": "Samir Al-Chalabi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-03",
+      "total_days": 3,
+      "reason": "Rest and recovery",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-26",
+      "approver_name": "Khalid Al-Ani",
+      "approved_at": "2026-01-07"
+    },
+    {
+      "id": "LR-086",
+      "request_number": "LR-2026-086",
+      "employee_id": "EMP-2024-041",
+      "employee_name": "Imad Al-Shamsi",
+      "leave_type_id": "LT-004",
+      "leave_type": "Maternity Leave",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-28",
+      "total_days": 90,
+      "reason": "Maternity",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-17",
+      "approver_name": "Zainab Al-Saadi"
+    },
+    {
+      "id": "LR-087",
+      "request_number": "LR-2026-087",
+      "employee_id": "EMP-2024-009",
+      "employee_name": "Hassan Al-Dulaimi",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-03-16",
+      "end_date": "2026-03-24",
+      "total_days": 9,
+      "reason": "Hajj pilgrimage",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-02-08",
+      "approver_name": "Layla Al-Azzawi"
+    },
+    {
+      "id": "LR-088",
+      "request_number": "LR-2026-088",
+      "employee_id": "EMP-2024-036",
+      "employee_name": "Qasim Al-Anbari",
+      "leave_type_id": "LT-004",
+      "leave_type": "Maternity Leave",
+      "start_date": "2026-06-03",
+      "end_date": "2026-06-28",
+      "total_days": 90,
+      "reason": "Maternity",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-05-06",
+      "approver_name": "Samir Al-Chalabi"
+    },
+    {
+      "id": "LR-089",
+      "request_number": "LR-2026-089",
+      "employee_id": "EMP-2024-045",
+      "employee_name": "Hanan Al-Jawahiri",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-05-16",
+      "end_date": "2026-05-18",
+      "total_days": 3,
+      "reason": "Family emergency",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-26",
+      "approver_name": "Mustafa Al-Janabi",
+      "approved_at": "2026-04-13"
+    },
+    {
+      "id": "LR-090",
+      "request_number": "LR-2026-090",
+      "employee_id": "EMP-2024-044",
+      "employee_name": "Lubna Al-Saadi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-04-06",
+      "end_date": "2026-04-10",
+      "total_days": 5,
+      "reason": "Personal matters",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-03-08",
+      "approver_name": "Noor Al-Khafaji"
+    },
+    {
+      "id": "LR-091",
+      "request_number": "LR-2026-091",
+      "employee_id": "EMP-2024-044",
+      "employee_name": "Lubna Al-Saadi",
+      "leave_type_id": "LT-003",
+      "leave_type": "Emergency Leave",
+      "start_date": "2026-06-07",
+      "end_date": "2026-06-07",
+      "total_days": 1,
+      "reason": "Child hospitalization",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-26",
+      "approver_name": "Youssef Al-Shammari",
+      "approved_at": "2026-05-16"
+    },
+    {
+      "id": "LR-092",
+      "request_number": "LR-2026-092",
+      "employee_id": "EMP-2024-046",
+      "employee_name": "Aws Al-Kinani",
+      "leave_type_id": "LT-004",
+      "leave_type": "Maternity Leave",
+      "start_date": "2026-05-02",
+      "end_date": "2026-05-28",
+      "total_days": 90,
+      "reason": "Maternity",
+      "status": "APPROVED",
+      "submitted_at": "2026-04-18",
+      "approver_name": "Ali Al-Tamimi",
+      "approved_at": "2026-04-25"
+    },
+    {
+      "id": "LR-093",
+      "request_number": "LR-2026-093",
+      "employee_id": "EMP-2024-030",
+      "employee_name": "Salam Al-Qaisi",
+      "leave_type_id": "LT-005",
+      "leave_type": "Paternity Leave",
+      "start_date": "2026-06-22",
+      "end_date": "2026-06-28",
+      "total_days": 7,
+      "reason": "Paternity - new baby",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-18",
+      "approver_name": "Fatima Hassan",
+      "approved_at": "2026-05-07"
+    },
+    {
+      "id": "LR-094",
+      "request_number": "LR-2026-094",
+      "employee_id": "EMP-2024-017",
+      "employee_name": "Samir Al-Chalabi",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-06-11",
+      "end_date": "2026-06-13",
+      "total_days": 3,
+      "reason": "Eye infection",
+      "status": "REJECTED",
+      "submitted_at": "2026-05-19",
+      "approver_name": "Nizar Al-Hadithi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-095",
+      "request_number": "LR-2026-095",
+      "employee_id": "EMP-2021-054",
+      "employee_name": "Bushra Al-Hashimi",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-02-10",
+      "end_date": "2026-02-17",
+      "total_days": 8,
+      "reason": "Hajj pilgrimage",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-08",
+      "approver_name": "Bushra Al-Hashimi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-096",
+      "request_number": "LR-2026-096",
+      "employee_id": "EMP-2024-025",
+      "employee_name": "Adel Al-Maliki",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-02-13",
+      "end_date": "2026-02-14",
+      "total_days": 2,
+      "reason": "Hajj pilgrimage",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-13",
+      "approver_name": "Tariq Al-Mousawi",
+      "rejection_reason": "Insufficient coverage"
+    },
+    {
+      "id": "LR-097",
+      "request_number": "LR-2026-097",
+      "employee_id": "EMP-2024-023",
+      "employee_name": "Suha Al-Jubouri",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-02-13",
+      "end_date": "2026-02-16",
+      "total_days": 4,
+      "reason": "Personal matters",
+      "status": "PENDING_APPROVAL",
+      "submitted_at": "2026-01-01",
+      "approver_name": "Waleed Al-Samarrai"
+    },
+    {
+      "id": "LR-098",
+      "request_number": "LR-2026-098",
+      "employee_id": "EMP-2024-034",
+      "employee_name": "Wafa Al-Samarra",
+      "leave_type_id": "LT-008",
+      "leave_type": "Study Leave",
+      "start_date": "2026-05-15",
+      "end_date": "2026-05-15",
+      "total_days": 1,
+      "reason": "Medical conference",
+      "status": "REJECTED",
+      "submitted_at": "2026-04-25",
+      "approver_name": "Nizar Al-Hadithi",
+      "rejection_reason": "Short notice"
+    },
+    {
+      "id": "LR-099",
+      "request_number": "LR-2026-099",
+      "employee_id": "EMP-2024-042",
+      "employee_name": "Ghada Al-Abadi",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-04-05",
+      "end_date": "2026-04-06",
+      "total_days": 2,
+      "reason": "Hajj pilgrimage",
+      "status": "APPROVED",
+      "submitted_at": "2026-03-25",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-03-02"
+    },
+    {
+      "id": "LR-100",
+      "request_number": "LR-2026-100",
+      "employee_id": "EMP-2024-039",
+      "employee_name": "Raad Al-Taie",
+      "leave_type_id": "LT-005",
+      "leave_type": "Paternity Leave",
+      "start_date": "2026-06-22",
+      "end_date": "2026-06-28",
+      "total_days": 7,
+      "reason": "Paternity - new baby",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-16",
+      "approver_name": "Tariq Al-Mousawi",
+      "approved_at": "2026-05-17"
+    },
+    {
+      "id": "LR-101",
+      "request_number": "LR-2026-101",
+      "employee_id": "EMP-2024-036",
+      "employee_name": "Qasim Al-Anbari",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-01-01",
+      "end_date": "2026-01-03",
+      "total_days": 3,
+      "reason": "Hajj pilgrimage",
+      "status": "APPROVED",
+      "submitted_at": "2026-01-27",
+      "approver_name": "Waleed Al-Samarrai",
+      "approved_at": "2026-01-26"
+    },
+    {
+      "id": "LR-102",
+      "request_number": "LR-2026-102",
+      "employee_id": "EMP-2024-035",
+      "employee_name": "Samira Al-Khazraji",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-06-12",
+      "end_date": "2026-06-16",
+      "total_days": 5,
+      "reason": "Hajj pilgrimage",
+      "status": "APPROVED",
+      "submitted_at": "2026-05-08",
+      "approver_name": "Ahmed Al-Rashidi",
+      "approved_at": "2026-05-24"
+    },
+    {
+      "id": "LR-103",
+      "request_number": "LR-2026-103",
+      "employee_id": "EMP-2024-023",
+      "employee_name": "Suha Al-Jubouri",
+      "leave_type_id": "LT-004",
+      "leave_type": "Maternity Leave",
+      "start_date": "2026-03-18",
+      "end_date": "2026-03-28",
+      "total_days": 90,
+      "reason": "Maternity",
+      "status": "CANCELLED",
+      "submitted_at": "2026-02-21",
+      "approver_name": "Khalid Al-Ani"
+    },
+    {
+      "id": "LR-104",
+      "request_number": "LR-2026-104",
+      "employee_id": "EMP-2024-038",
+      "employee_name": "Zahra Al-Musawi",
+      "leave_type_id": "LT-008",
+      "leave_type": "Study Leave",
+      "start_date": "2026-02-22",
+      "end_date": "2026-02-22",
+      "total_days": 1,
+      "reason": "Medical conference",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-24",
+      "approver_name": "Ahmed Al-Rashidi",
+      "rejection_reason": "Insufficient coverage"
+    },
+    {
+      "id": "LR-105",
+      "request_number": "LR-2026-105",
+      "employee_id": "EMP-2024-032",
+      "employee_name": "Aseel Al-Fadhli",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-03-13",
+      "end_date": "2026-03-14",
+      "total_days": 2,
+      "reason": "Dental surgery",
+      "status": "APPROVED",
+      "submitted_at": "2026-02-12",
+      "approver_name": "Suha Al-Jubouri",
+      "approved_at": "2026-02-05"
+    },
+    {
+      "id": "LR-106",
+      "request_number": "LR-2026-106",
+      "employee_id": "EMP-2024-024",
+      "employee_name": "Maha Al-Zubaidi",
+      "leave_type_id": "LT-001",
+      "leave_type": "Annual Leave",
+      "start_date": "2026-03-17",
+      "end_date": "2026-03-18",
+      "total_days": 2,
+      "reason": "Rest and recovery",
+      "status": "CANCELLED",
+      "submitted_at": "2026-02-13",
+      "approver_name": "Hassan Al-Dulaimi"
+    },
+    {
+      "id": "LR-107",
+      "request_number": "LR-2026-107",
+      "employee_id": "EMP-2024-012",
+      "employee_name": "Karim Al-Hamdani",
+      "leave_type_id": "LT-007",
+      "leave_type": "Hajj Leave",
+      "start_date": "2026-03-06",
+      "end_date": "2026-03-08",
+      "total_days": 3,
+      "reason": "Hajj pilgrimage",
+      "status": "CANCELLED",
+      "submitted_at": "2026-02-23",
+      "approver_name": "Haider Al-Rubaie"
+    },
+    {
+      "id": "LR-108",
+      "request_number": "LR-2026-108",
+      "employee_id": "EMP-2024-019",
+      "employee_name": "Khalid Al-Ani",
+      "leave_type_id": "LT-002",
+      "leave_type": "Sick Leave",
+      "start_date": "2026-01-05",
+      "end_date": "2026-01-08",
+      "total_days": 4,
+      "reason": "Migraine",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-06",
+      "approver_name": "Adel Al-Maliki",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-109",
+      "request_number": "LR-2026-109",
+      "employee_id": "EMP-2024-009",
+      "employee_name": "Hassan Al-Dulaimi",
+      "leave_type_id": "LT-005",
+      "leave_type": "Paternity Leave",
+      "start_date": "2026-06-23",
+      "end_date": "2026-06-28",
+      "total_days": 8,
+      "reason": "Paternity - new baby",
+      "status": "REJECTED",
+      "submitted_at": "2026-05-22",
+      "approver_name": "Zainab Al-Saadi",
+      "rejection_reason": "Too many staff on leave"
+    },
+    {
+      "id": "LR-110",
+      "request_number": "LR-2026-110",
+      "employee_id": "EMP-2024-005",
+      "employee_name": "Mustafa Al-Janabi",
+      "leave_type_id": "LT-005",
+      "leave_type": "Paternity Leave",
+      "start_date": "2026-02-25",
+      "end_date": "2026-02-28",
+      "total_days": 6,
+      "reason": "Paternity - new baby",
+      "status": "REJECTED",
+      "submitted_at": "2026-01-19",
+      "approver_name": "Haider Al-Rubaie",
+      "rejection_reason": "Short notice"
+    }
   ],
   "leave_balances": [
-    { "employee_id": "EMP-2024-001", "employee_name": "Ahmed Al-Rashidi", "annual": { "total": 30, "used": 4, "pending": 0, "available": 26 }, "sick": { "total": 30, "used": 0, "available": 30 }, "emergency": { "total": 5, "used": 0, "available": 5 } },
-    { "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "annual": { "total": 30, "used": 6, "pending": 0, "available": 24 }, "sick": { "total": 30, "used": 2, "available": 28 }, "emergency": { "total": 5, "used": 1, "available": 4 } },
-    { "employee_id": "EMP-2024-004", "employee_name": "Zainab Al-Saadi", "annual": { "total": 30, "used": 4, "pending": 4, "available": 22 }, "sick": { "total": 30, "used": 0, "available": 30 }, "emergency": { "total": 5, "used": 0, "available": 5 } },
-    { "employee_id": "EMP-2024-008", "employee_name": "Sara Mohammed", "annual": { "total": 30, "used": 2, "pending": 4, "available": 24 }, "sick": { "total": 30, "used": 3, "available": 27 }, "emergency": { "total": 5, "used": 0, "available": 5 } },
-    { "employee_id": "EMP-2024-011", "employee_name": "Layla Al-Azzawi", "annual": { "total": 30, "used": 8, "pending": 0, "available": 22 }, "sick": { "total": 30, "used": 0, "available": 30 }, "emergency": { "total": 5, "used": 0, "available": 5 } },
-    { "employee_id": "EMP-2024-025", "employee_name": "Adel Al-Maliki", "annual": { "total": 30, "used": 2, "pending": 4, "available": 24 }, "sick": { "total": 30, "used": 1, "available": 29 }, "emergency": { "total": 5, "used": 0, "available": 5 } },
-    { "employee_id": "EMP-2024-034", "employee_name": "Wafa Al-Samarra", "annual": { "total": 30, "used": 0, "pending": 0, "available": 30 }, "sick": { "total": 30, "used": 0, "available": 30 }, "emergency": { "total": 5, "used": 2, "available": 3 } }
+    {
+      "employee_id": "EMP-2024-001",
+      "employee_name": "Ahmed Al-Rashidi",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 2,
+        "available": 26
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-002",
+      "employee_name": "Fatima Hassan",
+      "annual": {
+        "total": 30,
+        "used": 1,
+        "pending": 3,
+        "available": 26
+      },
+      "sick": {
+        "total": 30,
+        "used": 3,
+        "available": 27
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-003",
+      "employee_name": "Omar Al-Bayati",
+      "annual": {
+        "total": 30,
+        "used": 6,
+        "pending": 3,
+        "available": 21
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-004",
+      "employee_name": "Zainab Al-Saadi",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 3,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-005",
+      "employee_name": "Mustafa Al-Janabi",
+      "annual": {
+        "total": 30,
+        "used": 10,
+        "pending": 0,
+        "available": 20
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-006",
+      "employee_name": "Noor Al-Khafaji",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 2,
+        "available": 28
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-007",
+      "employee_name": "Ali Al-Tamimi",
+      "annual": {
+        "total": 30,
+        "used": 3,
+        "pending": 0,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 3,
+        "available": 27
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-008",
+      "employee_name": "Sara Mohammed",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 0,
+        "available": 21
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-009",
+      "employee_name": "Hassan Al-Dulaimi",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 1,
+        "available": 20
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-010",
+      "employee_name": "Mariam Al-Obaidi",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 3,
+        "available": 19
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-011",
+      "employee_name": "Layla Al-Azzawi",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 0,
+        "available": 30
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-012",
+      "employee_name": "Karim Al-Hamdani",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 3,
+        "available": 19
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-013",
+      "employee_name": "Youssef Al-Shammari",
+      "annual": {
+        "total": 30,
+        "used": 7,
+        "pending": 1,
+        "available": 22
+      },
+      "sick": {
+        "total": 30,
+        "used": 5,
+        "available": 25
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-014",
+      "employee_name": "Dina Al-Kubaisi",
+      "annual": {
+        "total": 30,
+        "used": 10,
+        "pending": 3,
+        "available": 17
+      },
+      "sick": {
+        "total": 30,
+        "used": 3,
+        "available": 27
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-015",
+      "employee_name": "Tariq Al-Mousawi",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 4,
+        "available": 24
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-016",
+      "employee_name": "Huda Ibrahim",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 1,
+        "available": 21
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-017",
+      "employee_name": "Samir Al-Chalabi",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 2,
+        "available": 28
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-018",
+      "employee_name": "Rana Al-Tikrit",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 3,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 3,
+        "available": 27
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-019",
+      "employee_name": "Khalid Al-Ani",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 3,
+        "available": 18
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-020",
+      "employee_name": "Amina Al-Rawi",
+      "annual": {
+        "total": 30,
+        "used": 11,
+        "pending": 2,
+        "available": 17
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-021",
+      "employee_name": "Waleed Al-Samarrai",
+      "annual": {
+        "total": 30,
+        "used": 11,
+        "pending": 4,
+        "available": 15
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-022",
+      "employee_name": "Reem Al-Hashimi",
+      "annual": {
+        "total": 30,
+        "used": 12,
+        "pending": 2,
+        "available": 16
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-023",
+      "employee_name": "Suha Al-Jubouri",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 3,
+        "available": 25
+      },
+      "sick": {
+        "total": 30,
+        "used": 4,
+        "available": 26
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-024",
+      "employee_name": "Maha Al-Zubaidi",
+      "annual": {
+        "total": 30,
+        "used": 1,
+        "pending": 1,
+        "available": 28
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-025",
+      "employee_name": "Adel Al-Maliki",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 3,
+        "available": 18
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-026",
+      "employee_name": "Nadia Al-Khatib",
+      "annual": {
+        "total": 30,
+        "used": 1,
+        "pending": 0,
+        "available": 29
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-027",
+      "employee_name": "Faisal Al-Nuaimi",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 1,
+        "available": 21
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-028",
+      "employee_name": "Lina Al-Saffar",
+      "annual": {
+        "total": 30,
+        "used": 1,
+        "pending": 4,
+        "available": 25
+      },
+      "sick": {
+        "total": 30,
+        "used": 6,
+        "available": 24
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-029",
+      "employee_name": "Haider Al-Rubaie",
+      "annual": {
+        "total": 30,
+        "used": 10,
+        "pending": 2,
+        "available": 18
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-030",
+      "employee_name": "Salam Al-Qaisi",
+      "annual": {
+        "total": 30,
+        "used": 4,
+        "pending": 1,
+        "available": 25
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-031",
+      "employee_name": "Basim Al-Douri",
+      "annual": {
+        "total": 30,
+        "used": 10,
+        "pending": 3,
+        "available": 17
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-032",
+      "employee_name": "Aseel Al-Fadhli",
+      "annual": {
+        "total": 30,
+        "used": 6,
+        "pending": 0,
+        "available": 24
+      },
+      "sick": {
+        "total": 30,
+        "used": 6,
+        "available": 24
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-033",
+      "employee_name": "Jamal Al-Hilli",
+      "annual": {
+        "total": 30,
+        "used": 7,
+        "pending": 1,
+        "available": 22
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-034",
+      "employee_name": "Wafa Al-Samarra",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 2,
+        "available": 26
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-035",
+      "employee_name": "Samira Al-Khazraji",
+      "annual": {
+        "total": 30,
+        "used": 4,
+        "pending": 0,
+        "available": 26
+      },
+      "sick": {
+        "total": 30,
+        "used": 5,
+        "available": 25
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-036",
+      "employee_name": "Qasim Al-Anbari",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 0,
+        "available": 30
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-037",
+      "employee_name": "Majid Al-Badri",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 1,
+        "available": 21
+      },
+      "sick": {
+        "total": 30,
+        "used": 3,
+        "available": 27
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-038",
+      "employee_name": "Zahra Al-Musawi",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 2,
+        "available": 19
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-039",
+      "employee_name": "Raad Al-Taie",
+      "annual": {
+        "total": 30,
+        "used": 6,
+        "pending": 3,
+        "available": 21
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-040",
+      "employee_name": "Inaam Al-Rikabi",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 3,
+        "available": 25
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-041",
+      "employee_name": "Imad Al-Shamsi",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 4,
+        "available": 17
+      },
+      "sick": {
+        "total": 30,
+        "used": 4,
+        "available": 26
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-042",
+      "employee_name": "Ghada Al-Abadi",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 3,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-043",
+      "employee_name": "Thaer Al-Kubaisi",
+      "annual": {
+        "total": 30,
+        "used": 4,
+        "pending": 4,
+        "available": 22
+      },
+      "sick": {
+        "total": 30,
+        "used": 4,
+        "available": 26
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-044",
+      "employee_name": "Lubna Al-Saadi",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 4,
+        "available": 26
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-045",
+      "employee_name": "Hanan Al-Jawahiri",
+      "annual": {
+        "total": 30,
+        "used": 12,
+        "pending": 3,
+        "available": 15
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-046",
+      "employee_name": "Aws Al-Kinani",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 3,
+        "available": 19
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-047",
+      "employee_name": "Nizar Al-Hadithi",
+      "annual": {
+        "total": 30,
+        "used": 6,
+        "pending": 2,
+        "available": 22
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2024-048",
+      "employee_name": "Dalal Al-Tai",
+      "annual": {
+        "total": 30,
+        "used": 7,
+        "pending": 0,
+        "available": 23
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2024-049",
+      "employee_name": "Muhannad Al-Obeidi",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 4,
+        "available": 24
+      },
+      "sick": {
+        "total": 30,
+        "used": 5,
+        "available": 25
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-2024-050",
+      "employee_name": "Ruqaya Al-Amiri",
+      "annual": {
+        "total": 30,
+        "used": 3,
+        "pending": 0,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2023-051",
+      "employee_name": "Saad Al-Rawi",
+      "annual": {
+        "total": 30,
+        "used": 9,
+        "pending": 3,
+        "available": 18
+      },
+      "sick": {
+        "total": 30,
+        "used": 7,
+        "available": 23
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    },
+    {
+      "employee_id": "EMP-2025-052",
+      "employee_name": "Amal Al-Bayati",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 1,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 1,
+        "available": 29
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2022-053",
+      "employee_name": "Karrar Al-Tamimi",
+      "annual": {
+        "total": 30,
+        "used": 10,
+        "pending": 0,
+        "available": 20
+      },
+      "sick": {
+        "total": 30,
+        "used": 2,
+        "available": 28
+      },
+      "emergency": {
+        "total": 5,
+        "used": 2,
+        "available": 3
+      }
+    },
+    {
+      "employee_id": "EMP-2021-054",
+      "employee_name": "Bushra Al-Hashimi",
+      "annual": {
+        "total": 30,
+        "used": 0,
+        "pending": 2,
+        "available": 28
+      },
+      "sick": {
+        "total": 30,
+        "used": 5,
+        "available": 25
+      },
+      "emergency": {
+        "total": 5,
+        "used": 3,
+        "available": 2
+      }
+    },
+    {
+      "employee_id": "EMP-TERM-055",
+      "employee_name": "Hatem Al-Dabbagh",
+      "annual": {
+        "total": 30,
+        "used": 2,
+        "pending": 1,
+        "available": 27
+      },
+      "sick": {
+        "total": 30,
+        "used": 8,
+        "available": 22
+      },
+      "emergency": {
+        "total": 5,
+        "used": 1,
+        "available": 4
+      }
+    },
+    {
+      "employee_id": "EMP-2024-056",
+      "employee_name": "Maysoon Al-Azzawi",
+      "annual": {
+        "total": 30,
+        "used": 8,
+        "pending": 3,
+        "available": 19
+      },
+      "sick": {
+        "total": 30,
+        "used": 0,
+        "available": 30
+      },
+      "emergency": {
+        "total": 5,
+        "used": 0,
+        "available": 5
+      }
+    }
   ]
 }

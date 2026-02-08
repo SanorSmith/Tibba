@@ -6,6 +6,7 @@ import {
   ClipboardList, Star, Heart, Building2, FileText, Clock, UserPlus,
   AlertTriangle, Award, Briefcase
 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Employee, DailyAttendanceSummary, LeaveRequest, PayrollPeriod, TrainingSummary, PerformanceReview, Recognition, JobVacancy, RecruitmentSummary } from '@/types/hr';
 import employeesData from '@/data/hr/employees.json';
 import attendanceData from '@/data/hr/attendance.json';
@@ -229,22 +230,38 @@ export default function HRPage() {
             <div className="tibbna-card-header">
               <h3 className="tibbna-section-title" style={{ margin: 0 }}>Staff by Category</h3>
             </div>
-            <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {[
-                { label: 'Medical Staff', count: activeEmployees.filter(e => e.employee_category === 'MEDICAL_STAFF').length, color: '#3B82F6' },
-                { label: 'Nursing', count: activeEmployees.filter(e => e.employee_category === 'NURSING').length, color: '#EC4899' },
-                { label: 'Administrative', count: activeEmployees.filter(e => e.employee_category === 'ADMINISTRATIVE').length, color: '#6366F1' },
-                { label: 'Technical', count: activeEmployees.filter(e => e.employee_category === 'TECHNICAL').length, color: '#10B981' },
-                { label: 'Support', count: activeEmployees.filter(e => e.employee_category === 'SUPPORT').length, color: '#F59E0B' },
-              ].map(cat => (
-                <div key={cat.label} className="flex items-center justify-between" style={{ padding: '6px 0' }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                    <span style={{ fontSize: '13px', color: '#525252' }}>{cat.label}</span>
-                  </div>
-                  <span style={{ fontSize: '14px', fontWeight: 600 }}>{cat.count}</span>
-                </div>
-              ))}
+            <div className="tibbna-card-content">
+              {(() => {
+                const categoryData = [
+                  { name: 'Medical', value: activeEmployees.filter(e => e.employee_category === 'MEDICAL_STAFF').length, color: '#3B82F6' },
+                  { name: 'Nursing', value: activeEmployees.filter(e => e.employee_category === 'NURSING').length, color: '#EC4899' },
+                  { name: 'Admin', value: activeEmployees.filter(e => e.employee_category === 'ADMINISTRATIVE').length, color: '#6366F1' },
+                  { name: 'Technical', value: activeEmployees.filter(e => e.employee_category === 'TECHNICAL').length, color: '#10B981' },
+                  { name: 'Support', value: activeEmployees.filter(e => e.employee_category === 'SUPPORT').length, color: '#F59E0B' },
+                ];
+                return (
+                  <>
+                    <div style={{ width: '100%', height: 160 }}>
+                      <ResponsiveContainer>
+                        <PieChart>
+                          <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3}>
+                            {categoryData.map((entry, i) => (<Cell key={i} fill={entry.color} />))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => [value, 'Employees']} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                      {categoryData.map(cat => (
+                        <div key={cat.name} className="flex items-center gap-1.5">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span style={{ fontSize: '11px', color: '#525252' }}>{cat.name} ({cat.value})</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
