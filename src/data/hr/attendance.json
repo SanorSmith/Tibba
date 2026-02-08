@@ -1,0 +1,68 @@
+{
+  "shifts": [
+    { "id": "SHIFT-DAY", "name": "Day Shift", "code": "DAY", "type": "FIXED", "start_time": "08:00", "end_time": "16:00", "break_minutes": 60, "total_hours": 7, "is_night": false, "color": "#3B82F6" },
+    { "id": "SHIFT-NIGHT", "name": "Night Shift", "code": "NIGHT", "type": "FIXED", "start_time": "20:00", "end_time": "08:00", "break_minutes": 60, "total_hours": 11, "is_night": true, "color": "#6366F1" },
+    { "id": "SHIFT-AFTERNOON", "name": "Afternoon Shift", "code": "AFT", "type": "FIXED", "start_time": "14:00", "end_time": "22:00", "break_minutes": 60, "total_hours": 7, "is_night": false, "color": "#F59E0B" },
+    { "id": "SHIFT-ROTATING", "name": "Rotating Shift", "code": "ROT", "type": "ROTATING", "start_time": "varies", "end_time": "varies", "break_minutes": 60, "total_hours": 8, "is_night": false, "color": "#10B981" }
+  ],
+  "policies": [
+    { "id": "POL-STD", "name": "Standard Policy", "work_days_per_week": 6, "hours_per_day": 7, "grace_period_minutes": 15, "overtime_rate_normal": 1.5, "overtime_rate_weekend": 2.0, "overtime_rate_holiday": 2.5, "weekend_days": ["Friday"], "is_active": true },
+    { "id": "POL-SHIFT", "name": "Shift Worker Policy", "work_days_per_week": 5, "hours_per_day": 8, "grace_period_minutes": 10, "overtime_rate_normal": 1.5, "overtime_rate_weekend": 2.0, "overtime_rate_holiday": 2.5, "weekend_days": ["Friday"], "is_active": true }
+  ],
+  "daily_summaries": [
+    { "id": "ATT-001", "employee_id": "EMP-2024-001", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:52", "last_out": "16:35", "total_hours": 8.72, "regular_hours": 7, "overtime_hours": 1.72, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-002", "employee_id": "EMP-2024-002", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:05", "last_out": "16:10", "total_hours": 8.08, "regular_hours": 7, "overtime_hours": 1.08, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-003", "employee_id": "EMP-2024-003", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:45", "last_out": "17:00", "total_hours": 9.25, "regular_hours": 7, "overtime_hours": 2.25, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-004", "employee_id": "EMP-2024-004", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:22", "last_out": "16:00", "total_hours": 7.63, "regular_hours": 7, "overtime_hours": 0.63, "late_minutes": 7, "status": "PRESENT" },
+    { "id": "ATT-005", "employee_id": "EMP-2024-005", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:30", "last_out": "18:00", "total_hours": 10.5, "regular_hours": 7, "overtime_hours": 3.5, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-006", "employee_id": "EMP-2024-006", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:00", "last_out": "16:05", "total_hours": 8.08, "regular_hours": 7, "overtime_hours": 1.08, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-007", "employee_id": "EMP-2024-007", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:10", "last_out": "16:30", "total_hours": 8.33, "regular_hours": 7, "overtime_hours": 1.33, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-008", "employee_id": "EMP-2024-008", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:35", "last_out": "16:00", "total_hours": 7.42, "regular_hours": 7, "overtime_hours": 0.42, "late_minutes": 20, "status": "PRESENT" },
+    { "id": "ATT-009", "employee_id": "EMP-2024-009", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:55", "last_out": "16:15", "total_hours": 8.33, "regular_hours": 7, "overtime_hours": 1.33, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-010", "employee_id": "EMP-2024-010", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:00", "last_out": "16:00", "total_hours": 8.0, "regular_hours": 7, "overtime_hours": 1.0, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-011", "employee_id": "EMP-2024-011", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": null, "last_out": null, "total_hours": 0, "regular_hours": 0, "overtime_hours": 0, "late_minutes": 0, "status": "LEAVE" },
+    { "id": "ATT-012", "employee_id": "EMP-2024-012", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:00", "last_out": "16:45", "total_hours": 8.75, "regular_hours": 7, "overtime_hours": 1.75, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-013", "employee_id": "EMP-2024-013", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:40", "last_out": "17:30", "total_hours": 9.83, "regular_hours": 7, "overtime_hours": 2.83, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-014", "employee_id": "EMP-2024-014", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "20:00", "last_out": "08:00", "total_hours": 12, "regular_hours": 8, "overtime_hours": 4, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-015", "employee_id": "EMP-2024-015", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:50", "last_out": "16:20", "total_hours": 8.5, "regular_hours": 7, "overtime_hours": 1.5, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-016", "employee_id": "EMP-2024-016", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "20:00", "last_out": "08:15", "total_hours": 12.25, "regular_hours": 8, "overtime_hours": 4.25, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-017", "employee_id": "EMP-2024-017", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:00", "last_out": "16:00", "total_hours": 8, "regular_hours": 7, "overtime_hours": 1, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-018", "employee_id": "EMP-2024-018", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "14:00", "last_out": "22:00", "total_hours": 8, "regular_hours": 8, "overtime_hours": 0, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-019", "employee_id": "EMP-2024-019", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:58", "last_out": "16:10", "total_hours": 8.2, "regular_hours": 7, "overtime_hours": 1.2, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-020", "employee_id": "EMP-2024-020", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "08:00", "last_out": "16:00", "total_hours": 8, "regular_hours": 8, "overtime_hours": 0, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-021", "employee_id": "EMP-2024-021", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:05", "last_out": "16:00", "total_hours": 7.92, "regular_hours": 7, "overtime_hours": 0.92, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-022", "employee_id": "EMP-2024-022", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "14:00", "last_out": "22:10", "total_hours": 8.17, "regular_hours": 8, "overtime_hours": 0.17, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-023", "employee_id": "EMP-2024-023", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:45", "last_out": "16:30", "total_hours": 8.75, "regular_hours": 7, "overtime_hours": 1.75, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-024", "employee_id": "EMP-2024-024", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "20:00", "last_out": "08:00", "total_hours": 12, "regular_hours": 8, "overtime_hours": 4, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-025", "employee_id": "EMP-2024-025", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:00", "last_out": "17:00", "total_hours": 9, "regular_hours": 7, "overtime_hours": 2, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-026", "employee_id": "EMP-2024-026", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:12", "last_out": "16:00", "total_hours": 7.8, "regular_hours": 7, "overtime_hours": 0.8, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-027", "employee_id": "EMP-2024-027", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "07:55", "last_out": "16:45", "total_hours": 8.83, "regular_hours": 7, "overtime_hours": 1.83, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-028", "employee_id": "EMP-2024-028", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:00", "last_out": "16:00", "total_hours": 8, "regular_hours": 7, "overtime_hours": 1, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-029", "employee_id": "EMP-2024-029", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": "08:30", "last_out": "17:30", "total_hours": 9, "regular_hours": 7, "overtime_hours": 2, "late_minutes": 15, "status": "PRESENT" },
+    { "id": "ATT-030", "employee_id": "EMP-2024-030", "date": "2026-02-08", "shift_id": "SHIFT-DAY", "first_in": null, "last_out": null, "total_hours": 0, "regular_hours": 0, "overtime_hours": 0, "late_minutes": 0, "status": "ABSENT" },
+    { "id": "ATT-031", "employee_id": "EMP-2024-034", "date": "2026-02-08", "shift_id": "SHIFT-NIGHT", "first_in": "20:05", "last_out": "08:00", "total_hours": 11.92, "regular_hours": 11, "overtime_hours": 0.92, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-032", "employee_id": "EMP-2024-036", "date": "2026-02-08", "shift_id": "SHIFT-NIGHT", "first_in": "20:00", "last_out": "08:10", "total_hours": 12.17, "regular_hours": 11, "overtime_hours": 1.17, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-033", "employee_id": "EMP-2024-044", "date": "2026-02-08", "shift_id": "SHIFT-NIGHT", "first_in": "20:00", "last_out": "08:00", "total_hours": 12, "regular_hours": 11, "overtime_hours": 1, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-034", "employee_id": "EMP-2024-046", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": "20:00", "last_out": "08:00", "total_hours": 12, "regular_hours": 8, "overtime_hours": 4, "late_minutes": 0, "status": "PRESENT" },
+    { "id": "ATT-035", "employee_id": "EMP-2024-056", "date": "2026-02-08", "shift_id": "SHIFT-ROTATING", "first_in": null, "last_out": null, "total_hours": 0, "regular_hours": 0, "overtime_hours": 0, "late_minutes": 0, "status": "LEAVE" }
+  ],
+  "monthly_summary": {
+    "month": "2026-02",
+    "total_employees": 55,
+    "active_employees": 53,
+    "avg_attendance_rate": 93.2,
+    "total_overtime_hours": 842,
+    "total_late_arrivals": 47,
+    "total_absent_days": 12,
+    "total_leave_days": 38,
+    "by_department": [
+      { "department": "Cardiology", "attendance_rate": 96.5, "overtime_hours": 120 },
+      { "department": "Surgery", "attendance_rate": 94.2, "overtime_hours": 145 },
+      { "department": "Emergency Department", "attendance_rate": 91.8, "overtime_hours": 180 },
+      { "department": "Intensive Care Unit", "attendance_rate": 95.0, "overtime_hours": 160 },
+      { "department": "Internal Medicine", "attendance_rate": 92.5, "overtime_hours": 85 },
+      { "department": "Pediatrics", "attendance_rate": 94.8, "overtime_hours": 72 },
+      { "department": "Nursing", "attendance_rate": 90.5, "overtime_hours": 80 }
+    ]
+  }
+}

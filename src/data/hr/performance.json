@@ -1,0 +1,36 @@
+{
+  "cycles": [
+    { "id": "PC-2025", "name": "Annual Review 2025", "type": "ANNUAL", "start_date": "2025-01-01", "end_date": "2025-12-31", "self_deadline": "2026-01-15", "manager_deadline": "2026-01-31", "status": "REVIEW_IN_PROGRESS" },
+    { "id": "PC-2024", "name": "Annual Review 2024", "type": "ANNUAL", "start_date": "2024-01-01", "end_date": "2024-12-31", "self_deadline": "2025-01-15", "manager_deadline": "2025-01-31", "status": "COMPLETED" }
+  ],
+  "reviews": [
+    { "id": "PR-001", "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "cycle_id": "PC-2025", "reviewer": "Fatima Hassan", "overall_rating": 4.5, "clinical_competence": 4.8, "patient_care": 4.5, "professionalism": 4.3, "teamwork": 4.2, "quality_safety": 4.7, "status": "FINALIZED", "strengths": "Excellent clinical skills, strong diagnostic ability, dedicated to patient outcomes", "improvements": "Could improve delegation to junior staff", "recommendation": "Merit increase recommended" },
+    { "id": "PR-002", "employee_id": "EMP-2024-005", "employee_name": "Mustafa Al-Janabi", "cycle_id": "PC-2025", "reviewer": "Fatima Hassan", "overall_rating": 4.2, "clinical_competence": 4.5, "patient_care": 4.0, "professionalism": 4.3, "teamwork": 4.0, "quality_safety": 4.2, "status": "FINALIZED", "strengths": "Exceptional surgical skills, mentors junior surgeons effectively", "improvements": "Documentation timeliness needs improvement", "recommendation": "Standard increase" },
+    { "id": "PR-003", "employee_id": "EMP-2024-013", "employee_name": "Youssef Al-Shammari", "cycle_id": "PC-2025", "reviewer": "Fatima Hassan", "overall_rating": 4.7, "clinical_competence": 4.8, "patient_care": 4.8, "professionalism": 4.5, "teamwork": 4.6, "quality_safety": 4.8, "status": "FINALIZED", "strengths": "Outstanding leadership in ER, handles high-pressure situations excellently", "improvements": "Work-life balance - tends to overwork", "recommendation": "Merit increase + recognition award" },
+    { "id": "PR-004", "employee_id": "EMP-2024-024", "employee_name": "Maha Al-Zubaidi", "cycle_id": "PC-2025", "reviewer": "Suha Al-Jubouri", "overall_rating": 3.8, "clinical_competence": 4.0, "patient_care": 4.2, "professionalism": 3.5, "teamwork": 3.8, "quality_safety": 3.5, "status": "SUBMITTED", "strengths": "Good patient rapport, reliable in critical situations", "improvements": "Needs to complete mandatory training on time, improve punctuality", "recommendation": "Standard increase" },
+    { "id": "PR-005", "employee_id": "EMP-2024-025", "employee_name": "Adel Al-Maliki", "cycle_id": "PC-2025", "reviewer": "Ahmed Al-Rashidi", "overall_rating": 4.3, "clinical_competence": null, "patient_care": null, "professionalism": 4.5, "teamwork": 4.2, "quality_safety": 4.0, "status": "FINALIZED", "strengths": "Strong HR leadership, excellent policy development, good employee relations", "improvements": "Could leverage more technology for HR processes", "recommendation": "Merit increase" },
+    { "id": "PR-006", "employee_id": "EMP-2024-029", "employee_name": "Haider Al-Rubaie", "cycle_id": "PC-2025", "reviewer": "Ahmed Al-Rashidi", "overall_rating": 4.0, "clinical_competence": null, "patient_care": null, "professionalism": 4.2, "teamwork": 3.8, "quality_safety": 4.0, "status": "IN_PROGRESS", "strengths": "Strong technical skills, keeps systems running smoothly", "improvements": "Communication with non-technical staff", "recommendation": "Standard increase" },
+    { "id": "PR-007", "employee_id": "EMP-2024-008", "employee_name": "Sara Mohammed", "cycle_id": "PC-2025", "reviewer": "Ali Al-Tamimi", "overall_rating": 3.5, "clinical_competence": 3.5, "patient_care": 3.8, "professionalism": 3.5, "teamwork": 3.2, "quality_safety": 3.5, "status": "SUBMITTED", "strengths": "Eager to learn, good with patients", "improvements": "Needs more experience with complex cases, should attend more CME", "recommendation": "Standard increase with development plan" },
+    { "id": "PR-008", "employee_id": "EMP-2024-034", "employee_name": "Wafa Al-Samarra", "cycle_id": "PC-2025", "reviewer": "Suha Al-Jubouri", "overall_rating": 2.8, "clinical_competence": 3.0, "patient_care": 3.2, "professionalism": 2.5, "teamwork": 2.8, "quality_safety": 2.5, "status": "SUBMITTED", "strengths": "Handles emergency situations well under pressure", "improvements": "Expired BLS certification must be renewed, attendance issues need addressing", "recommendation": "Performance improvement plan" }
+  ],
+  "rating_distribution": {
+    "cycle_id": "PC-2025",
+    "total_reviews": 48,
+    "completed": 35,
+    "in_progress": 13,
+    "distribution": [
+      { "rating": "5.0 - Outstanding", "count": 3, "percentage": 8.6 },
+      { "rating": "4.0-4.9 - Exceeds", "count": 15, "percentage": 42.9 },
+      { "rating": "3.0-3.9 - Meets", "count": 14, "percentage": 40.0 },
+      { "rating": "2.0-2.9 - Below", "count": 3, "percentage": 8.6 },
+      { "rating": "1.0-1.9 - Unsatisfactory", "count": 0, "percentage": 0 }
+    ],
+    "avg_rating": 3.85
+  },
+  "recognitions": [
+    { "id": "REC-001", "employee_id": "EMP-2024-013", "employee_name": "Youssef Al-Shammari", "type": "EMPLOYEE_OF_MONTH", "title": "Employee of the Month - January 2026", "reason": "Exceptional leadership during mass casualty event, coordinated ER response flawlessly", "recognized_by": "Ahmed Al-Rashidi", "date": "2026-02-01", "monetary_reward": 500000 },
+    { "id": "REC-002", "employee_id": "EMP-2024-023", "employee_name": "Suha Al-Jubouri", "type": "EXCELLENCE_AWARD", "title": "Nursing Excellence Award 2025", "reason": "Outstanding contribution to nursing quality improvement program", "recognized_by": "Fatima Hassan", "date": "2025-12-15", "monetary_reward": 1000000 },
+    { "id": "REC-003", "employee_id": "EMP-2024-029", "employee_name": "Haider Al-Rubaie", "type": "SPOT_AWARD", "title": "IT Innovation Award", "reason": "Successfully implemented new EHR system with zero downtime", "recognized_by": "Ahmed Al-Rashidi", "date": "2026-01-20", "monetary_reward": 300000 },
+    { "id": "REC-004", "employee_id": "EMP-2024-048", "employee_name": "Dalal Al-Tai", "type": "THANK_YOU", "title": "Outstanding Dedication", "reason": "Covered extra shifts during staff shortage in ICU without complaint", "recognized_by": "Suha Al-Jubouri", "date": "2026-01-28", "monetary_reward": 0 }
+  ]
+}

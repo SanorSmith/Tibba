@@ -1,0 +1,91 @@
+{
+  "salary_grades": [
+    { "id": "G1", "code": "G1", "name": "Entry Level", "min_salary": 500000, "max_salary": 800000, "currency": "IQD" },
+    { "id": "G2", "code": "G2", "name": "Junior", "min_salary": 700000, "max_salary": 1000000, "currency": "IQD" },
+    { "id": "G3", "code": "G3", "name": "Associate", "min_salary": 900000, "max_salary": 1300000, "currency": "IQD" },
+    { "id": "G4", "code": "G4", "name": "Mid-Level", "min_salary": 1100000, "max_salary": 1600000, "currency": "IQD" },
+    { "id": "G5", "code": "G5", "name": "Senior", "min_salary": 1200000, "max_salary": 1800000, "currency": "IQD" },
+    { "id": "G6", "code": "G6", "name": "Lead", "min_salary": 1600000, "max_salary": 2500000, "currency": "IQD" },
+    { "id": "G7", "code": "G7", "name": "Manager", "min_salary": 2200000, "max_salary": 3500000, "currency": "IQD" },
+    { "id": "G8", "code": "G8", "name": "Senior Manager / Head", "min_salary": 3000000, "max_salary": 4500000, "currency": "IQD" },
+    { "id": "G9", "code": "G9", "name": "Director", "min_salary": 4000000, "max_salary": 5500000, "currency": "IQD" },
+    { "id": "G10", "code": "G10", "name": "Executive", "min_salary": 4500000, "max_salary": 7000000, "currency": "IQD" }
+  ],
+  "salary_components": [
+    { "id": "SC-001", "code": "BASIC", "name": "Basic Salary", "type": "EARNING", "category": "FIXED", "calculation": "FIXED_AMOUNT", "taxable": true, "social_security": true },
+    { "id": "SC-002", "code": "HOUSING", "name": "Housing Allowance", "type": "EARNING", "category": "ALLOWANCE", "calculation": "PERCENTAGE_OF_BASIC", "percentage": 20, "taxable": true, "social_security": false },
+    { "id": "SC-003", "code": "TRANSPORT", "name": "Transport Allowance", "type": "EARNING", "category": "ALLOWANCE", "calculation": "FIXED_AMOUNT", "default_amount": 100000, "taxable": false, "social_security": false },
+    { "id": "SC-004", "code": "MEAL", "name": "Meal Allowance", "type": "EARNING", "category": "ALLOWANCE", "calculation": "FIXED_AMOUNT", "default_amount": 50000, "taxable": false, "social_security": false },
+    { "id": "SC-005", "code": "MOBILE", "name": "Mobile Allowance", "type": "EARNING", "category": "ALLOWANCE", "calculation": "FIXED_AMOUNT", "default_amount": 30000, "taxable": false, "social_security": false },
+    { "id": "SC-006", "code": "OVERTIME", "name": "Overtime Pay", "type": "EARNING", "category": "VARIABLE", "calculation": "ATTENDANCE_BASED", "taxable": true, "social_security": false },
+    { "id": "SC-007", "code": "NIGHT_SHIFT", "name": "Night Shift Allowance", "type": "EARNING", "category": "VARIABLE", "calculation": "ATTENDANCE_BASED", "rate_per_hour": 8000, "taxable": true, "social_security": false },
+    { "id": "SC-008", "code": "HAZARD", "name": "Hazard Allowance", "type": "EARNING", "category": "ALLOWANCE", "calculation": "FIXED_AMOUNT", "default_amount": 150000, "taxable": true, "social_security": false },
+    { "id": "SC-009", "code": "SOC_SEC", "name": "Social Security", "type": "DEDUCTION", "category": "INSURANCE", "calculation": "PERCENTAGE_OF_BASIC", "percentage": 5, "taxable": false },
+    { "id": "SC-010", "code": "INCOME_TAX", "name": "Income Tax", "type": "DEDUCTION", "category": "TAX", "calculation": "FORMULA", "taxable": false },
+    { "id": "SC-011", "code": "LOAN_REPAY", "name": "Loan Repayment", "type": "DEDUCTION", "category": "LOAN_REPAYMENT", "calculation": "FIXED_AMOUNT", "taxable": false },
+    { "id": "SC-012", "code": "ADVANCE_REC", "name": "Advance Recovery", "type": "DEDUCTION", "category": "LOAN_REPAYMENT", "calculation": "FIXED_AMOUNT", "taxable": false },
+    { "id": "SC-013", "code": "ABSENCE_DED", "name": "Absence Deduction", "type": "DEDUCTION", "category": "VARIABLE", "calculation": "ATTENDANCE_BASED", "taxable": false }
+  ],
+  "payroll_periods": [
+    { "id": "PP-2026-01", "name": "January 2026", "start_date": "2026-01-01", "end_date": "2026-01-31", "payment_date": "2026-02-01", "status": "PAID", "total_employees": 54, "total_gross": 118500000, "total_net": 98200000, "total_deductions": 20300000 },
+    { "id": "PP-2026-02", "name": "February 2026", "start_date": "2026-02-01", "end_date": "2026-02-28", "payment_date": "2026-03-01", "status": "PROCESSING", "total_employees": 54, "total_gross": 119200000, "total_net": 98800000, "total_deductions": 20400000 }
+  ],
+  "payroll_summary": [
+    {
+      "employee_id": "EMP-2024-001", "employee_name": "Ahmed Al-Rashidi", "department": "Executive Management", "period": "PP-2026-01",
+      "basic": 5000000, "housing": 1000000, "transport": 100000, "meal": 50000, "mobile": 30000, "overtime": 240000, "night_shift": 0, "hazard": 0,
+      "gross": 6420000, "social_security": 250000, "income_tax": 450000, "loan": 0, "advance": 0, "absence": 0,
+      "total_deductions": 700000, "net": 5720000, "payment_method": "BANK_TRANSFER"
+    },
+    {
+      "employee_id": "EMP-2024-002", "employee_name": "Fatima Hassan", "department": "Executive Management", "period": "PP-2026-01",
+      "basic": 4500000, "housing": 900000, "transport": 100000, "meal": 50000, "mobile": 30000, "overtime": 180000, "night_shift": 0, "hazard": 0,
+      "gross": 5760000, "social_security": 225000, "income_tax": 380000, "loan": 0, "advance": 0, "absence": 0,
+      "total_deductions": 605000, "net": 5155000, "payment_method": "BANK_TRANSFER"
+    },
+    {
+      "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "department": "Cardiology", "period": "PP-2026-01",
+      "basic": 4000000, "housing": 800000, "transport": 100000, "meal": 50000, "mobile": 30000, "overtime": 320000, "night_shift": 0, "hazard": 0,
+      "gross": 5300000, "social_security": 200000, "income_tax": 340000, "loan": 100000, "advance": 0, "absence": 0,
+      "total_deductions": 640000, "net": 4660000, "payment_method": "BANK_TRANSFER"
+    },
+    {
+      "employee_id": "EMP-2024-013", "employee_name": "Youssef Al-Shammari", "department": "Emergency Department", "period": "PP-2026-01",
+      "basic": 3800000, "housing": 760000, "transport": 100000, "meal": 50000, "mobile": 30000, "overtime": 480000, "night_shift": 96000, "hazard": 150000,
+      "gross": 5466000, "social_security": 190000, "income_tax": 360000, "loan": 0, "advance": 0, "absence": 0,
+      "total_deductions": 550000, "net": 4916000, "payment_method": "BANK_TRANSFER"
+    },
+    {
+      "employee_id": "EMP-2024-024", "employee_name": "Maha Al-Zubaidi", "department": "Cardiology", "period": "PP-2026-01",
+      "basic": 1800000, "housing": 360000, "transport": 100000, "meal": 50000, "mobile": 30000, "overtime": 120000, "night_shift": 192000, "hazard": 0,
+      "gross": 2652000, "social_security": 90000, "income_tax": 120000, "loan": 0, "advance": 50000, "absence": 0,
+      "total_deductions": 260000, "net": 2392000, "payment_method": "BANK_TRANSFER"
+    },
+    {
+      "employee_id": "EMP-2024-034", "employee_name": "Wafa Al-Samarra", "department": "Emergency Department", "period": "PP-2026-01",
+      "basic": 1200000, "housing": 240000, "transport": 100000, "meal": 50000, "mobile": 30000, "overtime": 80000, "night_shift": 264000, "hazard": 150000,
+      "gross": 2114000, "social_security": 60000, "income_tax": 80000, "loan": 0, "advance": 0, "absence": 0,
+      "total_deductions": 140000, "net": 1974000, "payment_method": "BANK_TRANSFER"
+    },
+    {
+      "employee_id": "EMP-2024-046", "employee_name": "Aws Al-Kinani", "department": "Security", "period": "PP-2026-01",
+      "basic": 700000, "housing": 140000, "transport": 100000, "meal": 50000, "mobile": 0, "overtime": 60000, "night_shift": 128000, "hazard": 0,
+      "gross": 1178000, "social_security": 35000, "income_tax": 0, "loan": 0, "advance": 0, "absence": 0,
+      "total_deductions": 35000, "net": 1143000, "payment_method": "BANK_TRANSFER"
+    }
+  ],
+  "payroll_totals_by_month": [
+    { "month": "2025-09", "gross": 115800000, "net": 96200000, "deductions": 19600000, "employees": 52 },
+    { "month": "2025-10", "gross": 116500000, "net": 96700000, "deductions": 19800000, "employees": 53 },
+    { "month": "2025-11", "gross": 117200000, "net": 97300000, "deductions": 19900000, "employees": 53 },
+    { "month": "2025-12", "gross": 117800000, "net": 97800000, "deductions": 20000000, "employees": 54 },
+    { "month": "2026-01", "gross": 118500000, "net": 98200000, "deductions": 20300000, "employees": 54 },
+    { "month": "2026-02", "gross": 119200000, "net": 98800000, "deductions": 20400000, "employees": 54 }
+  ],
+  "loans": [
+    { "id": "LOAN-001", "loan_number": "LN-2025-001", "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "type": "PERSONAL", "amount": 3000000, "installment": 100000, "total_installments": 30, "paid": 8, "remaining": 22, "balance": 2200000, "start_date": "2025-06-01", "status": "ACTIVE" },
+    { "id": "LOAN-002", "loan_number": "LN-2025-002", "employee_id": "EMP-2024-024", "employee_name": "Maha Al-Zubaidi", "type": "SALARY_ADVANCE", "amount": 500000, "installment": 50000, "total_installments": 10, "paid": 4, "remaining": 6, "balance": 300000, "start_date": "2025-10-01", "status": "ACTIVE" },
+    { "id": "LOAN-003", "loan_number": "LN-2024-003", "employee_id": "EMP-2024-029", "employee_name": "Haider Al-Rubaie", "type": "PERSONAL", "amount": 5000000, "installment": 200000, "total_installments": 25, "paid": 18, "remaining": 7, "balance": 1400000, "start_date": "2024-08-01", "status": "ACTIVE" },
+    { "id": "LOAN-004", "loan_number": "LN-2025-004", "employee_id": "EMP-2024-037", "employee_name": "Majid Al-Badri", "type": "EMERGENCY", "amount": 1000000, "installment": 100000, "total_installments": 10, "paid": 10, "remaining": 0, "balance": 0, "start_date": "2025-03-01", "status": "PAID_OFF" }
+  ]
+}

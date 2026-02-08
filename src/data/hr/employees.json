@@ -1,0 +1,452 @@
+{
+  "employees": [
+    {
+      "id": "EMP-2024-001", "employee_number": "EMP-2024-001", "first_name": "Ahmed", "last_name": "Al-Rashidi", "full_name_arabic": "أحمد الرشيدي", "date_of_birth": "1968-03-15", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7801234567", "email_work": "ahmed.rashidi@alrafidain.iq", "phone_mobile": "+964-770-100-0001", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Chief Executive Officer", "department_id": "DEP-001", "department_name": "Executive Management", "reporting_to": null, "grade_id": "G10",
+      "date_of_hire": "2018-01-15", "employment_status": "ACTIVE", "basic_salary": 5000000, "photo_url": "/avatars/male-1.jpg",
+      "education": [{"degree": "PHD", "field": "Hospital Administration", "university": "University of Baghdad", "year": 2005}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2005-1234", "authority": "Iraqi Medical Council", "expiry": "2027-06-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-002", "employee_number": "EMP-2024-002", "first_name": "Fatima", "last_name": "Hassan", "full_name_arabic": "فاطمة حسن", "date_of_birth": "1975-07-22", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7802345678", "email_work": "fatima.hassan@alrafidain.iq", "phone_mobile": "+964-770-100-0002", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Medical Director", "department_id": "DEP-001", "department_name": "Executive Management", "reporting_to": "EMP-2024-001", "grade_id": "G9",
+      "date_of_hire": "2019-03-01", "employment_status": "ACTIVE", "basic_salary": 4500000, "photo_url": "/avatars/female-1.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Internal Medicine", "university": "University of Basra", "year": 2008}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2008-2345", "authority": "Iraqi Medical Council", "expiry": "2026-12-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-003", "employee_number": "EMP-2024-003", "first_name": "Omar", "last_name": "Al-Bayati", "full_name_arabic": "عمر البياتي", "date_of_birth": "1972-11-08", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7803456789", "email_work": "omar.bayati@alrafidain.iq", "phone_mobile": "+964-770-100-0003", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Cardiology", "department_id": "DEP-002", "department_name": "Cardiology", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2019-06-15", "employment_status": "ACTIVE", "basic_salary": 4000000, "photo_url": "/avatars/male-2.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Cardiology", "university": "University of Baghdad", "year": 2004}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2004-567", "authority": "Iraqi Medical Council", "expiry": "2027-03-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-004", "employee_number": "EMP-2024-004", "first_name": "Zainab", "last_name": "Al-Saadi", "full_name_arabic": "زينب السعدي", "date_of_birth": "1985-04-12", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7804567890", "email_work": "zainab.saadi@alrafidain.iq", "phone_mobile": "+964-770-100-0004", "blood_type": "A-",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Cardiologist", "department_id": "DEP-002", "department_name": "Cardiology", "reporting_to": "EMP-2024-003", "grade_id": "G7",
+      "date_of_hire": "2021-01-10", "employment_status": "ACTIVE", "basic_salary": 3000000, "photo_url": "/avatars/female-2.jpg",
+      "education": [{"degree": "MASTER", "field": "Cardiology", "university": "Al-Nahrain University", "year": 2014}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2014-890", "authority": "Iraqi Medical Council", "expiry": "2026-09-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-005", "employee_number": "EMP-2024-005", "first_name": "Mustafa", "last_name": "Al-Janabi", "full_name_arabic": "مصطفى الجنابي", "date_of_birth": "1970-09-25", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7805678901", "email_work": "mustafa.janabi@alrafidain.iq", "phone_mobile": "+964-770-100-0005", "blood_type": "AB+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Surgery", "department_id": "DEP-003", "department_name": "Surgery", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2018-09-01", "employment_status": "ACTIVE", "basic_salary": 4200000, "photo_url": "/avatars/male-3.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "General Surgery", "university": "University of Baghdad", "year": 2002}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2002-123", "authority": "Iraqi Medical Council", "expiry": "2027-01-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-006", "employee_number": "EMP-2024-006", "first_name": "Noor", "last_name": "Al-Khafaji", "full_name_arabic": "نور الخفاجي", "date_of_birth": "1988-02-14", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7806789012", "email_work": "noor.khafaji@alrafidain.iq", "phone_mobile": "+964-770-100-0006", "blood_type": "O-",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "General Surgeon", "department_id": "DEP-003", "department_name": "Surgery", "reporting_to": "EMP-2024-005", "grade_id": "G7",
+      "date_of_hire": "2022-03-15", "employment_status": "ACTIVE", "basic_salary": 2800000, "photo_url": "/avatars/female-3.jpg",
+      "education": [{"degree": "MASTER", "field": "General Surgery", "university": "University of Mosul", "year": 2016}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2016-456", "authority": "Iraqi Medical Council", "expiry": "2026-08-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-007", "employee_number": "EMP-2024-007", "first_name": "Ali", "last_name": "Al-Tamimi", "full_name_arabic": "علي التميمي", "date_of_birth": "1974-06-30", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7807890123", "email_work": "ali.tamimi@alrafidain.iq", "phone_mobile": "+964-770-100-0007", "blood_type": "B-",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Internal Medicine", "department_id": "DEP-004", "department_name": "Internal Medicine", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2019-01-10", "employment_status": "ACTIVE", "basic_salary": 3800000, "photo_url": "/avatars/male-4.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Internal Medicine", "university": "University of Baghdad", "year": 2006}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2006-789", "authority": "Iraqi Medical Council", "expiry": "2027-05-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-008", "employee_number": "EMP-2024-008", "first_name": "Sara", "last_name": "Mohammed", "full_name_arabic": "سارة محمد", "date_of_birth": "1990-12-05", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7808901234", "email_work": "sara.mohammed@alrafidain.iq", "phone_mobile": "+964-770-100-0008", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Internist", "department_id": "DEP-004", "department_name": "Internal Medicine", "reporting_to": "EMP-2024-007", "grade_id": "G6",
+      "date_of_hire": "2023-06-01", "employment_status": "ACTIVE", "basic_salary": 2200000, "photo_url": "/avatars/female-4.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Medicine", "university": "Al-Nahrain University", "year": 2015}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2015-012", "authority": "Iraqi Medical Council", "expiry": "2026-11-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-009", "employee_number": "EMP-2024-009", "first_name": "Hassan", "last_name": "Al-Dulaimi", "full_name_arabic": "حسن الدليمي", "date_of_birth": "1976-08-18", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7809012345", "email_work": "hassan.dulaimi@alrafidain.iq", "phone_mobile": "+964-770-100-0009", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Pediatrics", "department_id": "DEP-005", "department_name": "Pediatrics", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2020-02-01", "employment_status": "ACTIVE", "basic_salary": 3600000, "photo_url": "/avatars/male-5.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Pediatrics", "university": "University of Baghdad", "year": 2008}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2008-345", "authority": "Iraqi Medical Council", "expiry": "2027-02-28", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-010", "employee_number": "EMP-2024-010", "first_name": "Mariam", "last_name": "Al-Obaidi", "full_name_arabic": "مريم العبيدي", "date_of_birth": "1987-05-20", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7810123456", "email_work": "mariam.obaidi@alrafidain.iq", "phone_mobile": "+964-770-100-0010", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Pediatrician", "department_id": "DEP-005", "department_name": "Pediatrics", "reporting_to": "EMP-2024-009", "grade_id": "G6",
+      "date_of_hire": "2022-08-15", "employment_status": "ACTIVE", "basic_salary": 2400000, "photo_url": "/avatars/female-5.jpg",
+      "education": [{"degree": "MASTER", "field": "Pediatrics", "university": "University of Basra", "year": 2015}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2015-678", "authority": "Iraqi Medical Council", "expiry": "2026-07-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-011", "employee_number": "EMP-2024-011", "first_name": "Layla", "last_name": "Al-Azzawi", "full_name_arabic": "ليلى العزاوي", "date_of_birth": "1973-01-10", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7811234567", "email_work": "layla.azzawi@alrafidain.iq", "phone_mobile": "+964-770-100-0011", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of OB/GYN", "department_id": "DEP-006", "department_name": "Obstetrics & Gynecology", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2019-05-01", "employment_status": "ACTIVE", "basic_salary": 3800000, "photo_url": "/avatars/female-6.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Obstetrics & Gynecology", "university": "University of Baghdad", "year": 2005}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2005-901", "authority": "Iraqi Medical Council", "expiry": "2027-04-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-012", "employee_number": "EMP-2024-012", "first_name": "Karim", "last_name": "Al-Hamdani", "full_name_arabic": "كريم الحمداني", "date_of_birth": "1982-10-03", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7812345678", "email_work": "karim.hamdani@alrafidain.iq", "phone_mobile": "+964-770-100-0012", "blood_type": "AB-",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Orthopedic Surgeon", "department_id": "DEP-003", "department_name": "Surgery", "reporting_to": "EMP-2024-005", "grade_id": "G7",
+      "date_of_hire": "2020-11-01", "employment_status": "ACTIVE", "basic_salary": 3200000, "photo_url": "/avatars/male-6.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Orthopedic Surgery", "university": "University of Sulaymaniyah", "year": 2012}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2012-234", "authority": "Iraqi Medical Council", "expiry": "2026-10-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-013", "employee_number": "EMP-2024-013", "first_name": "Youssef", "last_name": "Al-Shammari", "full_name_arabic": "يوسف الشمري", "date_of_birth": "1978-04-28", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7813456789", "email_work": "youssef.shammari@alrafidain.iq", "phone_mobile": "+964-770-100-0013", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Emergency", "department_id": "DEP-007", "department_name": "Emergency Department", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2019-08-15", "employment_status": "ACTIVE", "basic_salary": 3800000, "photo_url": "/avatars/male-7.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Emergency Medicine", "university": "University of Baghdad", "year": 2010}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2010-567", "authority": "Iraqi Medical Council", "expiry": "2027-07-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-014", "employee_number": "EMP-2024-014", "first_name": "Dina", "last_name": "Al-Kubaisi", "full_name_arabic": "دينا الكبيسي", "date_of_birth": "1991-09-14", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7814567890", "email_work": "dina.kubaisi@alrafidain.iq", "phone_mobile": "+964-770-100-0014", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Emergency Physician", "department_id": "DEP-007", "department_name": "Emergency Department", "reporting_to": "EMP-2024-013", "grade_id": "G6",
+      "date_of_hire": "2023-01-15", "employment_status": "ACTIVE", "basic_salary": 2400000, "photo_url": "/avatars/female-7.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Medicine", "university": "University of Baghdad", "year": 2016}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2016-890", "authority": "Iraqi Medical Council", "expiry": "2026-06-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-015", "employee_number": "EMP-2024-015", "first_name": "Tariq", "last_name": "Al-Mousawi", "full_name_arabic": "طارق الموسوي", "date_of_birth": "1971-12-20", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7815678901", "email_work": "tariq.mousawi@alrafidain.iq", "phone_mobile": "+964-770-100-0015", "blood_type": "A-",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of ICU", "department_id": "DEP-008", "department_name": "Intensive Care Unit", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2018-06-01", "employment_status": "ACTIVE", "basic_salary": 4000000, "photo_url": "/avatars/male-8.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Critical Care Medicine", "university": "University of Baghdad", "year": 2003}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2003-012", "authority": "Iraqi Medical Council", "expiry": "2027-08-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-016", "employee_number": "EMP-2024-016", "first_name": "Huda", "last_name": "Ibrahim", "full_name_arabic": "هدى إبراهيم", "date_of_birth": "1989-03-08", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7816789012", "email_work": "huda.ibrahim@alrafidain.iq", "phone_mobile": "+964-770-100-0016", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "ICU Physician", "department_id": "DEP-008", "department_name": "Intensive Care Unit", "reporting_to": "EMP-2024-015", "grade_id": "G6",
+      "date_of_hire": "2022-05-01", "employment_status": "ACTIVE", "basic_salary": 2600000, "photo_url": "/avatars/female-8.jpg",
+      "education": [{"degree": "MASTER", "field": "Critical Care", "university": "Al-Nahrain University", "year": 2017}],
+      "licenses": [{"type": "MEDICAL_PRACTICE", "number": "IMC-2017-345", "authority": "Iraqi Medical Council", "expiry": "2027-01-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-017", "employee_number": "EMP-2024-017", "first_name": "Samir", "last_name": "Al-Chalabi", "full_name_arabic": "سمير الجلبي", "date_of_birth": "1977-07-12", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7817890123", "email_work": "samir.chalabi@alrafidain.iq", "phone_mobile": "+964-770-100-0017", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "TECHNICAL", "job_title": "Head of Laboratory", "department_id": "DEP-009", "department_name": "Laboratory", "reporting_to": "EMP-2024-002", "grade_id": "G7",
+      "date_of_hire": "2019-04-01", "employment_status": "ACTIVE", "basic_salary": 2800000, "photo_url": "/avatars/male-9.jpg",
+      "education": [{"degree": "PHD", "field": "Clinical Pathology", "university": "University of Baghdad", "year": 2009}],
+      "licenses": [{"type": "LABORATORY", "number": "ILB-2009-567", "authority": "Iraqi Laboratory Board", "expiry": "2027-03-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-018", "employee_number": "EMP-2024-018", "first_name": "Rana", "last_name": "Al-Tikrit", "full_name_arabic": "رنا التكريتي", "date_of_birth": "1992-11-25", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7818901234", "email_work": "rana.tikrit@alrafidain.iq", "phone_mobile": "+964-770-100-0018", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "TECHNICAL", "job_title": "Lab Technician", "department_id": "DEP-009", "department_name": "Laboratory", "reporting_to": "EMP-2024-017", "grade_id": "G4",
+      "date_of_hire": "2023-09-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/female-9.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Medical Laboratory Science", "university": "University of Basra", "year": 2015}],
+      "licenses": [{"type": "LABORATORY", "number": "ILB-2015-890", "authority": "Iraqi Laboratory Board", "expiry": "2026-12-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-019", "employee_number": "EMP-2024-019", "first_name": "Khalid", "last_name": "Al-Ani", "full_name_arabic": "خالد العاني", "date_of_birth": "1975-05-16", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7819012345", "email_work": "khalid.ani@alrafidain.iq", "phone_mobile": "+964-770-100-0019", "blood_type": "O-",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Radiology", "department_id": "DEP-010", "department_name": "Radiology", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2019-10-01", "employment_status": "ACTIVE", "basic_salary": 3600000, "photo_url": "/avatars/male-10.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Diagnostic Radiology", "university": "University of Baghdad", "year": 2007}],
+      "licenses": [{"type": "RADIOLOGY", "number": "IRB-2007-123", "authority": "Iraqi Radiology Board", "expiry": "2027-06-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-020", "employee_number": "EMP-2024-020", "first_name": "Amina", "last_name": "Al-Rawi", "full_name_arabic": "أمينة الراوي", "date_of_birth": "1993-08-30", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7820123456", "email_work": "amina.rawi@alrafidain.iq", "phone_mobile": "+964-770-100-0020", "blood_type": "B-",
+      "employment_type": "FULL_TIME", "employee_category": "TECHNICAL", "job_title": "Radiology Technician", "department_id": "DEP-010", "department_name": "Radiology", "reporting_to": "EMP-2024-019", "grade_id": "G4",
+      "date_of_hire": "2024-01-15", "employment_status": "ACTIVE", "basic_salary": 1300000, "photo_url": "/avatars/female-10.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Radiologic Technology", "university": "University of Mosul", "year": 2016}],
+      "licenses": [{"type": "RADIOLOGY", "number": "IRB-2016-456", "authority": "Iraqi Radiology Board", "expiry": "2026-09-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-021", "employee_number": "EMP-2024-021", "first_name": "Waleed", "last_name": "Al-Samarrai", "full_name_arabic": "وليد السامرائي", "date_of_birth": "1980-02-22", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7821234567", "email_work": "waleed.samarrai@alrafidain.iq", "phone_mobile": "+964-770-100-0021", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "TECHNICAL", "job_title": "Head Pharmacist", "department_id": "DEP-011", "department_name": "Pharmacy", "reporting_to": "EMP-2024-002", "grade_id": "G7",
+      "date_of_hire": "2019-07-01", "employment_status": "ACTIVE", "basic_salary": 2600000, "photo_url": "/avatars/male-11.jpg",
+      "education": [{"degree": "MASTER", "field": "Clinical Pharmacy", "university": "University of Baghdad", "year": 2008}],
+      "licenses": [{"type": "PHARMACY", "number": "IPB-2008-789", "authority": "Iraqi Pharmacy Board", "expiry": "2027-05-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-022", "employee_number": "EMP-2024-022", "first_name": "Reem", "last_name": "Al-Hashimi", "full_name_arabic": "ريم الهاشمي", "date_of_birth": "1994-06-18", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7822345678", "email_work": "reem.hashimi@alrafidain.iq", "phone_mobile": "+964-770-100-0022", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "TECHNICAL", "job_title": "Pharmacist", "department_id": "DEP-011", "department_name": "Pharmacy", "reporting_to": "EMP-2024-021", "grade_id": "G5",
+      "date_of_hire": "2023-03-01", "employment_status": "ACTIVE", "basic_salary": 1600000, "photo_url": "/avatars/female-11.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Pharmacy", "university": "Al-Nahrain University", "year": 2017}],
+      "licenses": [{"type": "PHARMACY", "number": "IPB-2017-012", "authority": "Iraqi Pharmacy Board", "expiry": "2026-11-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-023", "employee_number": "EMP-2024-023", "first_name": "Suha", "last_name": "Al-Jubouri", "full_name_arabic": "سهى الجبوري", "date_of_birth": "1969-10-05", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7823456789", "email_work": "suha.jubouri@alrafidain.iq", "phone_mobile": "+964-770-100-0023", "blood_type": "AB+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Director of Nursing", "department_id": "DEP-012", "department_name": "Nursing", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2018-03-01", "employment_status": "ACTIVE", "basic_salary": 3000000, "photo_url": "/avatars/female-12.jpg",
+      "education": [{"degree": "MASTER", "field": "Nursing Administration", "university": "University of Baghdad", "year": 2000}],
+      "licenses": [{"type": "NURSING", "number": "INB-2000-345", "authority": "Iraqi Nursing Board", "expiry": "2027-02-28", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-024", "employee_number": "EMP-2024-024", "first_name": "Maha", "last_name": "Al-Zubaidi", "full_name_arabic": "مها الزبيدي", "date_of_birth": "1986-04-15", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7824567890", "email_work": "maha.zubaidi@alrafidain.iq", "phone_mobile": "+964-770-100-0024", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Head Nurse - Cardiology", "department_id": "DEP-002", "department_name": "Cardiology", "reporting_to": "EMP-2024-023", "grade_id": "G6",
+      "date_of_hire": "2020-06-01", "employment_status": "ACTIVE", "basic_salary": 1800000, "photo_url": "/avatars/female-13.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Baghdad", "year": 2009}],
+      "licenses": [{"type": "NURSING", "number": "INB-2009-678", "authority": "Iraqi Nursing Board", "expiry": "2026-08-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-025", "employee_number": "EMP-2024-025", "first_name": "Adel", "last_name": "Al-Maliki", "full_name_arabic": "عادل المالكي", "date_of_birth": "1979-01-28", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7825678901", "email_work": "adel.maliki@alrafidain.iq", "phone_mobile": "+964-770-100-0025", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "HR Director", "department_id": "DEP-013", "department_name": "Human Resources", "reporting_to": "EMP-2024-001", "grade_id": "G8",
+      "date_of_hire": "2018-04-01", "employment_status": "ACTIVE", "basic_salary": 2800000, "photo_url": "/avatars/male-12.jpg",
+      "education": [{"degree": "MASTER", "field": "Human Resources Management", "university": "University of Baghdad", "year": 2006}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-026", "employee_number": "EMP-2024-026", "first_name": "Nadia", "last_name": "Al-Khatib", "full_name_arabic": "نادية الخطيب", "date_of_birth": "1990-07-10", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7826789012", "email_work": "nadia.khatib@alrafidain.iq", "phone_mobile": "+964-770-100-0026", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "HR Officer", "department_id": "DEP-013", "department_name": "Human Resources", "reporting_to": "EMP-2024-025", "grade_id": "G4",
+      "date_of_hire": "2022-01-15", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/female-14.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Business Administration", "university": "Al-Mustansiriyah University", "year": 2013}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-027", "employee_number": "EMP-2024-027", "first_name": "Faisal", "last_name": "Al-Nuaimi", "full_name_arabic": "فيصل النعيمي", "date_of_birth": "1976-03-05", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7827890123", "email_work": "faisal.nuaimi@alrafidain.iq", "phone_mobile": "+964-770-100-0027", "blood_type": "B-",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Finance Director", "department_id": "DEP-014", "department_name": "Finance & Accounting", "reporting_to": "EMP-2024-001", "grade_id": "G8",
+      "date_of_hire": "2018-05-01", "employment_status": "ACTIVE", "basic_salary": 2800000, "photo_url": "/avatars/male-13.jpg",
+      "education": [{"degree": "MASTER", "field": "Accounting & Finance", "university": "University of Baghdad", "year": 2004}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-028", "employee_number": "EMP-2024-028", "first_name": "Lina", "last_name": "Al-Saffar", "full_name_arabic": "لينا الصفار", "date_of_birth": "1991-12-18", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7828901234", "email_work": "lina.saffar@alrafidain.iq", "phone_mobile": "+964-770-100-0028", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Payroll Officer", "department_id": "DEP-014", "department_name": "Finance & Accounting", "reporting_to": "EMP-2024-027", "grade_id": "G4",
+      "date_of_hire": "2021-09-01", "employment_status": "ACTIVE", "basic_salary": 1300000, "photo_url": "/avatars/female-15.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Accounting", "university": "University of Basra", "year": 2014}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-029", "employee_number": "EMP-2024-029", "first_name": "Haider", "last_name": "Al-Rubaie", "full_name_arabic": "حيدر الربيعي", "date_of_birth": "1984-08-22", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7829012345", "email_work": "haider.rubaie@alrafidain.iq", "phone_mobile": "+964-770-100-0029", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "IT Director", "department_id": "DEP-015", "department_name": "Information Technology", "reporting_to": "EMP-2024-001", "grade_id": "G7",
+      "date_of_hire": "2019-02-01", "employment_status": "ACTIVE", "basic_salary": 2400000, "photo_url": "/avatars/male-14.jpg",
+      "education": [{"degree": "MASTER", "field": "Computer Science", "university": "University of Technology Baghdad", "year": 2010}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-030", "employee_number": "EMP-2024-030", "first_name": "Salam", "last_name": "Al-Qaisi", "full_name_arabic": "سلام القيسي", "date_of_birth": "1995-02-14", "gender": "MALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7830123456", "email_work": "salam.qaisi@alrafidain.iq", "phone_mobile": "+964-770-100-0030", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "IT Support Specialist", "department_id": "DEP-015", "department_name": "Information Technology", "reporting_to": "EMP-2024-029", "grade_id": "G3",
+      "date_of_hire": "2024-03-01", "employment_status": "ACTIVE", "basic_salary": 900000, "photo_url": "/avatars/male-15.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Information Technology", "university": "Al-Nahrain University", "year": 2018}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-031", "employee_number": "EMP-2024-031", "first_name": "Basim", "last_name": "Al-Douri", "full_name_arabic": "باسم الدوري", "date_of_birth": "1981-06-10", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7831234567", "email_work": "basim.douri@alrafidain.iq", "phone_mobile": "+964-770-100-0031", "blood_type": "A-",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Procurement Manager", "department_id": "DEP-016", "department_name": "Procurement", "reporting_to": "EMP-2024-027", "grade_id": "G6",
+      "date_of_hire": "2020-04-01", "employment_status": "ACTIVE", "basic_salary": 1800000, "photo_url": "/avatars/male-16.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Supply Chain Management", "university": "University of Baghdad", "year": 2004}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-032", "employee_number": "EMP-2024-032", "first_name": "Aseel", "last_name": "Al-Fadhli", "full_name_arabic": "أسيل الفضلي", "date_of_birth": "1988-09-02", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7832345678", "email_work": "aseel.fadhli@alrafidain.iq", "phone_mobile": "+964-770-100-0032", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Head Nurse - Surgery", "department_id": "DEP-003", "department_name": "Surgery", "reporting_to": "EMP-2024-023", "grade_id": "G6",
+      "date_of_hire": "2020-08-15", "employment_status": "ACTIVE", "basic_salary": 1800000, "photo_url": "/avatars/female-16.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Basra", "year": 2011}],
+      "licenses": [{"type": "NURSING", "number": "INB-2011-901", "authority": "Iraqi Nursing Board", "expiry": "2026-10-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-033", "employee_number": "EMP-2024-033", "first_name": "Jamal", "last_name": "Al-Hilli", "full_name_arabic": "جمال الحلي", "date_of_birth": "1978-11-15", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7833456789", "email_work": "jamal.hilli@alrafidain.iq", "phone_mobile": "+964-770-100-0033", "blood_type": "AB+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Quality Assurance Manager", "department_id": "DEP-017", "department_name": "Quality Assurance", "reporting_to": "EMP-2024-001", "grade_id": "G7",
+      "date_of_hire": "2019-11-01", "employment_status": "ACTIVE", "basic_salary": 2200000, "photo_url": "/avatars/male-17.jpg",
+      "education": [{"degree": "MASTER", "field": "Healthcare Quality Management", "university": "University of Baghdad", "year": 2010}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-034", "employee_number": "EMP-2024-034", "first_name": "Wafa", "last_name": "Al-Samarra", "full_name_arabic": "وفاء السامرائية", "date_of_birth": "1992-05-28", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7834567890", "email_work": "wafa.samarra@alrafidain.iq", "phone_mobile": "+964-770-100-0034", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - Emergency", "department_id": "DEP-007", "department_name": "Emergency Department", "reporting_to": "EMP-2024-023", "grade_id": "G4",
+      "date_of_hire": "2023-04-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/female-17.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Mosul", "year": 2015}],
+      "licenses": [{"type": "NURSING", "number": "INB-2015-234", "authority": "Iraqi Nursing Board", "expiry": "2026-06-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-NIGHT"
+    },
+    {
+      "id": "EMP-2024-035", "employee_number": "EMP-2024-035", "first_name": "Samira", "last_name": "Al-Khazraji", "full_name_arabic": "سميرة الخزرجي", "date_of_birth": "1983-03-20", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7835678901", "email_work": "samira.khazraji@alrafidain.iq", "phone_mobile": "+964-770-100-0035", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "SUPPORT", "job_title": "Head of Nutrition", "department_id": "DEP-018", "department_name": "Nutrition", "reporting_to": "EMP-2024-001", "grade_id": "G6",
+      "date_of_hire": "2020-01-15", "employment_status": "ACTIVE", "basic_salary": 1600000, "photo_url": "/avatars/female-18.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nutrition & Dietetics", "university": "University of Baghdad", "year": 2006}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-036", "employee_number": "EMP-2024-036", "first_name": "Qasim", "last_name": "Al-Anbari", "full_name_arabic": "قاسم الأنباري", "date_of_birth": "1996-01-08", "gender": "MALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7836789012", "email_work": "qasim.anbari@alrafidain.iq", "phone_mobile": "+964-770-100-0036", "blood_type": "O-",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - ICU", "department_id": "DEP-008", "department_name": "Intensive Care Unit", "reporting_to": "EMP-2024-023", "grade_id": "G4",
+      "date_of_hire": "2024-02-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/male-18.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Baghdad", "year": 2019}],
+      "licenses": [{"type": "NURSING", "number": "INB-2019-567", "authority": "Iraqi Nursing Board", "expiry": "2027-01-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-NIGHT"
+    },
+    {
+      "id": "EMP-2024-037", "employee_number": "EMP-2024-037", "first_name": "Majid", "last_name": "Al-Badri", "full_name_arabic": "ماجد البدري", "date_of_birth": "1980-07-25", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7837890123", "email_work": "majid.badri@alrafidain.iq", "phone_mobile": "+964-770-100-0037", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "SUPPORT", "job_title": "Housekeeping Supervisor", "department_id": "DEP-019", "department_name": "Housekeeping", "reporting_to": "EMP-2024-001", "grade_id": "G4",
+      "date_of_hire": "2019-06-01", "employment_status": "ACTIVE", "basic_salary": 1000000, "photo_url": "/avatars/male-19.jpg",
+      "education": [{"degree": "DIPLOMA", "field": "Facility Management", "university": "Baghdad Technical Institute", "year": 2002}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-038", "employee_number": "EMP-2024-038", "first_name": "Zahra", "last_name": "Al-Musawi", "full_name_arabic": "زهراء الموسوي", "date_of_birth": "1993-10-12", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7838901234", "email_work": "zahra.musawi@alrafidain.iq", "phone_mobile": "+964-770-100-0038", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - Pediatrics", "department_id": "DEP-005", "department_name": "Pediatrics", "reporting_to": "EMP-2024-023", "grade_id": "G4",
+      "date_of_hire": "2023-07-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/female-19.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Basra", "year": 2016}],
+      "licenses": [{"type": "NURSING", "number": "INB-2016-890", "authority": "Iraqi Nursing Board", "expiry": "2026-12-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-039", "employee_number": "EMP-2024-039", "first_name": "Raad", "last_name": "Al-Taie", "full_name_arabic": "رعد الطائي", "date_of_birth": "1977-12-03", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7839012345", "email_work": "raad.taie@alrafidain.iq", "phone_mobile": "+964-770-100-0039", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "SUPPORT", "job_title": "Security Chief", "department_id": "DEP-020", "department_name": "Security", "reporting_to": "EMP-2024-001", "grade_id": "G5",
+      "date_of_hire": "2018-08-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/male-20.jpg",
+      "education": [{"degree": "DIPLOMA", "field": "Security Management", "university": "Baghdad Technical Institute", "year": 2000}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-040", "employee_number": "EMP-2024-040", "first_name": "Inaam", "last_name": "Al-Rikabi", "full_name_arabic": "إنعام الركابي", "date_of_birth": "1987-04-18", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7840123456", "email_work": "inaam.rikabi@alrafidain.iq", "phone_mobile": "+964-770-100-0040", "blood_type": "B-",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Head Nurse - OB/GYN", "department_id": "DEP-006", "department_name": "Obstetrics & Gynecology", "reporting_to": "EMP-2024-023", "grade_id": "G6",
+      "date_of_hire": "2020-10-01", "employment_status": "ACTIVE", "basic_salary": 1800000, "photo_url": "/avatars/female-20.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Midwifery & Nursing", "university": "University of Baghdad", "year": 2010}],
+      "licenses": [{"type": "NURSING", "number": "INB-2010-123", "authority": "Iraqi Nursing Board", "expiry": "2026-09-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-041", "employee_number": "EMP-2024-041", "first_name": "Imad", "last_name": "Al-Shamsi", "full_name_arabic": "عماد الشمسي", "date_of_birth": "1982-08-14", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7841234567", "email_work": "imad.shamsi@alrafidain.iq", "phone_mobile": "+964-770-100-0041", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "SUPPORT", "job_title": "Maintenance Supervisor", "department_id": "DEP-021", "department_name": "Maintenance", "reporting_to": "EMP-2024-001", "grade_id": "G5",
+      "date_of_hire": "2019-09-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/male-21.jpg",
+      "education": [{"degree": "DIPLOMA", "field": "Electrical Engineering", "university": "Baghdad Technical Institute", "year": 2004}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-042", "employee_number": "EMP-2024-042", "first_name": "Ghada", "last_name": "Al-Abadi", "full_name_arabic": "غادة العبادي", "date_of_birth": "1994-01-22", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7842345678", "email_work": "ghada.abadi@alrafidain.iq", "phone_mobile": "+964-770-100-0042", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - Internal Medicine", "department_id": "DEP-004", "department_name": "Internal Medicine", "reporting_to": "EMP-2024-023", "grade_id": "G4",
+      "date_of_hire": "2024-01-01", "employment_status": "ACTIVE", "basic_salary": 1100000, "photo_url": "/avatars/female-21.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "Al-Nahrain University", "year": 2017}],
+      "licenses": [{"type": "NURSING", "number": "INB-2017-456", "authority": "Iraqi Nursing Board", "expiry": "2027-03-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-043", "employee_number": "EMP-2024-043", "first_name": "Thaer", "last_name": "Al-Kubaisi", "full_name_arabic": "ثائر الكبيسي", "date_of_birth": "1983-05-30", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7843456789", "email_work": "thaer.kubaisi@alrafidain.iq", "phone_mobile": "+964-770-100-0043", "blood_type": "AB-",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Medical Records Manager", "department_id": "DEP-022", "department_name": "Medical Records", "reporting_to": "EMP-2024-001", "grade_id": "G5",
+      "date_of_hire": "2020-03-01", "employment_status": "ACTIVE", "basic_salary": 1400000, "photo_url": "/avatars/male-22.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Health Information Management", "university": "University of Baghdad", "year": 2006}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-044", "employee_number": "EMP-2024-044", "first_name": "Lubna", "last_name": "Al-Saadi", "full_name_arabic": "لبنى السعدي", "date_of_birth": "1991-11-08", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7844567890", "email_work": "lubna.saadi@alrafidain.iq", "phone_mobile": "+964-770-100-0044", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - OB/GYN", "department_id": "DEP-006", "department_name": "Obstetrics & Gynecology", "reporting_to": "EMP-2024-040", "grade_id": "G4",
+      "date_of_hire": "2023-02-01", "employment_status": "ACTIVE", "basic_salary": 1200000, "photo_url": "/avatars/female-22.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Mosul", "year": 2014}],
+      "licenses": [{"type": "NURSING", "number": "INB-2014-789", "authority": "Iraqi Nursing Board", "expiry": "2026-07-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-NIGHT"
+    },
+    {
+      "id": "EMP-2024-045", "employee_number": "EMP-2024-045", "first_name": "Hanan", "last_name": "Al-Jawahiri", "full_name_arabic": "حنان الجواهري", "date_of_birth": "1985-09-15", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7845678901", "email_work": "hanan.jawahiri@alrafidain.iq", "phone_mobile": "+964-770-100-0045", "blood_type": "A-",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Patient Relations Manager", "department_id": "DEP-023", "department_name": "Patient Relations", "reporting_to": "EMP-2024-001", "grade_id": "G5",
+      "date_of_hire": "2021-04-01", "employment_status": "ACTIVE", "basic_salary": 1400000, "photo_url": "/avatars/female-23.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Public Relations", "university": "University of Baghdad", "year": 2008}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-046", "employee_number": "EMP-2024-046", "first_name": "Aws", "last_name": "Al-Kinani", "full_name_arabic": "أوس الكناني", "date_of_birth": "1997-03-12", "gender": "MALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7846789012", "email_work": "aws.kinani@alrafidain.iq", "phone_mobile": "+964-770-100-0046", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "SUPPORT", "job_title": "Security Guard", "department_id": "DEP-020", "department_name": "Security", "reporting_to": "EMP-2024-039", "grade_id": "G2",
+      "date_of_hire": "2024-04-01", "employment_status": "ACTIVE", "basic_salary": 700000, "photo_url": "/avatars/male-23.jpg",
+      "education": [{"degree": "HIGH_SCHOOL", "field": "General", "university": "Baghdad Secondary School", "year": 2016}],
+      "licenses": [],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-047", "employee_number": "EMP-2024-047", "first_name": "Nizar", "last_name": "Al-Hadithi", "full_name_arabic": "نزار الحديثي", "date_of_birth": "1974-06-20", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7847890123", "email_work": "nizar.hadithi@alrafidain.iq", "phone_mobile": "+964-770-100-0047", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Head of Pathology", "department_id": "DEP-024", "department_name": "Pathology", "reporting_to": "EMP-2024-002", "grade_id": "G8",
+      "date_of_hire": "2019-12-01", "employment_status": "ACTIVE", "basic_salary": 3400000, "photo_url": "/avatars/male-24.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Pathology", "university": "University of Baghdad", "year": 2006}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2006-012", "authority": "Iraqi Medical Council", "expiry": "2027-09-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-048", "employee_number": "EMP-2024-048", "first_name": "Dalal", "last_name": "Al-Tai", "full_name_arabic": "دلال الطائي", "date_of_birth": "1989-08-05", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7848901234", "email_work": "dalal.tai@alrafidain.iq", "phone_mobile": "+964-770-100-0048", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Head Nurse - ICU", "department_id": "DEP-008", "department_name": "Intensive Care Unit", "reporting_to": "EMP-2024-023", "grade_id": "G6",
+      "date_of_hire": "2021-02-01", "employment_status": "ACTIVE", "basic_salary": 1800000, "photo_url": "/avatars/female-24.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Critical Care Nursing", "university": "University of Baghdad", "year": 2012}],
+      "licenses": [{"type": "NURSING", "number": "INB-2012-345", "authority": "Iraqi Nursing Board", "expiry": "2026-11-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    },
+    {
+      "id": "EMP-2024-049", "employee_number": "EMP-2024-049", "first_name": "Muhannad", "last_name": "Al-Obeidi", "full_name_arabic": "مهند العبيدي", "date_of_birth": "1995-12-28", "gender": "MALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7849012345", "email_work": "muhannad.obeidi@alrafidain.iq", "phone_mobile": "+964-770-100-0049", "blood_type": "O-",
+      "employment_type": "FULL_TIME", "employee_category": "SUPPORT", "job_title": "Maintenance Technician", "department_id": "DEP-021", "department_name": "Maintenance", "reporting_to": "EMP-2024-041", "grade_id": "G2",
+      "date_of_hire": "2024-05-01", "employment_status": "ACTIVE", "basic_salary": 750000, "photo_url": "/avatars/male-25.jpg",
+      "education": [{"degree": "DIPLOMA", "field": "HVAC Technology", "university": "Baghdad Technical Institute", "year": 2017}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-050", "employee_number": "EMP-2024-050", "first_name": "Ruqaya", "last_name": "Al-Amiri", "full_name_arabic": "رقية الأميري", "date_of_birth": "1990-02-18", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7850123456", "email_work": "ruqaya.amiri@alrafidain.iq", "phone_mobile": "+964-770-100-0050", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Receptionist", "department_id": "DEP-023", "department_name": "Patient Relations", "reporting_to": "EMP-2024-045", "grade_id": "G2",
+      "date_of_hire": "2023-10-01", "employment_status": "ACTIVE", "basic_salary": 800000, "photo_url": "/avatars/female-25.jpg",
+      "education": [{"degree": "DIPLOMA", "field": "Office Administration", "university": "Baghdad Technical Institute", "year": 2012}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2023-051", "employee_number": "EMP-2023-051", "first_name": "Saad", "last_name": "Al-Rawi", "full_name_arabic": "سعد الراوي", "date_of_birth": "1965-05-10", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7851234567", "email_work": "saad.rawi@alrafidain.iq", "phone_mobile": "+964-770-100-0051", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Senior Consultant - Cardiology", "department_id": "DEP-002", "department_name": "Cardiology", "reporting_to": "EMP-2024-003", "grade_id": "G9",
+      "date_of_hire": "2018-02-01", "employment_status": "ACTIVE", "basic_salary": 4500000, "photo_url": "/avatars/male-26.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Interventional Cardiology", "university": "Royal College London", "year": 1998}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-1998-001", "authority": "Iraqi Medical Council", "expiry": "2026-05-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2025-052", "employee_number": "EMP-2025-052", "first_name": "Amal", "last_name": "Al-Bayati", "full_name_arabic": "أمل البياتي", "date_of_birth": "1998-09-05", "gender": "FEMALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7852345678", "email_work": "amal.bayati@alrafidain.iq", "phone_mobile": "+964-770-100-0052", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - Cardiology", "department_id": "DEP-002", "department_name": "Cardiology", "reporting_to": "EMP-2024-024", "grade_id": "G3",
+      "date_of_hire": "2025-11-01", "employment_status": "ACTIVE", "basic_salary": 1000000, "photo_url": "/avatars/female-26.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Baghdad", "year": 2021}],
+      "licenses": [{"type": "NURSING", "number": "INB-2021-678", "authority": "Iraqi Nursing Board", "expiry": "2027-10-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-NIGHT"
+    },
+    {
+      "id": "EMP-2022-053", "employee_number": "EMP-2022-053", "first_name": "Karrar", "last_name": "Al-Tamimi", "full_name_arabic": "كرار التميمي", "date_of_birth": "1986-07-15", "gender": "MALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7853456789", "email_work": "karrar.tamimi@alrafidain.iq", "phone_mobile": "+964-770-100-0053", "blood_type": "AB+",
+      "employment_type": "CONTRACT", "employee_category": "TECHNICAL", "job_title": "Biomedical Engineer", "department_id": "DEP-021", "department_name": "Maintenance", "reporting_to": "EMP-2024-041", "grade_id": "G5",
+      "date_of_hire": "2022-06-01", "contract_end_date": "2026-05-31", "employment_status": "ACTIVE", "basic_salary": 1500000, "photo_url": "/avatars/male-27.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Biomedical Engineering", "university": "University of Technology Baghdad", "year": 2009}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2021-054", "employee_number": "EMP-2021-054", "first_name": "Bushra", "last_name": "Al-Hashimi", "full_name_arabic": "بشرى الهاشمي", "date_of_birth": "1970-04-02", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7854567890", "email_work": "bushra.hashimi@alrafidain.iq", "phone_mobile": "+964-770-100-0054", "blood_type": "B+",
+      "employment_type": "FULL_TIME", "employee_category": "MEDICAL_STAFF", "job_title": "Senior Anesthesiologist", "department_id": "DEP-003", "department_name": "Surgery", "reporting_to": "EMP-2024-005", "grade_id": "G8",
+      "date_of_hire": "2018-11-01", "employment_status": "ACTIVE", "basic_salary": 3800000, "photo_url": "/avatars/female-27.jpg",
+      "education": [{"degree": "FELLOWSHIP", "field": "Anesthesiology", "university": "University of Baghdad", "year": 2002}],
+      "licenses": [{"type": "SPECIALIST", "number": "IMC-SP-2002-456", "authority": "Iraqi Medical Council", "expiry": "2027-04-30", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-TERM-055", "employee_number": "EMP-TERM-055", "first_name": "Hatem", "last_name": "Al-Dabbagh", "full_name_arabic": "حاتم الدباغ", "date_of_birth": "1988-06-20", "gender": "MALE", "marital_status": "SINGLE", "nationality": "Iraqi", "national_id": "7855678901", "email_work": "hatem.dabbagh@alrafidain.iq", "phone_mobile": "+964-770-100-0055", "blood_type": "O+",
+      "employment_type": "FULL_TIME", "employee_category": "ADMINISTRATIVE", "job_title": "Accountant", "department_id": "DEP-014", "department_name": "Finance & Accounting", "reporting_to": "EMP-2024-027", "grade_id": "G4",
+      "date_of_hire": "2021-03-01", "employment_status": "TERMINATED", "termination_date": "2025-12-31", "termination_reason": "Resignation - Personal reasons", "basic_salary": 1200000, "photo_url": "/avatars/male-28.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Accounting", "university": "University of Baghdad", "year": 2011}],
+      "licenses": [],
+      "shift_id": "SHIFT-DAY"
+    },
+    {
+      "id": "EMP-2024-056", "employee_number": "EMP-2024-056", "first_name": "Maysoon", "last_name": "Al-Azzawi", "full_name_arabic": "ميسون العزاوي", "date_of_birth": "1992-03-25", "gender": "FEMALE", "marital_status": "MARRIED", "nationality": "Iraqi", "national_id": "7856789012", "email_work": "maysoon.azzawi@alrafidain.iq", "phone_mobile": "+964-770-100-0056", "blood_type": "A+",
+      "employment_type": "FULL_TIME", "employee_category": "NURSING", "job_title": "Staff Nurse - Surgery", "department_id": "DEP-003", "department_name": "Surgery", "reporting_to": "EMP-2024-032", "grade_id": "G4",
+      "date_of_hire": "2024-06-01", "employment_status": "ON_LEAVE", "basic_salary": 1100000, "photo_url": "/avatars/female-28.jpg",
+      "education": [{"degree": "BACHELOR", "field": "Nursing", "university": "University of Basra", "year": 2015}],
+      "licenses": [{"type": "NURSING", "number": "INB-2015-901", "authority": "Iraqi Nursing Board", "expiry": "2027-05-31", "status": "ACTIVE"}],
+      "shift_id": "SHIFT-ROTATING"
+    }
+  ]
+}

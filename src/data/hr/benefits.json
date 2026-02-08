@@ -1,0 +1,39 @@
+{
+  "benefit_plans": [
+    { "id": "BP-001", "name": "Health Insurance - Gold", "type": "HEALTH_INSURANCE", "category": "MANDATORY", "cost_employee": 50000, "cost_employer": 200000, "coverage": 50000000, "provider": "Al-Rafidain Insurance Co.", "eligible": ["MEDICAL_STAFF", "NURSING"], "is_active": true },
+    { "id": "BP-002", "name": "Health Insurance - Silver", "type": "HEALTH_INSURANCE", "category": "MANDATORY", "cost_employee": 30000, "cost_employer": 120000, "coverage": 30000000, "provider": "Al-Rafidain Insurance Co.", "eligible": ["ADMINISTRATIVE", "TECHNICAL", "SUPPORT"], "is_active": true },
+    { "id": "BP-003", "name": "Life Insurance", "type": "LIFE_INSURANCE", "category": "EMPLOYER_PAID", "cost_employee": 0, "cost_employer": 50000, "coverage": 100000000, "provider": "National Insurance Co.", "eligible": ["ALL"], "is_active": true },
+    { "id": "BP-004", "name": "Company Vehicle", "type": "TRANSPORT", "category": "EMPLOYER_PAID", "cost_employee": 0, "cost_employer": 300000, "provider": "Hospital Fleet", "eligible": ["G8", "G9", "G10"], "is_active": true },
+    { "id": "BP-005", "name": "Transport Allowance", "type": "TRANSPORT", "category": "EMPLOYER_PAID", "cost_employee": 0, "cost_employer": 100000, "provider": "Direct Payment", "eligible": ["ALL"], "is_active": true },
+    { "id": "BP-006", "name": "Shuttle Service", "type": "TRANSPORT", "category": "EMPLOYER_PAID", "cost_employee": 0, "cost_employer": 50000, "provider": "Hospital Shuttle", "eligible": ["NURSING", "SUPPORT"], "is_active": true },
+    { "id": "BP-007", "name": "Staff Housing", "type": "HOUSING", "category": "SHARED_COST", "cost_employee": 100000, "cost_employer": 400000, "provider": "Hospital Housing Complex", "eligible": ["MEDICAL_STAFF"], "is_active": true },
+    { "id": "BP-008", "name": "Cafeteria - Full Meals", "type": "MEAL", "category": "EMPLOYER_PAID", "cost_employee": 0, "cost_employer": 75000, "provider": "Hospital Cafeteria", "eligible": ["MEDICAL_STAFF", "NURSING"], "is_active": true },
+    { "id": "BP-009", "name": "Cafeteria - Subsidized", "type": "MEAL", "category": "SHARED_COST", "cost_employee": 25000, "cost_employer": 25000, "provider": "Hospital Cafeteria", "eligible": ["ADMINISTRATIVE", "TECHNICAL", "SUPPORT"], "is_active": true },
+    { "id": "BP-010", "name": "CME Allowance", "type": "EDUCATION", "category": "EMPLOYER_PAID", "cost_employee": 0, "cost_employer": 83333, "provider": "Direct Payment", "eligible": ["MEDICAL_STAFF"], "description": "1,000,000 IQD/year for conferences and CME", "is_active": true }
+  ],
+  "enrollments": [
+    { "id": "BE-001", "employee_id": "EMP-2024-001", "employee_name": "Ahmed Al-Rashidi", "plan_id": "BP-001", "plan_name": "Health Insurance - Gold", "status": "ACTIVE", "start_date": "2018-01-15", "dependents": 3 },
+    { "id": "BE-002", "employee_id": "EMP-2024-001", "employee_name": "Ahmed Al-Rashidi", "plan_id": "BP-003", "plan_name": "Life Insurance", "status": "ACTIVE", "start_date": "2018-01-15" },
+    { "id": "BE-003", "employee_id": "EMP-2024-001", "employee_name": "Ahmed Al-Rashidi", "plan_id": "BP-004", "plan_name": "Company Vehicle", "status": "ACTIVE", "start_date": "2018-01-15", "vehicle_number": "B-12345" },
+    { "id": "BE-004", "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "plan_id": "BP-001", "plan_name": "Health Insurance - Gold", "status": "ACTIVE", "start_date": "2019-06-15", "dependents": 4 },
+    { "id": "BE-005", "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "plan_id": "BP-007", "plan_name": "Staff Housing", "status": "ACTIVE", "start_date": "2019-06-15" },
+    { "id": "BE-006", "employee_id": "EMP-2024-003", "employee_name": "Omar Al-Bayati", "plan_id": "BP-010", "plan_name": "CME Allowance", "status": "ACTIVE", "start_date": "2019-06-15" },
+    { "id": "BE-007", "employee_id": "EMP-2024-024", "employee_name": "Maha Al-Zubaidi", "plan_id": "BP-001", "plan_name": "Health Insurance - Gold", "status": "ACTIVE", "start_date": "2020-06-01", "dependents": 2 },
+    { "id": "BE-008", "employee_id": "EMP-2024-024", "employee_name": "Maha Al-Zubaidi", "plan_id": "BP-006", "plan_name": "Shuttle Service", "status": "ACTIVE", "start_date": "2020-06-01" },
+    { "id": "BE-009", "employee_id": "EMP-2024-024", "employee_name": "Maha Al-Zubaidi", "plan_id": "BP-008", "plan_name": "Cafeteria - Full Meals", "status": "ACTIVE", "start_date": "2020-06-01" },
+    { "id": "BE-010", "employee_id": "EMP-2024-029", "employee_name": "Haider Al-Rubaie", "plan_id": "BP-002", "plan_name": "Health Insurance - Silver", "status": "ACTIVE", "start_date": "2019-02-01", "dependents": 2 },
+    { "id": "BE-011", "employee_id": "EMP-2024-029", "employee_name": "Haider Al-Rubaie", "plan_id": "BP-005", "plan_name": "Transport Allowance", "status": "ACTIVE", "start_date": "2019-02-01" },
+    { "id": "BE-012", "employee_id": "EMP-2024-046", "employee_name": "Aws Al-Kinani", "plan_id": "BP-002", "plan_name": "Health Insurance - Silver", "status": "ACTIVE", "start_date": "2024-04-01", "dependents": 0 },
+    { "id": "BE-013", "employee_id": "EMP-2024-046", "employee_name": "Aws Al-Kinani", "plan_id": "BP-009", "plan_name": "Cafeteria - Subsidized", "status": "ACTIVE", "start_date": "2024-04-01" }
+  ],
+  "benefits_summary": {
+    "total_enrolled": 54,
+    "health_insurance_enrolled": 54,
+    "life_insurance_enrolled": 54,
+    "transport_benefit_enrolled": 48,
+    "housing_benefit_enrolled": 8,
+    "meal_benefit_enrolled": 42,
+    "monthly_employer_cost": 12500000,
+    "monthly_employee_cost": 2100000
+  }
+}

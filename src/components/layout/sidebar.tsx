@@ -19,7 +19,15 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
+  Clock,
+  GraduationCap,
+  Star,
+  Heart,
+  Briefcase,
+  FileText,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +36,21 @@ const moduleLinks = [
   { href: '/inventory', icon: Package, label: 'Inventory' },
   { href: '/finance', icon: DollarSign, label: 'Finance' },
   { href: '/insurance', icon: Shield, label: 'Insurance' },
-  { href: '/hr', icon: Users, label: 'HR' },
+  {
+    href: '/hr', icon: Users, label: 'HR',
+    children: [
+      { href: '/hr/employees', icon: UsersRound, label: 'Employees' },
+      { href: '/hr/attendance', icon: Clock, label: 'Attendance' },
+      { href: '/hr/leaves', icon: Calendar, label: 'Leaves' },
+      { href: '/hr/payroll', icon: DollarSign, label: 'Payroll' },
+      { href: '/hr/recruitment', icon: UserPlus, label: 'Recruitment' },
+      { href: '/hr/training', icon: GraduationCap, label: 'Training' },
+      { href: '/hr/performance', icon: Star, label: 'Performance' },
+      { href: '/hr/benefits', icon: Heart, label: 'Benefits' },
+      { href: '/hr/organization', icon: Building2, label: 'Organization' },
+      { href: '/hr/reports', icon: FileText, label: 'Reports' },
+    ],
+  },
   { href: '/billing', icon: CreditCard, label: 'Billing' },
 ];
 
@@ -93,21 +115,51 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         {moduleLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname.startsWith(link.href);
+          const hasChildren = 'children' in link && link.children;
+          const isExpanded = isActive && hasChildren;
           return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
-                isActive
-                  ? 'bg-[#f5f5f5] text-black font-semibold'
-                  : 'text-[#525252] hover:bg-[#f5f5f5]'
+            <div key={link.href}>
+              <Link
+                href={link.href}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
+                  isActive
+                    ? 'bg-[#f5f5f5] text-black font-semibold'
+                    : 'text-[#525252] hover:bg-[#f5f5f5]'
+                )}
+                style={{ fontSize: '14px', lineHeight: '20px' }}
+              >
+                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                <span className="flex-1">{link.label}</span>
+                {hasChildren && (
+                  <ChevronDown className={cn('w-4 h-4 transition-transform', isExpanded ? 'rotate-180' : '')} />
+                )}
+              </Link>
+              {isExpanded && hasChildren && (
+                <div className="ml-4 mt-0.5 space-y-0.5 border-l border-[#e4e4e4] pl-2">
+                  {link.children!.map((child) => {
+                    const ChildIcon = child.icon;
+                    const isChildActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={cn(
+                          'flex items-center gap-2.5 px-2.5 py-2 rounded transition-colors',
+                          isChildActive
+                            ? 'bg-[#f0f0f0] text-black font-semibold'
+                            : 'text-[#525252] hover:bg-[#f5f5f5]'
+                        )}
+                        style={{ fontSize: '13px', lineHeight: '18px' }}
+                      >
+                        <ChildIcon className="w-[15px] h-[15px] flex-shrink-0" />
+                        <span>{child.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-              style={{ fontSize: '14px', lineHeight: '20px' }}
-            >
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-              <span>{link.label}</span>
-            </Link>
+            </div>
           );
         })}
       </nav>
