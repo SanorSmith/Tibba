@@ -1,0 +1,18 @@
+{
+  "metrics": {
+    "totalPatients": 40,
+    "staffMembers": 7,
+    "totalAppointments": 0,
+    "departments": 7
+  },
+  "activity": {
+    "todayAppointments": 0,
+    "pendingAppointments": 0,
+    "systemStatus": "Active"
+  },
+  "facilities": {
+    "laboratories": 1,
+    "pharmacies": 1,
+    "totalRegistrations": 47
+  }
+}

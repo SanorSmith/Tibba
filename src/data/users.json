@@ -1,0 +1,103 @@
+{
+  "users": [
+    {
+      "username": "demo",
+      "password": "demo123",
+      "profile": {
+        "id": "user_001",
+        "name": "Sanor",
+        "role": "Administrator",
+        "email": "sanor@tibbna.com",
+        "avatar": "S",
+        "permissions": ["all"]
+      }
+    },
+    {
+      "username": "admin",
+      "password": "admin123",
+      "profile": {
+        "id": "user_002",
+        "name": "Admin User",
+        "role": "Administrator",
+        "email": "admin@tibbna.com",
+        "avatar": "A",
+        "permissions": ["all"]
+      }
+    },
+    {
+      "username": "doctor",
+      "password": "doctor123",
+      "profile": {
+        "id": "user_003",
+        "name": "Dr. Sarah Johnson",
+        "role": "Doctor",
+        "email": "doctor@tibbna.com",
+        "avatar": "D",
+        "permissions": ["patients", "appointments", "services"]
+      }
+    },
+    {
+      "username": "nurse",
+      "password": "nurse123",
+      "profile": {
+        "id": "user_004",
+        "name": "Nurse Mary",
+        "role": "Nurse",
+        "email": "nurse@tibbna.com",
+        "avatar": "N",
+        "permissions": ["patients", "appointments"]
+      }
+    },
+    {
+      "username": "billing",
+      "password": "billing123",
+      "profile": {
+        "id": "user_005",
+        "name": "Billing Staff",
+        "role": "Billing Staff",
+        "email": "billing@tibbna.com",
+        "avatar": "B",
+        "permissions": ["billing", "insurance"]
+      }
+    },
+    {
+      "username": "pharmacist",
+      "password": "pharmacist123",
+      "profile": {
+        "id": "user_006",
+        "name": "Sarah Ahmed",
+        "role": "Pharmacist",
+        "department": "Pharmacy",
+        "email": "sarah.ahmed@tibbna.com",
+        "avatar": "SA",
+        "permissions": ["inventory", "pharmacy", "dispensing", "controlled_substances", "billing"]
+      }
+    },
+    {
+      "username": "labtech",
+      "password": "labtech123",
+      "profile": {
+        "id": "user_007",
+        "name": "Mohammed Ali",
+        "role": "Lab Technician",
+        "department": "Laboratory",
+        "email": "mohammed.ali@tibbna.com",
+        "avatar": "MA",
+        "permissions": ["inventory", "laboratory", "reagents", "procurement"]
+      }
+    },
+    {
+      "username": "procurement",
+      "password": "procurement123",
+      "profile": {
+        "id": "user_008",
+        "name": "Fatima Hassan",
+        "role": "Procurement Officer",
+        "department": "Procurement",
+        "email": "fatima.hassan@tibbna.com",
+        "avatar": "FH",
+        "permissions": ["inventory", "procurement", "suppliers", "finance"]
+      }
+    }
+  ]
+}

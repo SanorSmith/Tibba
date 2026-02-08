@@ -1,0 +1,342 @@
+{
+  "services": [
+    {
+      "id": "SVC001",
+      "name": "General Consultation",
+      "category": "Consultation",
+      "specialty": "General Medicine",
+      "duration": 30,
+      "price": {
+        "insurance": 150,
+        "selfPay": 200,
+        "government": 100
+      },
+      "cptCode": "99213",
+      "icd10Code": "Z00.00",
+      "description": "Standard medical consultation with general practitioner",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": [],
+      "suppliesNeeded": ["gloves", "examination paper"],
+      "staffRequired": {
+        "doctor": 1
+      }
+    },
+    {
+      "id": "SVC002",
+      "name": "X-Ray Chest",
+      "category": "Diagnostics",
+      "specialty": "Radiology",
+      "duration": 15,
+      "price": {
+        "insurance": 250,
+        "selfPay": 350,
+        "government": 180
+      },
+      "cptCode": "71045",
+      "icd10Code": "Z01.89",
+      "description": "Chest X-ray imaging for diagnostic purposes",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["X-Ray Machine"],
+      "suppliesNeeded": ["film", "lead apron"],
+      "staffRequired": {
+        "radiologist": 1,
+        "technician": 1
+      }
+    },
+    {
+      "id": "SVC003",
+      "name": "Blood Test - Complete Panel",
+      "category": "Laboratory",
+      "specialty": "Pathology",
+      "duration": 20,
+      "price": {
+        "insurance": 180,
+        "selfPay": 250,
+        "government": 120
+      },
+      "cptCode": "80053",
+      "icd10Code": "Z00.00",
+      "description": "Comprehensive metabolic panel blood test",
+      "status": "active",
+      "requiresAppointment": false,
+      "equipmentNeeded": ["Blood analyzer"],
+      "suppliesNeeded": ["test tubes", "needles", "gloves"],
+      "staffRequired": {
+        "lab_technician": 1
+      }
+    },
+    {
+      "id": "SVC004",
+      "name": "Cardiology Consultation",
+      "category": "Consultation",
+      "specialty": "Cardiology",
+      "duration": 45,
+      "price": {
+        "insurance": 300,
+        "selfPay": 400,
+        "government": 200
+      },
+      "cptCode": "99214",
+      "icd10Code": "I51.9",
+      "description": "Specialized consultation with cardiologist",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["ECG machine", "stethoscope"],
+      "suppliesNeeded": ["ECG electrodes", "gloves"],
+      "staffRequired": {
+        "cardiologist": 1,
+        "nurse": 1
+      }
+    },
+    {
+      "id": "SVC005",
+      "name": "MRI Scan - Brain",
+      "category": "Diagnostics",
+      "specialty": "Radiology",
+      "duration": 60,
+      "price": {
+        "insurance": 1200,
+        "selfPay": 1800,
+        "government": 900
+      },
+      "cptCode": "70553",
+      "icd10Code": "R51",
+      "description": "Magnetic resonance imaging of the brain",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["MRI machine"],
+      "suppliesNeeded": ["contrast dye"],
+      "staffRequired": {
+        "radiologist": 1,
+        "technician": 2
+      }
+    },
+    {
+      "id": "SVC006",
+      "name": "Physical Therapy Session",
+      "category": "Therapy",
+      "specialty": "Physical Therapy",
+      "duration": 45,
+      "price": {
+        "insurance": 120,
+        "selfPay": 180,
+        "government": 80
+      },
+      "cptCode": "97110",
+      "icd10Code": "M79.3",
+      "description": "Therapeutic exercises and rehabilitation",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["therapy equipment"],
+      "suppliesNeeded": ["exercise bands", "therapy balls"],
+      "staffRequired": {
+        "physical_therapist": 1
+      }
+    },
+    {
+      "id": "SVC007",
+      "name": "Ultrasound - Abdominal",
+      "category": "Diagnostics",
+      "specialty": "Radiology",
+      "duration": 30,
+      "price": {
+        "insurance": 300,
+        "selfPay": 450,
+        "government": 220
+      },
+      "cptCode": "76700",
+      "icd10Code": "R10.9",
+      "description": "Abdominal ultrasound imaging",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["Ultrasound machine"],
+      "suppliesNeeded": ["ultrasound gel"],
+      "staffRequired": {
+        "sonographer": 1
+      }
+    },
+    {
+      "id": "SVC008",
+      "name": "Dental Cleaning",
+      "category": "Dental",
+      "specialty": "Dentistry",
+      "duration": 30,
+      "price": {
+        "insurance": 100,
+        "selfPay": 150,
+        "government": 70
+      },
+      "cptCode": "D1110",
+      "icd10Code": "Z01.20",
+      "description": "Professional dental prophylaxis",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["dental tools"],
+      "suppliesNeeded": ["gloves", "dental floss", "polishing paste"],
+      "staffRequired": {
+        "dentist": 1,
+        "dental_hygienist": 1
+      }
+    },
+    {
+      "id": "SVC009",
+      "name": "Emergency Room Visit",
+      "category": "Emergency",
+      "specialty": "Emergency Medicine",
+      "duration": 120,
+      "price": {
+        "insurance": 500,
+        "selfPay": 800,
+        "government": 350
+      },
+      "cptCode": "99285",
+      "icd10Code": "R07.9",
+      "description": "Emergency department visit for urgent care",
+      "status": "active",
+      "requiresAppointment": false,
+      "equipmentNeeded": ["emergency equipment"],
+      "suppliesNeeded": ["various medical supplies"],
+      "staffRequired": {
+        "emergency_physician": 1,
+        "nurse": 2
+      }
+    },
+    {
+      "id": "SVC010",
+      "name": "Vaccination - Flu Shot",
+      "category": "Preventive",
+      "specialty": "General Medicine",
+      "duration": 15,
+      "price": {
+        "insurance": 30,
+        "selfPay": 50,
+        "government": 20
+      },
+      "cptCode": "90658",
+      "icd10Code": "Z23",
+      "description": "Seasonal influenza vaccination",
+      "status": "active",
+      "requiresAppointment": false,
+      "equipmentNeeded": [],
+      "suppliesNeeded": ["vaccine", "syringe", "alcohol swab"],
+      "staffRequired": {
+        "nurse": 1
+      }
+    },
+    {
+      "id": "SVC011",
+      "name": "CT Scan - Abdomen",
+      "category": "Diagnostics",
+      "specialty": "Radiology",
+      "duration": 45,
+      "price": {
+        "insurance": 800,
+        "selfPay": 1200,
+        "government": 600
+      },
+      "cptCode": "74150",
+      "icd10Code": "R10.9",
+      "description": "Computed tomography of abdomen",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["CT scanner"],
+      "suppliesNeeded": ["contrast dye"],
+      "staffRequired": {
+        "radiologist": 1,
+        "technician": 1
+      }
+    },
+    {
+      "id": "SVC012",
+      "name": "Pediatric Checkup",
+      "category": "Consultation",
+      "specialty": "Pediatrics",
+      "duration": 30,
+      "price": {
+        "insurance": 120,
+        "selfPay": 180,
+        "government": 90
+      },
+      "cptCode": "99392",
+      "icd10Code": "Z00.129",
+      "description": "Routine pediatric health examination",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["pediatric examination tools"],
+      "suppliesNeeded": ["gloves", "examination paper"],
+      "staffRequired": {
+        "pediatrician": 1
+      }
+    },
+    {
+      "id": "SVC013",
+      "name": "Surgical Procedure - Minor",
+      "category": "Surgery",
+      "specialty": "General Surgery",
+      "duration": 90,
+      "price": {
+        "insurance": 2000,
+        "selfPay": 3000,
+        "government": 1500
+      },
+      "cptCode": "10060",
+      "icd10Code": "L02.91",
+      "description": "Minor surgical procedure",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["surgical instruments"],
+      "suppliesNeeded": ["sutures", "sterile drapes", "anesthesia"],
+      "staffRequired": {
+        "surgeon": 1,
+        "anesthesiologist": 1,
+        "nurse": 2
+      }
+    },
+    {
+      "id": "SVC014",
+      "name": "Dermatology Consultation",
+      "category": "Consultation",
+      "specialty": "Dermatology",
+      "duration": 30,
+      "price": {
+        "insurance": 180,
+        "selfPay": 250,
+        "government": 120
+      },
+      "cptCode": "99213",
+      "icd10Code": "L98.9",
+      "description": "Skin condition consultation with dermatologist",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["dermatoscope"],
+      "suppliesNeeded": ["gloves"],
+      "staffRequired": {
+        "dermatologist": 1
+      }
+    },
+    {
+      "id": "SVC015",
+      "name": "Ophthalmology Exam",
+      "category": "Consultation",
+      "specialty": "Ophthalmology",
+      "duration": 40,
+      "price": {
+        "insurance": 200,
+        "selfPay": 280,
+        "government": 140
+      },
+      "cptCode": "92004",
+      "icd10Code": "H53.9",
+      "description": "Comprehensive eye examination",
+      "status": "active",
+      "requiresAppointment": true,
+      "equipmentNeeded": ["ophthalmoscope", "slit lamp"],
+      "suppliesNeeded": ["eye drops"],
+      "staffRequired": {
+        "ophthalmologist": 1
+      }
+    }
+  ]
+}

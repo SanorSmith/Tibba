@@ -1,0 +1,134 @@
+{
+  "inventory_valuation": {
+    "as_of_date": "2026-02-08",
+    "total_value": 487500,
+    "categories": [
+      {
+        "category": "Pharmacy",
+        "total_quantity": 15000,
+        "total_value": 225000,
+        "percentage": 46.2
+      },
+      {
+        "category": "Laboratory",
+        "total_quantity": 3500,
+        "total_value": 125000,
+        "percentage": 25.6
+      },
+      {
+        "category": "Radiology",
+        "total_quantity": 800,
+        "total_value": 87500,
+        "percentage": 17.9
+      },
+      {
+        "category": "General Supplies",
+        "total_quantity": 8000,
+        "total_value": 50000,
+        "percentage": 10.3
+      }
+    ]
+  },
+  "cogs_monthly": [
+    {
+      "month": "2025-08",
+      "opening_stock": 450000,
+      "purchases": 85000,
+      "closing_stock": 465000,
+      "cogs": 70000
+    },
+    {
+      "month": "2025-09",
+      "opening_stock": 465000,
+      "purchases": 92000,
+      "closing_stock": 475000,
+      "cogs": 82000
+    },
+    {
+      "month": "2025-10",
+      "opening_stock": 475000,
+      "purchases": 88000,
+      "closing_stock": 470000,
+      "cogs": 93000
+    },
+    {
+      "month": "2025-11",
+      "opening_stock": 470000,
+      "purchases": 95000,
+      "closing_stock": 480000,
+      "cogs": 85000
+    },
+    {
+      "month": "2025-12",
+      "opening_stock": 480000,
+      "purchases": 105000,
+      "closing_stock": 490000,
+      "cogs": 95000
+    },
+    {
+      "month": "2026-01",
+      "opening_stock": 490000,
+      "purchases": 98000,
+      "closing_stock": 487500,
+      "cogs": 100500
+    }
+  ],
+  "wastage_records": [
+    {
+      "id": "WAST-001",
+      "date": "2026-02-05",
+      "item_id": "ITEM-002",
+      "item_name": "Amoxicillin 500mg Capsule",
+      "batch_number": "AMX-2025-10-002",
+      "quantity": 100,
+      "unit_cost": 0.15,
+      "total_value": 15.00,
+      "reason": "EXPIRED",
+      "location": "Main Pharmacy"
+    },
+    {
+      "id": "WAST-002",
+      "date": "2026-02-03",
+      "item_name": "Sterile Gloves - Large",
+      "batch_number": "GLV-2025-11-003",
+      "quantity": 50,
+      "unit_cost": 1.50,
+      "total_value": 75.00,
+      "reason": "DAMAGED",
+      "location": "Central Warehouse"
+    },
+    {
+      "id": "WAST-003",
+      "date": "2026-01-28",
+      "item_name": "CBC Reagent Kit",
+      "batch_number": "CBC-2025-09-001",
+      "quantity": 5,
+      "unit_cost": 5.00,
+      "total_value": 25.00,
+      "reason": "EXPIRED",
+      "location": "Main Laboratory"
+    },
+    {
+      "id": "WAST-004",
+      "date": "2026-01-25",
+      "item_name": "IV Cannula 22G",
+      "batch_number": "IVC-2025-12-004",
+      "quantity": 20,
+      "unit_cost": 2.00,
+      "total_value": 40.00,
+      "reason": "CONTAMINATED",
+      "location": "ICU"
+    },
+    {
+      "id": "WAST-005",
+      "date": "2026-01-20",
+      "item_name": "Surgical Mask",
+      "batch_number": "MSK-2025-10-001",
+      "quantity": 200,
+      "unit_cost": 0.30,
+      "total_value": 60.00,
+      "reason": "EXPIRED",
+      "location": "Central Warehouse"
+    }
+  ]
+}

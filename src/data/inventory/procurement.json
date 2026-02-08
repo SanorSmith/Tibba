@@ -1,0 +1,183 @@
+{
+  "purchase_requisitions": [
+    {
+      "id": "PR-001",
+      "pr_number": "PR-2026-001",
+      "requested_by": "user_005",
+      "department_id": "DEPT-PHARMACY",
+      "required_by_date": "2026-02-20",
+      "urgency": "MEDIUM",
+      "status": "APPROVED",
+      "items": [
+        {
+          "item_id": "ITEM-002",
+          "item_name": "Amoxicillin 500mg Capsule",
+          "quantity": 500,
+          "unit_price": 0.25,
+          "total_price": 125.0,
+          "supplier_preference": "SUP-001"
+        }
+      ],
+      "justification": "Stock running low in Ward 3A",
+      "total_amount": 125.0,
+      "submitted_at": "2026-02-07T10:30:00Z",
+      "approved_by": "user_001",
+      "approved_at": "2026-02-07T14:00:00Z"
+    },
+    {
+      "id": "PR-002",
+      "pr_number": "PR-2026-002",
+      "requested_by": "user_006",
+      "department_id": "DEPT-LAB",
+      "required_by_date": "2026-02-25",
+      "urgency": "HIGH",
+      "status": "SUBMITTED",
+      "items": [
+        {
+          "item_id": "ITEM-LAB-001",
+          "item_name": "CBC Reagent Kit",
+          "quantity": 10,
+          "unit_price": 150.0,
+          "total_price": 1500.0,
+          "supplier_preference": "SUP-002"
+        },
+        {
+          "item_id": "ITEM-LAB-002",
+          "item_name": "Comprehensive Metabolic Panel Reagent",
+          "quantity": 8,
+          "unit_price": 200.0,
+          "total_price": 1600.0,
+          "supplier_preference": "SUP-002"
+        }
+      ],
+      "justification": "Monthly reagent replenishment",
+      "total_amount": 3100.0,
+      "submitted_at": "2026-02-08T09:00:00Z"
+    },
+    {
+      "id": "PR-003",
+      "pr_number": "PR-2026-003",
+      "requested_by": "user_005",
+      "department_id": "DEPT-PHARMACY",
+      "required_by_date": "2026-02-15",
+      "urgency": "URGENT",
+      "status": "CONVERTED",
+      "items": [
+        {
+          "item_id": "ITEM-010",
+          "item_name": "Epinephrine 0.5mg/ml 1ml Ampule",
+          "quantity": 100,
+          "unit_price": 8.0,
+          "total_price": 800.0,
+          "supplier_preference": "SUP-001"
+        }
+      ],
+      "justification": "Emergency stock replenishment",
+      "total_amount": 800.0,
+      "submitted_at": "2026-02-06T08:00:00Z",
+      "approved_by": "user_001",
+      "approved_at": "2026-02-06T10:00:00Z"
+    }
+  ],
+  "purchase_orders": [
+    {
+      "id": "PO-001",
+      "po_number": "PO-2026-001",
+      "supplier_id": "SUP-001",
+      "pr_id": "PR-003",
+      "status": "SENT",
+      "order_date": "2026-02-06",
+      "expected_delivery_date": "2026-02-13",
+      "items": [
+        {
+          "item_id": "ITEM-010",
+          "item_name": "Epinephrine 0.5mg/ml 1ml Ampule",
+          "quantity_ordered": 100,
+          "quantity_received": 0,
+          "unit_price": 8.0,
+          "total_price": 800.0
+        }
+      ],
+      "total_amount": 800.0,
+      "created_by": "user_007",
+      "approved_by": "user_001",
+      "approved_at": "2026-02-06T11:00:00Z"
+    },
+    {
+      "id": "PO-002",
+      "po_number": "PO-2026-002",
+      "supplier_id": "SUP-004",
+      "status": "PARTIAL",
+      "order_date": "2026-02-01",
+      "expected_delivery_date": "2026-02-08",
+      "items": [
+        {
+          "item_id": "ITEM-SUP-001",
+          "item_name": "Sterile Surgical Gloves - Medium",
+          "quantity_ordered": 2000,
+          "quantity_received": 2000,
+          "unit_price": 0.5,
+          "total_price": 1000.0,
+          "delivery_date": "2026-02-05"
+        },
+        {
+          "item_id": "ITEM-SUP-002",
+          "item_name": "N95 Respirator Mask",
+          "quantity_ordered": 1000,
+          "quantity_received": 1000,
+          "unit_price": 1.2,
+          "total_price": 1200.0,
+          "delivery_date": "2026-02-03"
+        },
+        {
+          "item_id": "ITEM-SUP-004",
+          "item_name": "Disposable Syringe 5ml",
+          "quantity_ordered": 3000,
+          "quantity_received": 3000,
+          "unit_price": 0.15,
+          "total_price": 450.0,
+          "delivery_date": "2026-02-07"
+        }
+      ],
+      "total_amount": 2650.0,
+      "created_by": "user_007",
+      "approved_by": "user_001",
+      "approved_at": "2026-02-01T10:00:00Z"
+    }
+  ],
+  "goods_receipt_notes": [
+    {
+      "id": "GRN-001",
+      "grn_number": "GRN-2026-001",
+      "po_id": "PO-002",
+      "supplier_id": "SUP-004",
+      "received_date": "2026-02-05",
+      "received_by": "user_007",
+      "status": "APPROVED",
+      "items": [
+        {
+          "item_id": "ITEM-SUP-001",
+          "batch_id": "BATCH-010",
+          "batch_number": "GLV-2026-01-020",
+          "quantity_ordered": 2000,
+          "quantity_received": 2000,
+          "unit_price": 0.5,
+          "total_price": 1000.0,
+          "manufacturing_date": "2026-01-20",
+          "expiry_date": "2029-01-20",
+          "quality_status": "ACCEPTED"
+        }
+      ],
+      "total_items": 1,
+      "total_value": 1000.0,
+      "quality_inspection": {
+        "inspected_by": "user_007",
+        "inspected_at": "2026-02-05T10:00:00Z",
+        "temperature_check": true,
+        "visual_inspection": true,
+        "documentation_check": true,
+        "overall_status": "PASSED"
+      }
+    }
+  ]
+}

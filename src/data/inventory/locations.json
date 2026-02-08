@@ -1,0 +1,80 @@
+{
+  "locations": [
+    {
+      "id": "LOC-001",
+      "location_code": "MAIN-PHARMACY",
+      "location_name": "Main Pharmacy",
+      "location_type": "PHARMACY",
+      "department_id": "DEPT-PHARMACY",
+      "is_main_store": true,
+      "allows_negative_stock": false,
+      "manager_user_id": "user_005",
+      "is_active": true
+    },
+    {
+      "id": "LOC-002",
+      "location_code": "WARD-3A",
+      "location_name": "Ward 3A - Medicine",
+      "location_type": "WARD",
+      "parent_location_id": "LOC-001",
+      "department_id": "DEPT-MEDICINE",
+      "is_main_store": false,
+      "allows_negative_stock": false,
+      "manager_user_id": "user_003",
+      "is_active": true
+    },
+    {
+      "id": "LOC-003",
+      "location_code": "LAB-MAIN",
+      "location_name": "Main Laboratory",
+      "location_type": "LAB",
+      "department_id": "DEPT-LAB",
+      "is_main_store": true,
+      "allows_negative_stock": false,
+      "manager_user_id": "user_006",
+      "is_active": true
+    },
+    {
+      "id": "LOC-004",
+      "location_code": "RAD-MAIN",
+      "location_name": "Radiology Department",
+      "location_type": "RADIOLOGY",
+      "department_id": "DEPT-RADIOLOGY",
+      "is_main_store": false,
+      "allows_negative_stock": false,
+      "is_active": true
+    },
+    {
+      "id": "LOC-005",
+      "location_code": "WAREHOUSE",
+      "location_name": "Central Warehouse",
+      "location_type": "WAREHOUSE",
+      "is_main_store": true,
+      "allows_negative_stock": false,
+      "manager_user_id": "user_007",
+      "is_active": true
+    },
+    {
+      "id": "LOC-006",
+      "location_code": "ICU",
+      "location_name": "Intensive Care Unit",
+      "location_type": "WARD",
+      "parent_location_id": "LOC-001",
+      "department_id": "DEPT-ICU",
+      "is_main_store": false,
+      "allows_negative_stock": false,
+      "is_active": true
+    },
+    {
+      "id": "LOC-007",
+      "location_code": "ER",
+      "location_name": "Emergency Room",
+      "location_type": "WARD",
+      "parent_location_id": "LOC-001",
+      "department_id": "DEPT-ER",
+      "is_main_store": false,
+      "allows_negative_stock": false,
+      "is_active": true
+    }
+  ]
+}

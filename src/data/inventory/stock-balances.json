@@ -1,0 +1,214 @@
+{
+  "balances": [
+    {
+      "id": "BAL-001",
+      "item_id": "ITEM-001",
+      "location_id": "LOC-001",
+      "batch_id": "BATCH-001",
+      "quantity_on_hand": 1500,
+      "quantity_reserved": 100,
+      "quantity_available": 1400,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-002",
+      "item_id": "ITEM-001",
+      "location_id": "LOC-002",
+      "batch_id": "BATCH-001",
+      "quantity_on_hand": 50,
+      "quantity_reserved": 0,
+      "quantity_available": 50,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-003",
+      "item_id": "ITEM-002",
+      "location_id": "LOC-001",
+      "batch_id": "BATCH-002",
+      "quantity_on_hand": 800,
+      "quantity_reserved": 50,
+      "quantity_available": 750,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-004",
+      "item_id": "ITEM-002",
+      "location_id": "LOC-002",
+      "batch_id": "BATCH-002",
+      "quantity_on_hand": 10,
+      "quantity_reserved": 0,
+      "quantity_available": 10,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-005",
+      "item_id": "ITEM-003",
+      "location_id": "LOC-001",
+      "batch_id": "BATCH-003",
+      "quantity_on_hand": 250,
+      "quantity_reserved": 20,
+      "quantity_available": 230,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-006",
+      "item_id": "ITEM-004",
+      "location_id": "LOC-001",
+      "batch_id": "BATCH-004",
+      "quantity_on_hand": 1200,
+      "quantity_reserved": 50,
+      "quantity_available": 1150,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-007",
+      "item_id": "ITEM-004",
+      "location_id": "LOC-006",
+      "batch_id": "BATCH-004",
+      "quantity_on_hand": 100,
+      "quantity_reserved": 0,
+      "quantity_available": 100,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-008",
+      "item_id": "ITEM-008",
+      "location_id": "LOC-001",
+      "batch_id": "BATCH-005",
+      "quantity_on_hand": 300,
+      "quantity_reserved": 20,
+      "quantity_available": 280,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-009",
+      "item_id": "ITEM-008",
+      "location_id": "LOC-006",
+      "batch_id": "BATCH-005",
+      "quantity_on_hand": 80,
+      "quantity_reserved": 10,
+      "quantity_available": 70,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-010",
+      "item_id": "ITEM-008",
+      "location_id": "LOC-007",
+      "batch_id": "BATCH-005",
+      "quantity_on_hand": 120,
+      "quantity_reserved": 15,
+      "quantity_available": 105,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-011",
+      "item_id": "ITEM-010",
+      "location_id": "LOC-001",
+      "batch_id": "BATCH-006",
+      "quantity_on_hand": 150,
+      "quantity_reserved": 10,
+      "quantity_available": 140,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-012",
+      "item_id": "ITEM-010",
+      "location_id": "LOC-007",
+      "batch_id": "BATCH-006",
+      "quantity_on_hand": 50,
+      "quantity_reserved": 5,
+      "quantity_available": 45,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-013",
+      "item_id": "ITEM-LAB-001",
+      "location_id": "LOC-003",
+      "batch_id": "BATCH-007",
+      "quantity_on_hand": 12,
+      "quantity_reserved": 2,
+      "quantity_available": 10,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-014",
+      "item_id": "ITEM-LAB-002",
+      "location_id": "LOC-003",
+      "batch_id": "BATCH-008",
+      "quantity_on_hand": 10,
+      "quantity_reserved": 1,
+      "quantity_available": 9,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-015",
+      "item_id": "ITEM-RAD-001",
+      "location_id": "LOC-004",
+      "batch_id": "BATCH-009",
+      "quantity_on_hand": 3500,
+      "quantity_reserved": 200,
+      "quantity_available": 3300,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-016",
+      "item_id": "ITEM-SUP-001",
+      "location_id": "LOC-005",
+      "batch_id": "BATCH-010",
+      "quantity_on_hand": 1800,
+      "quantity_reserved": 100,
+      "quantity_available": 1700,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-017",
+      "item_id": "ITEM-SUP-001",
+      "location_id": "LOC-006",
+      "batch_id": "BATCH-010",
+      "quantity_on_hand": 200,
+      "quantity_reserved": 0,
+      "quantity_available": 200,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-018",
+      "item_id": "ITEM-SUP-002",
+      "location_id": "LOC-005",
+      "batch_id": "BATCH-011",
+      "quantity_on_hand": 800,
+      "quantity_reserved": 50,
+      "quantity_available": 750,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-019",
+      "item_id": "ITEM-SUP-002",
+      "location_id": "LOC-004",
+      "batch_id": "BATCH-011",
+      "quantity_on_hand": 0,
+      "quantity_reserved": 0,
+      "quantity_available": 0,
+      "last_updated_at": "2026-02-08T07:30:00Z"
+    },
+    {
+      "id": "BAL-020",
+      "item_id": "ITEM-SUP-004",
+      "location_id": "LOC-005",
+      "batch_id": "BATCH-012",
+      "quantity_on_hand": 2500,
+      "quantity_reserved": 200,
+      "quantity_available": 2300,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    },
+    {
+      "id": "BAL-021",
+      "item_id": "ITEM-SUP-004",
+      "location_id": "LOC-006",
+      "batch_id": "BATCH-012",
+      "quantity_on_hand": 500,
+      "quantity_reserved": 50,
+      "quantity_available": 450,
+      "last_updated_at": "2026-02-08T08:00:00Z"
+    }
+  ]
+}
