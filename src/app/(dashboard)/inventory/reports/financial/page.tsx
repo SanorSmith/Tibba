@@ -165,7 +165,7 @@ export default function FinancialReportsPage() {
             <CardTitle>Monthly COGS Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="tibbna-table-container">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
@@ -286,7 +286,7 @@ export default function FinancialReportsPage() {
             <CardTitle>Wastage Records</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="tibbna-table-container">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">

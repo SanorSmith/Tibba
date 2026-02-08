@@ -286,7 +286,7 @@ export default function StockStatusReportPage() {
           <CardTitle>Stock Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="w-full">
               <thead>
                 <tr className="border-b">

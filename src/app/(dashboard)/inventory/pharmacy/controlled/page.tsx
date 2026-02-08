@@ -147,7 +147,7 @@ export default function ControlledSubstancesPage() {
           <CardTitle>Transaction Log</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="w-full">
               <thead>
                 <tr className="border-b">

@@ -188,7 +188,7 @@ export default function ComplianceReportsPage() {
           <CardTitle>Controlled Substances Transaction Log</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -315,7 +315,7 @@ export default function ComplianceReportsPage() {
           <CardTitle>Dispensing History (Patients Who Received This Batch)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
@@ -385,7 +385,7 @@ export default function ComplianceReportsPage() {
           <CardTitle>Audit Trail</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="w-full">
               <thead>
                 <tr className="border-b">

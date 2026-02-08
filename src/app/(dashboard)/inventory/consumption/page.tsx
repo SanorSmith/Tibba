@@ -101,7 +101,7 @@ export default function ConsumptionPage() {
           <CardTitle>Recent Consumption Records</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="w-full">
               <thead>
                 <tr className="border-b">

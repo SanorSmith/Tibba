@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -19,6 +19,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,114 +41,150 @@ const existingLinks = [
   { href: '/departments', icon: Building2, label: 'Departments' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  const SidebarNav = () => (
+    <div className="flex-1 overflow-y-auto py-3">
+      <Link
+        href="/dashboard"
+        className={cn(
+          'flex items-center gap-3 mx-2 px-3 py-2.5 rounded transition-colors',
+          pathname === '/dashboard'
+            ? 'bg-[#f5f5f5] text-black font-semibold'
+            : 'text-[#525252] hover:bg-[#f5f5f5]'
+        )}
+        style={{ fontSize: '14px', lineHeight: '20px' }}
+      >
+        <LayoutDashboard className="w-[18px] h-[18px] flex-shrink-0" />
+        <span>Dashboard</span>
+      </Link>
+
+      <div className="px-4 mt-5 mb-1.5">
+        <h3 style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Modules
+        </h3>
+      </div>
+
+      <nav className="space-y-0.5 px-2">
+        {moduleLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = pathname.startsWith(link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
+                isActive
+                  ? 'bg-[#f5f5f5] text-black font-semibold'
+                  : 'text-[#525252] hover:bg-[#f5f5f5]'
+              )}
+              style={{ fontSize: '14px', lineHeight: '20px' }}
+            >
+              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+              <span>{link.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="px-4 mt-5 mb-1.5">
+        <h3 style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Existing System
+        </h3>
+      </div>
+
+      <nav className="space-y-0.5 px-2">
+        {existingLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = pathname.startsWith(link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
+                isActive
+                  ? 'bg-[#f5f5f5] text-black font-semibold'
+                  : 'text-[#525252] hover:bg-[#f5f5f5]'
+              )}
+              style={{ fontSize: '14px', lineHeight: '20px' }}
+            >
+              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+              <span>{link.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
 
   return (
-    <aside
-      className={cn(
-        'flex flex-col transition-all duration-300',
-        isCollapsed ? 'w-16' : 'w-60'
+    <>
+      {/* Desktop sidebar - always visible on lg+ */}
+      <aside
+        className="hidden lg:flex flex-col w-60 flex-shrink-0"
+        style={{
+          backgroundColor: '#ffffff',
+          borderRight: '1px solid #e4e4e4',
+        }}
+      >
+        <SidebarNav />
+      </aside>
+
+      {/* Mobile sidebar drawer */}
+      {mobileOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            onClick={onMobileClose}
+          />
+
+          {/* Drawer */}
+          <aside
+            className="lg:hidden fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] z-50 flex flex-col"
+            style={{ backgroundColor: '#ffffff' }}
+          >
+            {/* Mobile header */}
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #e4e4e4' }}>
+              <span className="font-semibold text-base">Menu</span>
+              <button
+                onClick={onMobileClose}
+                className="p-1.5 hover:bg-[#f5f5f5] rounded transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <SidebarNav />
+          </aside>
+        </>
       )}
-      style={{
-        backgroundColor: '#ffffff',
-        borderRight: '1px solid #e4e4e4',
-      }}
-    >
-      <div className="flex-1 overflow-y-auto py-3">
-        <Link
-          href="/dashboard"
-          className={cn(
-            'flex items-center gap-3 mx-2 px-3 py-2 rounded transition-colors',
-            pathname === '/dashboard'
-              ? 'bg-[#f5f5f5] text-black font-semibold'
-              : 'text-[#525252] hover:bg-[#f5f5f5]'
-          )}
-          style={{ fontSize: '14px', lineHeight: '20px' }}
-        >
-          <LayoutDashboard className="w-[18px] h-[18px] flex-shrink-0" />
-          {!isCollapsed && <span>Dashboard</span>}
-        </Link>
-
-        {!isCollapsed && (
-          <div className="px-4 mt-5 mb-1.5">
-            <h3 style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Modules
-            </h3>
-          </div>
-        )}
-
-        <nav className="space-y-0.5 px-2">
-          {moduleLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded transition-colors',
-                  isActive
-                    ? 'bg-[#f5f5f5] text-black font-semibold'
-                    : 'text-[#525252] hover:bg-[#f5f5f5]'
-                )}
-                style={{ fontSize: '14px', lineHeight: '20px' }}
-                title={isCollapsed ? link.label : undefined}
-              >
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {!isCollapsed && <span>{link.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {!isCollapsed && (
-          <div className="px-4 mt-5 mb-1.5">
-            <h3 style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Existing System
-            </h3>
-          </div>
-        )}
-
-        <nav className="space-y-0.5 px-2">
-          {existingLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded transition-colors',
-                  isActive
-                    ? 'bg-[#f5f5f5] text-black font-semibold'
-                    : 'text-[#525252] hover:bg-[#f5f5f5]'
-                )}
-                style={{ fontSize: '14px', lineHeight: '20px' }}
-                title={isCollapsed ? link.label : undefined}
-              >
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {!isCollapsed && <span>{link.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div style={{ borderTop: '1px solid #e4e4e4', padding: '8px' }}>
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="w-full flex items-center justify-center p-2 rounded hover:bg-[#f5f5f5] transition-colors"
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-[#a3a3a3]" />
-          ) : (
-            <ChevronLeft className="w-4 h-4 text-[#a3a3a3]" />
-          )}
-        </button>
-      </div>
-    </aside>
+    </>
   );
 }

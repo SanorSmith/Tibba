@@ -23,6 +23,7 @@
     --status-error: #EF4444;
     --status-info: #3B82F6;
     --navbar-height: 64px;
+    --navbar-height-mobile: 56px;
     --radius: 0.5rem;
     --radius-sm: 0.375rem;
     --radius-xs: 0.125rem;
@@ -31,7 +32,7 @@
   }
 
   * {
-    @apply border-[#e4e4e4];
+    border-color: #e4e4e4;
   }
 
   body {
@@ -42,90 +43,170 @@
     font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     font-size: 16px;
     line-height: 24px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer components {
-  /* === MAIN LAYOUT === */
+  /* === RESPONSIVE MAIN LAYOUT === */
   .main-container {
-    @apply flex flex-col;
+    display: flex;
+    flex-direction: column;
     margin: 0;
     padding: 0;
     background-color: #fcfcfc;
     overflow: visible;
+    min-height: 100vh;
   }
 
   .main-wrapper {
-    @apply block mx-auto;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
     max-width: 1152px;
     width: 100%;
-    padding: 24px;
+    padding: 16px;
+  }
+
+  @media (min-width: 640px) {
+    .main-wrapper { padding: 20px; }
+  }
+  @media (min-width: 1024px) {
+    .main-wrapper { padding: 24px; }
   }
 
   .inner-wrapper {
-    @apply block w-full;
+    display: block;
+    width: 100%;
     margin: 0;
     padding: 0;
   }
 
-  /* === HEADER SECTION === */
+  /* === RESPONSIVE PAGE HEADER === */
   .page-header-section {
-    @apply flex flex-row items-center justify-between;
-    margin: 0 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 16px;
     padding: 0;
   }
 
+  @media (min-width: 640px) {
+    .page-header-section {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 24px;
+      gap: 16px;
+    }
+  }
+
   .page-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    line-height: 28px;
+    line-height: 24px;
     margin: 0;
     padding: 0;
     color: #000000;
   }
 
+  @media (min-width: 640px) {
+    .page-title {
+      font-size: 20px;
+      line-height: 28px;
+    }
+  }
+
   .page-description {
-    font-size: 14px;
-    line-height: 20px;
+    font-size: 13px;
+    line-height: 18px;
     color: rgb(82, 82, 82);
     margin: 4px 0 0;
     padding: 0;
   }
 
-  /* === GRID LAYOUT === */
+  @media (min-width: 640px) {
+    .page-description {
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+
+  /* === RESPONSIVE GRIDS === */
   .tibbna-grid {
-    @apply grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
     margin: 0;
     padding: 0;
   }
+  @media (min-width: 640px) {
+    .tibbna-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .tibbna-grid {
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    }
+  }
 
   .tibbna-grid-2 {
-    @apply grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .tibbna-grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
   }
 
   .tibbna-grid-3 {
-    @apply grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .tibbna-grid-3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 1024px) {
+    .tibbna-grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
   }
 
   .tibbna-grid-4 {
-    @apply grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .tibbna-grid-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 1024px) {
+    .tibbna-grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
   }
 
-  /* === CARD STYLES === */
+  /* === RESPONSIVE CARDS === */
   .tibbna-card {
-    @apply flex flex-col;
+    display: flex;
+    flex-direction: column;
     gap: 0;
     width: 100%;
     margin: 0;
-    padding: 24px 0;
+    padding: 16px 0;
     border: 1px solid #e4e4e4;
     border-radius: 0;
     background-color: #ffffff;
@@ -133,45 +214,80 @@
       rgba(0, 0, 0, 0.1) 0px 1px 3px 0px,
       rgba(0, 0, 0, 0.1) 0px 1px 2px -1px;
   }
+  @media (min-width: 768px) {
+    .tibbna-card {
+      padding: 24px 0;
+    }
+  }
 
   .tibbna-card-header {
     margin: 0;
-    padding: 0 24px 16px;
+    padding: 0 16px 12px;
+  }
+  @media (min-width: 768px) {
+    .tibbna-card-header {
+      padding: 0 24px 16px;
+    }
   }
 
   .tibbna-card-content {
     margin: 0;
-    padding: 0 24px;
+    padding: 0 16px;
+  }
+  @media (min-width: 768px) {
+    .tibbna-card-content {
+      padding: 0 24px;
+    }
   }
 
   .tibbna-card-title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
-    line-height: 20px;
+    line-height: 18px;
     color: rgb(82, 82, 82);
     margin: 0;
   }
+  @media (min-width: 640px) {
+    .tibbna-card-title {
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
 
   .tibbna-card-value {
-    font-size: 30px;
+    font-size: 24px;
     font-weight: 700;
-    line-height: 36px;
+    line-height: 30px;
     margin: 4px 0 0;
+  }
+  @media (min-width: 640px) {
+    .tibbna-card-value {
+      font-size: 30px;
+      line-height: 36px;
+    }
   }
 
   .tibbna-card-subtitle {
-    font-size: 12px;
-    line-height: 16px;
+    font-size: 11px;
+    line-height: 14px;
     color: rgb(82, 82, 82);
     margin: 4px 0 0;
   }
+  @media (min-width: 640px) {
+    .tibbna-card-subtitle {
+      font-size: 12px;
+      line-height: 16px;
+    }
+  }
 
-  /* === BUTTON STYLES === */
+  /* === RESPONSIVE BUTTONS === */
   .btn-primary {
-    @apply inline-flex items-center justify-center;
-    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
     min-height: auto;
-    padding: 8px 16px;
+    padding: 10px 16px;
     margin: 0;
     border: 0 solid #e4e4e4;
     border-radius: 6px;
@@ -183,6 +299,14 @@
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
+    width: 100%;
+  }
+  @media (min-width: 640px) {
+    .btn-primary {
+      height: 36px;
+      padding: 8px 16px;
+      width: auto;
+    }
   }
 
   .btn-primary:hover {
@@ -190,9 +314,11 @@
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center;
-    height: 36px;
-    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 10px 16px;
     border: 1px solid #e4e4e4;
     border-radius: 6px;
     font-size: 14px;
@@ -202,6 +328,14 @@
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     white-space: nowrap;
+    width: 100%;
+  }
+  @media (min-width: 640px) {
+    .btn-secondary {
+      height: 36px;
+      padding: 8px 16px;
+      width: auto;
+    }
   }
 
   .btn-secondary:hover {
@@ -212,12 +346,15 @@
     height: 28px;
     padding: 4px 10px;
     font-size: 12px;
+    width: auto;
   }
 
   .btn-destructive {
-    @apply inline-flex items-center justify-center;
-    height: 36px;
-    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 10px 16px;
     border: 0;
     border-radius: 6px;
     font-size: 14px;
@@ -226,24 +363,39 @@
     color: #ffffff;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+  }
+  @media (min-width: 640px) {
+    .btn-destructive {
+      height: 36px;
+      padding: 8px 16px;
+      width: auto;
+    }
   }
 
   .btn-destructive:hover {
     background-color: #DC2626;
   }
 
-  /* === INPUT STYLES === */
+  /* === RESPONSIVE INPUTS === */
   .tibbna-input {
     width: 100%;
-    height: 36px;
-    padding: 4px 12px;
+    height: 40px;
+    padding: 8px 12px;
     margin: 0;
     border: 1px solid #ebebeb;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 20px;
     background-color: #ffffff;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  @media (min-width: 768px) {
+    .tibbna-input {
+      height: 36px;
+      padding: 4px 12px;
+      font-size: 14px;
+    }
   }
 
   .tibbna-input:focus {
@@ -252,14 +404,21 @@
   }
 
   .tibbna-select {
-    height: 36px;
-    padding: 4px 12px;
+    height: 40px;
+    padding: 8px 12px;
     border: 1px solid #ebebeb;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 20px;
     background-color: #ffffff;
     cursor: pointer;
+  }
+  @media (min-width: 768px) {
+    .tibbna-select {
+      height: 36px;
+      padding: 4px 12px;
+      font-size: 14px;
+    }
   }
 
   .tibbna-select:focus {
@@ -267,124 +426,165 @@
     border-color: #000000;
   }
 
-  /* === TABLE STYLES === */
+  /* === RESPONSIVE TABLE === */
+  .tibbna-table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .tibbna-table {
-    @apply w-full;
+    width: 100%;
     border-collapse: collapse;
+    min-width: 600px;
+  }
+  @media (min-width: 1024px) {
+    .tibbna-table {
+      min-width: auto;
+    }
   }
 
   .tibbna-table th {
-    @apply text-left;
-    font-size: 14px;
+    text-align: left;
+    font-size: 12px;
     font-weight: 500;
-    line-height: 20px;
-    padding: 12px 16px;
+    line-height: 16px;
+    padding: 8px 12px;
     border-bottom: 1px solid #e4e4e4;
     background-color: #f5f5f5;
     color: rgb(82, 82, 82);
+    white-space: nowrap;
+  }
+  @media (min-width: 768px) {
+    .tibbna-table th {
+      font-size: 14px;
+      line-height: 20px;
+      padding: 12px 16px;
+    }
   }
 
   .tibbna-table td {
-    font-size: 14px;
-    line-height: 20px;
-    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 8px 12px;
     border-bottom: 1px solid #e4e4e4;
+  }
+  @media (min-width: 768px) {
+    .tibbna-table td {
+      font-size: 14px;
+      line-height: 20px;
+      padding: 12px 16px;
+    }
   }
 
   .tibbna-table tr:hover td {
     background-color: #fcfcfc;
   }
 
-  /* === BADGE STYLES === */
+  /* === RESPONSIVE BADGES === */
   .tibbna-badge {
-    @apply inline-flex items-center;
-    height: 22px;
-    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 2px 6px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
-    line-height: 16px;
+    line-height: 14px;
     white-space: nowrap;
   }
-
-  .badge-success {
-    background-color: #D1FAE5;
-    color: #065F46;
+  @media (min-width: 768px) {
+    .tibbna-badge {
+      height: 22px;
+      padding: 2px 8px;
+      font-size: 12px;
+      line-height: 16px;
+    }
   }
 
-  .badge-warning {
-    background-color: #FEF3C7;
-    color: #92400E;
-  }
-
-  .badge-error {
-    background-color: #FEE2E2;
-    color: #991B1B;
-  }
-
-  .badge-info {
-    background-color: #DBEAFE;
-    color: #1E40AF;
-  }
-
-  .badge-neutral {
-    background-color: #F3F4F6;
-    color: #374151;
-  }
+  .badge-success { background-color: #D1FAE5; color: #065F46; }
+  .badge-warning { background-color: #FEF3C7; color: #92400E; }
+  .badge-error { background-color: #FEE2E2; color: #991B1B; }
+  .badge-info { background-color: #DBEAFE; color: #1E40AF; }
+  .badge-neutral { background-color: #F3F4F6; color: #374151; }
 
   /* === TAB STYLES === */
   .tibbna-tab {
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 6px 12px;
+    font-size: 13px;
     font-weight: 500;
     color: rgb(82, 82, 82);
     border-bottom: 2px solid transparent;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     background: none;
+    white-space: nowrap;
+  }
+  @media (min-width: 640px) {
+    .tibbna-tab {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
   }
 
-  .tibbna-tab:hover {
-    color: #000000;
-  }
-
-  .tibbna-tab-active {
-    color: #000000;
-    border-bottom-color: #000000;
-  }
+  .tibbna-tab:hover { color: #000000; }
+  .tibbna-tab-active { color: #000000; border-bottom-color: #000000; }
 
   /* === SECTION STYLES === */
   .tibbna-section {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+  }
+  @media (min-width: 640px) {
+    .tibbna-section { margin-bottom: 24px; }
   }
 
   .tibbna-section-title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    line-height: 24px;
-    margin: 0 0 12px;
+    line-height: 22px;
+    margin: 0 0 10px;
     color: #000000;
+  }
+  @media (min-width: 640px) {
+    .tibbna-section-title {
+      font-size: 16px;
+      line-height: 24px;
+      margin: 0 0 12px;
+    }
   }
 
   /* === ALERT CARD STYLES === */
-  .alert-critical {
-    background-color: #FEF2F2;
-    border: 1px solid #FECACA;
+  .alert-critical { background-color: #FEF2F2; border: 1px solid #FECACA; }
+  .alert-high { background-color: #FFFBEB; border: 1px solid #FDE68A; }
+  .alert-medium { background-color: #EFF6FF; border: 1px solid #BFDBFE; }
+  .alert-low { background-color: #F9FAFB; border: 1px solid #E5E7EB; }
+
+  /* === MOBILE UTILITIES === */
+  .mobile-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
-  .alert-high {
-    background-color: #FFFBEB;
-    border: 1px solid #FDE68A;
+  .mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 4px 0;
   }
 
-  .alert-medium {
-    background-color: #EFF6FF;
-    border: 1px solid #BFDBFE;
+  .mobile-card-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgb(82, 82, 82);
+    flex-shrink: 0;
   }
 
-  .alert-low {
-    background-color: #F9FAFB;
-    border: 1px solid #E5E7EB;
+  .mobile-card-value {
+    font-size: 13px;
+    text-align: right;
+    flex: 1;
+    margin-left: 12px;
   }
 }
 

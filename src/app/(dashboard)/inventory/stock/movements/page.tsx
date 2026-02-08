@@ -106,7 +106,7 @@ export default function StockMovementsPage() {
       <div className="tibbna-card">
         <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Transaction History</h3></div>
         <div className="tibbna-card-content">
-          <div className="overflow-x-auto">
+          <div className="tibbna-table-container">
             <table className="tibbna-table">
               <thead>
                 <tr>

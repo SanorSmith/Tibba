@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
@@ -14,6 +14,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Temporarily disable idle timeout - 10 minutes
   // useIdleTimeout(10);
@@ -30,9 +31,15 @@ export default function DashboardLayout({
 
   return (
     <div className="main-container min-h-screen">
-      <Navbar />
-      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
-        <Sidebar />
+      <Navbar onMobileMenuToggle={() => setMobileSidebarOpen(true)} />
+      <div
+        className="flex flex-1 overflow-hidden"
+        style={{ height: 'calc(100vh - 56px)' }}
+      >
+        <Sidebar
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
+        />
         <main className="flex-1 overflow-y-auto" style={{ backgroundColor: '#fcfcfc' }}>
           <div className="main-wrapper">
             <div className="inner-wrapper">
