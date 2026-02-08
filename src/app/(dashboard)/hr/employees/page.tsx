@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Users, Search, Filter, UserPlus, Mail, Phone, ChevronRight } from 'lucide-react';
+import type { Employee, Department } from '@/types/hr';
 import employeesData from '@/data/hr/employees.json';
 import departmentsData from '@/data/hr/departments.json';
 

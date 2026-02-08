@@ -6,6 +6,7 @@ import {
   ClipboardList, Star, Heart, Building2, FileText, Clock, UserPlus,
   AlertTriangle, Award, Briefcase
 } from 'lucide-react';
+import type { Employee, DailyAttendanceSummary, LeaveRequest, PayrollPeriod, TrainingSummary, PerformanceReview, Recognition, JobVacancy, RecruitmentSummary } from '@/types/hr';
 import employeesData from '@/data/hr/employees.json';
 import attendanceData from '@/data/hr/attendance.json';
 import leavesData from '@/data/hr/leaves.json';
