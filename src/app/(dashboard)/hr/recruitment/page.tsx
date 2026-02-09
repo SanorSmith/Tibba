@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Briefcase, UserPlus, Users, CheckCircle, XCircle, Search } from 'lucide-react';
+import Link from 'next/link';
+import { Briefcase, UserPlus, Users, CheckCircle, XCircle, Search, ChevronRight } from 'lucide-react';
 import candidatesData from '@/data/hr/candidates.json';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -30,7 +31,9 @@ export default function RecruitmentPage() {
           <h2 className="page-title">Recruitment & Hiring</h2>
           <p className="page-description">Job vacancies, candidates, and hiring pipeline</p>
         </div>
-        <button className="btn-primary flex items-center gap-2"><Briefcase size={16} /><span className="hidden sm:inline">Post Vacancy</span></button>
+        <Link href="/hr/recruitment/vacancies">
+          <button className="btn-primary flex items-center gap-2"><Briefcase size={16} /><span className="hidden sm:inline">View Vacancies</span></button>
+        </Link>
       </div>
 
       <div className="tibbna-grid-4 tibbna-section">
@@ -51,32 +54,35 @@ export default function RecruitmentPage() {
             const sc = vacancyStatusColors[v.status] || { bg: '#F3F4F6', text: '#374151' };
             const applicants = candidatesData.candidates.filter(c => c.vacancy_id === v.id).length;
             return (
-              <div key={v.id} className="tibbna-card">
-                <div className="tibbna-card-content">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 style={{ fontSize: '16px', fontWeight: 600 }}>{v.position}</h4>
-                        <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text }}>{v.status}</span>
-                        {v.priority === 'URGENT' && <span className="tibbna-badge badge-error">URGENT</span>}
-                        {v.priority === 'HIGH' && <span className="tibbna-badge badge-warning">HIGH</span>}
+              <Link key={v.id} href={`/hr/recruitment/vacancies/${v.id}`}>
+                <div className="tibbna-card cursor-pointer hover:shadow-md transition-shadow">
+                  <div className="tibbna-card-content">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 style={{ fontSize: '16px', fontWeight: 600 }}>{v.position}</h4>
+                          <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text }}>{v.status}</span>
+                          {v.priority === 'URGENT' && <span className="tibbna-badge badge-error">URGENT</span>}
+                          {v.priority === 'HIGH' && <span className="tibbna-badge badge-warning">HIGH</span>}
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#525252' }}>{v.department} | {v.openings} opening(s) | Grade: {v.grade}</p>
+                        <p style={{ fontSize: '12px', color: '#a3a3a3' }}>Posted: {v.posting_date} | Deadline: {v.deadline}</p>
                       </div>
-                      <p style={{ fontSize: '13px', color: '#525252' }}>{v.department} | {v.openings} opening(s) | Grade: {v.grade}</p>
-                      <p style={{ fontSize: '12px', color: '#a3a3a3' }}>Posted: {v.posting_date} | Deadline: {v.deadline}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div style={{ textAlign: 'center' }}>
-                        <p style={{ fontSize: '20px', fontWeight: 700 }}>{applicants}</p>
-                        <p style={{ fontSize: '11px', color: '#a3a3a3' }}>Applicants</p>
-                      </div>
-                      <div style={{ textAlign: 'center' }}>
-                        <p style={{ fontSize: '13px', fontWeight: 500 }}>{(v.salary_min / 1000000).toFixed(1)}-{(v.salary_max / 1000000).toFixed(1)}M</p>
-                        <p style={{ fontSize: '11px', color: '#a3a3a3' }}>IQD/month</p>
+                      <div className="flex items-center gap-3">
+                        <div style={{ textAlign: 'center' }}>
+                          <p style={{ fontSize: '20px', fontWeight: 700 }}>{applicants}</p>
+                          <p style={{ fontSize: '11px', color: '#a3a3a3' }}>Applicants</p>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <p style={{ fontSize: '13px', fontWeight: 500 }}>{(v.salary_min / 1000000).toFixed(1)}-{(v.salary_max / 1000000).toFixed(1)}M</p>
+                          <p style={{ fontSize: '11px', color: '#a3a3a3' }}>IQD/month</p>
+                        </div>
+                        <ChevronRight size={16} style={{ color: '#a3a3a3' }} />
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -93,7 +99,7 @@ export default function RecruitmentPage() {
                     const sc = statusColors[c.status] || { bg: '#F3F4F6', text: '#374151' };
                     const vacancy = candidatesData.vacancies.find(v => v.id === c.vacancy_id);
                     return (
-                      <tr key={c.id}>
+                      <tr key={c.id} onClick={() => window.location.href = `/hr/recruitment/candidates/${c.id}`} className="cursor-pointer hover:bg-gray-50">
                         <td><p style={{ fontSize: '14px', fontWeight: 500 }}>{c.first_name} {c.last_name}</p><p style={{ fontSize: '11px', color: '#a3a3a3' }}>{c.email}</p></td>
                         <td style={{ fontSize: '13px' }}>{vacancy?.position || '-'}</td>
                         <td style={{ fontSize: '13px' }}>{c.education}</td>
@@ -113,16 +119,18 @@ export default function RecruitmentPage() {
               const sc = statusColors[c.status] || { bg: '#F3F4F6', text: '#374151' };
               const vacancy = candidatesData.vacancies.find(v => v.id === c.vacancy_id);
               return (
-                <div key={c.id} className="tibbna-card">
-                  <div className="tibbna-card-content">
-                    <div className="flex justify-between mb-1">
-                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{c.first_name} {c.last_name}</span>
-                      <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{c.status}</span>
+                <Link key={c.id} href={`/hr/recruitment/candidates/${c.id}`}>
+                  <div className="tibbna-card cursor-pointer active:bg-gray-50">
+                    <div className="tibbna-card-content">
+                      <div className="flex justify-between mb-1">
+                        <span style={{ fontSize: '14px', fontWeight: 600 }}>{c.first_name} {c.last_name}</span>
+                        <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{c.status}</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#525252' }}>{vacancy?.position} | {c.experience_years}y exp</p>
+                      <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{c.source} | Expected: {(c.expected_salary / 1000000).toFixed(1)}M IQD</p>
                     </div>
-                    <p style={{ fontSize: '12px', color: '#525252' }}>{vacancy?.position} | {c.experience_years}y exp</p>
-                    <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{c.source} | Expected: {(c.expected_salary / 1000000).toFixed(1)}M IQD</p>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

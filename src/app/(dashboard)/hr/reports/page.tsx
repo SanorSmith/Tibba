@@ -10,11 +10,11 @@ const reportCategories = [
     color: '#3B82F6',
     bg: '#DBEAFE',
     reports: [
-      { name: 'Employee Master List', description: 'Complete directory of all employees' },
-      { name: 'New Hires Report', description: 'Monthly and quarterly new hire summary' },
-      { name: 'Termination Report', description: 'Employee separations and reasons' },
-      { name: 'Headcount by Department', description: 'Staff distribution across departments' },
-      { name: 'Demographics Report', description: 'Age, gender, nationality breakdown' },
+      { name: 'Employee Master List', description: 'Complete directory of all employees', route: '/hr/reports/employee' },
+      { name: 'New Hires Report', description: 'Monthly and quarterly new hire summary', route: '/hr/reports/employee' },
+      { name: 'Termination Report', description: 'Employee separations and reasons', route: '/hr/reports/employee' },
+      { name: 'Headcount by Department', description: 'Staff distribution across departments', route: '/hr/reports/employee' },
+      { name: 'Demographics Report', description: 'Age, gender, nationality breakdown', route: '/hr/reports/employee' },
     ],
   },
   {
@@ -23,11 +23,11 @@ const reportCategories = [
     color: '#10B981',
     bg: '#D1FAE5',
     reports: [
-      { name: 'Daily Attendance Summary', description: 'Today\'s attendance overview' },
-      { name: 'Monthly Attendance Report', description: 'Monthly attendance trends' },
-      { name: 'Overtime Report', description: 'Overtime hours and costs' },
-      { name: 'Late Arrival Report', description: 'Late arrivals and early departures' },
-      { name: 'Absence Report', description: 'Unexcused absences by department' },
+      { name: 'Daily Attendance Summary', description: 'Today\'s attendance overview', route: '/hr/reports/attendance' },
+      { name: 'Monthly Attendance Report', description: 'Monthly attendance trends', route: '/hr/reports/attendance' },
+      { name: 'Overtime Report', description: 'Overtime hours and costs', route: '/hr/reports/attendance' },
+      { name: 'Late Arrival Report', description: 'Late arrivals and early departures', route: '/hr/reports/attendance' },
+      { name: 'Absence Report', description: 'Unexcused absences by department', route: '/hr/reports/attendance' },
     ],
   },
   {
@@ -36,11 +36,11 @@ const reportCategories = [
     color: '#F59E0B',
     bg: '#FEF3C7',
     reports: [
-      { name: 'Monthly Payroll Summary', description: 'Total payroll costs breakdown' },
-      { name: 'Department Payroll Cost', description: 'Cost analysis by department' },
-      { name: 'Bank Transfer File', description: 'Generate bank transfer CSV' },
-      { name: 'Social Security Report', description: 'Employee and employer contributions' },
-      { name: 'End of Service Provision', description: 'EOS liability calculations' },
+      { name: 'Monthly Payroll Summary', description: 'Total payroll costs breakdown', route: '/hr/reports/payroll' },
+      { name: 'Department Payroll Cost', description: 'Cost analysis by department', route: '/hr/reports/payroll' },
+      { name: 'Bank Transfer File', description: 'Generate bank transfer CSV', route: '/hr/payroll/bank-transfer' },
+      { name: 'Social Security Report', description: 'Employee and employer contributions', route: '/hr/payroll/social-security' },
+      { name: 'End of Service Provision', description: 'EOS liability calculations', route: '/hr/payroll/end-of-service' },
     ],
   },
   {
@@ -49,10 +49,10 @@ const reportCategories = [
     color: '#6366F1',
     bg: '#E0E7FF',
     reports: [
-      { name: 'Leave Balance Report', description: 'Current balances for all employees' },
-      { name: 'Leave Utilization', description: 'Leave usage patterns and trends' },
-      { name: 'Sick Leave Analysis', description: 'Sick leave frequency and patterns' },
-      { name: 'Annual Leave Forecast', description: 'Projected leave usage' },
+      { name: 'Leave Balance Report', description: 'Current balances for all employees', route: '/hr/leaves' },
+      { name: 'Leave Utilization', description: 'Leave usage patterns and trends', route: '/hr/leaves' },
+      { name: 'Sick Leave Analysis', description: 'Sick leave frequency and patterns', route: '/hr/leaves' },
+      { name: 'Annual Leave Forecast', description: 'Projected leave usage', route: '/hr/leaves/calendar' },
     ],
   },
   {
@@ -61,10 +61,10 @@ const reportCategories = [
     color: '#EC4899',
     bg: '#FCE7F3',
     reports: [
-      { name: 'Training Completion', description: 'Completion rates by program' },
-      { name: 'CME Credits Report', description: 'CME credits earned per staff' },
-      { name: 'Certification Expiry', description: 'Upcoming certification expirations' },
-      { name: 'Training Budget vs Actual', description: 'Budget utilization analysis' },
+      { name: 'Training Completion', description: 'Completion rates by program', route: '/hr/training' },
+      { name: 'CME Credits Report', description: 'CME credits earned per staff', route: '/hr/training' },
+      { name: 'Certification Expiry', description: 'Upcoming certification expirations', route: '/hr/training' },
+      { name: 'Training Budget vs Actual', description: 'Budget utilization analysis', route: '/hr/training' },
     ],
   },
   {
@@ -73,9 +73,9 @@ const reportCategories = [
     color: '#EF4444',
     bg: '#FEE2E2',
     reports: [
-      { name: 'Performance Distribution', description: 'Rating distribution bell curve' },
-      { name: 'Goal Achievement', description: 'Goal completion rates' },
-      { name: 'Recognition Report', description: 'Awards and recognitions given' },
+      { name: 'Performance Distribution', description: 'Rating distribution bell curve', route: '/hr/performance' },
+      { name: 'Goal Achievement', description: 'Goal completion rates', route: '/hr/performance/goals' },
+      { name: 'Recognition Report', description: 'Awards and recognitions given', route: '/hr/performance' },
     ],
   },
   {
@@ -84,10 +84,10 @@ const reportCategories = [
     color: '#059669',
     bg: '#D1FAE5',
     reports: [
-      { name: 'License Expiry Report', description: 'Medical licenses expiring soon' },
-      { name: 'Vaccination Compliance', description: 'Staff vaccination status' },
-      { name: 'Mandatory Training', description: 'Training compliance rates' },
-      { name: 'Contract Expiry', description: 'Contracts expiring soon' },
+      { name: 'License Expiry Report', description: 'Medical licenses expiring soon', route: '/hr/integrations/openehr' },
+      { name: 'Vaccination Compliance', description: 'Staff vaccination status', route: '/hr/integrations/openehr' },
+      { name: 'Mandatory Training', description: 'Training compliance rates', route: '/hr/training' },
+      { name: 'Contract Expiry', description: 'Contracts expiring soon', route: '/hr/employees' },
     ],
   },
   {
@@ -96,10 +96,10 @@ const reportCategories = [
     color: '#8B5CF6',
     bg: '#F3E8FF',
     reports: [
-      { name: 'HR KPI Dashboard', description: 'Key performance indicators' },
-      { name: 'Headcount Trends', description: 'Staffing trends over time' },
-      { name: 'Turnover Analysis', description: 'Employee turnover rates' },
-      { name: 'Cost per Employee', description: 'Total cost analysis' },
+      { name: 'HR KPI Dashboard', description: 'Key performance indicators', route: '/hr' },
+      { name: 'Headcount Trends', description: 'Staffing trends over time', route: '/hr/reports/employee' },
+      { name: 'Turnover Analysis', description: 'Employee turnover rates', route: '/hr/reports/employee' },
+      { name: 'Cost per Employee', description: 'Total cost analysis', route: '/hr/reports/payroll' },
     ],
   },
 ];
@@ -129,8 +129,9 @@ export default function HRReportsPage() {
               </div>
               <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {cat.reports.map(report => (
-                  <div
+                  <Link
                     key={report.name}
+                    href={report.route}
                     className="flex items-center justify-between cursor-pointer hover:bg-[#f5f5f5] transition-colors"
                     style={{ padding: '8px 10px', borderRadius: '4px' }}
                   >
@@ -139,7 +140,7 @@ export default function HRReportsPage() {
                       <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{report.description}</p>
                     </div>
                     <FileText size={14} style={{ color: '#a3a3a3', flexShrink: 0 }} />
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

@@ -28,6 +28,14 @@ export default function AttendancePage() {
           <h2 className="page-title">Attendance & Time Tracking</h2>
           <p className="page-description">Daily attendance for {summaries[0]?.date || 'today'}</p>
         </div>
+        <div className="flex gap-2">
+          <Link href="/hr/attendance/exceptions">
+            <button className="btn-secondary flex items-center gap-2"><AlertTriangle size={14} /><span className="hidden sm:inline">Exceptions</span></button>
+          </Link>
+          <Link href="/hr/attendance/biometric">
+            <button className="btn-primary flex items-center gap-2"><Timer size={14} /><span className="hidden sm:inline">Biometric</span></button>
+          </Link>
+        </div>
       </div>
 
       {/* KPIs */}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, CreditCard, FileText, Download } from 'lucide-react';
+import Link from 'next/link';
+import { DollarSign, TrendingUp, TrendingDown, CreditCard, FileText, Download, Plus } from 'lucide-react';
 import payrollData from '@/data/hr/payroll.json';
 
 export default function PayrollPage() {
@@ -23,6 +24,12 @@ export default function PayrollPage() {
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
+          <Link href="/hr/payroll/loans/new">
+            <button className="btn-secondary flex items-center gap-2"><Plus size={14} /><span className="hidden sm:inline">New Loan</span></button>
+          </Link>
+          <Link href="/hr/payroll/process">
+            <button className="btn-primary flex items-center gap-2"><FileText size={14} /><span className="hidden sm:inline">Process Payroll</span></button>
+          </Link>
         </div>
       </div>
 
@@ -53,8 +60,12 @@ export default function PayrollPage() {
             <div><span style={{ color: '#a3a3a3' }}>Employees</span><p style={{ fontWeight: 500 }}>{period.total_employees}</p></div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 mt-4">
-            <button className="btn-primary flex items-center justify-center gap-2"><FileText size={14} /> Generate Payslips</button>
-            <button className="btn-secondary flex items-center justify-center gap-2"><Download size={14} /> Export Bank File</button>
+            <Link href="/hr/payroll/process">
+              <button className="btn-primary flex items-center justify-center gap-2"><FileText size={14} /> Generate Payslips</button>
+            </Link>
+            <Link href="/hr/payroll/bank-transfer">
+              <button className="btn-secondary flex items-center justify-center gap-2"><Download size={14} /> Export Bank File</button>
+            </Link>
           </div>
         </div>
       </div>
@@ -137,7 +148,7 @@ export default function PayrollPage() {
               <thead><tr><th>Loan #</th><th>Employee</th><th>Type</th><th>Amount</th><th>Installment</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
               <tbody>
                 {loans.map(l => (
-                  <tr key={l.id}>
+                  <tr key={l.id} onClick={() => window.location.href = `/hr/payroll/loans/${l.id}`} className="cursor-pointer hover:bg-gray-50">
                     <td style={{ fontSize: '13px', fontWeight: 500 }}>{l.loan_number}</td>
                     <td style={{ fontSize: '13px' }}>{l.employee_name}</td>
                     <td><span className="tibbna-badge badge-info">{l.type}</span></td>
@@ -153,18 +164,20 @@ export default function PayrollPage() {
           </div>
           <div className="md:hidden space-y-2">
             {loans.map(l => (
-              <div key={l.id} style={{ padding: '10px', border: '1px solid #e4e4e4' }}>
-                <div className="flex justify-between mb-1">
-                  <span style={{ fontSize: '14px', fontWeight: 600 }}>{l.employee_name}</span>
-                  <span className="tibbna-badge" style={{ backgroundColor: l.status === 'ACTIVE' ? '#D1FAE5' : '#F3F4F6', color: l.status === 'ACTIVE' ? '#065F46' : '#6B7280', fontSize: '10px' }}>{l.status}</span>
+              <Link key={l.id} href={`/hr/payroll/loans/${l.id}`}>
+                <div style={{ padding: '10px', border: '1px solid #e4e4e4' }} className="cursor-pointer active:bg-gray-50">
+                  <div className="flex justify-between mb-1">
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{l.employee_name}</span>
+                    <span className="tibbna-badge" style={{ backgroundColor: l.status === 'ACTIVE' ? '#D1FAE5' : '#F3F4F6', color: l.status === 'ACTIVE' ? '#065F46' : '#6B7280', fontSize: '10px' }}>{l.status}</span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{l.type} - {l.loan_number}</p>
+                  <div className="grid grid-cols-3 gap-2 mt-2" style={{ fontSize: '12px' }}>
+                    <div><span style={{ color: '#a3a3a3' }}>Amount</span><p style={{ fontWeight: 500 }}>{(l.amount / 1000).toFixed(0)}K</p></div>
+                    <div><span style={{ color: '#a3a3a3' }}>Paid</span><p style={{ fontWeight: 500 }}>{l.paid}/{l.total_installments}</p></div>
+                    <div><span style={{ color: '#a3a3a3' }}>Balance</span><p style={{ fontWeight: 600 }}>{(l.balance / 1000).toFixed(0)}K</p></div>
+                  </div>
                 </div>
-                <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{l.type} - {l.loan_number}</p>
-                <div className="grid grid-cols-3 gap-2 mt-2" style={{ fontSize: '12px' }}>
-                  <div><span style={{ color: '#a3a3a3' }}>Amount</span><p style={{ fontWeight: 500 }}>{(l.amount / 1000).toFixed(0)}K</p></div>
-                  <div><span style={{ color: '#a3a3a3' }}>Paid</span><p style={{ fontWeight: 500 }}>{l.paid}/{l.total_installments}</p></div>
-                  <div><span style={{ color: '#a3a3a3' }}>Balance</span><p style={{ fontWeight: 600 }}>{(l.balance / 1000).toFixed(0)}K</p></div>
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

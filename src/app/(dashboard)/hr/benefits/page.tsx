@@ -1,7 +1,17 @@
 'use client';
 
+import Link from 'next/link';
 import { Heart, Shield, Car, Home, UtensilsCrossed, DollarSign } from 'lucide-react';
 import benefitsData from '@/data/hr/benefits.json';
+
+const typeRoutes: Record<string, string> = {
+  HEALTH_INSURANCE: '/hr/benefits/health-insurance',
+  LIFE_INSURANCE: '/hr/benefits/health-insurance',
+  TRANSPORT: '/hr/benefits/transport',
+  HOUSING: '/hr/benefits/housing',
+  MEAL: '/hr/benefits',
+  EDUCATION: '/hr/benefits',
+};
 
 const typeIcons: Record<string, any> = {
   HEALTH_INSURANCE: Shield,
@@ -38,7 +48,7 @@ export default function BenefitsPage() {
             {benefitsData.benefit_plans.map(plan => {
               const Icon = typeIcons[plan.type] || Heart;
               return (
-                <div key={plan.id} style={{ padding: '16px', border: '1px solid #e4e4e4' }}>
+                <Link key={plan.id} href={typeRoutes[plan.type] || '/hr/benefits'} style={{ padding: '16px', border: '1px solid #e4e4e4', display: 'block' }} className="hover:bg-gray-50 transition-colors cursor-pointer">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#DBEAFE' }}>
                       <Icon size={18} style={{ color: '#3B82F6' }} />
@@ -54,7 +64,7 @@ export default function BenefitsPage() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

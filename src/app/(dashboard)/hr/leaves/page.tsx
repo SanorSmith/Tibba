@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import leavesData from '@/data/hr/leaves.json';
 
@@ -28,10 +29,20 @@ export default function LeavesPage() {
           <h2 className="page-title">Leave Management</h2>
           <p className="page-description">{requests.length} leave requests this year</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Calendar size={16} />
-          <span className="hidden sm:inline">New Request</span>
-        </button>
+        <div className="flex gap-2">
+          <Link href="/hr/leaves/calendar">
+            <button className="btn-secondary flex items-center gap-2">
+              <Clock size={16} />
+              <span className="hidden sm:inline">Calendar</span>
+            </button>
+          </Link>
+          <Link href="/hr/leaves/requests/new">
+            <button className="btn-primary flex items-center gap-2">
+              <Calendar size={16} />
+              <span className="hidden sm:inline">New Request</span>
+            </button>
+          </Link>
+        </div>
       </div>
 
       <div className="tibbna-grid-4 tibbna-section">
@@ -56,7 +67,7 @@ export default function LeavesPage() {
               {filtered.map(lr => {
                 const sc = statusColors[lr.status] || { bg: '#F3F4F6', text: '#374151' };
                 return (
-                  <tr key={lr.id}>
+                  <tr key={lr.id} onClick={() => window.location.href = `/hr/leaves/requests/${lr.id}`} className="cursor-pointer hover:bg-gray-50">
                     <td style={{ fontSize: '13px', fontWeight: 500 }}>{lr.request_number}</td>
                     <td style={{ fontSize: '13px' }}>{lr.employee_name}</td>
                     <td><span className="tibbna-badge badge-info">{lr.leave_type}</span></td>
@@ -78,20 +89,22 @@ export default function LeavesPage() {
         {filtered.map(lr => {
           const sc = statusColors[lr.status] || { bg: '#F3F4F6', text: '#374151' };
           return (
-            <div key={lr.id} className="tibbna-card">
-              <div className="tibbna-card-content">
-                <div className="flex items-center justify-between mb-2">
-                  <span style={{ fontSize: '14px', fontWeight: 600 }}>{lr.employee_name}</span>
-                  <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{lr.status.replace('_', ' ')}</span>
+            <Link key={lr.id} href={`/hr/leaves/requests/${lr.id}`}>
+              <div className="tibbna-card cursor-pointer active:bg-gray-50">
+                <div className="tibbna-card-content">
+                  <div className="flex items-center justify-between mb-2">
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{lr.employee_name}</span>
+                    <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{lr.status.replace('_', ' ')}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="tibbna-badge badge-info" style={{ fontSize: '10px' }}>{lr.leave_type}</span>
+                    <span style={{ fontSize: '12px', color: '#525252' }}>{lr.total_days} days</span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{lr.start_date} → {lr.end_date}</p>
+                  {lr.reason && <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}>{lr.reason}</p>}
                 </div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="tibbna-badge badge-info" style={{ fontSize: '10px' }}>{lr.leave_type}</span>
-                  <span style={{ fontSize: '12px', color: '#525252' }}>{lr.total_days} days</span>
-                </div>
-                <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{lr.start_date} → {lr.end_date}</p>
-                {lr.reason && <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}>{lr.reason}</p>}
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

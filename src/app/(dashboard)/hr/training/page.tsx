@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { GraduationCap, Award, AlertTriangle, Calendar, BookOpen, CheckCircle } from 'lucide-react';
+import Link from 'next/link';
+import { GraduationCap, Award, AlertTriangle, Calendar, BookOpen, CheckCircle, Plus } from 'lucide-react';
 import trainingData from '@/data/hr/training.json';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -23,7 +24,14 @@ export default function TrainingPage() {
           <h2 className="page-title">Training & Development</h2>
           <p className="page-description">Programs, certifications, and CME tracking</p>
         </div>
-        <button className="btn-primary flex items-center gap-2"><GraduationCap size={16} /><span className="hidden sm:inline">New Program</span></button>
+        <div className="flex gap-2">
+          <Link href="/hr/training/sessions/new">
+            <button className="btn-secondary flex items-center gap-2"><Calendar size={16} /><span className="hidden sm:inline">Schedule Session</span></button>
+          </Link>
+          <Link href="/hr/training/programs/new">
+            <button className="btn-primary flex items-center gap-2"><Plus size={16} /><span className="hidden sm:inline">New Program</span></button>
+          </Link>
+        </div>
       </div>
 
       <div className="tibbna-grid-4 tibbna-section">

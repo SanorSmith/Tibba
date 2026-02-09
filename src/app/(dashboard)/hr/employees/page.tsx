@@ -48,10 +48,12 @@ export default function EmployeesPage() {
           <h2 className="page-title">Employee Directory</h2>
           <p className="page-description">{employees.length} employees found</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <UserPlus size={16} />
-          <span className="hidden sm:inline">Add Employee</span>
-        </button>
+        <Link href="/hr/employees/new">
+          <button className="btn-primary flex items-center gap-2">
+            <UserPlus size={16} />
+            <span className="hidden sm:inline">Add Employee</span>
+          </button>
+        </Link>
       </div>
 
       {/* Filters */}

@@ -44,7 +44,7 @@ export default function HRPage() {
           <h2 className="page-title">Human Resources</h2>
           <p className="page-description">Employee management, payroll, attendance & development</p>
         </div>
-        <Link href="/hr/employees">
+        <Link href="/hr/employees/new">
           <button className="btn-primary flex items-center gap-2">
             <UserPlus size={16} />
             Add Employee

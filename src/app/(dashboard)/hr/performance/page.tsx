@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, Award, TrendingUp, AlertTriangle, Users } from 'lucide-react';
+import Link from 'next/link';
+import { Star, Award, TrendingUp, AlertTriangle, Users, Plus, Target } from 'lucide-react';
 import performanceData from '@/data/hr/performance.json';
 
 const ratingColor = (r: number) => r >= 4 ? '#10B981' : r >= 3 ? '#F59E0B' : '#EF4444';
@@ -18,6 +19,14 @@ export default function PerformancePage() {
         <div>
           <h2 className="page-title">Performance Management</h2>
           <p className="page-description">Reviews, goals, and employee recognition</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/hr/performance/goals">
+            <button className="btn-secondary flex items-center gap-2"><Target size={16} /><span className="hidden sm:inline">Goals</span></button>
+          </Link>
+          <Link href="/hr/performance/reviews/new">
+            <button className="btn-primary flex items-center gap-2"><Plus size={16} /><span className="hidden sm:inline">New Review</span></button>
+          </Link>
         </div>
       </div>
 
