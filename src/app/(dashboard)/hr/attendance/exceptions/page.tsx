@@ -1,23 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Clock, Filter } from 'lucide-react';
-import type { AttendanceException } from '@/types/hr';
+import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Clock, Filter, Trash2, Download, RefreshCw } from 'lucide-react';
+import type { AttendanceException, AttendanceTransaction, Employee } from '@/types/hr';
 import { SmartStatusBadge } from '@/components/modules/hr/shared/status-badge';
 import { EmployeeAvatar } from '@/components/modules/hr/shared/employee-avatar';
-import employeesData from '@/data/hr/employees.json';
-
-const demoExceptions: AttendanceException[] = [
-  { exception_id: 'EXC-001', employee_id: 'EMP-2024-010', employee_name: 'Hassan Al-Dulaimi', department: 'Nursing', exception_date: '2026-02-08', exception_type: 'LATE_ARRIVAL', details: 'Arrived 25 minutes late. Scheduled: 07:00, Actual: 07:25', severity: 'MEDIUM', review_status: 'PENDING' },
-  { exception_id: 'EXC-002', employee_id: 'EMP-2024-015', employee_name: 'Layla Al-Obeidi', department: 'Pharmacy', exception_date: '2026-02-08', exception_type: 'MISSING_CHECKOUT', details: 'No check-out recorded for shift ending at 15:00', severity: 'HIGH', review_status: 'PENDING' },
-  { exception_id: 'EXC-003', employee_id: 'EMP-2024-022', employee_name: 'Karim Al-Azzawi', department: 'Laboratory', exception_date: '2026-02-07', exception_type: 'ABNORMAL_HOURS', details: 'Recorded 22 hours in a single day. Possible missed check-out from previous day', severity: 'HIGH', review_status: 'PENDING' },
-  { exception_id: 'EXC-004', employee_id: 'EMP-2024-008', employee_name: 'Sara Mohammed', department: 'Internal Medicine', exception_date: '2026-02-07', exception_type: 'EARLY_DEPARTURE', details: 'Left at 13:30, scheduled end: 15:00. 1.5 hours early', severity: 'LOW', review_status: 'JUSTIFIED', justification: 'Medical appointment - approved by department head', reviewed_by: 'Dr. Ali Al-Tamimi', review_date: '2026-02-07' },
-  { exception_id: 'EXC-005', employee_id: 'EMP-2024-030', employee_name: 'Youssef Al-Hamdani', department: 'Maintenance', exception_date: '2026-02-06', exception_type: 'UNAUTHORIZED_ABSENCE', details: 'No attendance record for the entire day. No leave request submitted', severity: 'HIGH', review_status: 'WARNING_ISSUED', reviewed_by: 'HR Department', review_date: '2026-02-07' },
-  { exception_id: 'EXC-006', employee_id: 'EMP-2024-012', employee_name: 'Mariam Al-Shammari', department: 'Pediatrics', exception_date: '2026-02-06', exception_type: 'LATE_ARRIVAL', details: 'Arrived 12 minutes late. Scheduled: 08:00, Actual: 08:12', severity: 'LOW', review_status: 'DISMISSED', reviewed_by: 'HR Department', review_date: '2026-02-06' },
-  { exception_id: 'EXC-007', employee_id: 'EMP-2024-018', employee_name: 'Tariq Al-Jubouri', department: 'Radiology', exception_date: '2026-02-05', exception_type: 'LATE_ARRIVAL', details: 'Arrived 45 minutes late. Scheduled: 07:00, Actual: 07:45', severity: 'HIGH', review_status: 'WARNING_ISSUED', reviewed_by: 'HR Department', review_date: '2026-02-06' },
-  { exception_id: 'EXC-008', employee_id: 'EMP-2024-025', employee_name: 'Dina Al-Kubaisi', department: 'Finance', exception_date: '2026-02-05', exception_type: 'MISSING_CHECKOUT', details: 'No check-out recorded for shift ending at 16:00', severity: 'MEDIUM', review_status: 'JUSTIFIED', justification: 'System error - badge reader malfunction confirmed by IT', reviewed_by: 'IT Support', review_date: '2026-02-05' },
-];
+import { dataStore } from '@/lib/dataStore';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 const severityColors: Record<string, { bg: string; text: string }> = {
   LOW: { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -33,32 +24,325 @@ const typeLabels: Record<string, string> = {
   UNAUTHORIZED_ABSENCE: 'Unauthorized Absence',
 };
 
+// Work time thresholds
+const WORK_START = '08:30:00';
+const WORK_END   = '16:30:00';
+const LATE_THRESHOLD_MIN = 15;
+
 export default function AttendanceExceptionsPage() {
-  const [exceptions, setExceptions] = useState(demoExceptions);
+  const { user, hasRole } = useAuth();
+  const isManager = hasRole(['HR_ADMIN', 'Administrator']);
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [exceptions, setExceptions] = useState<AttendanceException[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [actionModal, setActionModal] = useState<string | null>(null);
   const [justification, setJustification] = useState('');
 
-  const filtered = exceptions.filter(e => {
-    if (statusFilter !== 'all' && e.review_status !== statusFilter) return false;
-    if (severityFilter !== 'all' && e.severity !== severityFilter) return false;
-    return true;
-  });
+  // =========================================================================
+  // LOAD DATA
+  // =========================================================================
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = () => {
+    try {
+      const emps = dataStore.getEmployees();
+      let excs = dataStore.getAttendanceExceptions();
+
+      // Auto-detect from transactions if no exceptions stored yet
+      if (excs.length === 0) {
+        const txns = dataStore.getAttendanceTransactions();
+        excs = autoDetectExceptions(emps, txns);
+      }
+
+      setEmployees(emps);
+      setExceptions(excs);
+    } catch (error) {
+      console.error('Error loading exceptions:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =========================================================================
+  // AUTO-DETECT EXCEPTIONS FROM TRANSACTIONS
+  // =========================================================================
+
+  const autoDetectExceptions = (emps: Employee[], txns: AttendanceTransaction[]): AttendanceException[] => {
+    const detected: AttendanceException[] = [];
+    const today = new Date().toISOString().split('T')[0];
+    const activeEmps = emps.filter(e => (e as any).employment_status === 'ACTIVE');
+
+    // Get unique dates from transactions
+    const dates = [...new Set(txns.map(t => t.transaction_date))];
+
+    activeEmps.forEach(emp => {
+      dates.forEach(date => {
+        const dayTxns = txns
+          .filter(t => t.employee_id === emp.id && t.transaction_date === date)
+          .sort((a, b) => a.transaction_time.localeCompare(b.transaction_time));
+
+        const checkIns = dayTxns.filter(t => t.transaction_type === 'CHECK_IN');
+        const checkOuts = dayTxns.filter(t => t.transaction_type === 'CHECK_OUT');
+        const empName = `${emp.first_name} ${emp.last_name}`;
+        const dept = (emp as any).department_name || '';
+
+        // Late arrival
+        if (checkIns.length > 0) {
+          const firstIn = checkIns[0].transaction_time;
+          if (firstIn > WORK_START) {
+            const [h, m] = firstIn.split(':').map(Number);
+            const [eh, em] = WORK_START.split(':').map(Number);
+            const lateMins = (h * 60 + m) - (eh * 60 + em);
+            if (lateMins >= LATE_THRESHOLD_MIN) {
+              const severity = lateMins >= 60 ? 'HIGH' : lateMins >= 30 ? 'MEDIUM' : 'LOW';
+              detected.push({
+                exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                employee_id: emp.id,
+                employee_name: empName,
+                department: dept,
+                exception_date: date,
+                exception_type: 'LATE_ARRIVAL',
+                details: `Arrived ${lateMins} minutes late. Scheduled: ${WORK_START.slice(0, 5)}, Actual: ${firstIn.slice(0, 5)}`,
+                severity: severity as 'LOW' | 'MEDIUM' | 'HIGH',
+                review_status: 'PENDING',
+              });
+            }
+          }
+        }
+
+        // Early departure
+        if (checkOuts.length > 0) {
+          const lastOut = checkOuts[checkOuts.length - 1].transaction_time;
+          if (lastOut < WORK_END) {
+            const [h, m] = lastOut.split(':').map(Number);
+            const [eh, em] = WORK_END.split(':').map(Number);
+            const earlyMins = (eh * 60 + em) - (h * 60 + m);
+            if (earlyMins >= LATE_THRESHOLD_MIN) {
+              const severity = earlyMins >= 60 ? 'HIGH' : earlyMins >= 30 ? 'MEDIUM' : 'LOW';
+              detected.push({
+                exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                employee_id: emp.id,
+                employee_name: empName,
+                department: dept,
+                exception_date: date,
+                exception_type: 'EARLY_DEPARTURE',
+                details: `Left ${earlyMins} minutes early. Scheduled end: ${WORK_END.slice(0, 5)}, Actual: ${lastOut.slice(0, 5)}`,
+                severity: severity as 'LOW' | 'MEDIUM' | 'HIGH',
+                review_status: 'PENDING',
+              });
+            }
+          }
+        }
+
+        // Missing check-out (checked in but no check-out, not today)
+        if (checkIns.length > 0 && checkOuts.length === 0 && date !== today) {
+          detected.push({
+            exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            employee_id: emp.id,
+            employee_name: empName,
+            department: dept,
+            exception_date: date,
+            exception_type: 'MISSING_CHECKOUT',
+            details: `Checked in at ${checkIns[0].transaction_time.slice(0, 5)} but no check-out recorded`,
+            severity: 'HIGH',
+            review_status: 'PENDING',
+          });
+        }
+      });
+    });
+
+    // Persist detected exceptions
+    detected.forEach(exc => dataStore.addAttendanceException(exc));
+    return detected;
+  };
+
+  // =========================================================================
+  // RE-SCAN: detect new exceptions from recent transactions
+  // =========================================================================
+
+  const handleRescan = () => {
+    const emps = dataStore.getEmployees();
+    const txns = dataStore.getAttendanceTransactions();
+    const existingDates = new Set(exceptions.map(e => `${e.employee_id}|${e.exception_date}|${e.exception_type}`));
+    const activeEmps = emps.filter(e => (e as any).employment_status === 'ACTIVE');
+    const today = new Date().toISOString().split('T')[0];
+    const dates = [...new Set(txns.map(t => t.transaction_date))];
+    let newCount = 0;
+
+    activeEmps.forEach(emp => {
+      dates.forEach(date => {
+        const dayTxns = txns
+          .filter(t => t.employee_id === emp.id && t.transaction_date === date)
+          .sort((a, b) => a.transaction_time.localeCompare(b.transaction_time));
+        const checkIns = dayTxns.filter(t => t.transaction_type === 'CHECK_IN');
+        const checkOuts = dayTxns.filter(t => t.transaction_type === 'CHECK_OUT');
+        const empName = `${emp.first_name} ${emp.last_name}`;
+        const dept = (emp as any).department_name || '';
+
+        if (checkIns.length > 0) {
+          const firstIn = checkIns[0].transaction_time;
+          if (firstIn > WORK_START) {
+            const [h, m] = firstIn.split(':').map(Number);
+            const [eh, em] = WORK_START.split(':').map(Number);
+            const lateMins = (h * 60 + m) - (eh * 60 + em);
+            if (lateMins >= LATE_THRESHOLD_MIN) {
+              const key = `${emp.id}|${date}|LATE_ARRIVAL`;
+              if (!existingDates.has(key)) {
+                const severity = lateMins >= 60 ? 'HIGH' : lateMins >= 30 ? 'MEDIUM' : 'LOW';
+                const exc: AttendanceException = {
+                  exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                  employee_id: emp.id, employee_name: empName, department: dept,
+                  exception_date: date, exception_type: 'LATE_ARRIVAL',
+                  details: `Arrived ${lateMins} min late. Scheduled: ${WORK_START.slice(0, 5)}, Actual: ${firstIn.slice(0, 5)}`,
+                  severity: severity as any, review_status: 'PENDING',
+                };
+                dataStore.addAttendanceException(exc);
+                newCount++;
+              }
+            }
+          }
+        }
+
+        if (checkOuts.length > 0) {
+          const lastOut = checkOuts[checkOuts.length - 1].transaction_time;
+          if (lastOut < WORK_END) {
+            const [h, m] = lastOut.split(':').map(Number);
+            const [eh, em] = WORK_END.split(':').map(Number);
+            const earlyMins = (eh * 60 + em) - (h * 60 + m);
+            if (earlyMins >= LATE_THRESHOLD_MIN) {
+              const key = `${emp.id}|${date}|EARLY_DEPARTURE`;
+              if (!existingDates.has(key)) {
+                const severity = earlyMins >= 60 ? 'HIGH' : earlyMins >= 30 ? 'MEDIUM' : 'LOW';
+                const exc: AttendanceException = {
+                  exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+                  employee_id: emp.id, employee_name: empName, department: dept,
+                  exception_date: date, exception_type: 'EARLY_DEPARTURE',
+                  details: `Left ${earlyMins} min early. End: ${WORK_END.slice(0, 5)}, Actual: ${lastOut.slice(0, 5)}`,
+                  severity: severity as any, review_status: 'PENDING',
+                };
+                dataStore.addAttendanceException(exc);
+                newCount++;
+              }
+            }
+          }
+        }
+
+        if (checkIns.length > 0 && checkOuts.length === 0 && date !== today) {
+          const key = `${emp.id}|${date}|MISSING_CHECKOUT`;
+          if (!existingDates.has(key)) {
+            const exc: AttendanceException = {
+              exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+              employee_id: emp.id, employee_name: empName, department: dept,
+              exception_date: date, exception_type: 'MISSING_CHECKOUT',
+              details: `Checked in at ${checkIns[0].transaction_time.slice(0, 5)} but no check-out recorded`,
+              severity: 'HIGH', review_status: 'PENDING',
+            };
+            dataStore.addAttendanceException(exc);
+            newCount++;
+          }
+        }
+      });
+    });
+
+    if (newCount > 0) {
+      toast.success(`Detected ${newCount} new exception(s)`);
+    } else {
+      toast.info('No new exceptions found');
+    }
+    setExceptions(dataStore.getAttendanceExceptions());
+  };
+
+  // =========================================================================
+  // ACTIONS
+  // =========================================================================
+
+  const handleAction = (exceptionId: string, action: 'JUSTIFIED' | 'WARNING_ISSUED' | 'DISMISSED') => {
+    const updates: Partial<AttendanceException> = {
+      review_status: action,
+      reviewed_by: user?.name || 'HR Department',
+      review_date: new Date().toISOString().split('T')[0],
+    };
+    if (action === 'JUSTIFIED' && justification.trim()) {
+      updates.justification = justification.trim();
+    }
+
+    const success = dataStore.updateAttendanceException(exceptionId, updates);
+    if (success) {
+      toast.success(`Exception ${action === 'JUSTIFIED' ? 'justified' : action === 'WARNING_ISSUED' ? 'warning issued' : 'dismissed'}`);
+      setExceptions(dataStore.getAttendanceExceptions());
+    } else {
+      toast.error('Failed to update exception');
+    }
+    setActionModal(null);
+    setJustification('');
+  };
+
+  const handleDelete = (exceptionId: string) => {
+    if (!confirm('Delete this exception?')) return;
+    const success = dataStore.deleteAttendanceException(exceptionId);
+    if (success) {
+      toast.success('Exception deleted');
+      setExceptions(dataStore.getAttendanceExceptions());
+    } else {
+      toast.error('Failed to delete');
+    }
+  };
+
+  // =========================================================================
+  // CSV EXPORT
+  // =========================================================================
+
+  const handleExport = () => {
+    const headers = ['Exception ID', 'Employee', 'Department', 'Date', 'Type', 'Details', 'Severity', 'Status', 'Justification', 'Reviewed By'];
+    const rows = filtered.map(e => [
+      e.exception_id, e.employee_name, e.department || '', e.exception_date,
+      typeLabels[e.exception_type] || e.exception_type, `"${e.details}"`,
+      e.severity, e.review_status, e.justification || '', e.reviewed_by || '',
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `exceptions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast.success('CSV exported');
+  };
+
+  // =========================================================================
+  // FILTERING
+  // =========================================================================
+
+  const filtered = useMemo(() => {
+    return exceptions.filter(e => {
+      if (statusFilter !== 'all' && e.review_status !== statusFilter) return false;
+      if (severityFilter !== 'all' && e.severity !== severityFilter) return false;
+      if (typeFilter !== 'all' && e.exception_type !== typeFilter) return false;
+      return true;
+    }).sort((a, b) => b.exception_date.localeCompare(a.exception_date));
+  }, [exceptions, statusFilter, severityFilter, typeFilter]);
 
   const pendingCount = exceptions.filter(e => e.review_status === 'PENDING').length;
   const justifiedCount = exceptions.filter(e => e.review_status === 'JUSTIFIED').length;
   const warningCount = exceptions.filter(e => e.review_status === 'WARNING_ISSUED').length;
+  const dismissedCount = exceptions.filter(e => e.review_status === 'DISMISSED').length;
 
-  const handleAction = (exceptionId: string, action: 'JUSTIFIED' | 'WARNING_ISSUED' | 'DISMISSED') => {
-    setExceptions(prev => prev.map(e =>
-      e.exception_id === exceptionId
-        ? { ...e, review_status: action, reviewed_by: 'HR Department', review_date: new Date().toISOString().split('T')[0], justification: action === 'JUSTIFIED' ? justification : undefined }
-        : e
-    ));
-    setActionModal(null);
-    setJustification('');
-  };
+  // =========================================================================
+  // RENDER
+  // =========================================================================
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: '#618FF5' }} />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -67,10 +351,16 @@ export default function AttendanceExceptionsPage() {
           <Link href="/hr/attendance">
             <button className="btn-secondary p-2"><ArrowLeft size={16} /></button>
           </Link>
-          <div>
+          <div className="flex-1">
             <h2 className="page-title">Attendance Exceptions</h2>
             <p className="page-description">{exceptions.length} exceptions found</p>
           </div>
+          <button className="btn-secondary flex items-center gap-2" onClick={handleRescan}>
+            <RefreshCw size={14} /> Re-scan
+          </button>
+          <button className="btn-secondary flex items-center gap-2" onClick={handleExport}>
+            <Download size={14} /> Export CSV
+          </button>
         </div>
       </div>
 
@@ -97,6 +387,13 @@ export default function AttendanceExceptionsPage() {
           <option value="MEDIUM">Medium</option>
           <option value="LOW">Low</option>
         </select>
+        <select className="tibbna-input" style={{ width: 'auto' }} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+          <option value="all">All Types</option>
+          <option value="LATE_ARRIVAL">Late Arrival</option>
+          <option value="EARLY_DEPARTURE">Early Departure</option>
+          <option value="MISSING_CHECKOUT">Missing Checkout</option>
+          <option value="UNAUTHORIZED_ABSENCE">Unauthorized Absence</option>
+        </select>
       </div>
 
       {/* Exception Cards */}
@@ -120,7 +417,7 @@ export default function AttendanceExceptionsPage() {
                       </p>
                       <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{exc.details}</p>
                       {exc.justification && (
-                        <p style={{ fontSize: '12px', color: '#065F46', marginTop: '4px', padding: '4px 8px', backgroundColor: '#D1FAE5' }}>
+                        <p style={{ fontSize: '12px', color: '#065F46', marginTop: '4px', padding: '4px 8px', backgroundColor: '#D1FAE5', borderRadius: '4px' }}>
                           Justification: {exc.justification}
                         </p>
                       )}
@@ -132,19 +429,26 @@ export default function AttendanceExceptionsPage() {
                     </div>
                   </div>
 
-                  {exc.review_status === 'PENDING' && (
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => setActionModal(exc.exception_id)}>
-                        Justify
+                  <div className="flex gap-2 flex-shrink-0">
+                    {exc.review_status === 'PENDING' && (
+                      <>
+                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => setActionModal(exc.exception_id)}>
+                          Justify
+                        </button>
+                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#EF4444' }} onClick={() => handleAction(exc.exception_id, 'WARNING_ISSUED')}>
+                          Warn
+                        </button>
+                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#6B7280' }} onClick={() => handleAction(exc.exception_id, 'DISMISSED')}>
+                          Dismiss
+                        </button>
+                      </>
+                    )}
+                    {isManager && (
+                      <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 8px', color: '#EF4444' }} onClick={() => handleDelete(exc.exception_id)} title="Delete">
+                        <Trash2 size={14} />
                       </button>
-                      <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#EF4444' }} onClick={() => handleAction(exc.exception_id, 'WARNING_ISSUED')}>
-                        Warn
-                      </button>
-                      <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#6B7280' }} onClick={() => handleAction(exc.exception_id, 'DISMISSED')}>
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -153,7 +457,16 @@ export default function AttendanceExceptionsPage() {
         {filtered.length === 0 && (
           <div className="tibbna-card">
             <div className="tibbna-card-content" style={{ textAlign: 'center', padding: '32px', color: '#a3a3a3' }}>
-              No exceptions match the current filters
+              <AlertTriangle size={28} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
+              <p style={{ fontSize: '13px' }}>No exceptions match the current filters</p>
+              {(statusFilter !== 'all' || severityFilter !== 'all' || typeFilter !== 'all') && (
+                <button
+                  onClick={() => { setStatusFilter('all'); setSeverityFilter('all'); setTypeFilter('all'); }}
+                  style={{ fontSize: '12px', color: '#618FF5', marginTop: '8px', cursor: 'pointer', background: 'none', border: 'none' }}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -164,9 +477,17 @@ export default function AttendanceExceptionsPage() {
         <>
           <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setActionModal(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-md" style={{ border: '1px solid #e4e4e4' }}>
+            <div className="bg-white w-full max-w-md rounded-lg" style={{ border: '1px solid #e4e4e4' }}>
               <div style={{ padding: '16px', borderBottom: '1px solid #e4e4e4' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Add Justification</h3>
+                {(() => {
+                  const exc = exceptions.find(e => e.exception_id === actionModal);
+                  return exc ? (
+                    <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}>
+                      {exc.employee_name} — {typeLabels[exc.exception_type]} — {exc.exception_date}
+                    </p>
+                  ) : null;
+                })()}
               </div>
               <div style={{ padding: '16px' }}>
                 <textarea

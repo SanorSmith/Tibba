@@ -14,6 +14,7 @@ import type {
   Employee,
   Department,
   AttendanceTransaction,
+  AttendanceException,
   DailyAttendanceSummary,
   LeaveRequest,
   LeaveBalance,
@@ -173,6 +174,40 @@ class DataStore {
     const att = data.attendance as any;
     if (!att.transactions) att.transactions = [];
     att.transactions.push(txn);
+    return this.updateSection('attendance', data.attendance);
+  }
+
+  getAttendanceExceptions(): AttendanceException[] {
+    const data = this.getData();
+    return ((data?.attendance as any)?.exceptions ?? []) as AttendanceException[];
+  }
+
+  addAttendanceException(exc: AttendanceException): boolean {
+    const data = this.getData();
+    if (!data?.attendance) return false;
+    const att = data.attendance as any;
+    if (!att.exceptions) att.exceptions = [];
+    att.exceptions.push(exc);
+    return this.updateSection('attendance', data.attendance);
+  }
+
+  updateAttendanceException(exceptionId: string, updates: Partial<AttendanceException>): boolean {
+    const data = this.getData();
+    if (!data?.attendance) return false;
+    const att = data.attendance as any;
+    if (!att.exceptions) return false;
+    const idx = (att.exceptions as AttendanceException[]).findIndex(e => e.exception_id === exceptionId);
+    if (idx === -1) return false;
+    att.exceptions[idx] = { ...att.exceptions[idx], ...updates };
+    return this.updateSection('attendance', data.attendance);
+  }
+
+  deleteAttendanceException(exceptionId: string): boolean {
+    const data = this.getData();
+    if (!data?.attendance) return false;
+    const att = data.attendance as any;
+    if (!att.exceptions) return false;
+    att.exceptions = (att.exceptions as AttendanceException[]).filter(e => e.exception_id !== exceptionId);
     return this.updateSection('attendance', data.attendance);
   }
 
