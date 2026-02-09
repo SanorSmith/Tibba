@@ -13,6 +13,7 @@ import benefitsJson from '@/data/hr/benefits.json';
 import type {
   Employee,
   Department,
+  AttendanceTransaction,
   DailyAttendanceSummary,
   LeaveRequest,
   LeaveBalance,
@@ -159,6 +160,20 @@ class DataStore {
   getDailySummaries(): DailyAttendanceSummary[] {
     const data = this.getData();
     return (data?.attendance?.daily_summaries ?? attendanceJson.daily_summaries) as unknown as DailyAttendanceSummary[];
+  }
+
+  getAttendanceTransactions(): AttendanceTransaction[] {
+    const data = this.getData();
+    return ((data?.attendance as any)?.transactions ?? []) as AttendanceTransaction[];
+  }
+
+  addAttendanceTransaction(txn: AttendanceTransaction): boolean {
+    const data = this.getData();
+    if (!data?.attendance) return false;
+    const att = data.attendance as any;
+    if (!att.transactions) att.transactions = [];
+    att.transactions.push(txn);
+    return this.updateSection('attendance', data.attendance);
   }
 
   // ===========================================================================
