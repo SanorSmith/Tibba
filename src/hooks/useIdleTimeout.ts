@@ -13,6 +13,7 @@ export function useIdleTimeout(timeoutMinutes: number = 10) {
     timeoutRef.current = setTimeout(() => {
       console.log('🔴 User idle for', timeoutMinutes, 'minutes - logging out...');
       logout();
+      document.cookie = 'tibbna_session=; path=/; max-age=0';
       window.location.href = '/login';
     }, timeoutMinutes * 60 * 1000);
   };

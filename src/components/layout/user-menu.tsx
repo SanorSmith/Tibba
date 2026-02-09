@@ -19,7 +19,10 @@ export function UserMenu() {
 
   const handleLogout = () => {
     logout();
+    // Clear session cookie so middleware redirects to login
+    document.cookie = 'tibbna_session=; path=/; max-age=0';
     router.push('/login');
+    router.refresh();
   };
 
   if (!user) return null;
