@@ -1,9 +1,12 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText } from 'lucide-react';
-import employeesData from '@/data/hr/employees.json';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil } from 'lucide-react';
+import { dataStore } from '@/lib/dataStore';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import attendanceData from '@/data/hr/attendance.json';
 import leavesData from '@/data/hr/leaves.json';
 import trainingData from '@/data/hr/training.json';
@@ -19,7 +22,40 @@ const categoryColors: Record<string, { bg: string; text: string }> = {
 
 export default function EmployeeProfilePage() {
   const params = useParams();
-  const employee = employeesData.employees.find(e => e.id === params.id);
+  const router = useRouter();
+  const { hasRole } = useAuth();
+  const [employee, setEmployee] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const emp = dataStore.getEmployee(params.id as string);
+    setEmployee(emp ?? null);
+    setLoading(false);
+  }, [params.id]);
+
+  const handleDelete = () => {
+    if (!hasRole('HR_ADMIN')) {
+      toast.error('Only HR Admin can delete employees');
+      return;
+    }
+    const name = `${employee.first_name} ${employee.last_name}`;
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    const success = dataStore.deleteEmployee(employee.id);
+    if (success) {
+      toast.success(`${name} deleted successfully`);
+      router.push('/hr/employees');
+    } else {
+      toast.error('Failed to delete employee');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: '#618FF5' }} />
+      </div>
+    );
+  }
 
   if (!employee) {
     return (
@@ -54,7 +90,14 @@ export default function EmployeeProfilePage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary">Edit Profile</button>
+          <Link href={`/hr/employees/${employee.id}/edit`}>
+            <button className="btn-secondary flex items-center gap-1"><Pencil size={14} /> Edit</button>
+          </Link>
+          {hasRole('HR_ADMIN') && (
+            <button onClick={handleDelete} className="flex items-center gap-1" style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #FCA5A5', color: '#EF4444', fontSize: '14px', fontWeight: 500 }}>
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -143,7 +186,7 @@ export default function EmployeeProfilePage() {
           <div className="tibbna-card">
             <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><GraduationCap size={16} /> Education</h3></div>
             <div className="tibbna-card-content">
-              {employee.education.map((edu, i) => (
+              {employee.education.map((edu: any, i: number) => (
                 <div key={i} className="flex items-start gap-3 py-2" style={{ borderBottom: i < employee.education.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#E0E7FF' }}>
                     <GraduationCap size={14} style={{ color: '#4338CA' }} />
@@ -162,7 +205,7 @@ export default function EmployeeProfilePage() {
             <div className="tibbna-card">
               <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><Shield size={16} /> Licenses & Certifications</h3></div>
               <div className="tibbna-card-content">
-                {employee.licenses.map((lic, i) => (
+                {employee.licenses.map((lic: any, i: number) => (
                   <div key={i} className="flex items-start justify-between py-2" style={{ borderBottom: i < employee.licenses.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
                     <div>
                       <p style={{ fontSize: '14px', fontWeight: 500 }}>{lic.type.replace(/_/g, ' ')}</p>

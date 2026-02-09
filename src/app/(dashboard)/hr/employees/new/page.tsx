@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, User, Briefcase, Building2, CreditCard } from 'lucide-react';
-import type { EmployeeFormData } from '@/types/hr';
+import type { EmployeeFormData, Employee } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
+import { dataStore } from '@/lib/dataStore';
+import { toast } from 'sonner';
 import departmentsData from '@/data/hr/departments.json';
 import payrollData from '@/data/hr/payroll.json';
 import attendanceData from '@/data/hr/attendance.json';
@@ -82,9 +84,57 @@ export default function NewEmployeePage() {
   };
 
   const handleSubmit = () => {
-    const empNum = `EMP-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-    setGeneratedId(empNum);
-    setSubmitted(true);
+    const empNum = `EMP-2024-${String(Math.floor(Math.random() * 900) + 100)}`;
+    const dept = departmentsData.departments.find(d => d.id === form.department_id);
+
+    const newEmployee: Record<string, any> = {
+      id: empNum,
+      employee_number: empNum,
+      first_name: form.first_name,
+      last_name: form.last_name,
+      full_name_arabic: form.full_name_arabic || '',
+      date_of_birth: form.date_of_birth,
+      gender: form.gender,
+      marital_status: form.marital_status,
+      nationality: form.nationality,
+      national_id: form.national_id,
+      email: form.email,
+      email_work: form.email,
+      phone: form.phone,
+      phone_mobile: form.phone,
+      address: form.address || '',
+      blood_type: '',
+      employment_type: form.employment_type,
+      employee_category: form.employee_category,
+      job_title: form.job_title,
+      department_id: form.department_id,
+      department_name: dept?.name || '',
+      reporting_to: null,
+      grade_id: form.grade_id || '',
+      date_of_hire: form.date_of_hire,
+      employment_status: 'ACTIVE' as const,
+      basic_salary: form.basic_salary || 0,
+      photo_url: '',
+      shift_id: form.shift_id || '',
+      bank_account_number: form.bank_account_number || '',
+      bank_name: form.bank_name || '',
+      education: [],
+      licenses: [],
+    };
+
+    try {
+      const success = dataStore.addEmployee(newEmployee as unknown as Employee);
+      if (success) {
+        setGeneratedId(empNum);
+        setSubmitted(true);
+        toast.success(`${form.first_name} ${form.last_name} added successfully`);
+      } else {
+        toast.error('Failed to save employee');
+      }
+    } catch (error) {
+      console.error('Create employee error:', error);
+      toast.error('Error creating employee');
+    }
   };
 
   if (submitted) {

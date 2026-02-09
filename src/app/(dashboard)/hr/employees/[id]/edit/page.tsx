@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import type { EmployeeFormData } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
-import employeesData from '@/data/hr/employees.json';
+import { dataStore } from '@/lib/dataStore';
+import { toast } from 'sonner';
 import departmentsData from '@/data/hr/departments.json';
 import payrollData from '@/data/hr/payroll.json';
 import attendanceData from '@/data/hr/attendance.json';
@@ -14,42 +15,54 @@ import attendanceData from '@/data/hr/attendance.json';
 export default function EditEmployeePage() {
   const params = useParams();
   const router = useRouter();
-  const employee = employeesData.employees.find(e => e.id === params.id);
-
-  const [form, setForm] = useState<EmployeeFormData>(() => {
-    if (!employee) return {} as EmployeeFormData;
-    const emp = employee as any;
-    return {
-      first_name: emp.first_name,
-      middle_name: '',
-      last_name: emp.last_name,
-      full_name_arabic: emp.full_name_arabic || '',
-      date_of_birth: emp.date_of_birth,
-      gender: emp.gender as 'MALE' | 'FEMALE',
-      marital_status: (emp.marital_status || 'SINGLE') as 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED',
-      nationality: emp.nationality,
-      national_id: emp.national_id,
-      email: emp.email_work || emp.email || '',
-      phone: emp.phone_mobile || emp.phone || '',
-      address: emp.address || '',
-      employment_type: emp.employment_type as 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'TEMPORARY',
-      employee_category: emp.employee_category as 'MEDICAL_STAFF' | 'NURSING' | 'ADMINISTRATIVE' | 'SUPPORT' | 'TECHNICAL',
-      job_title: emp.job_title,
-      department_id: emp.department_id,
-      grade_id: emp.grade_id || '',
-      date_of_hire: emp.date_of_hire,
-      shift_id: emp.shift_id || '',
-      bank_account_number: '',
-      bank_name: '',
-      basic_salary: emp.basic_salary,
-      emergency_contact_name: '',
-      emergency_contact_phone: '',
-      emergency_contact_relationship: '',
-    };
-  });
-
+  const [employee, setEmployee] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<EmployeeFormData>({} as EmployeeFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const emp = dataStore.getEmployee(params.id as string) as any;
+    setEmployee(emp ?? null);
+    if (emp) {
+      setForm({
+        first_name: emp.first_name,
+        middle_name: '',
+        last_name: emp.last_name,
+        full_name_arabic: emp.full_name_arabic || '',
+        date_of_birth: emp.date_of_birth,
+        gender: emp.gender as 'MALE' | 'FEMALE',
+        marital_status: (emp.marital_status || 'SINGLE') as 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED',
+        nationality: emp.nationality,
+        national_id: emp.national_id,
+        email: emp.email_work || emp.email || '',
+        phone: emp.phone_mobile || emp.phone || '',
+        address: emp.address || '',
+        employment_type: emp.employment_type as 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'TEMPORARY',
+        employee_category: emp.employee_category as 'MEDICAL_STAFF' | 'NURSING' | 'ADMINISTRATIVE' | 'SUPPORT' | 'TECHNICAL',
+        job_title: emp.job_title,
+        department_id: emp.department_id,
+        grade_id: emp.grade_id || '',
+        date_of_hire: emp.date_of_hire,
+        shift_id: emp.shift_id || '',
+        bank_account_number: emp.bank_account_number || '',
+        bank_name: emp.bank_name || '',
+        basic_salary: emp.basic_salary,
+        emergency_contact_name: '',
+        emergency_contact_phone: '',
+        emergency_contact_relationship: '',
+      });
+    }
+    setLoading(false);
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2" style={{ borderColor: '#618FF5' }} />
+      </div>
+    );
+  }
 
   if (!employee) {
     return (
@@ -78,7 +91,48 @@ export default function EditEmployeePage() {
   };
 
   const handleSave = () => {
-    if (validate()) setSaved(true);
+    if (!validate()) return;
+
+    const dept = departmentsData.departments.find(d => d.id === form.department_id);
+    const updates: Record<string, any> = {
+      first_name: form.first_name,
+      last_name: form.last_name,
+      full_name_arabic: form.full_name_arabic || '',
+      date_of_birth: form.date_of_birth,
+      gender: form.gender,
+      marital_status: form.marital_status,
+      nationality: form.nationality,
+      national_id: form.national_id,
+      email: form.email,
+      email_work: form.email,
+      phone: form.phone,
+      phone_mobile: form.phone,
+      address: form.address || '',
+      employment_type: form.employment_type,
+      employee_category: form.employee_category,
+      job_title: form.job_title,
+      department_id: form.department_id,
+      department_name: dept?.name || employee.department_name,
+      grade_id: form.grade_id || '',
+      date_of_hire: form.date_of_hire,
+      shift_id: form.shift_id || '',
+      basic_salary: form.basic_salary || 0,
+      bank_account_number: form.bank_account_number || '',
+      bank_name: form.bank_name || '',
+    };
+
+    try {
+      const success = dataStore.updateEmployee(employee.id, updates);
+      if (success) {
+        setSaved(true);
+        toast.success(`${form.first_name} ${form.last_name} updated successfully`);
+      } else {
+        toast.error('Failed to update employee');
+      }
+    } catch (error) {
+      console.error('Update employee error:', error);
+      toast.error('Error updating employee');
+    }
   };
 
   if (saved) {
