@@ -303,6 +303,20 @@ export interface LeaveRequest {
   approved_at?: string;
   is_half_day?: boolean;
   supporting_document?: string;
+  contact_number?: string;
+  approver_3_status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approver_1_name?: string;
+  approver_1_date?: string;
+  approver_1_remarks?: string;
+  approver_2_name?: string;
+  approver_2_date?: string;
+  approver_2_remarks?: string;
+  approver_3_name?: string;
+  approver_3_date?: string;
+  approver_3_remarks?: string;
+  rejected_by?: string;
+  rejected_at?: string;
+  last_updated_at?: string;
 }
 
 export interface LeaveBalance {
