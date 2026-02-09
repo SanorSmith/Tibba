@@ -276,6 +276,24 @@ class DataStore {
     return (data?.leaves?.leave_balances ?? leavesJson.leave_balances) as unknown as LeaveBalance[];
   }
 
+  // Get raw leave balance object for an employee (nested: annual/sick/emergency)
+  getRawLeaveBalance(employeeId: string): any | null {
+    const balances = this.getLeaveBalances() as any[];
+    return balances.find((b: any) => b.employee_id === employeeId) ?? null;
+  }
+
+  // Update a specific leave-type bucket inside the nested balance object
+  updateLeaveBalanceByType(employeeId: string, typeKey: string, updates: Record<string, number>): boolean {
+    const data = this.getData();
+    if (!data?.leaves?.leave_balances) return false;
+    const arr = data.leaves.leave_balances as any[];
+    const idx = arr.findIndex((b: any) => b.employee_id === employeeId);
+    if (idx === -1) return false;
+    if (!arr[idx][typeKey]) arr[idx][typeKey] = {};
+    arr[idx][typeKey] = { ...arr[idx][typeKey], ...updates };
+    return this.updateSection('leaves', data.leaves);
+  }
+
   // ===========================================================================
   // PAYROLL
   // ===========================================================================
