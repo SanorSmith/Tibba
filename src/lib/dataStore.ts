@@ -26,6 +26,8 @@ import type {
   TrainingProgram,
   TrainingSession,
   PerformanceReview,
+  BenefitPlan,
+  BenefitEnrollment,
 } from '@/types/hr';
 
 // =============================================================================
@@ -371,6 +373,84 @@ class DataStore {
   getPerformanceReviews(): PerformanceReview[] {
     const data = this.getData();
     return (data?.performance?.reviews ?? performanceJson.reviews) as unknown as PerformanceReview[];
+  }
+
+  // ===========================================================================
+  // BENEFITS
+  // ===========================================================================
+
+  getBenefitPlans(): BenefitPlan[] {
+    const data = this.getData();
+    return (data?.benefits?.benefit_plans ?? benefitsJson.benefit_plans) as unknown as BenefitPlan[];
+  }
+
+  getBenefitPlan(id: string): BenefitPlan | undefined {
+    return this.getBenefitPlans().find(p => p.id === id);
+  }
+
+  addBenefitPlan(plan: BenefitPlan): boolean {
+    const data = this.getData();
+    if (!data?.benefits) return false;
+    const list = [...this.getBenefitPlans(), plan];
+    data.benefits.benefit_plans = list as any;
+    return this.saveData(data);
+  }
+
+  updateBenefitPlan(id: string, updates: Partial<BenefitPlan>): boolean {
+    const data = this.getData();
+    if (!data?.benefits) return false;
+    const list = this.getBenefitPlans();
+    const idx = list.findIndex(p => p.id === id);
+    if (idx === -1) return false;
+    list[idx] = { ...list[idx], ...updates };
+    data.benefits.benefit_plans = list as any;
+    return this.saveData(data);
+  }
+
+  deleteBenefitPlan(id: string): boolean {
+    const data = this.getData();
+    if (!data?.benefits) return false;
+    data.benefits.benefit_plans = this.getBenefitPlans().filter(p => p.id !== id) as any;
+    return this.saveData(data);
+  }
+
+  getBenefitEnrollments(): BenefitEnrollment[] {
+    const data = this.getData();
+    return (data?.benefits?.enrollments ?? benefitsJson.enrollments) as unknown as BenefitEnrollment[];
+  }
+
+  getBenefitEnrollment(id: string): BenefitEnrollment | undefined {
+    return this.getBenefitEnrollments().find(e => e.id === id);
+  }
+
+  getEmployeeBenefitEnrollments(employeeId: string): BenefitEnrollment[] {
+    return this.getBenefitEnrollments().filter(e => e.employee_id === employeeId);
+  }
+
+  addBenefitEnrollment(enrollment: BenefitEnrollment): boolean {
+    const data = this.getData();
+    if (!data?.benefits) return false;
+    const list = [...this.getBenefitEnrollments(), enrollment];
+    data.benefits.enrollments = list as any;
+    return this.saveData(data);
+  }
+
+  updateBenefitEnrollment(id: string, updates: Partial<BenefitEnrollment>): boolean {
+    const data = this.getData();
+    if (!data?.benefits) return false;
+    const list = this.getBenefitEnrollments();
+    const idx = list.findIndex(e => e.id === id);
+    if (idx === -1) return false;
+    list[idx] = { ...list[idx], ...updates };
+    data.benefits.enrollments = list as any;
+    return this.saveData(data);
+  }
+
+  deleteBenefitEnrollment(id: string): boolean {
+    const data = this.getData();
+    if (!data?.benefits) return false;
+    data.benefits.enrollments = this.getBenefitEnrollments().filter(e => e.id !== id) as any;
+    return this.saveData(data);
   }
 
   // ===========================================================================

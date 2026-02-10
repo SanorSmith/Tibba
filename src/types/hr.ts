@@ -640,12 +640,15 @@ export interface BenefitPlan {
   id: string;
   name: string;
   type: 'HEALTH_INSURANCE' | 'TRANSPORT' | 'HOUSING' | 'MEAL' | 'MOBILE' | 'EDUCATION' | 'LIFE_INSURANCE';
-  category: 'MANDATORY' | 'OPTIONAL' | 'EMPLOYER_PAID';
+  category: 'MANDATORY' | 'OPTIONAL' | 'EMPLOYER_PAID' | 'SHARED_COST';
   description?: string;
   provider?: string;
-  employee_cost: number;
-  employer_cost: number;
-  coverage?: string;
+  cost_employee: number;
+  cost_employer: number;
+  employee_cost?: number;
+  employer_cost?: number;
+  coverage?: number;
+  eligible?: string[];
   eligible_categories?: string[];
   is_active: boolean;
 }
@@ -658,18 +661,29 @@ export interface BenefitEnrollment {
   plan_id: string;
   plan_name: string;
   plan_type?: string;
-  enrollment_date: string;
+  start_date?: string;
+  end_date?: string;
+  enrollment_date?: string;
   status: 'ACTIVE' | 'CANCELLED' | 'PENDING';
-  employee_contribution: number;
-  employer_contribution: number;
+  employee_contribution?: number;
+  employer_contribution?: number;
   dependents?: number;
+  vehicle_number?: string;
+  notes?: string;
 }
 
 export interface BenefitsSummary {
   total_enrolled: number;
-  total_employer_cost_monthly: number;
-  total_employee_cost_monthly: number;
-  plans_count: number;
+  health_insurance_enrolled?: number;
+  life_insurance_enrolled?: number;
+  transport_benefit_enrolled?: number;
+  housing_benefit_enrolled?: number;
+  meal_benefit_enrolled?: number;
+  total_employer_cost_monthly?: number;
+  total_employee_cost_monthly?: number;
+  monthly_employer_cost?: number;
+  monthly_employee_cost?: number;
+  plans_count?: number;
 }
 
 // ============= FORM INPUT TYPES =============
