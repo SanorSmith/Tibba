@@ -98,10 +98,15 @@ export interface Department {
   name: string;
   name_arabic?: string;
   type: 'CLINICAL' | 'SUPPORT' | 'ADMINISTRATIVE';
+  parent_id?: string | null;
   parent_department_id?: string;
+  head_employee_id?: string;
   head_id?: string;
   head_name?: string;
+  location?: string;
+  phone_ext?: string;
   staff_count?: number;
+  budget_annual?: number;
   budget?: number;
   is_active?: boolean;
 }

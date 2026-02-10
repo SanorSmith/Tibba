@@ -154,6 +154,34 @@ class DataStore {
     return this.getData()?.departments ?? (departmentsJson.departments as unknown as Department[]);
   }
 
+  getDepartment(id: string): Department | undefined {
+    return this.getDepartments().find(d => d.id === id);
+  }
+
+  addDepartment(dept: Department): boolean {
+    const data = this.getData();
+    if (!data) return false;
+    const list = [...this.getDepartments(), dept];
+    return this.updateSection('departments', list);
+  }
+
+  updateDepartment(id: string, updates: Partial<Department>): boolean {
+    const data = this.getData();
+    if (!data) return false;
+    const list = this.getDepartments();
+    const idx = list.findIndex(d => d.id === id);
+    if (idx === -1) return false;
+    list[idx] = { ...list[idx], ...updates };
+    return this.updateSection('departments', list);
+  }
+
+  deleteDepartment(id: string): boolean {
+    const data = this.getData();
+    if (!data) return false;
+    const list = this.getDepartments().filter(d => d.id !== id);
+    return this.updateSection('departments', list);
+  }
+
   // ===========================================================================
   // ATTENDANCE
   // ===========================================================================
