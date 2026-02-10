@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil, Heart } from 'lucide-react';
 import { dataStore } from '@/lib/dataStore';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -72,6 +72,7 @@ export default function EmployeeProfilePage() {
   const empTraining = trainingData.employee_training_records.filter(t => t.employee_id === employee.id);
   const empReview = performanceData.reviews.find(r => r.employee_id === employee.id);
   const empBalance = leavesData.leave_balances.find(b => b.employee_id === employee.id);
+  const empBenefits = dataStore.getEmployeeBenefitEnrollments(employee.id).filter((b: any) => b.status === 'ACTIVE');
 
   const yearsOfService = Math.floor((new Date().getTime() - new Date(employee.date_of_hire).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
 
@@ -319,6 +320,25 @@ export default function EmployeeProfilePage() {
                 {empReview.recommendation && (
                   <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}>{empReview.recommendation}</p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Benefits */}
+          {empBenefits.length > 0 && (
+            <div className="tibbna-card">
+              <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><Heart size={16} /> Benefits ({empBenefits.length})</h3></div>
+              <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {empBenefits.map((b: any) => (
+                  <div key={b.id} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <div className="flex justify-between items-center">
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{b.plan_name}</span>
+                      <span className="tibbna-badge" style={{ backgroundColor: '#D1FAE5', color: '#065F46', fontSize: '10px' }}>{b.status}</span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#a3a3a3' }}>Since {b.start_date || '-'}{b.dependents ? ` · ${b.dependents} dependents` : ''}</p>
+                  </div>
+                ))}
+                <Link href="/hr/benefits" style={{ fontSize: '12px', color: '#618FF5', fontWeight: 600, marginTop: '4px' }}>Manage Benefits →</Link>
               </div>
             </div>
           )}
