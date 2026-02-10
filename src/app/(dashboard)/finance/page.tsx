@@ -66,21 +66,21 @@ export default function FinancePage() {
   const recentInvoices = [...invoices].sort((a, b) => b.invoice_date.localeCompare(a.invoice_date)).slice(0, 5);
 
   const kpis = [
-    { label: 'Total Revenue', value: `${fmt(stats.totalRevenue)} IQD`, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Amount Collected', value: `${fmt(stats.totalPaid)} IQD`, icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Outstanding Balance', value: `${fmt(stats.totalDue)} IQD`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Insurance Receivable', value: `${fmt(stats.insuranceDue)} IQD`, icon: Shield, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Pending Shares', value: `${fmt(stats.pendingShares)} IQD`, icon: Handshake, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Total Purchases', value: `${fmt(stats.totalPurchases)} IQD`, icon: ShoppingCart, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Stock Value', value: `${fmt(stats.totalStockValue)} IQD`, icon: Warehouse, color: 'text-teal-600', bg: 'bg-teal-50' },
-    { label: 'Low Stock Items', value: `${stats.lowStockCount} items`, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+    { label: 'Total Revenue', value: `${fmt(stats.totalRevenue)} IQD`, icon: TrendingUp, iconColor: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Amount Collected', value: `${fmt(stats.totalPaid)} IQD`, icon: DollarSign, iconColor: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Outstanding Balance', value: `${fmt(stats.totalDue)} IQD`, icon: Clock, iconColor: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Insurance Receivable', value: `${fmt(stats.insuranceDue)} IQD`, icon: Shield, iconColor: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Pending Shares', value: `${fmt(stats.pendingShares)} IQD`, icon: Handshake, iconColor: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Purchases', value: `${fmt(stats.totalPurchases)} IQD`, icon: ShoppingCart, iconColor: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Stock Value', value: `${fmt(stats.totalStockValue)} IQD`, icon: Warehouse, iconColor: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'Low Stock Items', value: `${stats.lowStockCount} items`, icon: AlertTriangle, iconColor: 'text-rose-600', bg: 'bg-rose-50' },
   ];
 
   const quickActions = [
-    { label: 'New Invoice', href: '/finance/invoices/new', icon: Plus, color: 'bg-emerald-600' },
-    { label: 'New Patient', href: '/finance/patients', icon: Users, color: 'bg-blue-600' },
-    { label: 'Purchase Request', href: '/finance/purchases', icon: ShoppingCart, color: 'bg-orange-600' },
-    { label: 'View Reports', href: '/finance/reports', icon: BarChart3, color: 'bg-purple-600' },
+    { label: 'New Invoice', href: '/finance/invoices/new', icon: Plus, color: 'bg-blue-400 hover:bg-blue-500' },
+    { label: 'New Patient', href: '/finance/patients', icon: Users, color: 'bg-blue-400 hover:bg-blue-500' },
+    { label: 'Purchase Request', href: '/finance/purchases', icon: ShoppingCart, color: 'bg-blue-400 hover:bg-blue-500' },
+    { label: 'View Reports', href: '/finance/reports', icon: BarChart3, color: 'bg-blue-400 hover:bg-blue-500' },
   ];
 
   const navCards = [
@@ -128,10 +128,10 @@ export default function FinancePage() {
         {kpis.map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className={`${k.bg} p-1.5 rounded`}><k.icon size={14} className={k.color} /></div>
+              <div className={`${k.bg} p-1.5 rounded`}><k.icon size={14} className={k.iconColor} /></div>
               <span className="text-xs text-gray-500 font-medium">{k.label}</span>
             </div>
-            <div className={`text-sm lg:text-base font-bold ${k.color}`}>{k.value}</div>
+            <div className="text-sm lg:text-base font-bold text-gray-900">{k.value}</div>
           </div>
         ))}
       </div>
@@ -171,8 +171,8 @@ export default function FinancePage() {
           <div className="bg-white rounded-lg border p-4">
             <h3 className="font-semibold text-gray-900 mb-3 text-sm">Invoice Summary</h3>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-gray-500">Paid</span><span className="font-medium text-emerald-600">{stats.paidCount}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-gray-500">Pending/Unpaid</span><span className="font-medium text-amber-600">{stats.pendingCount}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">Paid</span><span className="font-medium text-gray-900">{stats.paidCount}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">Pending/Unpaid</span><span className="font-medium text-gray-600">{stats.pendingCount}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span><span className="font-bold">{stats.invoiceCount}</span></div>
             </div>
           </div>

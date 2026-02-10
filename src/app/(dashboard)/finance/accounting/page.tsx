@@ -43,9 +43,9 @@ export default function AccountingPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Accounts', value: accounts.length, color: 'text-blue-600' },
-          { label: 'Cost Centers', value: costCenters.length, color: 'text-purple-600' },
-          { label: 'Journal Entries', value: journals.length, color: 'text-emerald-600' },
+          { label: 'Accounts', value: accounts.length, color: 'text-gray-900' },
+          { label: 'Cost Centers', value: costCenters.length, color: 'text-gray-900' },
+          { label: 'Journal Entries', value: journals.length, color: 'text-gray-900' },
           { label: 'Posted Entries', value: journals.filter(j => j.posted).length, color: 'text-gray-900' },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
@@ -152,8 +152,8 @@ export default function AccountingPage() {
                     <td className="px-4 py-3 text-gray-600">{je.entry_date}</td>
                     <td className="px-4 py-3 max-w-[250px] truncate">{je.description_ar}</td>
                     <td className="px-4 py-3 text-center"><span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium">{je.entry_type}</span></td>
-                    <td className="px-4 py-3 text-right font-medium text-blue-600">{fmt(je.total_debits)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-red-600">{fmt(je.total_credits)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">{fmt(je.total_debits)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-600">{fmt(je.total_credits)}</td>
                     <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${je.status === 'POSTED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{je.status}</span></td>
                     <td className="px-4 py-3 text-center"><button onClick={() => setViewJE(je)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button></td>
                   </tr>
@@ -186,16 +186,16 @@ export default function AccountingPage() {
                   {financeStore.getLinesByEntry(viewJE.entry_id).map(line => (
                     <tr key={line.line_id}>
                       <td className="px-3 py-2"><div className="font-medium">{line.account_name_ar}</div><div className="text-xs text-gray-400">{line.account_number}</div>{line.line_description_ar && <div className="text-xs text-gray-500">{line.line_description_ar}</div>}</td>
-                      <td className="px-3 py-2 text-right font-medium text-blue-600">{line.debit_amount > 0 ? fmt(line.debit_amount) : ''}</td>
-                      <td className="px-3 py-2 text-right font-medium text-red-600">{line.credit_amount > 0 ? fmt(line.credit_amount) : ''}</td>
+                      <td className="px-3 py-2 text-right font-medium text-gray-900">{line.debit_amount > 0 ? fmt(line.debit_amount) : ''}</td>
+                      <td className="px-3 py-2 text-right font-medium text-gray-600">{line.credit_amount > 0 ? fmt(line.credit_amount) : ''}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="bg-gray-50 border-t font-bold">
                   <tr>
                     <td className="px-3 py-2">Total</td>
-                    <td className="px-3 py-2 text-right text-blue-600">{fmt(viewJE.total_debits)}</td>
-                    <td className="px-3 py-2 text-right text-red-600">{fmt(viewJE.total_credits)}</td>
+                    <td className="px-3 py-2 text-right text-gray-900">{fmt(viewJE.total_debits)}</td>
+                    <td className="px-3 py-2 text-right text-gray-600">{fmt(viewJE.total_credits)}</td>
                   </tr>
                 </tfoot>
               </table>

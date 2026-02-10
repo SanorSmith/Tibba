@@ -198,7 +198,7 @@ export default function NewInvoicePage() {
           <div className="bg-white rounded-lg border p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-sm">Services</h2>
-              <button onClick={addLine} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-blue-700"><Plus size={12} /> Add Service</button>
+              <button onClick={addLine} className="text-xs bg-blue-400 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-blue-500"><Plus size={12} /> Add Service</button>
             </div>
             {lines.length === 0 && <p className="text-sm text-gray-400 text-center py-4">No services added yet</p>}
             {lines.map((line, idx) => (
@@ -253,12 +253,12 @@ export default function NewInvoicePage() {
             <h2 className="font-semibold text-sm mb-4 flex items-center gap-2"><Calculator size={14} /> Invoice Summary</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{fmt(subtotal)} IQD</span></div>
-              {discountPct > 0 && <div className="flex justify-between text-red-500"><span>Discount ({discountPct}%)</span><span>-{fmt(discountAmount)} IQD</span></div>}
+              {discountPct > 0 && <div className="flex justify-between text-gray-600"><span>Discount ({discountPct}%)</span><span>-{fmt(discountAmount)} IQD</span></div>}
               <div className="flex justify-between font-bold border-t pt-2"><span>Total</span><span>{fmt(totalAmount)} IQD</span></div>
-              {insuranceCoverage > 0 && <div className="flex justify-between text-purple-600"><span>Insurance ({insurancePct}%)</span><span>-{fmt(insuranceCoverage)} IQD</span></div>}
-              <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Patient Pays</span><span className="text-emerald-600">{fmt(patientResponsibility)} IQD</span></div>
+              {insuranceCoverage > 0 && <div className="flex justify-between text-gray-600"><span>Insurance ({insurancePct}%)</span><span>-{fmt(insuranceCoverage)} IQD</span></div>}
+              <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Patient Pays</span><span className="text-gray-900">{fmt(patientResponsibility)} IQD</span></div>
             </div>
-            <button onClick={handleSubmit} className="w-full mt-4 bg-emerald-600 text-white py-3 rounded-lg font-medium hover:bg-emerald-700 transition">Create Invoice</button>
+            <button onClick={handleSubmit} className="w-full mt-4 bg-blue-400 text-white py-3 rounded-lg font-medium hover:bg-blue-500 transition">Create Invoice</button>
           </div>
         </div>
       </div>

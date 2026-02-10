@@ -49,9 +49,9 @@ export default function InventoryPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Stock Records', value: stats.totalItems, color: 'text-gray-900' },
-          { label: 'Total Value', value: `${fmt(stats.totalValue)} IQD`, color: 'text-blue-600' },
-          { label: 'Low Stock', value: stats.lowStock, color: 'text-amber-600' },
-          { label: 'Warehouses', value: stats.warehouseCount, color: 'text-teal-600' },
+          { label: 'Total Value', value: `${fmt(stats.totalValue)} IQD`, color: 'text-gray-900' },
+          { label: 'Low Stock', value: stats.lowStock, color: 'text-gray-600' },
+          { label: 'Warehouses', value: stats.warehouseCount, color: 'text-gray-900' },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
             <div className="text-xs text-gray-500">{k.label}</div>

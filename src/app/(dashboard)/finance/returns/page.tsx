@@ -58,15 +58,15 @@ export default function ReturnsPage() {
     <div className="p-4 lg:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-gray-900">Returns & Refunds</h1><p className="text-gray-500 text-sm">Manage invoice returns and refund processing</p></div>
-        <button onClick={() => setShowCreate(true)} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-red-700 w-fit"><Plus size={16} /> New Return</button>
+        <button onClick={() => setShowCreate(true)} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit"><Plus size={16} /> New Return</button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Returns', value: stats.total, color: 'text-gray-900' },
-          { label: 'Total Amount', value: `${fmt(stats.totalAmount)} IQD`, color: 'text-red-600' },
-          { label: 'Processed', value: stats.processed, color: 'text-emerald-600' },
-          { label: 'Pending', value: stats.pending, color: 'text-amber-600' },
+          { label: 'Total Amount', value: `${fmt(stats.totalAmount)} IQD`, color: 'text-gray-900' },
+          { label: 'Processed', value: stats.processed, color: 'text-gray-900' },
+          { label: 'Pending', value: stats.pending, color: 'text-gray-600' },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
             <div className="text-xs text-gray-500">{k.label}</div>
@@ -95,7 +95,7 @@ export default function ReturnsPage() {
                 <td className="px-4 py-3 text-gray-600">{r.return_date}</td>
                 <td className="px-4 py-3 font-mono text-xs">{r.original_invoice_number}</td>
                 <td className="px-4 py-3">{r.patient_name_ar}</td>
-                <td className="px-4 py-3 text-right font-bold text-red-600">{fmt(r.total_return_amount)}</td>
+                <td className="px-4 py-3 text-right font-bold text-gray-900">{fmt(r.total_return_amount)}</td>
                 <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(r.refund_status)}`}>{r.refund_status}</span></td>
                 <td className="px-4 py-3 text-center"><button onClick={() => setViewRet(r)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button></td>
               </tr>
@@ -114,7 +114,7 @@ export default function ReturnsPage() {
               <div><span className="text-gray-500 block text-xs">Patient</span>{viewRet.patient_name_ar}</div>
               <div><span className="text-gray-500 block text-xs">Date</span>{viewRet.return_date}</div>
               <div><span className="text-gray-500 block text-xs">Original Invoice</span>{viewRet.original_invoice_number}</div>
-              <div><span className="text-gray-500 block text-xs">Amount</span><span className="font-bold text-red-600">{fmt(viewRet.total_return_amount)} IQD</span></div>
+              <div><span className="text-gray-500 block text-xs">Amount</span><span className="font-bold text-gray-900">{fmt(viewRet.total_return_amount)} IQD</span></div>
               <div className="col-span-2"><span className="text-gray-500 block text-xs">Reason</span>{viewRet.return_reason_ar}</div>
               {viewRet.refund_method && <div><span className="text-gray-500 block text-xs">Refund Method</span>{viewRet.refund_method}</div>}
               {viewRet.refund_date && <div><span className="text-gray-500 block text-xs">Refund Date</span>{viewRet.refund_date}</div>}
@@ -133,7 +133,7 @@ export default function ReturnsPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               {viewRet.refund_status === 'PENDING' || viewRet.refund_status === 'APPROVED' ? (
-                <button onClick={() => handleApprove(viewRet)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Process Refund</button>
+                <button onClick={() => handleApprove(viewRet)} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Process Refund</button>
               ) : null}
               <button onClick={() => setViewRet(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
             </div>
@@ -153,7 +153,7 @@ export default function ReturnsPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleCreate} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Return</button>
+              <button onClick={handleCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Return</button>
             </div>
           </div>
         </div>

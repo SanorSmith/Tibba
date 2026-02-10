@@ -122,7 +122,7 @@ export default function ReportsPage() {
             {Object.entries(incomeData.revenue).filter(([k]) => k !== 'total').map(([k, v]) => (
               <Row key={k} label={k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} value={v as number} indent />
             ))}
-            <Row label="Total Revenue" value={incomeData.revenue.total} bold color="text-emerald-600" />
+            <Row label="Total Revenue" value={incomeData.revenue.total} bold color="text-gray-900" />
           </Section>
           <Section title="Expenses">
             <Row label="Salaries & Wages" value={incomeData.expenses.salaries} indent />
@@ -132,10 +132,10 @@ export default function ReportsPage() {
             <Row label="Depreciation" value={incomeData.expenses.depreciation} indent />
             <Row label="Maintenance" value={incomeData.expenses.maintenance} indent />
             <Row label="Other Expenses" value={incomeData.expenses.other} indent />
-            <Row label="Total Expenses" value={incomeData.expenses.total} bold color="text-red-600" />
+            <Row label="Total Expenses" value={incomeData.expenses.total} bold color="text-gray-900" />
           </Section>
           <div className="bg-white rounded-lg border p-4">
-            <Row label="Net Income" value={incomeData.netIncome} bold color={incomeData.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'} />
+            <Row label="Net Income" value={incomeData.netIncome} bold color="text-gray-900" />
           </div>
         </div>
       )}
@@ -159,9 +159,9 @@ export default function ReportsPage() {
             <Row label="Furniture & Fixtures" value={balanceData.assets.fixed.furniture} indent />
             <Row label="Vehicles" value={balanceData.assets.fixed.vehicles} indent />
             <Row label="Building" value={balanceData.assets.fixed.building} indent />
-            <Row label="Accumulated Depreciation" value={balanceData.assets.fixed.accum_dep} indent color="text-red-500" />
+            <Row label="Accumulated Depreciation" value={balanceData.assets.fixed.accum_dep} indent color="text-gray-600" />
             <Row label="Total Non-Current Assets" value={Object.values(balanceData.assets.fixed).reduce((s, v) => s + v, 0)} bold />
-            <Row label="TOTAL ASSETS" value={Object.values(balanceData.assets.current).reduce((s, v) => s + v, 0) + Object.values(balanceData.assets.fixed).reduce((s, v) => s + v, 0)} bold color="text-blue-600" />
+            <Row label="TOTAL ASSETS" value={Object.values(balanceData.assets.current).reduce((s, v) => s + v, 0) + Object.values(balanceData.assets.fixed).reduce((s, v) => s + v, 0)} bold color="text-gray-900" />
           </Section>
           <Section title="Liabilities">
             <div className="text-xs font-semibold text-gray-500 mb-1 mt-1">Current Liabilities</div>
@@ -172,13 +172,13 @@ export default function ReportsPage() {
             <Row label="Total Current Liabilities" value={Object.values(balanceData.liabilities.current).reduce((s, v) => s + v, 0)} bold />
             <div className="text-xs font-semibold text-gray-500 mb-1 mt-3">Long-term Liabilities</div>
             <Row label="Long-term Loans" value={balanceData.liabilities.long_term.loans} indent />
-            <Row label="TOTAL LIABILITIES" value={Object.values(balanceData.liabilities.current).reduce((s, v) => s + v, 0) + balanceData.liabilities.long_term.loans} bold color="text-red-600" />
+            <Row label="TOTAL LIABILITIES" value={Object.values(balanceData.liabilities.current).reduce((s, v) => s + v, 0) + balanceData.liabilities.long_term.loans} bold color="text-gray-900" />
           </Section>
           <Section title="Equity">
             <Row label="Paid-in Capital" value={balanceData.equity.capital} indent />
             <Row label="Retained Earnings" value={balanceData.equity.retained} indent />
             <Row label="Current Year Profit" value={balanceData.equity.current_profit} indent />
-            <Row label="TOTAL EQUITY" value={Object.values(balanceData.equity).reduce((s, v) => s + v, 0)} bold color="text-purple-600" />
+            <Row label="TOTAL EQUITY" value={Object.values(balanceData.equity).reduce((s, v) => s + v, 0)} bold color="text-gray-900" />
           </Section>
         </div>
       )}
@@ -192,23 +192,23 @@ export default function ReportsPage() {
           <Section title="Operating Activities">
             <Row label="Net Income" value={incomeData?.netIncome || 0} indent />
             <Row label="Depreciation (add back)" value={35000000} indent />
-            <Row label="Change in Receivables" value={-23715000} indent color="text-red-500" />
-            <Row label="Change in Inventory" value={-61450000} indent color="text-red-500" />
-            <Row label="Change in Payables" value={60250000} indent color="text-emerald-500" />
+            <Row label="Change in Receivables" value={-23715000} indent color="text-gray-600" />
+            <Row label="Change in Inventory" value={-61450000} indent color="text-gray-600" />
+            <Row label="Change in Payables" value={60250000} indent />
             <Row label="Net Cash from Operations" value={(incomeData?.netIncome || 0) + 35000000 - 23715000 - 61450000 + 60250000} bold />
           </Section>
           <Section title="Investing Activities">
-            <Row label="Equipment Purchases" value={-150000000} indent color="text-red-500" />
+            <Row label="Equipment Purchases" value={-150000000} indent color="text-gray-600" />
             <Row label="Net Cash from Investing" value={-150000000} bold />
           </Section>
           <Section title="Financing Activities">
-            <Row label="Loan Proceeds" value={500000000} indent color="text-emerald-500" />
+            <Row label="Loan Proceeds" value={500000000} indent />
             <Row label="Net Cash from Financing" value={500000000} bold />
           </Section>
           <div className="bg-white rounded-lg border p-4 space-y-1">
             <Row label="Net Change in Cash" value={(incomeData?.netIncome || 0) + 35000000 - 23715000 - 61450000 + 60250000 - 150000000 + 500000000} bold />
             <Row label="Beginning Cash" value={0} indent />
-            <Row label="Ending Cash" value={185000000} bold color="text-blue-600" />
+            <Row label="Ending Cash" value={185000000} bold color="text-gray-900" />
           </div>
         </div>
       )}
@@ -226,8 +226,8 @@ export default function ReportsPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Account #</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Account Name</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600">Type</th>
-                  <th className="text-right px-4 py-3 font-medium text-blue-600">Debit (IQD)</th>
-                  <th className="text-right px-4 py-3 font-medium text-red-600">Credit (IQD)</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Debit (IQD)</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Credit (IQD)</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -236,16 +236,16 @@ export default function ReportsPage() {
                     <td className="px-4 py-2 font-mono text-xs">{row.number}</td>
                     <td className="px-4 py-2"><div className="font-medium">{row.name_ar}</div>{row.name_en && <div className="text-xs text-gray-400">{row.name_en}</div>}</td>
                     <td className="px-4 py-2 text-center"><span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{row.type}</span></td>
-                    <td className="px-4 py-2 text-right font-medium text-blue-600">{row.debit > 0 ? fmt(row.debit) : ''}</td>
-                    <td className="px-4 py-2 text-right font-medium text-red-600">{row.credit > 0 ? fmt(row.credit) : ''}</td>
+                    <td className="px-4 py-2 text-right font-medium text-gray-900">{row.debit > 0 ? fmt(row.debit) : ''}</td>
+                    <td className="px-4 py-2 text-right font-medium text-gray-600">{row.credit > 0 ? fmt(row.credit) : ''}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-gray-50 border-t font-bold">
                 <tr>
                   <td colSpan={3} className="px-4 py-3">Total</td>
-                  <td className="px-4 py-3 text-right text-blue-600">{fmt(trialBalance.reduce((s, r) => s + r.debit, 0))}</td>
-                  <td className="px-4 py-3 text-right text-red-600">{fmt(trialBalance.reduce((s, r) => s + r.credit, 0))}</td>
+                  <td className="px-4 py-3 text-right text-gray-900">{fmt(trialBalance.reduce((s, r) => s + r.debit, 0))}</td>
+                  <td className="px-4 py-3 text-right text-gray-600">{fmt(trialBalance.reduce((s, r) => s + r.credit, 0))}</td>
                 </tr>
               </tfoot>
             </table>

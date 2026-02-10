@@ -73,7 +73,7 @@ export default function StakeholdersPage() {
     <div className="p-4 lg:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-gray-900">Stakeholders & Revenue Sharing</h1><p className="text-gray-500 text-sm">{list.length} stakeholders registered</p></div>
-        <button onClick={openCreate} className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-orange-700 w-fit"><Plus size={16} /> Add Stakeholder</button>
+        <button onClick={openCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit"><Plus size={16} /> Add Stakeholder</button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -101,9 +101,9 @@ export default function StakeholdersPage() {
               {s.specialty_ar && <div className="text-xs text-gray-600 mb-2">{s.specialty_ar}</div>}
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-500">Default: {s.default_share_type === 'PERCENTAGE' ? `${s.default_share_percentage}%` : `${fmt(s.default_share_amount || 0)} IQD`}</span>
-                {ss && <span className="font-medium text-emerald-600">{fmt(ss.total)} IQD total</span>}
+                {ss && <span className="font-medium text-gray-900">{fmt(ss.total)} IQD total</span>}
               </div>
-              {ss && ss.pending > 0 && <div className="text-[10px] text-amber-600 mt-1">Pending: {fmt(ss.pending)} IQD</div>}
+              {ss && ss.pending > 0 && <div className="text-[10px] text-gray-600 mt-1">Pending: {fmt(ss.pending)} IQD</div>}
               <div className="flex gap-1 mt-3 pt-3 border-t">
                 <button onClick={e => { e.stopPropagation(); openEdit(s); }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50"><Edit size={12} className="inline mr-1" />Edit</button>
                 <button onClick={e => { e.stopPropagation(); setDeleteId(s.stakeholder_id); }} className="text-xs px-2 py-1 border rounded text-red-500 hover:bg-red-50"><Trash2 size={12} className="inline mr-1" />Delete</button>
@@ -133,7 +133,7 @@ export default function StakeholdersPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               <button onClick={() => setModal(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleSave} className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
+              <button onClick={handleSave} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
             </div>
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function StakeholdersPage() {
             <p className="text-sm text-gray-600 mb-4">This cannot be undone.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteId(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Delete</button>
+              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium">Delete</button>
             </div>
           </div>
         </div>

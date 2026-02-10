@@ -82,7 +82,7 @@ export default function InvoicesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Medical Invoices</h1>
           <p className="text-gray-500 text-sm">Manage patient invoices and payments</p>
         </div>
-        <Link href="/finance/invoices/new" className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-emerald-700 transition w-fit">
+        <Link href="/finance/invoices/new" className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 transition w-fit">
           <Plus size={16} /> New Invoice
         </Link>
       </div>
@@ -91,9 +91,9 @@ export default function InvoicesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Invoices', value: stats.total, color: 'text-gray-900' },
-          { label: 'Total Amount', value: `${fmt(stats.totalAmount)} IQD`, color: 'text-blue-600' },
-          { label: 'Collected', value: `${fmt(stats.collected)} IQD`, color: 'text-emerald-600' },
-          { label: 'Outstanding', value: `${fmt(stats.outstanding)} IQD`, color: 'text-red-600' },
+          { label: 'Total Amount', value: `${fmt(stats.totalAmount)} IQD`, color: 'text-gray-900' },
+          { label: 'Collected', value: `${fmt(stats.collected)} IQD`, color: 'text-gray-900' },
+          { label: 'Outstanding', value: `${fmt(stats.outstanding)} IQD`, color: 'text-gray-600' },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
             <div className="text-xs text-gray-500">{k.label}</div>
@@ -141,8 +141,8 @@ export default function InvoicesPage() {
                   <td className="px-4 py-3 text-gray-600">{inv.invoice_date}</td>
                   <td className="px-4 py-3">{inv.patient_name_ar}</td>
                   <td className="px-4 py-3 text-right font-medium">{fmt(inv.total_amount)}</td>
-                  <td className="px-4 py-3 text-right text-purple-600">{inv.insurance_coverage_amount > 0 ? fmt(inv.insurance_coverage_amount) : '-'}</td>
-                  <td className="px-4 py-3 text-right font-medium text-red-600">{inv.balance_due > 0 ? fmt(inv.balance_due) : '-'}</td>
+                  <td className="px-4 py-3 text-right text-gray-600">{inv.insurance_coverage_amount > 0 ? fmt(inv.insurance_coverage_amount) : '-'}</td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-900">{inv.balance_due > 0 ? fmt(inv.balance_due) : '-'}</td>
                   <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(inv.status)}`}>{inv.status}</span></td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
@@ -194,10 +194,10 @@ export default function InvoicesPage() {
                 <div><span className="text-gray-500 block text-xs">Subtotal</span><span className="font-medium">{fmt(viewInv.subtotal)} IQD</span></div>
                 <div><span className="text-gray-500 block text-xs">Discount</span><span className="font-medium">{viewInv.discount_percentage}% ({fmt(viewInv.discount_amount)} IQD)</span></div>
                 <div><span className="text-gray-500 block text-xs">Total</span><span className="font-bold text-lg">{fmt(viewInv.total_amount)} IQD</span></div>
-                <div><span className="text-gray-500 block text-xs">Insurance Coverage</span><span className="font-medium text-purple-600">{fmt(viewInv.insurance_coverage_amount)} IQD ({viewInv.insurance_coverage_percentage}%)</span></div>
+                <div><span className="text-gray-500 block text-xs">Insurance Coverage</span><span className="font-medium text-gray-600">{fmt(viewInv.insurance_coverage_amount)} IQD ({viewInv.insurance_coverage_percentage}%)</span></div>
                 <div><span className="text-gray-500 block text-xs">Patient Responsibility</span><span className="font-medium">{fmt(viewInv.patient_responsibility)} IQD</span></div>
-                <div><span className="text-gray-500 block text-xs">Amount Paid</span><span className="font-medium text-emerald-600">{fmt(viewInv.amount_paid)} IQD</span></div>
-                <div><span className="text-gray-500 block text-xs">Balance Due</span><span className="font-bold text-red-600">{fmt(viewInv.balance_due)} IQD</span></div>
+                <div><span className="text-gray-500 block text-xs">Amount Paid</span><span className="font-medium text-gray-900">{fmt(viewInv.amount_paid)} IQD</span></div>
+                <div><span className="text-gray-500 block text-xs">Balance Due</span><span className="font-bold text-gray-900">{fmt(viewInv.balance_due)} IQD</span></div>
                 {viewInv.payment_method && <div><span className="text-gray-500 block text-xs">Payment Method</span><span className="font-medium">{viewInv.payment_method}</span></div>}
               </div>
 
@@ -242,7 +242,7 @@ export default function InvoicesPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               {viewInv.balance_due > 0 && (
-                <button onClick={() => handlePayment(viewInv)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center gap-1.5">
+                <button onClick={() => handlePayment(viewInv)} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-500 flex items-center gap-1.5">
                   <DollarSign size={14} /> Record Payment
                 </button>
               )}
@@ -260,7 +260,7 @@ export default function InvoicesPage() {
             <p className="text-sm text-gray-600 mb-4">This action cannot be undone.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteId(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">Delete</button>
+              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600">Delete</button>
             </div>
           </div>
         </div>

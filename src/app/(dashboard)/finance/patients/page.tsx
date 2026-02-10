@@ -66,7 +66,7 @@ export default function PatientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Patient Management</h1>
           <p className="text-gray-500 text-sm">{patients.length} registered patients</p>
         </div>
-        <button onClick={openCreate} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700 w-fit">
+        <button onClick={openCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit">
           <Plus size={16} /> Add Patient
         </button>
       </div>
@@ -99,7 +99,7 @@ export default function PatientsPage() {
                   <td className="px-4 py-3 text-gray-600">{p.full_name_en || '-'}</td>
                   <td className="px-4 py-3">{p.phone}</td>
                   <td className="px-4 py-3">{p.governorate || '-'}</td>
-                  <td className="px-4 py-3 text-right font-medium">{p.total_balance > 0 ? <span className="text-red-600">{fmt(p.total_balance)}</span> : '0'}</td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-900">{p.total_balance > 0 ? fmt(p.total_balance) : '0'}</td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => openView(p)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button>
@@ -119,7 +119,7 @@ export default function PatientsPage() {
             <div key={p.patient_id} className="p-4 cursor-pointer hover:bg-gray-50" onClick={() => openView(p)}>
               <div className="flex justify-between items-start">
                 <div><div className="font-medium">{p.full_name_ar}</div><div className="text-xs text-gray-500">{p.patient_number}</div></div>
-                {p.total_balance > 0 && <span className="text-xs font-bold text-red-600">{fmt(p.total_balance)} IQD</span>}
+                {p.total_balance > 0 && <span className="text-xs font-bold text-gray-900">{fmt(p.total_balance)} IQD</span>}
               </div>
               <div className="flex gap-3 mt-1 text-xs text-gray-500">
                 <span className="flex items-center gap-1"><Phone size={10} />{p.phone}</span>
@@ -154,7 +154,7 @@ export default function PatientsPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               <button onClick={() => setModal(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleSave} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Save</button>
+              <button onClick={handleSave} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-500">Save</button>
             </div>
           </div>
         </div>
@@ -173,7 +173,7 @@ export default function PatientsPage() {
               <div><span className="text-gray-500 block text-xs">Phone</span>{current.phone}</div>
               <div><span className="text-gray-500 block text-xs">Email</span>{current.email || '-'}</div>
               <div><span className="text-gray-500 block text-xs">Governorate</span>{current.governorate || '-'}</div>
-              <div><span className="text-gray-500 block text-xs">Balance</span><span className={current.total_balance > 0 ? 'text-red-600 font-bold' : ''}>{fmt(current.total_balance)} IQD</span></div>
+              <div><span className="text-gray-500 block text-xs">Balance</span><span className="font-bold text-gray-900">{fmt(current.total_balance)} IQD</span></div>
             </div>
             {/* Patient Invoices */}
             <div className="px-6 pb-6">
@@ -204,7 +204,7 @@ export default function PatientsPage() {
             <p className="text-sm text-gray-600 mb-4">This will remove the patient record permanently.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteId(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Delete</button>
+              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium">Delete</button>
             </div>
           </div>
         </div>

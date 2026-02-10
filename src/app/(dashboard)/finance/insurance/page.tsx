@@ -37,10 +37,10 @@ export default function InsurancePage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Active Providers', value: activeProviders.length, color: 'text-blue-600' },
-          { label: 'Active Policies', value: activePolicies.length, color: 'text-emerald-600' },
-          { label: 'Total Annual Budget', value: `${fmt(totalBudget)} IQD`, color: 'text-purple-600' },
-          { label: 'Total Used', value: `${fmt(totalUsed)} IQD`, color: 'text-amber-600' },
+          { label: 'Active Providers', value: activeProviders.length, color: 'text-gray-900' },
+          { label: 'Active Policies', value: activePolicies.length, color: 'text-gray-900' },
+          { label: 'Total Annual Budget', value: `${fmt(totalBudget)} IQD`, color: 'text-gray-900' },
+          { label: 'Total Used', value: `${fmt(totalUsed)} IQD`, color: 'text-gray-600' },
         ].map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
             <div className="text-xs text-gray-500">{k.label}</div>

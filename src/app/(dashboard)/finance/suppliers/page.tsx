@@ -57,7 +57,7 @@ export default function SuppliersPage() {
     <div className="p-4 lg:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div><h1 className="text-2xl font-bold text-gray-900">Supplier Management</h1><p className="text-gray-500 text-sm">{suppliers.length} suppliers registered</p></div>
-        <button onClick={openCreate} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-900 w-fit"><Plus size={16} /> Add Supplier</button>
+        <button onClick={openCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit"><Plus size={16} /> Add Supplier</button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -118,7 +118,7 @@ export default function SuppliersPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               <button onClick={() => setModal(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleSave} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
+              <button onClick={handleSave} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Save</button>
             </div>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function SuppliersPage() {
             <p className="text-sm text-gray-600 mb-4">This cannot be undone.</p>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteId(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleDelete} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium">Delete</button>
+              <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium">Delete</button>
             </div>
           </div>
         </div>

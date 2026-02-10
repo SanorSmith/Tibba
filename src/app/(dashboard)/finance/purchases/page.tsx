@@ -65,14 +65,14 @@ export default function PurchasesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(tab === 'pr' ? [
           { label: 'Total PRs', value: prStats.total, color: 'text-gray-900' },
-          { label: 'Pending Approval', value: prStats.pending, color: 'text-amber-600' },
-          { label: 'Approved', value: prStats.approved, color: 'text-emerald-600' },
-          { label: 'Estimated Value', value: `${fmt(prStats.totalValue)} IQD`, color: 'text-blue-600' },
+          { label: 'Pending Approval', value: prStats.pending, color: 'text-gray-600' },
+          { label: 'Approved', value: prStats.approved, color: 'text-gray-900' },
+          { label: 'Estimated Value', value: `${fmt(prStats.totalValue)} IQD`, color: 'text-gray-900' },
         ] : [
           { label: 'Total POs', value: poStats.total, color: 'text-gray-900' },
-          { label: 'Total Value', value: `${fmt(poStats.totalValue)} IQD`, color: 'text-blue-600' },
-          { label: 'Unpaid Balance', value: `${fmt(poStats.unpaid)} IQD`, color: 'text-red-600' },
-          { label: 'Completed', value: poStats.completed, color: 'text-emerald-600' },
+          { label: 'Total Value', value: `${fmt(poStats.totalValue)} IQD`, color: 'text-gray-900' },
+          { label: 'Unpaid Balance', value: `${fmt(poStats.unpaid)} IQD`, color: 'text-gray-600' },
+          { label: 'Completed', value: poStats.completed, color: 'text-gray-900' },
         ]).map(k => (
           <div key={k.label} className="bg-white rounded-lg border p-4">
             <div className="text-xs text-gray-500">{k.label}</div>
@@ -144,7 +144,7 @@ export default function PurchasesPage() {
                     <td className="px-4 py-3 text-gray-600">{po.po_date}</td>
                     <td className="px-4 py-3">{po.supplier_name_ar}</td>
                     <td className="px-4 py-3 text-right font-medium">{fmt(po.total_amount)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-red-600">{po.balance_due > 0 ? fmt(po.balance_due) : '-'}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">{po.balance_due > 0 ? fmt(po.balance_due) : '-'}</td>
                     <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${po.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{po.payment_status}</span></td>
                     <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${poStatusColor(po.status)}`}>{po.status}</span></td>
                     <td className="px-4 py-3 text-center"><button onClick={() => setViewPO(po)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button></td>
@@ -183,7 +183,7 @@ export default function PurchasesPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               {(viewPR.status === 'SUBMITTED' || viewPR.status === 'PENDING_APPROVAL') && (
-                <button onClick={() => handleApprovePR(viewPR)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Approve</button>
+                <button onClick={() => handleApprovePR(viewPR)} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Approve</button>
               )}
               <button onClick={() => setViewPR(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
             </div>
@@ -204,8 +204,8 @@ export default function PurchasesPage() {
               <div><span className="text-gray-500 block text-xs">Subtotal</span>{fmt(viewPO.subtotal)} IQD</div>
               <div><span className="text-gray-500 block text-xs">Shipping</span>{fmt(viewPO.shipping_cost)} IQD</div>
               <div><span className="text-gray-500 block text-xs">Total</span><span className="font-bold">{fmt(viewPO.total_amount)} IQD</span></div>
-              <div><span className="text-gray-500 block text-xs">Paid</span><span className="text-emerald-600 font-medium">{fmt(viewPO.amount_paid)} IQD</span></div>
-              <div><span className="text-gray-500 block text-xs">Balance Due</span><span className="text-red-600 font-bold">{fmt(viewPO.balance_due)} IQD</span></div>
+              <div><span className="text-gray-500 block text-xs">Paid</span><span className="text-gray-900 font-medium">{fmt(viewPO.amount_paid)} IQD</span></div>
+              <div><span className="text-gray-500 block text-xs">Balance Due</span><span className="text-gray-900 font-bold">{fmt(viewPO.balance_due)} IQD</span></div>
               <div><span className="text-gray-500 block text-xs">Payment Status</span><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${viewPO.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{viewPO.payment_status}</span></div>
             </div>
             <div className="px-6 pb-6">
