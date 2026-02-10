@@ -570,25 +570,34 @@ export interface PerformanceCycle {
   type: 'ANNUAL' | 'MID_YEAR' | 'PROBATION';
   start_date: string;
   end_date: string;
-  status: 'PLANNING' | 'ACTIVE' | 'COMPLETED';
+  self_deadline?: string;
+  manager_deadline?: string;
+  status: 'PLANNING' | 'ACTIVE' | 'REVIEW_IN_PROGRESS' | 'COMPLETED';
 }
 
 export interface PerformanceReview {
   id: string;
   employee_id: string;
   employee_name: string;
-  department: string;
+  department?: string;
   cycle_id: string;
   cycle_name?: string;
-  reviewer_name: string;
+  reviewer: string;
+  reviewer_name?: string;
   review_type?: 'SELF' | 'MANAGER' | '360';
   overall_rating: number;
+  clinical_competence?: number | null;
+  patient_care?: number | null;
+  professionalism?: number | null;
+  teamwork?: number | null;
+  quality_safety?: number | null;
+  competencies?: CompetencyRating[];
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'FINALIZED';
   submitted_date?: string;
   finalized_date?: string;
-  competencies?: CompetencyRating[];
   strengths?: string;
   improvements?: string;
+  recommendation?: string;
   comments?: string;
 }
 
@@ -610,6 +619,7 @@ export interface Goal {
   goal_id: string;
   employee_id: string;
   employee_name?: string;
+  department?: string;
   cycle_id: string;
   goal_title: string;
   goal_description?: string;
@@ -619,6 +629,8 @@ export interface Goal {
   completion_percentage: number;
   weight?: number;
   due_date?: string;
+  created_by?: string;
+  created_date?: string;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 }
 
@@ -627,10 +639,11 @@ export interface Recognition {
   employee_id: string;
   employee_name: string;
   department?: string;
-  type: 'EMPLOYEE_OF_MONTH' | 'EXCELLENCE_AWARD' | 'SPOT_AWARD' | 'PEER_RECOGNITION';
+  type: 'EMPLOYEE_OF_MONTH' | 'EXCELLENCE_AWARD' | 'SPOT_AWARD' | 'PEER_RECOGNITION' | 'THANK_YOU';
   title: string;
   reason: string;
   date: string;
+  recognized_by?: string;
   awarded_by?: string;
   monetary_reward?: number;
 }

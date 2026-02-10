@@ -1,47 +1,87 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, Star } from 'lucide-react';
 import { EmployeeAvatar } from '@/components/modules/hr/shared/employee-avatar';
-import employeesData from '@/data/hr/employees.json';
+import { dataStore } from '@/lib/dataStore';
+import { toast } from 'sonner';
+import type { Employee, PerformanceReview } from '@/types/hr';
 import performanceData from '@/data/hr/performance.json';
 
 const competencies = [
-  { id: 'clinical', name: 'Clinical Skills', description: 'Technical and clinical competence' },
-  { id: 'communication', name: 'Communication', description: 'Verbal and written communication' },
-  { id: 'teamwork', name: 'Teamwork', description: 'Collaboration and team contribution' },
-  { id: 'leadership', name: 'Leadership', description: 'Initiative and leadership qualities' },
-  { id: 'problem_solving', name: 'Problem Solving', description: 'Analytical and critical thinking' },
-  { id: 'time_management', name: 'Time Management', description: 'Punctuality and task prioritization' },
-  { id: 'patient_care', name: 'Patient Care', description: 'Patient interaction and empathy' },
-  { id: 'professional_dev', name: 'Professional Development', description: 'Continuous learning and growth' },
+  { id: 'clinical', name: 'Clinical Skills', description: 'Technical and clinical competence', field: 'clinical_competence' },
+  { id: 'patient_care', name: 'Patient Care', description: 'Patient interaction and empathy', field: 'patient_care' },
+  { id: 'professionalism', name: 'Professionalism', description: 'Professional conduct and ethics', field: 'professionalism' },
+  { id: 'teamwork', name: 'Teamwork', description: 'Collaboration and team contribution', field: 'teamwork' },
+  { id: 'quality_safety', name: 'Quality & Safety', description: 'Quality improvement and patient safety', field: 'quality_safety' },
 ];
 
 export default function CreatePerformanceReviewPage() {
-  const activeEmps = employeesData.employees.filter(e => e.employment_status === 'ACTIVE');
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const cycles = performanceData.cycles;
 
   const [employeeId, setEmployeeId] = useState('');
-  const [cycleId, setCycleId] = useState(cycles[cycles.length - 1]?.id || '');
+  const [cycleId, setCycleId] = useState(cycles[0]?.id || '');
   const [reviewType, setReviewType] = useState('MANAGER');
+  const [reviewer, setReviewer] = useState('');
   const [ratings, setRatings] = useState<Record<string, number>>(
     Object.fromEntries(competencies.map(c => [c.id, 3]))
   );
   const [strengths, setStrengths] = useState('');
   const [improvements, setImprovement] = useState('');
-  const [overallComments, setOverallComments] = useState('');
+  const [recommendation, setRecommendation] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
-  const selectedEmployee = activeEmps.find(e => e.id === employeeId);
+  useEffect(() => {
+    setEmployees(dataStore.getEmployees().filter(e => e.employment_status === 'ACTIVE'));
+  }, []);
+
+  const selectedEmployee = employees.find(e => e.id === employeeId);
   const overallRating = competencies.length > 0
     ? Math.round((Object.values(ratings).reduce((s, r) => s + r, 0) / competencies.length) * 10) / 10
     : 0;
 
-  const handleSubmit = () => {
-    if (!employeeId || !cycleId) return;
-    setSubmitted(true);
-  };
+  const handleSubmit = useCallback(() => {
+    if (!employeeId || !cycleId || !reviewer.trim()) { toast.error('Fill required fields'); return; }
+    setProcessing(true);
+    const emp = employees.find(e => e.id === employeeId);
+    const existingReviews = dataStore.getPerformanceReviews();
+    const newId = `PR-${String(existingReviews.length + 1).padStart(3, '0')}`;
+
+    const review: PerformanceReview = {
+      id: newId,
+      employee_id: employeeId,
+      employee_name: emp ? `${emp.first_name} ${emp.last_name}` : '',
+      department: emp?.department_name,
+      cycle_id: cycleId,
+      reviewer: reviewer.trim(),
+      review_type: reviewType as PerformanceReview['review_type'],
+      overall_rating: overallRating,
+      clinical_competence: ratings.clinical,
+      patient_care: ratings.patient_care,
+      professionalism: ratings.professionalism,
+      teamwork: ratings.teamwork,
+      quality_safety: ratings.quality_safety,
+      status: 'SUBMITTED',
+      submitted_date: new Date().toISOString().split('T')[0],
+      strengths: strengths.trim() || undefined,
+      improvements: improvements.trim() || undefined,
+      recommendation: recommendation.trim() || undefined,
+    };
+
+    const ok = dataStore.addPerformanceReview(review);
+    if (ok) { toast.success('Review submitted successfully'); setSubmitted(true); }
+    else toast.error('Failed to save review');
+    setProcessing(false);
+  }, [employeeId, cycleId, reviewer, employees, overallRating, ratings, reviewType, strengths, improvements, recommendation]);
+
+  const resetForm = useCallback(() => {
+    setSubmitted(false); setEmployeeId(''); setReviewer('');
+    setRatings(Object.fromEntries(competencies.map(c => [c.id, 3])));
+    setStrengths(''); setImprovement(''); setRecommendation('');
+  }, []);
 
   if (submitted) {
     return (
@@ -53,7 +93,7 @@ export default function CreatePerformanceReviewPage() {
         <p style={{ fontSize: '14px', color: '#525252' }}>{selectedEmployee?.first_name} {selectedEmployee?.last_name} — Overall: {overallRating}/5</p>
         <div className="flex gap-2">
           <Link href="/hr/performance"><button className="btn-secondary">Back to Performance</button></Link>
-          <button className="btn-primary" onClick={() => { setSubmitted(false); setEmployeeId(''); setRatings(Object.fromEntries(competencies.map(c => [c.id, 3]))); setStrengths(''); setImprovement(''); setOverallComments(''); }}>Create Another</button>
+          <button className="btn-primary" onClick={resetForm}>Create Another</button>
         </div>
       </div>
     );
@@ -77,14 +117,20 @@ export default function CreatePerformanceReviewPage() {
           <div className="tibbna-card">
             <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Review Setup</h3></div>
             <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Employee *</label>
                   <select className="tibbna-input" value={employeeId} onChange={e => setEmployeeId(e.target.value)}>
                     <option value="">Select employee...</option>
-                    {activeEmps.map(e => (<option key={e.id} value={e.id}>{e.first_name} {e.last_name} - {e.department_name}</option>))}
+                    {employees.map(e => (<option key={e.id} value={e.id}>{e.first_name} {e.last_name} - {e.department_name}</option>))}
                   </select>
                 </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Reviewer Name *</label>
+                  <input className="tibbna-input" value={reviewer} onChange={e => setReviewer(e.target.value)} placeholder="Manager / reviewer name" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Review Cycle *</label>
                   <select className="tibbna-input" value={cycleId} onChange={e => setCycleId(e.target.value)}>
@@ -132,7 +178,7 @@ export default function CreatePerformanceReviewPage() {
 
           {/* Comments */}
           <div className="tibbna-card">
-            <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Comments</h3></div>
+            <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Comments & Recommendation</h3></div>
             <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Key Strengths</label>
@@ -143,12 +189,12 @@ export default function CreatePerformanceReviewPage() {
                 <textarea className="tibbna-input" rows={3} value={improvements} onChange={e => setImprovement(e.target.value)} placeholder="Areas where the employee can improve..." />
               </div>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Overall Comments</label>
-                <textarea className="tibbna-input" rows={3} value={overallComments} onChange={e => setOverallComments(e.target.value)} placeholder="General feedback and recommendations..." />
+                <label style={{ fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '4px' }}>Recommendation</label>
+                <input className="tibbna-input" value={recommendation} onChange={e => setRecommendation(e.target.value)} placeholder="e.g. Merit increase, Standard increase, Performance improvement plan" />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #e4e4e4', paddingTop: '16px' }}>
                 <Link href="/hr/performance"><button className="btn-secondary">Cancel</button></Link>
-                <button className="btn-primary" onClick={handleSubmit} disabled={!employeeId || !cycleId}>Submit Review</button>
+                <button className="btn-primary" onClick={handleSubmit} disabled={!employeeId || !cycleId || !reviewer.trim() || processing}>{processing ? 'Submitting…' : 'Submit Review'}</button>
               </div>
             </div>
           </div>
@@ -163,7 +209,7 @@ export default function CreatePerformanceReviewPage() {
                 <div className="flex items-center gap-3 mb-3">
                   <EmployeeAvatar name={`${selectedEmployee.first_name} ${selectedEmployee.last_name}`} size="lg" />
                   <div>
-                    <p style={{ fontSize: '15px', fontWeight: 600 }}>{selectedEmployee.first_name} {selectedEmployee.last_name}</p>
+                    <Link href={`/hr/employees/${selectedEmployee.id}`} style={{ fontSize: '15px', fontWeight: 600, color: '#618FF5' }} className="hover:underline">{selectedEmployee.first_name} {selectedEmployee.last_name}</Link>
                     <p style={{ fontSize: '12px', color: '#525252' }}>{selectedEmployee.job_title}</p>
                     <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{selectedEmployee.department_name}</p>
                   </div>

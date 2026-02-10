@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil, Heart } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil, Heart, Target, Star } from 'lucide-react';
 import { dataStore } from '@/lib/dataStore';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -73,6 +73,9 @@ export default function EmployeeProfilePage() {
   const empReview = performanceData.reviews.find(r => r.employee_id === employee.id);
   const empBalance = leavesData.leave_balances.find(b => b.employee_id === employee.id);
   const empBenefits = dataStore.getEmployeeBenefitEnrollments(employee.id).filter((b: any) => b.status === 'ACTIVE');
+  const empReviews = dataStore.getEmployeeReviews(employee.id);
+  const empGoals = dataStore.getEmployeeGoals(employee.id);
+  const empRecognitions = dataStore.getEmployeeRecognitions(employee.id);
 
   const yearsOfService = Math.floor((new Date().getTime() - new Date(employee.date_of_hire).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
 
@@ -302,24 +305,66 @@ export default function EmployeeProfilePage() {
             </div>
           )}
 
-          {/* Performance */}
-          {empReview && (
+          {/* Performance Reviews */}
+          {empReviews.length > 0 && (
             <div className="tibbna-card">
-              <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Performance Review</h3></div>
-              <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div className="flex justify-between" style={{ fontSize: '13px' }}>
-                  <span style={{ color: '#a3a3a3' }}>Overall Rating</span>
-                  <span style={{ fontWeight: 700, fontSize: '18px', color: empReview.overall_rating >= 4 ? '#10B981' : empReview.overall_rating >= 3 ? '#F59E0B' : '#EF4444' }}>
-                    {empReview.overall_rating}/5
-                  </span>
-                </div>
-                <div className="flex justify-between" style={{ fontSize: '13px' }}>
-                  <span style={{ color: '#a3a3a3' }}>Status</span>
-                  <span className="tibbna-badge badge-info">{empReview.status}</span>
-                </div>
-                {empReview.recommendation && (
-                  <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}>{empReview.recommendation}</p>
-                )}
+              <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><Star size={16} /> Reviews ({empReviews.length})</h3></div>
+              <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {empReviews.map((r: any) => (
+                  <div key={r.id} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <div className="flex justify-between items-center">
+                      <span style={{ fontWeight: 700, fontSize: '18px', color: r.overall_rating >= 4 ? '#10B981' : r.overall_rating >= 3 ? '#F59E0B' : '#EF4444' }}>{r.overall_rating}/5</span>
+                      <span className="tibbna-badge" style={{ backgroundColor: r.status === 'FINALIZED' ? '#D1FAE5' : '#FEF3C7', color: r.status === 'FINALIZED' ? '#065F46' : '#92400E', fontSize: '10px' }}>{r.status}</span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#a3a3a3' }}>By: {r.reviewer || r.reviewer_name || '-'}</p>
+                    {r.recommendation && <p style={{ fontSize: '12px', color: '#6366F1', marginTop: '2px' }}>{r.recommendation}</p>}
+                  </div>
+                ))}
+                <Link href="/hr/performance" style={{ fontSize: '12px', color: '#618FF5', fontWeight: 600, marginTop: '4px' }}>All Reviews →</Link>
+              </div>
+            </div>
+          )}
+
+          {/* Goals */}
+          {empGoals.length > 0 && (
+            <div className="tibbna-card">
+              <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><Target size={16} /> Goals ({empGoals.length})</h3></div>
+              <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {empGoals.slice(0, 5).map((g: any) => {
+                  const pct = g.target_value > 0 ? Math.min(100, Math.round((g.current_value / g.target_value) * 100)) : 0;
+                  return (
+                    <div key={g.goal_id} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                      <div className="flex justify-between items-center">
+                        <span style={{ fontSize: '13px', fontWeight: 500 }}>{g.goal_title}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: pct >= 100 ? '#10B981' : '#F59E0B' }}>{pct}%</span>
+                      </div>
+                      <div style={{ height: '4px', backgroundColor: '#f0f0f0', borderRadius: '2px', marginTop: '4px' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: pct >= 100 ? '#10B981' : pct >= 50 ? '#F59E0B' : '#EF4444', borderRadius: '2px' }} />
+                      </div>
+                      <p style={{ fontSize: '11px', color: '#a3a3a3', marginTop: '2px' }}>{g.goal_category}{g.due_date ? ` · Due: ${g.due_date}` : ''}</p>
+                    </div>
+                  );
+                })}
+                <Link href="/hr/performance/goals" style={{ fontSize: '12px', color: '#618FF5', fontWeight: 600, marginTop: '4px' }}>Manage Goals →</Link>
+              </div>
+            </div>
+          )}
+
+          {/* Recognitions */}
+          {empRecognitions.length > 0 && (
+            <div className="tibbna-card">
+              <div className="tibbna-card-header"><h3 className="tibbna-section-title flex items-center gap-2" style={{ margin: 0 }}><Award size={16} /> Recognitions ({empRecognitions.length})</h3></div>
+              <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {empRecognitions.map((rec: any) => (
+                  <div key={rec.id} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                    <div className="flex justify-between items-center">
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{rec.title}</span>
+                      <span className="tibbna-badge badge-warning" style={{ fontSize: '10px' }}>{rec.type.replace(/_/g, ' ')}</span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{rec.date}{(rec.monetary_reward || 0) > 0 ? ` · ${(rec.monetary_reward / 1000).toFixed(0)}K IQD` : ''}</p>
+                  </div>
+                ))}
+                <Link href="/hr/performance" style={{ fontSize: '12px', color: '#618FF5', fontWeight: 600, marginTop: '4px' }}>View All →</Link>
               </div>
             </div>
           )}

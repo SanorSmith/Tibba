@@ -26,6 +26,8 @@ import type {
   TrainingProgram,
   TrainingSession,
   PerformanceReview,
+  Goal,
+  Recognition,
   BenefitPlan,
   BenefitEnrollment,
 } from '@/types/hr';
@@ -373,6 +375,122 @@ class DataStore {
   getPerformanceReviews(): PerformanceReview[] {
     const data = this.getData();
     return (data?.performance?.reviews ?? performanceJson.reviews) as unknown as PerformanceReview[];
+  }
+
+  getPerformanceReview(id: string): PerformanceReview | undefined {
+    return this.getPerformanceReviews().find(r => r.id === id);
+  }
+
+  getEmployeeReviews(employeeId: string): PerformanceReview[] {
+    return this.getPerformanceReviews().filter(r => r.employee_id === employeeId);
+  }
+
+  addPerformanceReview(review: PerformanceReview): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    const list = [...this.getPerformanceReviews(), review];
+    data.performance.reviews = list as any;
+    return this.saveData(data);
+  }
+
+  updatePerformanceReview(id: string, updates: Partial<PerformanceReview>): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    const list = this.getPerformanceReviews();
+    const idx = list.findIndex(r => r.id === id);
+    if (idx === -1) return false;
+    list[idx] = { ...list[idx], ...updates };
+    data.performance.reviews = list as any;
+    return this.saveData(data);
+  }
+
+  deletePerformanceReview(id: string): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    data.performance.reviews = this.getPerformanceReviews().filter(r => r.id !== id) as any;
+    return this.saveData(data);
+  }
+
+  // --- Goals ---
+
+  getGoals(): Goal[] {
+    const data = this.getData();
+    return (data?.performance?.goals ?? (performanceJson as any).goals ?? []) as unknown as Goal[];
+  }
+
+  getGoal(id: string): Goal | undefined {
+    return this.getGoals().find(g => g.goal_id === id);
+  }
+
+  getEmployeeGoals(employeeId: string): Goal[] {
+    return this.getGoals().filter(g => g.employee_id === employeeId);
+  }
+
+  addGoal(goal: Goal): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    const list = [...this.getGoals(), goal];
+    (data.performance as any).goals = list as any;
+    return this.saveData(data);
+  }
+
+  updateGoal(id: string, updates: Partial<Goal>): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    const list = this.getGoals();
+    const idx = list.findIndex(g => g.goal_id === id);
+    if (idx === -1) return false;
+    list[idx] = { ...list[idx], ...updates };
+    (data.performance as any).goals = list as any;
+    return this.saveData(data);
+  }
+
+  deleteGoal(id: string): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    (data.performance as any).goals = this.getGoals().filter(g => g.goal_id !== id) as any;
+    return this.saveData(data);
+  }
+
+  // --- Recognitions ---
+
+  getRecognitions(): Recognition[] {
+    const data = this.getData();
+    return (data?.performance?.recognitions ?? performanceJson.recognitions) as unknown as Recognition[];
+  }
+
+  getRecognition(id: string): Recognition | undefined {
+    return this.getRecognitions().find(r => r.id === id);
+  }
+
+  getEmployeeRecognitions(employeeId: string): Recognition[] {
+    return this.getRecognitions().filter(r => r.employee_id === employeeId);
+  }
+
+  addRecognition(recognition: Recognition): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    const list = [...this.getRecognitions(), recognition];
+    data.performance.recognitions = list as any;
+    return this.saveData(data);
+  }
+
+  updateRecognition(id: string, updates: Partial<Recognition>): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    const list = this.getRecognitions();
+    const idx = list.findIndex(r => r.id === id);
+    if (idx === -1) return false;
+    list[idx] = { ...list[idx], ...updates };
+    data.performance.recognitions = list as any;
+    return this.saveData(data);
+  }
+
+  deleteRecognition(id: string): boolean {
+    const data = this.getData();
+    if (!data?.performance) return false;
+    data.performance.recognitions = this.getRecognitions().filter(r => r.id !== id) as any;
+    return this.saveData(data);
   }
 
   // ===========================================================================
