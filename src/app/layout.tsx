@@ -6,7 +6,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Tibbna-EHR | Hospital Management System',
+  title: 'Tibbna-ERP | Hospital Management System',
   description: 'Complete hospital management system with patient care, billing, and administration',
 };
 

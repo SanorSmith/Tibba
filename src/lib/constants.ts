@@ -1,4 +1,4 @@
-export const APP_NAME = 'Tibbna-EHR';
+export const APP_NAME = 'Tibbna-ERP';
 export const APP_DESCRIPTION = 'Hospital Management System';
 
 export const ROUTES = {

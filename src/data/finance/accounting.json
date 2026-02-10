@@ -1,0 +1,110 @@
+{
+  "chart_of_accounts": [
+    { "account_id": "acc-1000", "account_number": "1000", "account_name_ar": "الأصول المتداولة", "account_name_en": "Current Assets", "account_type": "ASSET", "normal_balance": "DEBIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-1100", "account_number": "1100", "account_name_ar": "النقدية والبنك", "account_name_en": "Cash and Bank", "account_type": "ASSET", "parent_account_id": "acc-1000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 185000000 },
+    { "account_id": "acc-1200", "account_number": "1200", "account_name_ar": "الذمم المدينة - المرضى", "account_name_en": "Accounts Receivable - Patients", "account_type": "ASSET", "parent_account_id": "acc-1000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 9187500 },
+    { "account_id": "acc-1210", "account_number": "1210", "account_name_ar": "الذمم المدينة - التأمين", "account_name_en": "Accounts Receivable - Insurance", "account_type": "ASSET", "parent_account_id": "acc-1000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 14527500 },
+    { "account_id": "acc-1300", "account_number": "1300", "account_name_ar": "المخزون", "account_name_en": "Inventory", "account_type": "ASSET", "parent_account_id": "acc-1000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 61450000 },
+    { "account_id": "acc-1400", "account_number": "1400", "account_name_ar": "مصروفات مدفوعة مقدما", "account_name_en": "Prepaid Expenses", "account_type": "ASSET", "parent_account_id": "acc-1000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 5000000 },
+    { "account_id": "acc-1500", "account_number": "1500", "account_name_ar": "الأصول الثابتة", "account_name_en": "Fixed Assets", "account_type": "ASSET", "normal_balance": "DEBIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-1510", "account_number": "1510", "account_name_ar": "المعدات الطبية", "account_name_en": "Medical Equipment", "account_type": "ASSET", "parent_account_id": "acc-1500", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 850000000 },
+    { "account_id": "acc-1520", "account_number": "1520", "account_name_ar": "الأثاث والتجهيزات", "account_name_en": "Furniture and Fixtures", "account_type": "ASSET", "parent_account_id": "acc-1500", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 120000000 },
+    { "account_id": "acc-1530", "account_number": "1530", "account_name_ar": "المركبات", "account_name_en": "Vehicles", "account_type": "ASSET", "parent_account_id": "acc-1500", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 75000000 },
+    { "account_id": "acc-1540", "account_number": "1540", "account_name_ar": "المبنى", "account_name_en": "Building", "account_type": "ASSET", "parent_account_id": "acc-1500", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 2500000000 },
+    { "account_id": "acc-1550", "account_number": "1550", "account_name_ar": "مجمع الاستهلاك", "account_name_en": "Accumulated Depreciation", "account_type": "ASSET", "parent_account_id": "acc-1500", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": -350000000 },
+    { "account_id": "acc-2000", "account_number": "2000", "account_name_ar": "الخصوم المتداولة", "account_name_en": "Current Liabilities", "account_type": "LIABILITY", "normal_balance": "CREDIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-2100", "account_number": "2100", "account_name_ar": "الذمم الدائنة - الموردين", "account_name_en": "Accounts Payable - Suppliers", "account_type": "LIABILITY", "parent_account_id": "acc-2000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 5250000 },
+    { "account_id": "acc-2200", "account_number": "2200", "account_name_ar": "المصروفات المستحقة", "account_name_en": "Accrued Expenses", "account_type": "LIABILITY", "parent_account_id": "acc-2000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 35000000 },
+    { "account_id": "acc-2300", "account_number": "2300", "account_name_ar": "حصص المشاركين المستحقة", "account_name_en": "Stakeholder Shares Payable", "account_type": "LIABILITY", "parent_account_id": "acc-2000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 12000000 },
+    { "account_id": "acc-2400", "account_number": "2400", "account_name_ar": "الضرائب المستحقة", "account_name_en": "Taxes Payable", "account_type": "LIABILITY", "parent_account_id": "acc-2000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 8000000 },
+    { "account_id": "acc-2500", "account_number": "2500", "account_name_ar": "الخصوم طويلة الأجل", "account_name_en": "Long-term Liabilities", "account_type": "LIABILITY", "normal_balance": "CREDIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-2510", "account_number": "2510", "account_name_ar": "قروض طويلة الأجل", "account_name_en": "Long-term Loans", "account_type": "LIABILITY", "parent_account_id": "acc-2500", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 500000000 },
+    { "account_id": "acc-3000", "account_number": "3000", "account_name_ar": "حقوق الملكية", "account_name_en": "Equity", "account_type": "EQUITY", "normal_balance": "CREDIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-3100", "account_number": "3100", "account_name_ar": "رأس المال المدفوع", "account_name_en": "Paid-in Capital", "account_type": "EQUITY", "parent_account_id": "acc-3000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 2500000000 },
+    { "account_id": "acc-3200", "account_number": "3200", "account_name_ar": "الأرباح المحتجزة", "account_name_en": "Retained Earnings", "account_type": "EQUITY", "parent_account_id": "acc-3000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 350000000 },
+    { "account_id": "acc-3300", "account_number": "3300", "account_name_ar": "أرباح السنة الحالية", "account_name_en": "Current Year Profit", "account_type": "EQUITY", "parent_account_id": "acc-3000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 49915000 },
+    { "account_id": "acc-4000", "account_number": "4000", "account_name_ar": "الإيرادات", "account_name_en": "Revenue", "account_type": "REVENUE", "normal_balance": "CREDIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-4100", "account_number": "4100", "account_name_ar": "إيرادات الخدمات الطبية", "account_name_en": "Medical Services Revenue", "account_type": "REVENUE", "parent_account_id": "acc-4000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 275000 },
+    { "account_id": "acc-4200", "account_number": "4200", "account_name_ar": "إيرادات العمليات الجراحية", "account_name_en": "Surgical Revenue", "account_type": "REVENUE", "parent_account_id": "acc-4000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 23000000 },
+    { "account_id": "acc-4300", "account_number": "4300", "account_name_ar": "إيرادات المختبر", "account_name_en": "Laboratory Revenue", "account_type": "REVENUE", "parent_account_id": "acc-4000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 460000 },
+    { "account_id": "acc-4400", "account_number": "4400", "account_name_ar": "إيرادات الأشعة", "account_name_en": "Radiology Revenue", "account_type": "REVENUE", "parent_account_id": "acc-4000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 1600000 },
+    { "account_id": "acc-4500", "account_number": "4500", "account_name_ar": "إيرادات الصيدلية", "account_name_en": "Pharmacy Revenue", "account_type": "REVENUE", "parent_account_id": "acc-4000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 25000 },
+    { "account_id": "acc-4900", "account_number": "4900", "account_name_ar": "إيرادات أخرى", "account_name_en": "Other Revenue", "account_type": "REVENUE", "parent_account_id": "acc-4000", "normal_balance": "CREDIT", "is_active": true, "allow_posting": true, "balance": 0 },
+    { "account_id": "acc-5000", "account_number": "5000", "account_name_ar": "المصروفات", "account_name_en": "Expenses", "account_type": "EXPENSE", "normal_balance": "DEBIT", "is_active": true, "allow_posting": false, "balance": 0 },
+    { "account_id": "acc-5100", "account_number": "5100", "account_name_ar": "الرواتب والأجور", "account_name_en": "Salaries and Wages", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 120000000 },
+    { "account_id": "acc-5200", "account_number": "5200", "account_name_ar": "المستلزمات الطبية", "account_name_en": "Medical Supplies", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 25500000 },
+    { "account_id": "acc-5300", "account_number": "5300", "account_name_ar": "الأدوية", "account_name_en": "Pharmaceuticals", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 45000000 },
+    { "account_id": "acc-5400", "account_number": "5400", "account_name_ar": "المرافق والخدمات", "account_name_en": "Utilities", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 15000000 },
+    { "account_id": "acc-5500", "account_number": "5500", "account_name_ar": "الاستهلاك", "account_name_en": "Depreciation", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 35000000 },
+    { "account_id": "acc-5600", "account_number": "5600", "account_name_ar": "الصيانة", "account_name_en": "Maintenance", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 8000000 },
+    { "account_id": "acc-5900", "account_number": "5900", "account_name_ar": "مصروفات أخرى", "account_name_en": "Other Expenses", "account_type": "EXPENSE", "parent_account_id": "acc-5000", "normal_balance": "DEBIT", "is_active": true, "allow_posting": true, "balance": 5000000 }
+  ],
+  "cost_centers": [
+    { "cost_center_id": "cc-001", "cost_center_code": "CC-SURG", "name_ar": "قسم العمليات", "name_en": "Surgery Department", "center_type": "PROFIT_CENTER", "department_id": "dept-surg", "annual_budget": 500000000, "actual_spending": 185000000, "is_active": true },
+    { "cost_center_id": "cc-002", "cost_center_code": "CC-LAB", "name_ar": "المختبر", "name_en": "Laboratory", "center_type": "PROFIT_CENTER", "department_id": "dept-lab", "annual_budget": 150000000, "actual_spending": 55000000, "is_active": true },
+    { "cost_center_id": "cc-003", "cost_center_code": "CC-PHARM", "name_ar": "الصيدلية", "name_en": "Pharmacy", "center_type": "PROFIT_CENTER", "department_id": "dept-pharm", "annual_budget": 200000000, "actual_spending": 78000000, "is_active": true },
+    { "cost_center_id": "cc-004", "cost_center_code": "CC-RAD", "name_ar": "الأشعة", "name_en": "Radiology", "center_type": "PROFIT_CENTER", "department_id": "dept-rad", "annual_budget": 180000000, "actual_spending": 62000000, "is_active": true },
+    { "cost_center_id": "cc-005", "cost_center_code": "CC-ER", "name_ar": "الطوارئ", "name_en": "Emergency", "center_type": "PROFIT_CENTER", "department_id": "dept-er", "annual_budget": 250000000, "actual_spending": 95000000, "is_active": true },
+    { "cost_center_id": "cc-006", "cost_center_code": "CC-ADMIN", "name_ar": "الإدارة", "name_en": "Administration", "center_type": "COST_CENTER", "annual_budget": 100000000, "actual_spending": 42000000, "is_active": true },
+    { "cost_center_id": "cc-007", "cost_center_code": "CC-INT", "name_ar": "الطب الباطني", "name_en": "Internal Medicine", "center_type": "PROFIT_CENTER", "department_id": "dept-int", "annual_budget": 200000000, "actual_spending": 72000000, "is_active": true },
+    { "cost_center_id": "cc-008", "cost_center_code": "CC-OBGYN", "name_ar": "النسائية والتوليد", "name_en": "OB/GYN", "center_type": "PROFIT_CENTER", "department_id": "dept-obgyn", "annual_budget": 180000000, "actual_spending": 58000000, "is_active": true }
+  ],
+  "journal_entries": [
+    {
+      "entry_id": "je-001", "entry_number": "JE-2024-00001", "entry_date": "2024-01-15", "posting_date": "2024-01-15",
+      "entry_type": "STANDARD", "source_type": "INVOICE", "source_document_id": "inv-001",
+      "description_ar": "تسجيل فاتورة رقم INV-2024-00001 - أحمد محمد",
+      "total_debits": 3125000, "total_credits": 3125000, "is_balanced": true,
+      "fiscal_year": 2024, "fiscal_month": 1, "status": "POSTED", "posted": true,
+      "posted_by": "user_001", "posted_at": "2024-01-15T10:30:00Z",
+      "created_at": "2024-01-15T10:00:00Z", "created_by": "user_001"
+    },
+    {
+      "entry_id": "je-002", "entry_number": "JE-2024-00002", "entry_date": "2024-01-20", "posting_date": "2024-01-20",
+      "entry_type": "STANDARD", "source_type": "INVOICE", "source_document_id": "inv-002",
+      "description_ar": "تسجيل فاتورة رقم INV-2024-00002 - فاطمة علي",
+      "total_debits": 135000, "total_credits": 135000, "is_balanced": true,
+      "fiscal_year": 2024, "fiscal_month": 1, "status": "POSTED", "posted": true,
+      "posted_by": "user_001", "posted_at": "2024-01-20T09:30:00Z",
+      "created_at": "2024-01-20T09:00:00Z", "created_by": "user_001"
+    },
+    {
+      "entry_id": "je-003", "entry_number": "JE-2024-00003", "entry_date": "2024-01-20", "posting_date": "2024-01-20",
+      "entry_type": "STANDARD", "source_type": "PURCHASE",
+      "description_ar": "تسجيل شراء مستلزمات جراحية - أمر شراء PO-2024-00001",
+      "total_debits": 25500000, "total_credits": 25500000, "is_balanced": true,
+      "fiscal_year": 2024, "fiscal_month": 1, "status": "POSTED", "posted": true,
+      "posted_by": "user_001", "posted_at": "2024-01-20T11:00:00Z",
+      "created_at": "2024-01-20T10:30:00Z", "created_by": "user_001"
+    },
+    {
+      "entry_id": "je-004", "entry_number": "JE-2024-00004", "entry_date": "2024-02-18", "posting_date": "2024-02-18",
+      "entry_type": "STANDARD", "source_type": "INVOICE", "source_document_id": "inv-004",
+      "description_ar": "تسجيل فاتورة جراحة القلب - حسين عبدالله",
+      "total_debits": 14725000, "total_credits": 14725000, "is_balanced": true,
+      "fiscal_year": 2024, "fiscal_month": 2, "status": "POSTED", "posted": true,
+      "posted_by": "user_001", "posted_at": "2024-02-18T09:00:00Z",
+      "created_at": "2024-02-18T08:30:00Z", "created_by": "user_001"
+    },
+    {
+      "entry_id": "je-005", "entry_number": "JE-2024-00005", "entry_date": "2024-03-31", "posting_date": "2024-03-31",
+      "entry_type": "ADJUSTING",
+      "description_ar": "قيد تسوية - استهلاك الأصول الثابتة لشهر مارس",
+      "total_debits": 35000000, "total_credits": 35000000, "is_balanced": true,
+      "fiscal_year": 2024, "fiscal_month": 3, "status": "POSTED", "posted": true,
+      "posted_by": "user_001", "posted_at": "2024-03-31T16:00:00Z",
+      "created_at": "2024-03-31T15:00:00Z", "created_by": "user_001"
+    }
+  ],
+  "journal_entry_lines": [
+    { "line_id": "jel-001", "entry_id": "je-001", "account_id": "acc-1100", "account_number": "1100", "account_name_ar": "النقدية والبنك", "debit_amount": 625000, "credit_amount": 0, "cost_center_id": "cc-001", "line_description_ar": "تحصيل نقدي من المريض" },
+    { "line_id": "jel-002", "entry_id": "je-001", "account_id": "acc-1210", "account_number": "1210", "account_name_ar": "الذمم المدينة - التأمين", "debit_amount": 2500000, "credit_amount": 0, "line_description_ar": "مستحقات التأمين" },
+    { "line_id": "jel-003", "entry_id": "je-001", "account_id": "acc-4200", "account_number": "4200", "account_name_ar": "إيرادات العمليات الجراحية", "debit_amount": 0, "credit_amount": 3000000, "cost_center_id": "cc-001", "line_description_ar": "إيراد عملية الزائدة الدودية" },
+    { "line_id": "jel-004", "entry_id": "je-001", "account_id": "acc-4100", "account_number": "4100", "account_name_ar": "إيرادات الخدمات الطبية", "debit_amount": 0, "credit_amount": 125000, "line_description_ar": "إيراد استشارة + فحوصات" },
+    { "line_id": "jel-005", "entry_id": "je-003", "account_id": "acc-5200", "account_number": "5200", "account_name_ar": "المستلزمات الطبية", "debit_amount": 25000000, "credit_amount": 0, "cost_center_id": "cc-001", "line_description_ar": "مستلزمات جراحية" },
+    { "line_id": "jel-006", "entry_id": "je-003", "account_id": "acc-5200", "account_number": "5200", "account_name_ar": "المستلزمات الطبية", "debit_amount": 500000, "credit_amount": 0, "line_description_ar": "تكاليف شحن" },
+    { "line_id": "jel-007", "entry_id": "je-003", "account_id": "acc-1100", "account_number": "1100", "account_name_ar": "النقدية والبنك", "debit_amount": 0, "credit_amount": 25500000, "line_description_ar": "دفع للمورد" },
+    { "line_id": "jel-008", "entry_id": "je-005", "account_id": "acc-5500", "account_number": "5500", "account_name_ar": "الاستهلاك", "debit_amount": 35000000, "credit_amount": 0, "line_description_ar": "مصروف استهلاك الأصول" },
+    { "line_id": "jel-009", "entry_id": "je-005", "account_id": "acc-1550", "account_number": "1550", "account_name_ar": "مجمع الاستهلاك", "debit_amount": 0, "credit_amount": 35000000, "line_description_ar": "مجمع استهلاك الأصول" }
+  ]
+}

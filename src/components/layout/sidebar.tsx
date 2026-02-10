@@ -28,13 +28,36 @@ import {
   Briefcase,
   FileText,
   UserPlus,
+  Receipt,
+  Handshake,
+  RotateCcw,
+  ShoppingCart,
+  Warehouse,
+  Truck,
+  BarChart3,
+  BookOpen,
+  PieChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const moduleLinks = [
   { href: '/services', icon: Hospital, label: 'Services' },
   { href: '/inventory', icon: Package, label: 'Inventory' },
-  { href: '/finance', icon: DollarSign, label: 'Finance' },
+  {
+    href: '/finance', icon: DollarSign, label: 'Finance',
+    children: [
+      { href: '/finance/patients', icon: UserCircle, label: 'Patients' },
+      { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
+      { href: '/finance/stakeholders', icon: Handshake, label: 'Stakeholders' },
+      { href: '/finance/invoices', icon: Receipt, label: 'Invoices' },
+      { href: '/finance/returns', icon: RotateCcw, label: 'Returns' },
+      { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
+      { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
+      { href: '/finance/suppliers', icon: Truck, label: 'Suppliers' },
+      { href: '/finance/accounting', icon: BookOpen, label: 'Accounting' },
+      { href: '/finance/reports', icon: BarChart3, label: 'Reports' },
+    ],
+  },
   { href: '/insurance', icon: Shield, label: 'Insurance' },
   {
     href: '/hr', icon: Users, label: 'HR',

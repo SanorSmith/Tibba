@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Login | Tibbna-EHR',
+  title: 'Login | Tibbna-ERP',
   description: 'Sign in to Tibbna Hospital Management System',
 }
 

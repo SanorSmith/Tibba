@@ -28,7 +28,7 @@ export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
         </button>
 
         <h1 className="text-base lg:text-lg font-bold tracking-tight cursor-pointer whitespace-nowrap">
-          <span className="hidden sm:inline">Tibbna EHR</span>
+          <span className="hidden sm:inline">Tibbna-ERP</span>
           <span className="sm:hidden">Tibbna</span>
         </h1>
 
