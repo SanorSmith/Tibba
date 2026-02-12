@@ -37,7 +37,6 @@ import {
   BarChart3,
   BookOpen,
   PieChart,
-  Workflow,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -73,7 +72,6 @@ const moduleLinks = [
       { href: '/hr/benefits', icon: Heart, label: 'Benefits' },
       { href: '/hr/organization', icon: Building2, label: 'Organization' },
       { href: '/hr/reports', icon: FileText, label: 'Reports' },
-      { href: '/hr/integrations/status', icon: Workflow, label: 'Integrations' },
     ],
   },
   { href: '/billing', icon: CreditCard, label: 'Billing' },

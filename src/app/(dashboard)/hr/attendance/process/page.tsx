@@ -190,7 +190,7 @@ export default function AttendanceProcessingPage() {
     toast.success(`Preview generated: ${summaries.length} records`);
   };
 
-  const handleProcess = async () => {
+  const handleProcess = () => {
     if (!isManager) {
       toast.error('Only HR Admin / Administrator can process attendance');
       return;
@@ -228,22 +228,7 @@ export default function AttendanceProcessingPage() {
 
       const ok = dataStore.batchAddProcessedSummaries(toSave);
       if (ok) {
-        // ✨ TRIGGER INTEGRATION: Notify payroll of processed attendance
-        try {
-          const { integrationManager } = await import('@/lib/integrationManager');
-          const employeeIds = [...new Set(toSave.map((p: any) => p.employee_id))];
-          const dateProcessed = mode === 'single'
-            ? selectedDate
-            : `${dateFrom}_to_${dateTo}`;
-          await integrationManager.onAttendanceProcessed(dateProcessed, employeeIds);
-        } catch (intError) {
-          console.error('Integration error:', intError);
-        }
-
-        toast.success(`Processed ${toSave.length} attendance records`, {
-          description: '✨ Payroll will be updated automatically',
-          duration: 5000,
-        });
+        toast.success(`Processed ${toSave.length} attendance records`);
         loadData();
         setPreview([]);
         setShowPreview(false);
