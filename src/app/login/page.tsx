@@ -1,149 +1,161 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Hospital } from 'lucide-react';
-import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth-store';
+import { Hospital } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-const DEMO_USERS = [
-  { email: 'admin@tibbna.com', username: 'demo', password: 'demo123', label: 'HR Administrator', role: 'Admin' },
-  { email: 'doctor@tibbna.com', username: 'doctor', password: 'doctor123', label: 'Dr. Ahmed Hassan', role: 'Doctor' },
-  { email: 'nurse@tibbna.com', username: 'nurse', password: 'nurse123', label: 'Nurse Fatima', role: 'Nurse' },
-  { email: 'billing@tibbna.com', username: 'billing', password: 'billing123', label: 'Billing Staff', role: 'Billing' },
+// Demo quick-login entries
+const QUICK_LOGINS = [
+  { username: 'demo', password: 'demo123', label: 'HR Administrator', role: 'Admin' },
+  { username: 'doctor', password: 'doctor123', label: 'Dr. Sarah Johnson', role: 'Doctor' },
+  { username: 'nurse', password: 'nurse123', label: 'Nurse Mary', role: 'Nurse' },
+  { username: 'pharmacist', password: 'pharmacist123', label: 'Sarah Ahmed', role: 'Pharmacist' },
+  { username: 'billing', password: 'billing123', label: 'Billing Staff', role: 'Billing' },
 ];
 
 export default function LoginPage() {
   const router = useRouter();
-  const zustandLogin = useAuthStore((state) => state.login);
-  const [email, setEmail] = useState('');
+  const login = useAuthStore((state) => state.login);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
-    if (!email.trim()) { setError('Please enter your email'); return; }
-    if (!password.trim()) { setError('Please enter your password'); return; }
+    if (!username.trim()) {
+      setError('Please enter your username');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Please enter your password');
+      return;
+    }
 
     setIsLoading(true);
 
-    try {
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    setTimeout(() => {
+      const success = login(username, password);
 
-      const result = await response.json();
-
-      if (result.success) {
-        // Also set Zustand store so dashboard layout renders
-        const demoUser = DEMO_USERS.find(u => u.email === email);
-        if (demoUser) {
-          zustandLogin(demoUser.username, demoUser.password);
+      if (success) {
+        try {
+          // Set session cookie so middleware can protect routes
+          const maxAge = 60 * 60 * 8; // 8 hours
+          document.cookie = `tibbna_session=${btoa(username)}; path=/; max-age=${maxAge}; SameSite=Strict`;
+          router.push('/dashboard');
+          router.refresh();
+        } catch (err) {
+          console.error('Storage error:', err);
+          setError('Unable to save login session. Please check browser settings.');
+          setIsLoading(false);
         }
-
-        toast.success(`Welcome back, ${result.user?.name || 'User'}!`);
-        router.push('/dashboard');
-        router.refresh();
       } else {
-        setError(result.error || 'Invalid credentials');
-        toast.error(result.error || 'Login failed');
+        setError('Invalid username or password');
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Connection error. Please try again.');
-      toast.error('Connection error');
-    } finally {
-      setIsLoading(false);
-    }
+    }, 500);
   };
 
-  const handleQuickLogin = (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
+  const quickLogin = (user: typeof QUICK_LOGINS[number]) => {
+    setUsername(user.username);
+    setPassword(user.password);
     setError('');
+    // Auto-submit after state updates
+    setTimeout(() => {
+      formRef.current?.requestSubmit();
+    }, 100);
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
-      <div style={{ width: '100%', maxWidth: '420px', padding: '0 16px' }}>
-        <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '32px', marginBottom: '16px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-              <Hospital size={28} color="#fff" />
-            </div>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, margin: '0 0 4px', color: '#000' }}>Tibbna Hospital</h1>
-            <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>Electronic Health Records System</p>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+            <Hospital className="w-10 h-10 text-white" />
           </div>
-
-          <form onSubmit={handleSubmit}>
-            {error && (
-              <div style={{ padding: '8px 12px', marginBottom: '16px', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', fontSize: '13px', color: '#991B1B' }}>
-                {error}
-              </div>
-            )}
-
-            <div style={{ marginBottom: '12px' }}>
-              <label htmlFor="email" style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '4px', color: '#333' }}>Email</label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@tibbna.com"
-                style={{ width: '100%', height: '40px', padding: '8px 12px', border: '1px solid #e4e4e4', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label htmlFor="password" style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '4px', color: '#333' }}>Password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                style={{ width: '100%', height: '40px', padding: '8px 12px', border: '1px solid #e4e4e4', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                width: '100%', height: '40px', border: 'none', borderRadius: '6px',
-                backgroundColor: '#000', color: '#fff', fontSize: '14px', fontWeight: 500,
-                cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.6 : 1,
-              }}
-            >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
+          <h1 className="text-2xl font-bold text-gray-900">Tibbna Hospital System</h1>
+          <p className="text-gray-600 text-sm mt-2 text-center">
+            Welcome back, please sign in to continue
+          </p>
         </div>
 
-        <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', padding: '16px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: '#333', margin: '0 0 8px' }}>Demo Credentials (click to fill)</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {DEMO_USERS.map((user) => (
+        {error && (
+          <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-3 rounded text-sm text-red-700 font-medium">
+            {error}
+          </div>
+        )}
+
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Username
+            </label>
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username"
+              disabled={isLoading}
+              autoComplete="username"
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Password
+            </label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              disabled={isLoading}
+              autoComplete="current-password"
+              className="w-full"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full h-11 text-base font-medium"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </Button>
+        </form>
+
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-sm font-semibold text-gray-700 mb-3 text-center">Quick Demo Login</p>
+          <div className="space-y-1.5">
+            {QUICK_LOGINS.map((u) => (
               <button
-                key={user.email}
-                type="button"
-                onClick={() => handleQuickLogin(user.email, user.password)}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 12px', border: '1px solid #e4e4e4', borderRadius: '6px',
-                  backgroundColor: '#fafafa', cursor: 'pointer', fontSize: '13px', textAlign: 'left',
-                }}
+                key={u.username}
+                onClick={() => quickLogin(u)}
+                disabled={isLoading}
+                className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 transition group disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
               >
-                <span style={{ fontWeight: 500, color: '#000' }}>{user.label}</span>
-                <span style={{ fontSize: '11px', color: '#888', backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{user.role}</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-800 group-hover:text-black">{u.label}</p>
+                  <p className="text-xs text-gray-500">
+                    <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{u.username}</span>
+                    {' / '}
+                    <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{u.password}</span>
+                  </p>
+                </div>
+                <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{u.role}</span>
               </button>
             ))}
           </div>
+          <p className="text-xs text-gray-400 mt-3 italic text-center">Click any row above to auto-fill &amp; login</p>
         </div>
       </div>
     </div>
