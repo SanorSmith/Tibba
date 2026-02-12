@@ -24,7 +24,7 @@ export async function getEmployees() {
     return { success: true, data };
   } catch (error) {
     console.error('Error fetching employees:', error);
-    return { success: false, error: 'Failed to fetch employees' };
+    return { success: false, error: 'Failed to fetch employees', data: [] };
   }
 }
 
@@ -49,11 +49,11 @@ export async function getEmployeeById(id: string) {
     return { success: true, data };
   } catch (error) {
     console.error('Error fetching employee:', error);
-    return { success: false, error: 'Employee not found' };
+    return { success: false, error: 'Employee not found', data: null };
   }
 }
 
-export async function createEmployee(employeeData: Record<string, unknown>) {
+export async function createEmployee(employeeData: any) {
   try {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
@@ -61,10 +61,8 @@ export async function createEmployee(employeeData: Record<string, unknown>) {
     const { data, error } = await supabaseAdmin
       .from('employees')
       .insert({
-        ...(employeeData as any),
+        ...employeeData,
         organization_id: session.organizationId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -76,21 +74,18 @@ export async function createEmployee(employeeData: Record<string, unknown>) {
     return { success: true, data };
   } catch (error) {
     console.error('Error creating employee:', error);
-    return { success: false, error: 'Failed to create employee' };
+    return { success: false, error: 'Failed to create employee', data: null };
   }
 }
 
-export async function updateEmployee(id: string, employeeData: Record<string, unknown>) {
+export async function updateEmployee(id: string, employeeData: any) {
   try {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
 
     const { data, error } = await supabaseAdmin
       .from('employees')
-      .update({
-        ...(employeeData as any),
-        updated_at: new Date().toISOString()
-      })
+      .update(employeeData)
       .eq('id', id)
       .eq('organization_id', session.organizationId)
       .select()
@@ -104,7 +99,7 @@ export async function updateEmployee(id: string, employeeData: Record<string, un
     return { success: true, data };
   } catch (error) {
     console.error('Error updating employee:', error);
-    return { success: false, error: 'Failed to update employee' };
+    return { success: false, error: 'Failed to update employee', data: null };
   }
 }
 
@@ -113,10 +108,9 @@ export async function deleteEmployee(id: string) {
     const session = await getSession();
     if (!session) throw new Error('Unauthorized');
 
-    // Soft delete - mark as inactive
     const { error } = await supabaseAdmin
       .from('employees')
-      .update({ active: false, updated_at: new Date().toISOString() })
+      .update({ active: false })
       .eq('id', id)
       .eq('organization_id', session.organizationId);
 

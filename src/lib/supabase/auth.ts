@@ -1,12 +1,7 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export interface AuthResponse {
   success: boolean;
@@ -20,12 +15,8 @@ export interface AuthResponse {
   error?: string;
 }
 
-/**
- * Sign in with email and password
- */
 export async function signIn(email: string, password: string): Promise<AuthResponse> {
   try {
-    // For demo: Check against hardcoded users first
     const demoUsers = [
       { email: 'admin@tibbna.com', password: 'demo123', role: 'Administrator' },
       { email: 'doctor@tibbna.com', password: 'doctor123', role: 'Doctor' },
@@ -36,10 +27,9 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
     const demoUser = demoUsers.find(u => u.email === email && u.password === password);
 
     if (demoUser) {
-      // Find employee in database
       const { data: employee } = await supabaseAdmin
         .from('employees')
-        .select('*')
+        .select('id, organization_id, first_name, last_name, email, job_title')
         .eq('email', email)
         .single();
 
@@ -47,16 +37,14 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
         id: employee?.id || 'demo-user-id',
         email: email,
         role: demoUser.role,
-        employeeId: employee?.id || undefined,
+        employeeId: employee?.id,
         organizationId: employee?.organization_id || '00000000-0000-0000-0000-000000000001'
       };
 
-      // Set session cookie
-      const cookieStore = await cookies();
-      cookieStore.set('tibbna-session', JSON.stringify(user), {
+      cookies().set('tibbna-session', JSON.stringify(user), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24 * 7,
         path: '/'
       });
 
@@ -70,21 +58,13 @@ export async function signIn(email: string, password: string): Promise<AuthRespo
   }
 }
 
-/**
- * Sign out
- */
 export async function signOut() {
-  const cookieStore = await cookies();
-  cookieStore.delete('tibbna-session');
+  cookies().delete('tibbna-session');
 }
 
-/**
- * Get current session
- */
 export async function getSession() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('tibbna-session');
-
+  const sessionCookie = cookies().get('tibbna-session');
+  
   if (!sessionCookie) {
     return null;
   }
@@ -96,9 +76,6 @@ export async function getSession() {
   }
 }
 
-/**
- * Check if user is authenticated
- */
 export async function isAuthenticated(): Promise<boolean> {
   const session = await getSession();
   return !!session;
