@@ -72,7 +72,7 @@ export default function EmployeesPage() {
         emp.employee_number.toLowerCase().includes(search.toLowerCase()) ||
         emp.job_title.toLowerCase().includes(search.toLowerCase()) ||
         ((emp.email || (emp as any).email_work || '') as string).toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = categoryFilter === 'all' || emp.employee_category === categoryFilter;
+      const matchesCategory = categoryFilter === 'all' || (emp.employee_category || '') === categoryFilter;
       const matchesDept = departmentFilter === 'all' || emp.department_id === departmentFilter;
       const matchesStatus = statusFilter === 'all' || emp.employment_status === statusFilter;
       return matchesSearch && matchesCategory && matchesDept && matchesStatus;
@@ -277,14 +277,17 @@ export default function EmployeesPage() {
                 </thead>
                 <tbody>
                   {paginatedEmployees.map(emp => {
-                    const catColor = categoryColors[emp.employee_category] || { bg: '#F3F4F6', text: '#374151' };
+                    const category = emp.employee_category || '';
+                    const deptName = emp.department_name || (emp as any).department?.name || '—';
+                    const hireDate = emp.date_of_hire || (emp as any).hire_date || '—';
+                    const catColor = categoryColors[category] || { bg: '#F3F4F6', text: '#374151' };
                     const statColor = statusColors[emp.employment_status] || { bg: '#F3F4F6', text: '#374151' };
                     return (
                       <tr key={emp.id}>
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#618FF5' }}>
-                              {emp.first_name[0]}{emp.last_name[0]}
+                              {(emp.first_name || '?')[0]}{(emp.last_name || '?')[0]}
                             </div>
                             <div>
                               <p style={{ fontSize: '14px', fontWeight: 500 }}>{emp.first_name} {emp.last_name}</p>
@@ -293,18 +296,20 @@ export default function EmployeesPage() {
                           </div>
                         </td>
                         <td style={{ fontSize: '13px', color: '#525252' }}>{emp.employee_number}</td>
-                        <td style={{ fontSize: '13px' }}>{emp.department_name}</td>
+                        <td style={{ fontSize: '13px' }}>{deptName}</td>
                         <td>
-                          <span className="tibbna-badge" style={{ backgroundColor: catColor.bg, color: catColor.text }}>
-                            {emp.employee_category.replace('_', ' ')}
-                          </span>
+                          {category ? (
+                            <span className="tibbna-badge" style={{ backgroundColor: catColor.bg, color: catColor.text }}>
+                              {category.replace('_', ' ')}
+                            </span>
+                          ) : <span style={{ color: '#a3a3a3', fontSize: '12px' }}>—</span>}
                         </td>
                         <td>
                           <span className="tibbna-badge" style={{ backgroundColor: statColor.bg, color: statColor.text }}>
-                            {emp.employment_status}
+                            {emp.employment_status || '—'}
                           </span>
                         </td>
-                        <td style={{ fontSize: '13px', color: '#525252' }}>{emp.date_of_hire}</td>
+                        <td style={{ fontSize: '13px', color: '#525252' }}>{hireDate}</td>
                         <td>
                           <div className="flex items-center gap-2">
                             <Link href={`/hr/employees/${emp.id}`}>
@@ -336,7 +341,9 @@ export default function EmployeesPage() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2">
             {paginatedEmployees.map(emp => {
-              const catColor = categoryColors[emp.employee_category] || { bg: '#F3F4F6', text: '#374151' };
+              const category = emp.employee_category || '';
+              const deptName = emp.department_name || (emp as any).department?.name || '—';
+              const catColor = categoryColors[category] || { bg: '#F3F4F6', text: '#374151' };
               const statColor = statusColors[emp.employment_status] || { bg: '#F3F4F6', text: '#374151' };
               return (
                 <Link key={emp.id} href={`/hr/employees/${emp.id}`}>
@@ -345,22 +352,24 @@ export default function EmployeesPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#618FF5' }}>
-                            {emp.first_name[0]}{emp.last_name[0]}
+                            {(emp.first_name || '?')[0]}{(emp.last_name || '?')[0]}
                           </div>
                           <div>
                             <p style={{ fontSize: '14px', fontWeight: 600 }}>{emp.first_name} {emp.last_name}</p>
                             <p style={{ fontSize: '12px', color: '#525252' }}>{emp.job_title}</p>
-                            <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{emp.department_name}</p>
+                            <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{deptName}</p>
                           </div>
                         </div>
                         <ChevronRight size={16} style={{ color: '#a3a3a3' }} />
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="tibbna-badge" style={{ backgroundColor: catColor.bg, color: catColor.text, fontSize: '10px' }}>
-                          {emp.employee_category.replace('_', ' ')}
-                        </span>
+                        {category ? (
+                          <span className="tibbna-badge" style={{ backgroundColor: catColor.bg, color: catColor.text, fontSize: '10px' }}>
+                            {category.replace('_', ' ')}
+                          </span>
+                        ) : null}
                         <span className="tibbna-badge" style={{ backgroundColor: statColor.bg, color: statColor.text, fontSize: '10px' }}>
-                          {emp.employment_status}
+                          {emp.employment_status || '—'}
                         </span>
                       </div>
                     </div>
