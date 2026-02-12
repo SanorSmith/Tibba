@@ -1,23 +1,17 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/server';
+
+const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 export async function GET() {
   try {
-    const sessionCookie = cookies().get('tibbna-session');
-    if (!sessionCookie) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const session = JSON.parse(sessionCookie.value);
-
     const { data, error } = await supabaseAdmin
       .from('employees')
       .select(`
         *,
         department:departments!employees_department_id_fkey(id, name, code)
       `)
-      .eq('organization_id', session.organizationId)
+      .eq('organization_id', DEFAULT_ORG_ID)
       .eq('active', true)
       .order('employee_number');
 

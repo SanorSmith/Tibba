@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, UserPlus, ChevronRight, Download, Trash2 } from 'lucide-react';
-import { dataStore } from '@/lib/dataStore';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { Employee } from '@/types/hr';
@@ -44,10 +43,15 @@ export default function EmployeesPage() {
     loadEmployees();
   }, []);
 
-  const loadEmployees = () => {
+  const loadEmployees = async () => {
     try {
-      const data = dataStore.getEmployees();
-      setAllEmployees(data);
+      const response = await fetch('/api/employees');
+      const result = await response.json();
+      if (result.success && result.data) {
+        setAllEmployees(result.data as any);
+      } else {
+        toast.error('Failed to load employees');
+      }
     } catch (error) {
       console.error('❌ Error loading employees:', error);
       toast.error('Failed to load employees');
@@ -95,7 +99,7 @@ export default function EmployeesPage() {
   // ACTIONS
   // =========================================================================
 
-  const handleDelete = (employeeId: string, employeeName: string) => {
+  const handleDelete = async (employeeId: string, employeeName: string) => {
     if (!hasRole('HR_ADMIN')) {
       toast.error('Only HR Admin can delete employees');
       return;
@@ -103,8 +107,9 @@ export default function EmployeesPage() {
     if (!confirm(`Are you sure you want to delete ${employeeName}?`)) return;
 
     try {
-      const success = dataStore.deleteEmployee(employeeId);
-      if (success) {
+      const response = await fetch(`/api/employees/${employeeId}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.success) {
         toast.success(`${employeeName} deleted successfully`);
         loadEmployees();
       } else {
