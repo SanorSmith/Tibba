@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from '@/lib/supabase/auth';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -15,17 +14,28 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const result = await signIn(email, password);
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (result.success) {
-      toast.success('Login successful');
-      router.push('/dashboard');
-      router.refresh();
-    } else {
-      toast.error(result.error || 'Login failed');
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Login successful');
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (

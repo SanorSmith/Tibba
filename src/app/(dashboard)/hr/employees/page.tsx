@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, UserPlus, ChevronRight, Download, Trash2 } from 'lucide-react';
-import { getEmployees, deleteEmployee } from '@/lib/actions/employees';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { Employee } from '@/types/hr';
@@ -46,15 +45,21 @@ export default function EmployeesPage() {
 
   async function loadEmployees() {
     setLoading(true);
-    
-    const result = await getEmployees();
-    
-    if (result.success && result.data) {
-      setAllEmployees(result.data as any);
-    } else {
+
+    try {
+      const response = await fetch('/api/employees');
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setAllEmployees(result.data as any);
+      } else {
+        toast.error('Failed to load employees');
+      }
+    } catch (error) {
+      console.error('Error loading employees:', error);
       toast.error('Failed to load employees');
     }
-    
+
     setLoading(false);
   }
 
@@ -105,7 +110,8 @@ export default function EmployeesPage() {
     if (!confirm(`Are you sure you want to delete ${employeeName}?`)) return;
 
     try {
-      const result = await deleteEmployee(employeeId);
+      const response = await fetch(`/api/employees/${employeeId}`, { method: 'DELETE' });
+      const result = await response.json();
       if (result.success) {
         toast.success(`${employeeName} deleted successfully`);
         loadEmployees();
