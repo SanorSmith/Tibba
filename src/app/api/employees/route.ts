@@ -15,7 +15,7 @@ export async function GET() {
       .from('employees')
       .select(`
         *,
-        department:departments(id, name, code)
+        department:departments!employees_department_id_fkey(id, name, code)
       `)
       .eq('organization_id', session.organizationId)
       .eq('active', true)

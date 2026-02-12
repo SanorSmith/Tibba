@@ -13,7 +13,7 @@ export async function getEmployees() {
       .from('employees')
       .select(`
         *,
-        department:departments(id, name, code)
+        department:departments!employees_department_id_fkey(id, name, code)
       `)
       .eq('organization_id', session.organizationId)
       .eq('active', true)
@@ -37,7 +37,7 @@ export async function getEmployeeById(id: string) {
       .from('employees')
       .select(`
         *,
-        department:departments(id, name, code),
+        department:departments!employees_department_id_fkey(id, name, code),
         organization:organizations(id, name)
       `)
       .eq('id', id)
