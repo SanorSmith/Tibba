@@ -4,16 +4,18 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Hospital } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/auth-store';
 
 const DEMO_USERS = [
-  { email: 'admin@tibbna.com', password: 'demo123', label: 'HR Administrator', role: 'Admin' },
-  { email: 'doctor@tibbna.com', password: 'doctor123', label: 'Dr. Ahmed Hassan', role: 'Doctor' },
-  { email: 'nurse@tibbna.com', password: 'nurse123', label: 'Nurse Fatima', role: 'Nurse' },
-  { email: 'billing@tibbna.com', password: 'billing123', label: 'Billing Staff', role: 'Billing' },
+  { email: 'admin@tibbna.com', username: 'demo', password: 'demo123', label: 'HR Administrator', role: 'Admin' },
+  { email: 'doctor@tibbna.com', username: 'doctor', password: 'doctor123', label: 'Dr. Ahmed Hassan', role: 'Doctor' },
+  { email: 'nurse@tibbna.com', username: 'nurse', password: 'nurse123', label: 'Nurse Fatima', role: 'Nurse' },
+  { email: 'billing@tibbna.com', username: 'billing', password: 'billing123', label: 'Billing Staff', role: 'Billing' },
 ];
 
 export default function LoginPage() {
   const router = useRouter();
+  const zustandLogin = useAuthStore((state) => state.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -38,6 +40,12 @@ export default function LoginPage() {
       const result = await response.json();
 
       if (result.success) {
+        // Also set Zustand store so dashboard layout renders
+        const demoUser = DEMO_USERS.find(u => u.email === email);
+        if (demoUser) {
+          zustandLogin(demoUser.username, demoUser.password);
+        }
+
         toast.success(`Welcome back, ${result.user?.name || 'User'}!`);
         router.push('/dashboard');
         router.refresh();
