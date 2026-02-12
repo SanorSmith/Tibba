@@ -13,15 +13,15 @@ class IntegrationManager {
   // FLOW 1: NEW EMPLOYEE AUTO-SETUP
   // =========================================================================
 
-  async onEmployeeCreated(employeeId: string) {
+  async onEmployeeCreated(employeeId: string, employeeData?: any) {
     console.log('🔄 Integration: New employee created -', employeeId);
 
     try {
       // 1. Create leave balances
-      this.createInitialLeaveBalances(employeeId);
+      this.createInitialLeaveBalances(employeeId, employeeData);
 
       // 2. Create attendance record for today
-      this.createInitialAttendanceRecord(employeeId);
+      this.createInitialAttendanceRecord(employeeId, employeeData);
 
       console.log('✅ Employee auto-setup complete');
       return { success: true };
@@ -31,9 +31,13 @@ class IntegrationManager {
     }
   }
 
-  private createInitialLeaveBalances(employeeId: string) {
-    const employee = dataStore.getEmployee(employeeId);
-    if (!employee) return;
+  private createInitialLeaveBalances(employeeId: string, employeeData?: any) {
+    // Get employee data - prefer passed data over fetching (avoids timing issues)
+    const employee = employeeData || dataStore.getEmployee(employeeId);
+    if (!employee) {
+      console.error('  ❌ Employee not found for leave balance creation');
+      return;
+    }
 
     // Check if balance already exists
     const existing = dataStore.getLeaveBalances().find((b: any) => b.employee_id === employeeId);
@@ -46,7 +50,6 @@ class IntegrationManager {
     const isDoctor = employee.employee_category === 'MEDICAL_STAFF';
     const gradeNum = employee.grade_id ? parseInt(employee.grade_id.replace('G', '')) : 1;
     const isSenior = gradeNum >= 7;
-
     const annualDays = isDoctor ? 30 : isSenior ? 25 : 21;
 
     const balance: any = {
@@ -56,14 +59,14 @@ class IntegrationManager {
       sick: { total: 14, used: 0, pending: 0, available: 14 },
       emergency: { total: 3, used: 0, pending: 0, available: 3 },
       maternity: {
-        total: (employee as any).gender === 'FEMALE' ? 90 : 0,
+        total: employee.gender === 'FEMALE' ? 90 : 0,
         used: 0, pending: 0,
-        available: (employee as any).gender === 'FEMALE' ? 90 : 0,
+        available: employee.gender === 'FEMALE' ? 90 : 0,
       },
       paternity: {
-        total: (employee as any).gender === 'MALE' ? 3 : 0,
+        total: employee.gender === 'MALE' ? 3 : 0,
         used: 0, pending: 0,
-        available: (employee as any).gender === 'MALE' ? 3 : 0,
+        available: employee.gender === 'MALE' ? 3 : 0,
       },
       compensatory: { total: 5, used: 0, pending: 0, available: 5 },
       study: { total: 0, used: 0, pending: 0, available: 0 },
@@ -71,7 +74,6 @@ class IntegrationManager {
     };
 
     // Add to dataStore via direct localStorage manipulation
-    // (dataStore.getLeaveBalances returns the array; we push and persist)
     try {
       const STORAGE_KEY = 'tibbna_hr_data';
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -88,9 +90,15 @@ class IntegrationManager {
     }
   }
 
-  private createInitialAttendanceRecord(employeeId: string) {
-    const employee = dataStore.getEmployee(employeeId);
-    if (!employee || employee.employment_status !== 'ACTIVE') {
+  private createInitialAttendanceRecord(employeeId: string, employeeData?: any) {
+    // Get employee data - prefer passed data over fetching (avoids timing issues)
+    const employee = employeeData || dataStore.getEmployee(employeeId);
+    if (!employee) {
+      console.error('  ❌ Employee not found for attendance record creation');
+      return;
+    }
+
+    if (employee.employment_status !== 'ACTIVE') {
       console.log('  ⏭ Employee not active, skipping attendance record');
       return;
     }
@@ -122,7 +130,17 @@ class IntegrationManager {
     };
 
     dataStore.batchAddProcessedSummaries([summary as DailyAttendanceSummary]);
-    console.log('  ✓ Initial attendance record created for today');
+    console.log(`  ✓ Initial attendance record created for today (${today})`);
+
+    // Verify it was saved
+    const verification = dataStore.getProcessedSummaries().find(
+      (s: any) => s.employee_id === employeeId && s.date === today
+    );
+    if (verification) {
+      console.log('  ✓✓ Attendance record verified in dataStore');
+    } else {
+      console.error('  ❌ Attendance record not found after save - check dataStore.batchAddProcessedSummaries');
+    }
   }
 
   // =========================================================================

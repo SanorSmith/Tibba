@@ -131,7 +131,7 @@ export default function NewEmployeePage() {
         // ✨ TRIGGER INTEGRATION: Auto-setup for new employee
         try {
           const { integrationManager } = await import('@/lib/integrationManager');
-          const result = await integrationManager.onEmployeeCreated(empNum);
+          const result = await integrationManager.onEmployeeCreated(empNum, newEmployee);
 
           if (result.success) {
             toast.success(`${form.first_name} ${form.last_name} added successfully`, {
