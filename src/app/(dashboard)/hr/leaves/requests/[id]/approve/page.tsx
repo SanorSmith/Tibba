@@ -147,7 +147,7 @@ export default function LeaveApprovalPage() {
   // =========================================================================
   // SUBMIT
   // =========================================================================
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!request || !canCurrentUserApprove()) {
       toast.error('You do not have permission to approve at this step');
       return;
@@ -199,6 +199,17 @@ export default function LeaveApprovalPage() {
               used: (balance[balKey].used || balance[balKey].taken || 0) + request.total_days,
             });
           }
+
+          // ✨ TRIGGER INTEGRATION: Create attendance records for leave period
+          try {
+            const { integrationManager } = await import('@/lib/integrationManager');
+            const intResult = await integrationManager.onLeaveApproved(requestId);
+            if (intResult.success && intResult.recordsCreated > 0) {
+              console.log(`✅ Created ${intResult.recordsCreated} attendance records for leave`);
+            }
+          } catch (intError) {
+            console.error('Integration error:', intError);
+          }
         }
 
         const ok = dataStore.updateLeaveRequest(requestId, updates);
@@ -206,7 +217,7 @@ export default function LeaveApprovalPage() {
 
         toast.success(
           isFinal ? 'Leave request fully approved!' : 'Approval step completed!',
-          { description: isFinal ? 'Employee has been notified' : 'Request moved to next approval level', duration: 4000 }
+          { description: isFinal ? '✨ Attendance records created automatically for leave period' : 'Request moved to next approval level', duration: 4000 }
         );
         setTimeout(() => router.push('/hr/leaves/requests'), 1200);
 

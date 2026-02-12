@@ -83,7 +83,7 @@ export default function NewEmployeePage() {
     if (step > 1) setStep(step - 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const empNum = `EMP-2024-${String(Math.floor(Math.random() * 900) + 100)}`;
     const dept = departmentsData.departments.find(d => d.id === form.department_id);
 
@@ -127,7 +127,30 @@ export default function NewEmployeePage() {
       if (success) {
         setGeneratedId(empNum);
         setSubmitted(true);
-        toast.success(`${form.first_name} ${form.last_name} added successfully`);
+
+        // ✨ TRIGGER INTEGRATION: Auto-setup for new employee
+        try {
+          const { integrationManager } = await import('@/lib/integrationManager');
+          const result = await integrationManager.onEmployeeCreated(empNum);
+
+          if (result.success) {
+            toast.success(`${form.first_name} ${form.last_name} added successfully`, {
+              description: '✨ Leave balances and attendance setup automatically',
+              duration: 5000,
+            });
+          } else {
+            toast.success(`${form.first_name} ${form.last_name} added successfully`, {
+              description: 'Note: Some auto-setup steps failed. Please verify manually.',
+              duration: 5000,
+            });
+          }
+        } catch (intError) {
+          console.error('Integration error:', intError);
+          toast.success(`${form.first_name} ${form.last_name} added successfully`, {
+            description: 'Employee created but auto-setup incomplete',
+            duration: 5000,
+          });
+        }
       } else {
         toast.error('Failed to save employee');
       }
