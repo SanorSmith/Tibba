@@ -6,7 +6,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import type { EmployeeFormData } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
-import { dataStore } from '@/lib/dataStore';
 import { toast } from 'sonner';
 import departmentsData from '@/data/hr/departments.json';
 import payrollData from '@/data/hr/payroll.json';
@@ -22,39 +21,54 @@ export default function EditEmployeePage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const emp = dataStore.getEmployee(params.id as string) as any;
-    setEmployee(emp ?? null);
-    if (emp) {
-      setForm({
-        first_name: emp.first_name,
-        middle_name: '',
-        last_name: emp.last_name,
-        full_name_arabic: emp.full_name_arabic || '',
-        date_of_birth: emp.date_of_birth,
-        gender: emp.gender as 'MALE' | 'FEMALE',
-        marital_status: (emp.marital_status || 'SINGLE') as 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED',
-        nationality: emp.nationality,
-        national_id: emp.national_id,
-        email: emp.email_work || emp.email || '',
-        phone: emp.phone_mobile || emp.phone || '',
-        address: emp.address || '',
-        employment_type: emp.employment_type as 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'TEMPORARY',
-        employee_category: emp.employee_category as 'MEDICAL_STAFF' | 'NURSING' | 'ADMINISTRATIVE' | 'SUPPORT' | 'TECHNICAL',
-        job_title: emp.job_title,
-        department_id: emp.department_id,
-        grade_id: emp.grade_id || '',
-        date_of_hire: emp.date_of_hire,
-        shift_id: emp.shift_id || '',
-        bank_account_number: emp.bank_account_number || '',
-        bank_name: emp.bank_name || '',
-        basic_salary: emp.basic_salary,
-        emergency_contact_name: '',
-        emergency_contact_phone: '',
-        emergency_contact_relationship: '',
-      });
-    }
-    setLoading(false);
+    loadEmployee();
   }, [params.id]);
+
+  async function loadEmployee() {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/employees/${params.id}`);
+      const result = await response.json();
+      if (result.success && result.data) {
+        const emp = result.data;
+        setEmployee(emp);
+        setForm({
+          first_name: emp.first_name || '',
+          middle_name: emp.middle_name || '',
+          last_name: emp.last_name || '',
+          full_name_arabic: emp.first_name_ar || '',
+          date_of_birth: emp.date_of_birth || '',
+          gender: (emp.gender || 'MALE') as 'MALE' | 'FEMALE',
+          marital_status: (emp.marital_status || 'SINGLE') as 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED',
+          nationality: emp.nationality || 'Iraqi',
+          national_id: emp.national_id || '',
+          email: emp.email || '',
+          phone: emp.phone || '',
+          address: typeof emp.address === 'string' ? emp.address : '',
+          employment_type: (emp.employment_type || 'FULL_TIME') as 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'TEMPORARY',
+          employee_category: 'ADMINISTRATIVE' as 'MEDICAL_STAFF' | 'NURSING' | 'ADMINISTRATIVE' | 'SUPPORT' | 'TECHNICAL',
+          job_title: emp.job_title || '',
+          department_id: emp.department_id || '',
+          grade_id: emp.salary_grade || '',
+          date_of_hire: emp.hire_date || '',
+          shift_id: '',
+          bank_account_number: '',
+          bank_name: '',
+          basic_salary: emp.base_salary ? Number(emp.base_salary) : undefined,
+          emergency_contact_name: '',
+          emergency_contact_phone: '',
+          emergency_contact_relationship: '',
+        });
+      } else {
+        setEmployee(null);
+      }
+    } catch (error) {
+      console.error('Error loading employee:', error);
+      setEmployee(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -90,44 +104,40 @@ export default function EditEmployeePage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
 
-    const dept = departmentsData.departments.find(d => d.id === form.department_id);
-    const updates: Record<string, any> = {
-      first_name: form.first_name,
-      last_name: form.last_name,
-      full_name_arabic: form.full_name_arabic || '',
-      date_of_birth: form.date_of_birth,
-      gender: form.gender,
-      marital_status: form.marital_status,
-      nationality: form.nationality,
-      national_id: form.national_id,
-      email: form.email,
-      email_work: form.email,
-      phone: form.phone,
-      phone_mobile: form.phone,
-      address: form.address || '',
-      employment_type: form.employment_type,
-      employee_category: form.employee_category,
-      job_title: form.job_title,
-      department_id: form.department_id,
-      department_name: dept?.name || employee.department_name,
-      grade_id: form.grade_id || '',
-      date_of_hire: form.date_of_hire,
-      shift_id: form.shift_id || '',
-      basic_salary: form.basic_salary || 0,
-      bank_account_number: form.bank_account_number || '',
-      bank_name: form.bank_name || '',
-    };
-
     try {
-      const success = dataStore.updateEmployee(employee.id, updates);
-      if (success) {
+      const response = await fetch(`/api/employees/${employee.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          phone: form.phone,
+          job_title: form.job_title,
+          department_id: form.department_id || null,
+          employment_type: form.employment_type,
+          employment_status: employee.employment_status || 'ACTIVE',
+          hire_date: form.date_of_hire || null,
+          salary_grade: form.grade_id || null,
+          base_salary: form.basic_salary || null,
+          date_of_birth: form.date_of_birth || null,
+          gender: form.gender || null,
+          marital_status: form.marital_status || null,
+          nationality: form.nationality || 'Iraqi',
+          national_id: form.national_id || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
         setSaved(true);
         toast.success(`${form.first_name} ${form.last_name} updated successfully`);
       } else {
-        toast.error('Failed to update employee');
+        toast.error(result.error || 'Failed to update employee');
       }
     } catch (error) {
       console.error('Update employee error:', error);
