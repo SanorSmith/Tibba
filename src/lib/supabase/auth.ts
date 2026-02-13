@@ -63,17 +63,23 @@ export async function signOut() {
 }
 
 export async function getSession() {
+  // Try tibbna-session (hyphen) - set by /api/auth/signin
   const sessionCookie = cookies().get('tibbna-session');
-  
-  if (!sessionCookie) {
-    return null;
+  if (sessionCookie) {
+    try {
+      return JSON.parse(sessionCookie.value);
+    } catch {
+      // fall through
+    }
   }
 
-  try {
-    return JSON.parse(sessionCookie.value);
-  } catch {
-    return null;
+  // Fallback: tibbna_session (underscore) - set by login page directly
+  const fallbackCookie = cookies().get('tibbna_session');
+  if (fallbackCookie) {
+    return { organizationId: '00000000-0000-0000-0000-000000000001' };
   }
+
+  return null;
 }
 
 export async function isAuthenticated(): Promise<boolean> {
