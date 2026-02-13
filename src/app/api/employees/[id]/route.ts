@@ -55,7 +55,7 @@ export async function GET(
 
     const { data: d1, error: e1 } = await supabaseAdmin
       .from('employees')
-      .select(`*, department:departments(id, name, code)`)
+      .select(`*, department:departments!employees_department_id_fkey(id, name, code)`)
       .eq('id', id)
       .eq('organization_id', orgId)
       .single();
