@@ -40,7 +40,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const success = login(username, password);
 
       if (success) {
@@ -48,6 +48,32 @@ export default function LoginPage() {
           // Set session cookie so middleware can protect routes
           const maxAge = 60 * 60 * 8; // 8 hours
           document.cookie = `tibbna_session=${btoa(username)}; path=/; max-age=${maxAge}; SameSite=Strict`;
+
+          // Also try to set tibbna-session cookie via signin API for DB-backed API routes
+          // Map local usernames to signin API credentials
+          // Signin API uses: admin@tibbna.com/demo123, doctor@tibbna.com/doctor123, nurse@tibbna.com/nurse123, billing@tibbna.com/billing123
+          const emailMap: Record<string, { email: string; password: string }> = {
+            demo: { email: 'admin@tibbna.com', password: 'demo123' },
+            admin: { email: 'admin@tibbna.com', password: 'demo123' },
+            doctor: { email: 'doctor@tibbna.com', password: 'doctor123' },
+            nurse: { email: 'nurse@tibbna.com', password: 'nurse123' },
+            billing: { email: 'billing@tibbna.com', password: 'billing123' },
+          };
+
+          const mapped = emailMap[username];
+          if (mapped) {
+            try {
+              await fetch('/api/auth/signin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: mapped.email, password: mapped.password }),
+              });
+              console.log('✅ API session cookie set for:', mapped.email);
+            } catch (e) {
+              console.warn('⚠️ Could not set API session cookie:', e);
+            }
+          }
+
           router.push('/dashboard');
           router.refresh();
         } catch (err) {

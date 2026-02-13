@@ -6,14 +6,23 @@ const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 function getSession() {
   try {
+    // Try tibbna-session (hyphen) - set by /api/auth/signin
     const sessionCookie = cookies().get('tibbna-session');
-    if (!sessionCookie) {
-      console.log('❌ No session cookie found');
-      return null;
+    if (sessionCookie) {
+      const session = JSON.parse(sessionCookie.value);
+      console.log('✅ Session found (tibbna-session):', session.email);
+      return session;
     }
-    const session = JSON.parse(sessionCookie.value);
-    console.log('✅ Session found:', session.email);
-    return session;
+
+    // Fallback: tibbna_session (underscore) - set by login page directly
+    const fallbackCookie = cookies().get('tibbna_session');
+    if (fallbackCookie) {
+      console.log('✅ Fallback session found (tibbna_session)');
+      return { organizationId: DEFAULT_ORG_ID };
+    }
+
+    console.log('❌ No session cookie found');
+    return null;
   } catch (error) {
     console.error('💥 Error parsing session:', error);
     return null;
@@ -41,28 +50,53 @@ export async function GET(
     console.log('👤 Fetching employee ID:', id);
     console.log('🏢 Organization ID:', orgId);
 
-    const { data, error } = await supabaseAdmin
+    // Try with department join first, fall back to plain query
+    let data: any = null;
+
+    const { data: d1, error: e1 } = await supabaseAdmin
       .from('employees')
-      .select(`
-        *,
-        department:departments(id, name, code),
-        organization:organizations(id, name)
-      `)
+      .select(`*, department:departments(id, name, code)`)
       .eq('id', id)
+      .eq('organization_id', orgId)
       .single();
 
-    if (error) {
-      console.error('❌ Database error:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      return NextResponse.json(
-        { success: false, error: 'Database error', details: error.message },
-        { status: 500 }
-      );
+    if (!e1) {
+      data = d1;
+    } else {
+      console.warn('⚠️ Join query failed, trying without join:', e1.message);
+      // Fallback: fetch employee without join
+      const { data: d2, error: e2 } = await supabaseAdmin
+        .from('employees')
+        .select('*')
+        .eq('id', id)
+        .eq('organization_id', orgId)
+        .single();
+
+      if (e2) {
+        console.error('❌ Database error:', e2);
+        console.error('Error details:', {
+          code: e2.code,
+          message: e2.message,
+          details: e2.details,
+          hint: e2.hint
+        });
+        return NextResponse.json(
+          { success: false, error: 'Database error', details: e2.message },
+          { status: 500 }
+        );
+      }
+
+      // Manually fetch department if employee has department_id
+      if (d2?.department_id) {
+        const { data: dept } = await supabaseAdmin
+          .from('departments')
+          .select('id, name, code')
+          .eq('id', d2.department_id)
+          .single();
+        d2.department = dept || null;
+      }
+
+      data = d2;
     }
 
     if (!data) {
