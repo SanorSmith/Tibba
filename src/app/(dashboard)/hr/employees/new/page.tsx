@@ -3,14 +3,38 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, User, Briefcase, Building2, CreditCard } from 'lucide-react';
-import type { EmployeeFormData, Employee } from '@/types/hr';
+import { ArrowLeft, Save, User, Briefcase } from 'lucide-react';
+import { createEmployee } from '@/lib/actions/employees';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
 import { toast } from 'sonner';
-import payrollData from '@/data/hr/payroll.json';
-import attendanceData from '@/data/hr/attendance.json';
 
-const initialForm: EmployeeFormData = {
+interface FormData {
+  first_name: string;
+  middle_name: string;
+  last_name: string;
+  full_name_arabic: string;
+  date_of_birth: string;
+  gender: string;
+  marital_status: string;
+  nationality: string;
+  national_id: string;
+  email: string;
+  phone: string;
+  address: string;
+  employment_type: string;
+  job_title: string;
+  department_id: string;
+  salary_grade: string;
+  hire_date: string;
+  base_salary: string;
+  bank_name: string;
+  bank_account_number: string;
+  emergency_contact_name: string;
+  emergency_contact_phone: string;
+  emergency_contact_relationship: string;
+}
+
+const initialForm: FormData = {
   first_name: '',
   middle_name: '',
   last_name: '',
@@ -24,15 +48,13 @@ const initialForm: EmployeeFormData = {
   phone: '',
   address: '',
   employment_type: 'FULL_TIME',
-  employee_category: 'ADMINISTRATIVE',
   job_title: '',
   department_id: '',
-  grade_id: '',
-  date_of_hire: new Date().toISOString().split('T')[0],
-  shift_id: '',
-  bank_account_number: '',
+  salary_grade: 'G5',
+  hire_date: new Date().toISOString().split('T')[0],
+  base_salary: '',
   bank_name: '',
-  basic_salary: undefined,
+  bank_account_number: '',
   emergency_contact_name: '',
   emergency_contact_phone: '',
   emergency_contact_relationship: '',
@@ -41,9 +63,10 @@ const initialForm: EmployeeFormData = {
 export default function NewEmployeePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState<EmployeeFormData>(initialForm);
+  const [form, setForm] = useState<FormData>(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [generatedId, setGeneratedId] = useState('');
   const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
 
@@ -56,7 +79,7 @@ export default function NewEmployeePage() {
       .catch(err => console.error('Failed to load departments:', err));
   }, []);
 
-  const update = (field: keyof EmployeeFormData, value: string | number | undefined) => {
+  const update = (field: keyof FormData, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
@@ -77,7 +100,7 @@ export default function NewEmployeePage() {
     const e: Record<string, string> = {};
     if (!form.job_title.trim()) e.job_title = 'Job title is required';
     if (!form.department_id) e.department_id = 'Department is required';
-    if (!form.date_of_hire) e.date_of_hire = 'Hire date is required';
+    if (!form.hire_date) e.hire_date = 'Hire date is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -92,42 +115,41 @@ export default function NewEmployeePage() {
   };
 
   const handleSubmit = async () => {
-    try {
-      const response = await fetch('/api/employees', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: form.first_name,
-          last_name: form.last_name,
-          email: form.email,
-          phone: form.phone,
-          job_title: form.job_title,
-          department_id: form.department_id || null,
-          employment_type: form.employment_type,
-          hire_date: form.date_of_hire,
-          salary_grade: form.grade_id || null,
-          base_salary: form.basic_salary || null,
-          date_of_birth: form.date_of_birth || null,
-          gender: form.gender || null,
-          marital_status: form.marital_status || null,
-          nationality: form.nationality || 'Iraqi',
-          national_id: form.national_id || null,
-        }),
-      });
+    setSubmitting(true);
 
-      const result = await response.json();
+    const result = await createEmployee({
+      first_name: form.first_name,
+      middle_name: form.middle_name || null,
+      last_name: form.last_name,
+      email: form.email,
+      phone: form.phone,
+      job_title: form.job_title,
+      department_id: form.department_id || null,
+      employment_type: form.employment_type,
+      hire_date: form.hire_date,
+      salary_grade: form.salary_grade || null,
+      base_salary: form.base_salary ? parseFloat(form.base_salary) : null,
+      date_of_birth: form.date_of_birth || null,
+      gender: form.gender || null,
+      marital_status: form.marital_status || null,
+      nationality: form.nationality || 'Iraqi',
+      national_id: form.national_id || null,
+      emergency_contact: form.emergency_contact_name ? {
+        name: form.emergency_contact_name,
+        phone: form.emergency_contact_phone,
+        relationship: form.emergency_contact_relationship,
+      } : null,
+    });
 
-      if (result.success) {
-        setGeneratedId(result.data.employee_number);
-        setSubmitted(true);
-        toast.success(`${form.first_name} ${form.last_name} added successfully`);
-      } else {
-        toast.error(result.error || 'Failed to save employee');
-      }
-    } catch (error) {
-      console.error('Create employee error:', error);
-      toast.error('Error creating employee');
+    if (result.success) {
+      setGeneratedId(result.data?.employee_number || '');
+      setSubmitted(true);
+      toast.success(`${form.first_name} ${form.last_name} added successfully`);
+    } else {
+      toast.error(result.error || 'Failed to save employee');
     }
+
+    setSubmitting(false);
   };
 
   if (submitted) {
@@ -325,15 +347,6 @@ export default function NewEmployeePage() {
                 </FormGroup>
               </FormRow>
               <FormRow columns={3}>
-                <FormGroup label="Employee Category" required>
-                  <select className="tibbna-input" value={form.employee_category} onChange={e => update('employee_category', e.target.value)}>
-                    <option value="MEDICAL_STAFF">Medical Staff</option>
-                    <option value="NURSING">Nursing</option>
-                    <option value="ADMINISTRATIVE">Administrative</option>
-                    <option value="TECHNICAL">Technical</option>
-                    <option value="SUPPORT">Support</option>
-                  </select>
-                </FormGroup>
                 <FormGroup label="Employment Type">
                   <select className="tibbna-input" value={form.employment_type} onChange={e => update('employment_type', e.target.value)}>
                     <option value="FULL_TIME">Full Time</option>
@@ -342,42 +355,31 @@ export default function NewEmployeePage() {
                     <option value="TEMPORARY">Temporary</option>
                   </select>
                 </FormGroup>
-                <FormGroup label="Date of Hire" required error={errors.date_of_hire}>
-                  <input className="tibbna-input" type="date" value={form.date_of_hire} onChange={e => update('date_of_hire', e.target.value)} />
+                <FormGroup label="Date of Hire" required error={errors.hire_date}>
+                  <input className="tibbna-input" type="date" value={form.hire_date} onChange={e => update('hire_date', e.target.value)} />
+                </FormGroup>
+                <FormGroup label="Salary Grade">
+                  <select className="tibbna-input" value={form.salary_grade} onChange={e => update('salary_grade', e.target.value)}>
+                    <option value="">Select Grade</option>
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <option key={i} value={`G${i + 1}`}>G{i + 1}</option>
+                    ))}
+                  </select>
                 </FormGroup>
               </FormRow>
             </FormSection>
 
             <FormSection title="Compensation">
-              <FormRow columns={3}>
-                <FormGroup label="Salary Grade">
-                  <select className="tibbna-input" value={form.grade_id} onChange={e => update('grade_id', e.target.value)}>
-                    <option value="">Select Grade</option>
-                    {payrollData.salary_grades.map(g => (
-                      <option key={g.id} value={g.id}>{g.code} - {g.name} ({(g.min_salary / 1000000).toFixed(1)}-{(g.max_salary / 1000000).toFixed(1)}M)</option>
-                    ))}
-                  </select>
-                </FormGroup>
-                <FormGroup label="Basic Salary (IQD)" helper="Monthly basic salary">
-                  <input className="tibbna-input" type="number" value={form.basic_salary || ''} onChange={e => update('basic_salary', e.target.value ? Number(e.target.value) : undefined)} placeholder="e.g. 2000000" />
-                </FormGroup>
-                <FormGroup label="Shift Pattern">
-                  <select className="tibbna-input" value={form.shift_id} onChange={e => update('shift_id', e.target.value)}>
-                    <option value="">Select Shift</option>
-                    {attendanceData.shifts.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} ({s.start_time}-{s.end_time})</option>
-                    ))}
-                  </select>
-                </FormGroup>
-              </FormRow>
-            </FormSection>
-
-            <FormSection title="Bank Details">
               <FormRow columns={2}>
+                <FormGroup label="Basic Salary (IQD)" helper="Monthly basic salary">
+                  <input className="tibbna-input" type="number" value={form.base_salary} onChange={e => update('base_salary', e.target.value)} placeholder="e.g. 2000000" min="0" step="1000" />
+                </FormGroup>
                 <FormGroup label="Bank Name">
                   <input className="tibbna-input" value={form.bank_name} onChange={e => update('bank_name', e.target.value)} placeholder="e.g. Rasheed Bank" />
                 </FormGroup>
-                <FormGroup label="Account Number">
+              </FormRow>
+              <FormRow columns={1}>
+                <FormGroup label="Bank Account Number">
                   <input className="tibbna-input" value={form.bank_account_number} onChange={e => update('bank_account_number', e.target.value)} placeholder="e.g. 1234567890" />
                 </FormGroup>
               </FormRow>
@@ -415,10 +417,10 @@ export default function NewEmployeePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style={{ fontSize: '13px' }}>
                 <div><span style={{ color: '#a3a3a3' }}>Job Title</span><p style={{ fontWeight: 500 }}>{form.job_title}</p></div>
                 <div><span style={{ color: '#a3a3a3' }}>Department</span><p style={{ fontWeight: 500 }}>{dept?.name || '-'}</p></div>
-                <div><span style={{ color: '#a3a3a3' }}>Category</span><p style={{ fontWeight: 500 }}>{form.employee_category.replace(/_/g, ' ')}</p></div>
                 <div><span style={{ color: '#a3a3a3' }}>Employment Type</span><p style={{ fontWeight: 500 }}>{form.employment_type.replace(/_/g, ' ')}</p></div>
-                <div><span style={{ color: '#a3a3a3' }}>Hire Date</span><p style={{ fontWeight: 500 }}>{form.date_of_hire}</p></div>
-                {form.basic_salary && <div><span style={{ color: '#a3a3a3' }}>Basic Salary</span><p style={{ fontWeight: 500 }}>{(form.basic_salary / 1000).toFixed(0)}K IQD</p></div>}
+                <div><span style={{ color: '#a3a3a3' }}>Hire Date</span><p style={{ fontWeight: 500 }}>{form.hire_date}</p></div>
+                <div><span style={{ color: '#a3a3a3' }}>Salary Grade</span><p style={{ fontWeight: 500 }}>{form.salary_grade || '-'}</p></div>
+                {form.base_salary && <div><span style={{ color: '#a3a3a3' }}>Basic Salary</span><p style={{ fontWeight: 500 }}>{(parseFloat(form.base_salary) / 1000).toFixed(0)}K IQD</p></div>}
                 {form.bank_name && <div><span style={{ color: '#a3a3a3' }}>Bank</span><p style={{ fontWeight: 500 }}>{form.bank_name}</p></div>}
               </div>
             </FormSection>
@@ -435,8 +437,8 @@ export default function NewEmployeePage() {
 
             <FormActions>
               <button className="btn-secondary" onClick={handleBack}>Back to Edit</button>
-              <button className="btn-primary flex items-center gap-2" onClick={handleSubmit}>
-                <Save size={16} /> Create Employee
+              <button className="btn-primary flex items-center gap-2" onClick={handleSubmit} disabled={submitting}>
+                <Save size={16} /> {submitting ? 'Creating...' : 'Create Employee'}
               </button>
             </FormActions>
           </div>
