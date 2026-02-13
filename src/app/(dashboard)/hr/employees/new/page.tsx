@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, User, Briefcase, Building2, CreditCard } from 'lucide-react';
 import type { EmployeeFormData, Employee } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
 import { toast } from 'sonner';
-import departmentsData from '@/data/hr/departments.json';
 import payrollData from '@/data/hr/payroll.json';
 import attendanceData from '@/data/hr/attendance.json';
 
@@ -46,6 +45,16 @@ export default function NewEmployeePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [generatedId, setGeneratedId] = useState('');
+  const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/departments')
+      .then(res => res.json())
+      .then(result => {
+        if (result.success && result.data) setDepartments(result.data);
+      })
+      .catch(err => console.error('Failed to load departments:', err));
+  }, []);
 
   const update = (field: keyof EmployeeFormData, value: string | number | undefined) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -146,7 +155,7 @@ export default function NewEmployeePage() {
     );
   }
 
-  const dept = departmentsData.departments.find(d => d.id === form.department_id);
+  const dept = departments.find(d => d.id === form.department_id);
 
   return (
     <>
@@ -309,7 +318,7 @@ export default function NewEmployeePage() {
                 <FormGroup label="Department" required error={errors.department_id}>
                   <select className="tibbna-input" value={form.department_id} onChange={e => update('department_id', e.target.value)}>
                     <option value="">Select Department</option>
-                    {departmentsData.departments.map(d => (
+                    {departments.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>

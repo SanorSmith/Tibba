@@ -7,7 +7,6 @@ import { ArrowLeft, Save } from 'lucide-react';
 import type { EmployeeFormData } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
 import { toast } from 'sonner';
-import departmentsData from '@/data/hr/departments.json';
 import payrollData from '@/data/hr/payroll.json';
 import attendanceData from '@/data/hr/attendance.json';
 
@@ -19,9 +18,16 @@ export default function EditEmployeePage() {
   const [form, setForm] = useState<EmployeeFormData>({} as EmployeeFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([]);
 
   useEffect(() => {
     loadEmployee();
+    fetch('/api/departments')
+      .then(res => res.json())
+      .then(result => {
+        if (result.success && result.data) setDepartments(result.data);
+      })
+      .catch(err => console.error('Failed to load departments:', err));
   }, [params.id]);
 
   async function loadEmployee() {
@@ -253,7 +259,7 @@ export default function EditEmployeePage() {
               <FormGroup label="Department" required error={errors.department_id}>
                 <select className="tibbna-input" value={form.department_id} onChange={e => update('department_id', e.target.value)}>
                   <option value="">Select Department</option>
-                  {departmentsData.departments.map(d => (
+                  {departments.map(d => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
