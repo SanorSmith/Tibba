@@ -11,7 +11,7 @@ export async function GET() {
       .from('employees')
       .select(`
         *,
-        department:departments!employees_department_id_fkey(id, name, code)
+        department:departments(id, name, code)
       `)
       .eq('organization_id', DEFAULT_ORG_ID)
       .eq('active', true)
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       })
       .select(`
         *,
-        department:departments!employees_department_id_fkey(id, name, code)
+        department:departments(id, name, code)
       `)
       .single();
 

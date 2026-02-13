@@ -18,57 +18,66 @@ export default function EmployeeProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { hasRole } = useAuth();
+  const employeeId = params.id as string;
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadEmployee();
-  }, [params.id]);
+  }, [employeeId]);
 
   async function loadEmployee() {
     setLoading(true);
+    setError(null);
+
+    console.log('🔍 Loading employee:', employeeId);
+
     try {
-      const response = await fetch(`/api/employees/${params.id}`);
+      const response = await fetch(`/api/employees/${employeeId}`);
+
+      console.log('📡 Response status:', response.status);
+
       const result = await response.json();
+
+      console.log('📦 Response data:', result);
+
       if (result.success) {
         setEmployee(result.data);
+        console.log('✅ Employee loaded successfully');
       } else {
-        toast.error('Employee not found');
-        router.push('/hr/employees');
+        console.error('❌ Failed to load employee:', result.error);
+        setError(result.error || 'Failed to load employee');
+        toast.error(result.error || 'Employee not found');
       }
-    } catch (error) {
-      console.error('Error loading employee:', error);
+    } catch (error: any) {
+      console.error('💥 Error loading employee:', error);
+      setError('Network error - please try again');
       toast.error('Failed to load employee');
-      router.push('/hr/employees');
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete() {
-    if (!hasRole('HR_ADMIN')) {
-      toast.error('Only HR Admin can delete employees');
-      return;
-    }
-    const name = `${employee.first_name} ${employee.last_name}`;
-    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
-
     setDeleting(true);
     try {
-      const response = await fetch(`/api/employees/${employee.id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/employees/${employeeId}`, { method: 'DELETE' });
       const result = await response.json();
       if (result.success) {
-        toast.success(`${name} deleted successfully`);
+        toast.success('Employee deleted successfully');
         router.push('/hr/employees');
       } else {
         toast.error('Failed to delete employee');
       }
     } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Error deleting employee');
+      console.error('Error deleting employee:', error);
+      toast.error('Failed to delete employee');
     } finally {
       setDeleting(false);
+      setDeleteModal(false);
     }
   }
 
@@ -79,6 +88,19 @@ export default function EmployeeProfilePage() {
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 mx-auto mb-3" style={{ borderColor: '#618FF5' }} />
           <p style={{ color: '#a3a3a3', fontSize: '14px' }}>Loading employee...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FEE2E2' }}>
+          <Trash2 size={28} style={{ color: '#EF4444' }} />
+        </div>
+        <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Error Loading Employee</h2>
+        <p style={{ fontSize: '14px', color: '#525252' }}>{error}</p>
+        <Link href="/hr/employees"><button className="btn-primary">Back to Directory</button></Link>
       </div>
     );
   }
@@ -119,12 +141,11 @@ export default function EmployeeProfilePage() {
           </Link>
           {hasRole('HR_ADMIN') && (
             <button
-              onClick={handleDelete}
-              disabled={deleting}
+              onClick={() => setDeleteModal(true)}
               className="flex items-center gap-1"
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #FCA5A5', color: '#EF4444', fontSize: '14px', fontWeight: 500, opacity: deleting ? 0.5 : 1 }}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #FCA5A5', color: '#EF4444', fontSize: '14px', fontWeight: 500 }}
             >
-              <Trash2 size={14} /> {deleting ? 'Deleting...' : 'Delete'}
+              <Trash2 size={14} /> Delete
             </button>
           )}
         </div>
@@ -277,6 +298,35 @@ export default function EmployeeProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Delete Employee</h3>
+            <p style={{ fontSize: '14px', color: '#525252', marginBottom: '20px' }}>
+              Are you sure you want to delete <strong>{employee.first_name} {employee.last_name}</strong>?
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteModal(false)}
+                disabled={deleting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#EF4444', color: 'white', fontSize: '14px', fontWeight: 500, opacity: deleting ? 0.5 : 1 }}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

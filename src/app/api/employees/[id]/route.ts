@@ -1,39 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
+
+function getSession() {
+  try {
+    const sessionCookie = cookies().get('tibbna-session');
+    if (!sessionCookie) {
+      console.log('❌ No session cookie found');
+      return null;
+    }
+    const session = JSON.parse(sessionCookie.value);
+    console.log('✅ Session found:', session.email);
+    return session;
+  } catch (error) {
+    console.error('💥 Error parsing session:', error);
+    return null;
+  }
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🔍 GET employee detail request');
+
+    const session = getSession();
+    if (!session) {
+      console.log('❌ Unauthorized - no session');
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { id } = params;
-    console.log('👤 Fetching employee:', id);
+    const orgId = session.organizationId || DEFAULT_ORG_ID;
+    console.log('👤 Fetching employee ID:', id);
+    console.log('🏢 Organization ID:', orgId);
 
     const { data, error } = await supabaseAdmin
       .from('employees')
       .select(`
         *,
-        department:departments!employees_department_id_fkey(id, name, code)
+        department:departments(id, name, code),
+        organization:organizations(id, name)
       `)
       .eq('id', id)
-      .eq('organization_id', DEFAULT_ORG_ID)
       .single();
 
     if (error) {
-      console.error('Database error:', error);
-      throw error;
+      console.error('❌ Database error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      return NextResponse.json(
+        { success: false, error: 'Database error', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    if (!data) {
+      console.log('❌ Employee not found');
+      return NextResponse.json(
+        { success: false, error: 'Employee not found' },
+        { status: 404 }
+      );
     }
 
     console.log('✅ Employee loaded:', data.employee_number);
 
     return NextResponse.json({ success: true, data });
-  } catch (error) {
-    console.error('💥 Error fetching employee:', error);
+  } catch (error: any) {
+    console.error('💥 Unexpected error in GET employee:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
-      { success: false, error: 'Employee not found' },
-      { status: 404 }
+      {
+        success: false,
+        error: 'Internal server error',
+        message: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
+      { status: 500 }
     );
   }
 }
@@ -43,52 +96,48 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('✏️ PUT employee update request');
+
+    const session = getSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { id } = params;
     const body = await request.json();
+    const orgId = session.organizationId || DEFAULT_ORG_ID;
 
-    console.log('✏️ Updating employee:', id);
+    console.log('Updating employee:', id);
 
     const { data, error } = await supabaseAdmin
       .from('employees')
       .update({
-        first_name: body.first_name,
-        last_name: body.last_name,
-        email: body.email,
-        phone: body.phone,
-        job_title: body.job_title,
-        department_id: body.department_id || null,
-        employment_type: body.employment_type,
-        employment_status: body.employment_status,
-        hire_date: body.hire_date,
-        salary_grade: body.salary_grade || null,
-        base_salary: body.base_salary || null,
-        date_of_birth: body.date_of_birth || null,
-        gender: body.gender || null,
-        marital_status: body.marital_status || null,
-        nationality: body.nationality || 'Iraqi',
-        national_id: body.national_id || null,
-        updated_at: new Date().toISOString(),
+        ...body,
+        updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('organization_id', DEFAULT_ORG_ID)
-      .select(`
-        *,
-        department:departments!employees_department_id_fkey(id, name, code)
-      `)
+      .eq('organization_id', orgId)
+      .select()
       .single();
 
     if (error) {
-      console.error('Database error:', error);
-      throw error;
+      console.error('❌ Database error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to update employee', details: error.message },
+        { status: 500 }
+      );
     }
 
     console.log('✅ Employee updated:', data.employee_number);
 
     return NextResponse.json({ success: true, data });
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Error updating employee:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update employee' },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
@@ -99,8 +148,19 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('🗑️ DELETE employee request');
+
+    const session = getSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { id } = params;
-    console.log('🗑️ Soft-deleting employee:', id);
+    const orgId = session.organizationId || DEFAULT_ORG_ID;
+    console.log('Soft-deleting employee:', id);
 
     const { error } = await supabaseAdmin
       .from('employees')
@@ -109,20 +169,23 @@ export async function DELETE(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('organization_id', DEFAULT_ORG_ID);
+      .eq('organization_id', orgId);
 
     if (error) {
-      console.error('Database error:', error);
-      throw error;
+      console.error('❌ Database error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete employee' },
+        { status: 500 }
+      );
     }
 
     console.log('✅ Employee deleted:', id);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Error deleting employee:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to delete employee' },
+      { success: false, error: error.message },
       { status: 500 }
     );
   }
