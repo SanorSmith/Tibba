@@ -73,6 +73,7 @@ export default function InvoicesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
+  const [viewItems, setViewItems] = useState<any[]>([]);
   const [formData, setFormData] = useState<Partial<Invoice>>({});
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [discountInvoice, setDiscountInvoice] = useState<Invoice | null>(null);
@@ -127,13 +128,42 @@ export default function InvoicesPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (invoice: Invoice) => {
+  const handleEdit = async (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setLineItems([]);
     setFormData(invoice);
     setPatientSearch(invoice.patient_name_ar || invoice.patient_name || '');
     setPatientResults([]);
     setShowModal(true);
+
+    // Fetch existing items for this invoice
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+          const mapped: LineItem[] = data.items.map((item: any) => {
+            // Try to match back to a service by code or name
+            const svc = services.find(
+              s => s.code === item.item_code || s.name === item.item_name
+            );
+            return {
+              service_id: svc?.id || item.item_code || '',
+              service_code: item.item_code || svc?.code || '',
+              service_name: item.item_name || svc?.name || '',
+              service_name_ar: item.item_name_ar || svc?.name_ar || '',
+              service_category: item.description || svc?.category || '',
+              quantity: item.quantity || 1,
+              unit_price: item.unit_price || 0,
+              line_total: item.subtotal || (item.unit_price * (item.quantity || 1)) || 0,
+            };
+          });
+          setLineItems(mapped);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load invoice items:', err);
+    }
   };
 
   // Line item helpers
@@ -234,8 +264,10 @@ export default function InvoicesPage() {
   const handleSave = async () => {
     try {
       if (!formData.invoice_date) { toast.error('Invoice date is required'); return; }
-      if (!editingInvoice && lineItems.length === 0) { toast.error('Add at least one service'); return; }
-      if (lineItems.some(l => !l.service_id)) { toast.error('Select a service for each line'); return; }
+      if (!formData.patient_id) { toast.error('Please select a patient'); return; }
+      if (lineItems.length === 0) { toast.error('Add at least one service'); return; }
+      if (lineItems.some(l => !l.service_id && !l.service_name)) { toast.error('Select a service for each line'); return; }
+      if (lineItems.some(l => l.unit_price <= 0)) { toast.error('Unit price must be greater than 0 for all services'); return; }
 
       const payload = {
         ...formData,
@@ -514,7 +546,14 @@ export default function InvoicesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <button
-                        onClick={() => setViewInvoice(inv)}
+                        onClick={async () => {
+                          setViewInvoice(inv);
+                          setViewItems([]);
+                          try {
+                            const r = await fetch(`/api/invoices/${inv.id}`);
+                            if (r.ok) { const d = await r.json(); setViewItems(d.items || []); }
+                          } catch {}
+                        }}
                         className="p-1 hover:bg-gray-100 rounded"
                         title="View"
                       >
@@ -1024,7 +1063,8 @@ export default function InvoicesPage() {
               <h2 className="text-lg font-bold">{viewInvoice.invoice_number}</h2>
               <p className="text-xs text-gray-500">Invoice Date: {viewInvoice.invoice_date}</p>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
+              {/* Patient & Status */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500 block text-xs">Patient</span>
@@ -1036,37 +1076,68 @@ export default function InvoicesPage() {
                     {viewInvoice.status}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Total Amount</span>
-                  <span className="font-bold text-lg">{fmt(viewInvoice.total_amount)} IQD</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Insurance Coverage</span>
-                  <span className="font-medium">{fmt(viewInvoice.insurance_coverage_amount)} IQD ({viewInvoice.insurance_coverage_percentage}%)</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Patient Responsibility</span>
-                  <span className="font-medium">{fmt(viewInvoice.patient_responsibility)} IQD</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Amount Paid</span>
-                  <span className="font-medium text-emerald-600">{fmt(viewInvoice.amount_paid)} IQD</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Balance Due</span>
-                  <span className="font-medium text-red-600">{fmt(viewInvoice.balance_due)} IQD</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Payment Method</span>
-                  <span className="font-medium">{viewInvoice.payment_method || '-'}</span>
-                </div>
-                {viewInvoice.notes && (
-                  <div className="col-span-2">
-                    <span className="text-gray-500 block text-xs">Notes</span>
-                    <span className="text-sm">{viewInvoice.notes}</span>
+              </div>
+
+              {/* Services table */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Services</h3>
+                {viewItems.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">No services recorded for this invoice.</p>
+                ) : (
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-xs font-medium text-gray-600">Service</th>
+                          <th className="text-center px-3 py-2 text-xs font-medium text-gray-600">Qty</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-gray-600">Unit Price</th>
+                          <th className="text-right px-3 py-2 text-xs font-medium text-gray-600">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {viewItems.map((item: any, i: number) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-3 py-2">
+                              <div className="font-medium">{item.item_name_ar || item.item_name}</div>
+                              {item.item_name_ar && item.item_name && <div className="text-xs text-gray-400">{item.item_name}</div>}
+                              {item.item_code && <div className="text-xs text-gray-400 font-mono">{item.item_code}</div>}
+                            </td>
+                            <td className="px-3 py-2 text-center">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right">{fmt(item.unit_price)} IQD</td>
+                            <td className="px-3 py-2 text-right font-medium">{fmt(item.subtotal || item.unit_price * item.quantity)} IQD</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
+
+              {/* Financial summary */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Financial Summary</h3>
+                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>{fmt(viewInvoice.subtotal)} IQD</span></div>
+                {viewInvoice.discount_percentage > 0 && (
+                  <div className="flex justify-between text-amber-700"><span>Discount ({viewInvoice.discount_percentage}%)</span><span>-{fmt(viewInvoice.discount_amount)} IQD</span></div>
+                )}
+                <div className="flex justify-between font-bold border-t pt-2"><span>Total</span><span>{fmt(viewInvoice.total_amount)} IQD</span></div>
+                {viewInvoice.insurance_coverage_amount > 0 && (
+                  <div className="flex justify-between text-blue-700"><span>Insurance ({viewInvoice.insurance_coverage_percentage}%)</span><span>-{fmt(viewInvoice.insurance_coverage_amount)} IQD</span></div>
+                )}
+                <div className="flex justify-between font-bold text-base border-t pt-2"><span>Patient Pays</span><span>{fmt(viewInvoice.patient_responsibility)} IQD</span></div>
+                <div className="flex justify-between text-emerald-600"><span>Amount Paid</span><span>{fmt(viewInvoice.amount_paid)} IQD</span></div>
+                <div className="flex justify-between font-bold text-red-600"><span>Balance Due</span><span>{fmt(viewInvoice.balance_due)} IQD</span></div>
+                {viewInvoice.payment_method && (
+                  <div className="flex justify-between text-gray-500 text-xs pt-1 border-t"><span>Payment Method</span><span>{viewInvoice.payment_method}</span></div>
+                )}
+              </div>
+
+              {viewInvoice.notes && (
+                <div>
+                  <span className="text-gray-500 block text-xs mb-1">Notes</span>
+                  <span className="text-sm">{viewInvoice.notes}</span>
+                </div>
+              )}
             </div>
             <div className="p-4 border-t flex justify-end">
               <button
