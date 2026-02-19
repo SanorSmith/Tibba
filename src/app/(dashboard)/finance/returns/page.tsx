@@ -112,35 +112,41 @@ export default function ReturnsPage() {
     if (!newReturn.reason || newReturn.amount <= 0) { toast.error('Fill all fields'); return; }
 
     const returnData = {
-      id: `local-${Date.now()}`,
       invoice_id: selectedInvoice.id,
       invoice_number: selectedInvoice.invoice_number,
       patient_id: selectedInvoice.patient_id,
       patient_name_ar: selectedInvoice.patient_name_ar,
       reason_ar: newReturn.reason,
       return_amount: newReturn.amount,
-      return_number: `RET-${Date.now()}`,
-      return_date: new Date().toISOString().split('T')[0],
       status: 'PENDING',
     };
 
-    // Optimistic update
-    setReturns(prev => [returnData, ...prev]);
-    setShowCreate(false);
-    setNewReturn({ invoice_number: '', reason: '', amount: 0 });
-    setSelectedInvoice(null);
-    setSearchQuery('');
-    toast.success('Return created');
-
     try {
-      await fetch('/api/invoice-returns', {
+      const res = await fetch('/api/invoice-returns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(returnData),
       });
+
+      if (res.ok) {
+        const created = await res.json();
+        setReturns(prev => [created, ...prev]);
+        toast.success('Return created and saved to database');
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to create return');
+        return;
+      }
     } catch (error) {
-      console.error('Create sync error (non-critical):', error);
+      console.error('Create error:', error);
+      toast.error('Network error — could not reach server');
+      return;
     }
+
+    setShowCreate(false);
+    setNewReturn({ invoice_number: '', reason: '', amount: 0 });
+    setSelectedInvoice(null);
+    setSearchQuery('');
   };
 
   const handleEdit = async () => {
@@ -150,56 +156,73 @@ export default function ReturnsPage() {
       return;
     }
 
-    // Optimistic update
-    setReturns(prev => prev.map(r => r.id === editingReturn.id ? editingReturn : r));
-    setShowEdit(false);
-    setEditingReturn(null);
-    toast.success('Return updated');
-
     try {
-      await fetch(`/api/invoice-returns/${editingReturn.id}`, {
+      const res = await fetch(`/api/invoice-returns/${editingReturn.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingReturn),
       });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setReturns(prev => prev.map(r => r.id === editingReturn.id ? updated : r));
+        setShowEdit(false);
+        setEditingReturn(null);
+        toast.success('Return updated and saved to database');
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to update return');
+      }
     } catch (error) {
-      console.error('Edit sync error (non-critical):', error);
+      console.error('Edit error:', error);
+      toast.error('Network error — could not reach server');
     }
   };
 
   const handleDelete = async () => {
     if (!deleteId) return;
 
-    // Optimistic update
-    setReturns(prev => prev.filter(r => r.id !== deleteId));
-    setDeleteId(null);
-    toast.success('Return deleted');
-
     try {
-      await fetch(`/api/invoice-returns/${deleteId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/invoice-returns/${deleteId}`, { method: 'DELETE' });
+
+      if (res.ok) {
+        setReturns(prev => prev.filter(r => r.id !== deleteId));
+        setDeleteId(null);
+        toast.success('Return deleted from database');
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to delete return');
+      }
     } catch (error) {
-      console.error('Delete sync error (non-critical):', error);
+      console.error('Delete error:', error);
+      toast.error('Network error — could not reach server');
     }
   };
 
   const handleStatusUpdate = async () => {
     if (!statusUpdatingReturn || !newStatus) return;
 
-    // Optimistic update
-    setReturns(prev => prev.map(r => r.id === statusUpdatingReturn.id ? { ...r, status: newStatus } : r));
-    setShowStatusUpdate(false);
-    setStatusUpdatingReturn(null);
-    setNewStatus('');
-    toast.success(`Status changed to ${newStatus}`);
-
     try {
-      await fetch(`/api/invoice-returns/${statusUpdatingReturn.id}`, {
+      const res = await fetch(`/api/invoice-returns/${statusUpdatingReturn.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setReturns(prev => prev.map(r => r.id === statusUpdatingReturn.id ? updated : r));
+        setShowStatusUpdate(false);
+        setStatusUpdatingReturn(null);
+        setNewStatus('');
+        toast.success(`Status changed to ${newStatus} and saved`);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to update status');
+      }
     } catch (error) {
-      console.error('Status sync error (non-critical):', error);
+      console.error('Status update error:', error);
+      toast.error('Network error — could not reach server');
     }
   };
 

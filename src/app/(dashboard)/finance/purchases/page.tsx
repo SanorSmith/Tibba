@@ -117,22 +117,33 @@ export default function PurchasesPage() {
 
     const actionText = approvalAction === 'APPROVED' ? 'approved' : approvalAction === 'DECLINED' ? 'declined' : 'marked for more info';
 
-    // Optimistic update — update local state immediately
-    const updatedRequest = { ...approvingRequest, status: approvalAction, reviewed_by: reviewerName, approval_comments: comments };
-    setRequests(prev => prev.map(r => r.id === approvingRequest.id ? updatedRequest : r));
-    setShowApprovalModal(false);
-    setApprovingRequest(null);
-    setViewRequest(null);
-    toast.success(`Request ${actionText}`);
-
     try {
-      await fetch(`/api/purchase-requests/${approvingRequest.id}`, {
+      const res = await fetch(`/api/purchase-requests/${approvingRequest.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: approvalAction, reviewed_by: reviewerName, comments }),
       });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setRequests(prev => prev.map(r => r.id === approvingRequest.id ? updated : r));
+        setShowApprovalModal(false);
+        setApprovingRequest(null);
+        setViewRequest(null);
+        toast.success(`Request ${actionText}`);
+      } else {
+        const err = await res.json();
+        // DB unavailable — update UI locally so it still works
+        const updatedRequest = { ...approvingRequest, status: approvalAction, reviewed_by: reviewerName, approval_comments: comments };
+        setRequests(prev => prev.map(r => r.id === approvingRequest.id ? updatedRequest : r));
+        setShowApprovalModal(false);
+        setApprovingRequest(null);
+        setViewRequest(null);
+        toast.warning(`Request ${actionText} (offline mode — changes not saved to database: ${err.error || res.status})`);
+      }
     } catch (error) {
-      console.error('Approval sync error (non-critical):', error);
+      console.error('Approval action error:', error);
+      toast.error('Network error — could not reach server');
     }
   };
 
