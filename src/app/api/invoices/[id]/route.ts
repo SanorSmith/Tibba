@@ -3,60 +3,53 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import invoicesJson from '@/data/finance/invoices.json';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const supabase = supabaseAdmin;
-    const { id } = params;
+  const { id } = params;
 
-    // Get invoice with items
-    const { data: invoice, error: invError } = await supabase
+  if (!id || id === 'undefined' || id === 'null') {
+    return NextResponse.json({ error: 'Invalid invoice ID' }, { status: 400 });
+  }
+
+  const allInvoices: any[] = (invoicesJson as any).invoices || [];
+  const jsonFallback = allInvoices.find((inv: any) => inv.id === id || inv.invoice_number === id) || null;
+
+  if (!supabaseAdmin) {
+    return jsonFallback
+      ? NextResponse.json({ ...jsonFallback, items: jsonFallback.items || [] })
+      : NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+  }
+
+  try {
+    const { data: invoice, error: invError } = await supabaseAdmin
       .from('invoices')
-      .select(`
-        *,
-        insurance_companies (
-          company_code,
-          company_name,
-          company_name_ar
-        )
-      `)
+      .select(`*, insurance_companies(company_code,company_name,company_name_ar)`)
       .eq('id', id)
       .eq('is_deleted', false)
       .single();
 
-    if (invError) {
-      console.error('Error fetching invoice:', invError);
-      return NextResponse.json(
-        { error: invError.message },
-        { status: 404 }
-      );
+    if (invError || !invoice) {
+      if (jsonFallback) return NextResponse.json({ ...jsonFallback, items: jsonFallback.items || [] });
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    // Get invoice items
-    const { data: items, error: itemsError } = await supabase
+    const { data: items } = await supabaseAdmin
       .from('invoice_items')
       .select('*')
       .eq('invoice_id', id)
       .order('created_at', { ascending: true });
 
-    if (itemsError) {
-      console.error('Error fetching invoice items:', itemsError);
-    }
+    return NextResponse.json({ ...invoice, items: items || [] });
 
-    return NextResponse.json({
-      ...invoice,
-      items: items || []
-    });
-
-  } catch (error: any) {
-    console.error('GET invoice error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch invoice' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.warn('GET invoice exception, falling back to JSON:', err?.message);
+    return jsonFallback
+      ? NextResponse.json({ ...jsonFallback, items: jsonFallback.items || [] })
+      : NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
   }
 }
 

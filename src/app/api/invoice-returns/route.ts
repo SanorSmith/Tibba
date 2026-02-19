@@ -40,6 +40,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!supabaseAdmin) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
   try {
     const supabase = supabaseAdmin;
     const body = await request.json();
