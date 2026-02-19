@@ -8,32 +8,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   try {
-    const supabase = supabaseAdmin;
     const { id } = params;
-
-    const { data, error } = await supabase
-      .from('purchase_requests')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching purchase request:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
-    }
-
+    const { data, error } = await supabaseAdmin.from('purchase_requests').select('*').eq('id', id).single();
+    if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(data);
-
   } catch (error: any) {
-    console.error('GET purchase request error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch purchase request' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Failed to fetch' }, { status: 500 });
   }
 }
 
@@ -41,6 +23,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   try {
     const supabase = supabaseAdmin;
     const { id } = params;
@@ -99,6 +82,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   try {
     const supabase = supabaseAdmin;
     const { id } = params;
@@ -159,6 +143,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!supabaseAdmin) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   try {
     const supabase = supabaseAdmin;
     const { id } = params;
