@@ -251,13 +251,9 @@ export default function PurchasesPage() {
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-1">
                     <button onClick={() => setViewRequest(req)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
-                    {req.status === 'PENDING' && (
-                      <>
-                        <button onClick={() => openApprovalModal(req, 'APPROVED')} className="p-1.5 hover:bg-green-50 rounded text-green-600" title="Approve"><CheckCircle size={14} /></button>
-                        <button onClick={() => openApprovalModal(req, 'DECLINED')} className="p-1.5 hover:bg-red-50 rounded text-red-600" title="Decline"><XCircle size={14} /></button>
-                        <button onClick={() => openApprovalModal(req, 'MORE_INFO_NEEDED')} className="p-1.5 hover:bg-blue-50 rounded text-blue-600" title="Request Info"><AlertCircle size={14} /></button>
-                      </>
-                    )}
+                    <button onClick={() => openApprovalModal(req, 'APPROVED')} className="p-1.5 hover:bg-green-50 rounded text-green-600" title="Approve"><CheckCircle size={14} /></button>
+                    <button onClick={() => openApprovalModal(req, 'DECLINED')} className="p-1.5 hover:bg-red-50 rounded text-red-600" title="Decline"><XCircle size={14} /></button>
+                    <button onClick={() => openApprovalModal(req, 'MORE_INFO_NEEDED')} className="p-1.5 hover:bg-blue-50 rounded text-blue-600" title="Request Info"><AlertCircle size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -321,14 +317,10 @@ export default function PurchasesPage() {
                 </div>
               )}
             </div>
-            <div className="p-4 border-t flex gap-2 justify-end">
-              {viewRequest.status === 'PENDING' && (
-                <>
-                  <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'APPROVED'); }} className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Approve</button>
-                  <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'DECLINED'); }} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><XCircle size={14} /> Decline</button>
-                  <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'MORE_INFO_NEEDED'); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><AlertCircle size={14} /> Request Info</button>
-                </>
-              )}
+            <div className="p-4 border-t flex gap-2 justify-end flex-wrap">
+              <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'APPROVED'); }} className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Approve</button>
+              <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'DECLINED'); }} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><XCircle size={14} /> Decline</button>
+              <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'MORE_INFO_NEEDED'); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><AlertCircle size={14} /> Request Info</button>
               <button onClick={() => setViewRequest(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
             </div>
           </div>
