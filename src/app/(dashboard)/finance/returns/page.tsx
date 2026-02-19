@@ -350,10 +350,20 @@ export default function ReturnsPage() {
 
       {/* View Modal */}
       {viewRet && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewRet(null)}>
-          <div className="bg-white rounded-xl max-w-lg w-full" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold">{viewRet.return_number}</h2><span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewRet.status)}`}>{viewRet.status}</span></div>
-            <div className="p-6 grid grid-cols-2 gap-4 text-sm">
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <div className="min-h-screen">
+            <div className="sticky top-0 bg-white border-b z-10">
+              <div className="p-6 border-b flex justify-between">
+                <div>
+                  <h2 className="text-lg font-bold">{viewRet.return_number}</h2>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewRet.status)}`}>{viewRet.status}</span>
+                </div>
+                <button onClick={() => setViewRet(null)} className="p-1 hover:bg-gray-100 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Patient</span>{viewRet.patient_name_ar}</div>
               <div><span className="text-gray-500 block text-xs">Date</span>{viewRet.return_date}</div>
               <div><span className="text-gray-500 block text-xs">Original Invoice</span>{viewRet.invoice_number}</div>
@@ -362,7 +372,7 @@ export default function ReturnsPage() {
               {viewRet.refund_method && <div><span className="text-gray-500 block text-xs">Refund Method</span>{viewRet.refund_method}</div>}
               {viewRet.refund_date && <div><span className="text-gray-500 block text-xs">Refund Date</span>{viewRet.refund_date}</div>}
             </div>
-            <div className="p-4 border-t flex gap-2 justify-end">
+            <div className="sticky bottom-0 bg-white border-t p-4 flex justify-end">
               <button onClick={() => setViewRet(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
             </div>
           </div>
@@ -371,10 +381,17 @@ export default function ReturnsPage() {
 
       {/* Edit Modal */}
       {showEdit && editingReturn && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEdit(false)}>
-          <div className="bg-white rounded-xl max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="text-lg font-bold">Edit Return</h2></div>
-            <div className="p-6 space-y-4">
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <div className="min-h-screen">
+            <div className="sticky top-0 bg-white border-b z-10">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-lg font-bold">Edit Return</h2>
+                <button onClick={() => setShowEdit(false)} className="p-1 hover:bg-gray-100 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-4">
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Invoice Number</label>
                 <input value={editingReturn.invoice_number} disabled className="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50" />
@@ -426,7 +443,7 @@ export default function ReturnsPage() {
                 </select>
               </div>
             </div>
-            <div className="p-4 border-t flex gap-2 justify-end">
+            <div className="sticky bottom-0 bg-white border-t p-4 flex gap-2 justify-end">
               <button onClick={() => setShowEdit(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
               <button onClick={handleEdit} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Save Changes</button>
             </div>
@@ -510,10 +527,17 @@ export default function ReturnsPage() {
 
       {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-xl max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="text-lg font-bold">New Return</h2></div>
-            <div className="p-6 space-y-4">
+        <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+          <div className="min-h-screen">
+            <div className="sticky top-0 bg-white border-b z-10">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-lg font-bold">New Return</h2>
+                <button onClick={() => setShowCreate(false)} className="p-1 hover:bg-gray-100 rounded">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-4">
               {/* Search Invoice */}
               <div className="relative">
                 <label className="text-xs text-gray-500 block mb-1">Search Invoice (by Patient ID or Invoice #) *</label>
@@ -615,7 +639,7 @@ export default function ReturnsPage() {
                 </div>
               </div>
             </div>
-            <div className="p-4 border-t flex gap-2 justify-end">
+            <div className="sticky bottom-0 bg-white border-t p-4 flex gap-2 justify-end">
               <button onClick={() => { setShowCreate(false); setSelectedInvoice(null); setSearchQuery(''); setSearchResults([]); setInvoiceItems([]); setReturnItems([]); }} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
               <button onClick={handleCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Return</button>
             </div>
