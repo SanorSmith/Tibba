@@ -388,7 +388,7 @@ export default function ShareholdersPage() {
       {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-xl max-w-3xl w-full my-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
               <h2 className="text-lg font-bold">Add New Shareholder</h2>
             </div>
@@ -594,7 +594,7 @@ export default function ShareholdersPage() {
       {/* Edit Modal - Similar structure to Create */}
       {showEdit && editingShareholder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowEdit(false)}>
-          <div className="bg-white rounded-xl max-w-3xl w-full my-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
               <h2 className="text-lg font-bold">Edit Shareholder</h2>
             </div>
@@ -692,7 +692,7 @@ export default function ShareholdersPage() {
       {/* View Modal */}
       {showView && viewingShareholder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowView(false)}>
-          <div className="bg-white rounded-xl max-w-2xl w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
               <h2 className="text-lg font-bold">{viewingShareholder.full_name}</h2>
               <p className="text-sm text-gray-500">{viewingShareholder.full_name_ar}</p>
@@ -724,7 +724,7 @@ export default function ShareholdersPage() {
       {/* Delete Confirmation */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteId(null)}>
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg mb-2">Delete Shareholder?</h3>
             <p className="text-sm text-gray-600 mb-4">This will permanently delete this shareholder record.</p>
             <div className="flex gap-2 justify-end">

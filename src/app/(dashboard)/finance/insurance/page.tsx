@@ -308,7 +308,7 @@ export default function InsurancePage() {
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-6 border-b flex items-center justify-between">

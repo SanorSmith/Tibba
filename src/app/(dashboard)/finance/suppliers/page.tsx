@@ -100,7 +100,7 @@ export default function SuppliersPage() {
       {/* Create/Edit Modal */}
       {(modal === 'create' || modal === 'edit') && current && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold">{modal === 'create' ? 'Add Supplier' : 'Edit Supplier'}</h2><button onClick={() => setModal(null)}><X size={18} /></button></div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -127,7 +127,7 @@ export default function SuppliersPage() {
       {/* View Modal */}
       {modal === 'view' && current && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-xl max-w-lg w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b"><h2 className="text-lg font-bold">{current.company_name_ar}</h2><p className="text-xs text-gray-500">{current.company_name_en}</p></div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Code</span>{current.supplier_code}</div>
@@ -148,7 +148,7 @@ export default function SuppliersPage() {
 
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteId(null)}>
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg mb-2">Delete Supplier?</h3>
             <p className="text-sm text-gray-600 mb-4">This cannot be undone.</p>
             <div className="flex gap-2 justify-end">
