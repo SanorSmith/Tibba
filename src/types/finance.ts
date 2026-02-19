@@ -57,6 +57,7 @@ export interface InsuranceProvider {
   address_ar?: string;
   support_frequency?: SupportFrequency;
   total_annual_budget?: number;
+  price?: number;
   is_active: boolean;
   created_at: string;
 }

@@ -1,225 +1,434 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { ShoppingCart, Plus, Search, Eye, X, CheckCircle, Clock, FileText } from 'lucide-react';
-import { financeStore } from '@/lib/financeStore';
-import type { PurchaseRequest, PurchaseOrder } from '@/types/finance';
+import { ShoppingCart, Plus, Search, Eye, X, CheckCircle, Clock, FileText, XCircle, AlertCircle, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
 
+interface PurchaseRequest {
+  id: string;
+  request_number: string;
+  request_date: string;
+  requested_by: string;
+  department: string;
+  item_name: string;
+  item_name_ar: string;
+  item_description: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  estimated_unit_price: number;
+  estimated_total_price: number;
+  priority: string;
+  required_by_date: string;
+  status: string;
+  reviewed_by: string;
+  reviewed_at: string;
+  approval_comments: string;
+  decline_reason: string;
+  preferred_supplier: string;
+  justification: string;
+  notes: string;
+}
+
 export default function PurchasesPage() {
-  const [prs, setPrs] = useState<PurchaseRequest[]>([]);
-  const [pos, setPos] = useState<PurchaseOrder[]>([]);
-  const [tab, setTab] = useState<'pr' | 'po'>('pr');
+  const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [viewPR, setViewPR] = useState<PurchaseRequest | null>(null);
-  const [viewPO, setViewPO] = useState<PurchaseOrder | null>(null);
+  const [viewRequest, setViewRequest] = useState<PurchaseRequest | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvingRequest, setApprovingRequest] = useState<PurchaseRequest | null>(null);
+  const [approvalAction, setApprovalAction] = useState<'APPROVED' | 'DECLINED' | 'MORE_INFO_NEEDED'>('APPROVED');
+  const [reviewerName, setReviewerName] = useState('');
+  const [comments, setComments] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterPriority, setFilterPriority] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => { financeStore.initialize(); reload(); setMounted(true); }, []);
-  const reload = () => { setPrs(financeStore.getPurchaseRequests()); setPos(financeStore.getPurchaseOrders()); };
-
-  const prStats = useMemo(() => ({
-    total: prs.length,
-    pending: prs.filter(p => ['SUBMITTED', 'PENDING_APPROVAL'].includes(p.status)).length,
-    approved: prs.filter(p => p.status === 'APPROVED').length,
-    totalValue: prs.reduce((s, p) => s + p.estimated_total, 0),
-  }), [prs]);
-
-  const poStats = useMemo(() => ({
-    total: pos.length,
-    totalValue: pos.reduce((s, p) => s + p.total_amount, 0),
-    unpaid: pos.reduce((s, p) => s + p.balance_due, 0),
-    completed: pos.filter(p => p.status === 'COMPLETED').length,
-  }), [pos]);
-
-  const prStatusColor = (s: string) => {
-    switch (s) { case 'APPROVED': return 'bg-emerald-100 text-emerald-700'; case 'PENDING_APPROVAL': return 'bg-amber-100 text-amber-700'; case 'SUBMITTED': return 'bg-blue-100 text-blue-700'; case 'REJECTED': return 'bg-red-100 text-red-700'; case 'DRAFT': return 'bg-gray-100 text-gray-600'; default: return 'bg-gray-100 text-gray-700'; }
+  useEffect(() => { loadRequests(); setMounted(true); }, []);
+  
+  const loadRequests = async () => {
+    try {
+      const res = await fetch('/api/purchase-requests');
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data);
+      }
+    } catch (error) {
+      console.error('Load error:', error);
+      toast.error('Failed to load purchase requests');
+    }
   };
 
-  const poStatusColor = (s: string) => {
-    switch (s) { case 'COMPLETED': return 'bg-emerald-100 text-emerald-700'; case 'RECEIVED': return 'bg-blue-100 text-blue-700'; case 'SENT_TO_SUPPLIER': return 'bg-amber-100 text-amber-700'; case 'PARTIALLY_RECEIVED': return 'bg-orange-100 text-orange-700'; case 'DRAFT': return 'bg-gray-100 text-gray-600'; default: return 'bg-gray-100 text-gray-700'; }
+  const stats = useMemo(() => ({
+    total: requests.length,
+    pending: requests.filter(r => r.status === 'PENDING').length,
+    approved: requests.filter(r => r.status === 'APPROVED').length,
+    declined: requests.filter(r => r.status === 'DECLINED').length,
+    totalValue: requests.reduce((s, r) => s + r.estimated_total_price, 0),
+  }), [requests]);
+
+  const filteredRequests = requests.filter(r => {
+    const matchesSearch = !searchQuery || 
+      r.request_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.requested_by.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = !filterStatus || r.status === filterStatus;
+    const matchesPriority = !filterPriority || r.priority === filterPriority;
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case 'APPROVED': return 'bg-emerald-100 text-emerald-700';
+      case 'PENDING': return 'bg-amber-100 text-amber-700';
+      case 'DECLINED': return 'bg-red-100 text-red-700';
+      case 'MORE_INFO_NEEDED': return 'bg-blue-100 text-blue-700';
+      case 'PROCESSING': return 'bg-purple-100 text-purple-700';
+      case 'COMPLETED': return 'bg-green-100 text-green-700';
+      case 'CANCELLED': return 'bg-gray-100 text-gray-600';
+      default: return 'bg-gray-100 text-gray-700';
+    }
   };
 
   const priorityColor = (p: string) => {
-    switch (p) { case 'URGENT': return 'bg-red-100 text-red-700'; case 'HIGH': return 'bg-orange-100 text-orange-700'; case 'NORMAL': return 'bg-blue-100 text-blue-700'; case 'LOW': return 'bg-gray-100 text-gray-600'; default: return 'bg-gray-100 text-gray-700'; }
+    switch (p) {
+      case 'URGENT': return 'bg-red-100 text-red-700';
+      case 'HIGH': return 'bg-orange-100 text-orange-700';
+      case 'MEDIUM': return 'bg-blue-100 text-blue-700';
+      case 'LOW': return 'bg-gray-100 text-gray-600';
+      default: return 'bg-gray-100 text-gray-700';
+    }
   };
 
-  const handleApprovePR = (pr: PurchaseRequest) => {
-    financeStore.updatePurchaseRequest(pr.pr_id, { status: 'APPROVED' });
-    financeStore.addPRApproval({
-      approval_id: `pra-${Date.now()}`, pr_id: pr.pr_id, approver_id: 'user_001',
-      approver_name: 'Sanor', approver_role: 'Administrator', action: 'APPROVED',
-      comments: 'Approved', created_at: new Date().toISOString(),
-    });
-    toast.success('PR approved');
-    reload(); setViewPR(null);
+  const openApprovalModal = (request: PurchaseRequest, action: 'APPROVED' | 'DECLINED' | 'MORE_INFO_NEEDED') => {
+    setApprovingRequest(request);
+    setApprovalAction(action);
+    setComments('');
+    setReviewerName('');
+    setShowApprovalModal(true);
+  };
+
+  const handleApprovalAction = async () => {
+    if (!approvingRequest || !reviewerName.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/purchase-requests/${approvingRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: approvalAction,
+          reviewed_by: reviewerName,
+          comments: comments,
+        }),
+      });
+
+      if (res.ok) {
+        const actionText = approvalAction === 'APPROVED' ? 'approved' : approvalAction === 'DECLINED' ? 'declined' : 'marked for more info';
+        toast.success(`Request ${actionText}`);
+        loadRequests();
+        setShowApprovalModal(false);
+        setApprovingRequest(null);
+        setViewRequest(null);
+      } else {
+        const error = await res.json();
+        toast.error(error.error || 'Failed to process action');
+      }
+    } catch (error) {
+      console.error('Approval action error:', error);
+      toast.error('Failed to process action');
+    }
   };
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
-      <div><h1 className="text-2xl font-bold text-gray-900">Purchase Management</h1><p className="text-gray-500 text-sm">Purchase requests and purchase orders</p></div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {(tab === 'pr' ? [
-          { label: 'Total PRs', value: prStats.total, color: 'text-gray-900' },
-          { label: 'Pending Approval', value: prStats.pending, color: 'text-gray-600' },
-          { label: 'Approved', value: prStats.approved, color: 'text-gray-900' },
-          { label: 'Estimated Value', value: `${fmt(prStats.totalValue)} IQD`, color: 'text-gray-900' },
-        ] : [
-          { label: 'Total POs', value: poStats.total, color: 'text-gray-900' },
-          { label: 'Total Value', value: `${fmt(poStats.totalValue)} IQD`, color: 'text-gray-900' },
-          { label: 'Unpaid Balance', value: `${fmt(poStats.unpaid)} IQD`, color: 'text-gray-600' },
-          { label: 'Completed', value: poStats.completed, color: 'text-gray-900' },
-        ]).map(k => (
-          <div key={k.label} className="bg-white rounded-lg border p-4">
-            <div className="text-xs text-gray-500">{k.label}</div>
-            <div className={`text-lg font-bold ${k.color} mt-1`}>{k.value}</div>
-          </div>
-        ))}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Purchase Requests</h1>
+          <p className="text-gray-500 text-sm">Manage and approve purchase requests</p>
+        </div>
       </div>
 
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-        <button onClick={() => setTab('pr')} className={`px-4 py-2 rounded-md text-sm font-medium transition ${tab === 'pr' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Purchase Requests ({prs.length})</button>
-        <button onClick={() => setTab('po')} className={`px-4 py-2 rounded-md text-sm font-medium transition ${tab === 'po' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Purchase Orders ({pos.length})</button>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="bg-white rounded-xl p-4 border">
+          <div className="text-xs text-gray-500 mb-1">Total Requests</div>
+          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border">
+          <div className="text-xs text-gray-500 mb-1">Pending</div>
+          <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border">
+          <div className="text-xs text-gray-500 mb-1">Approved</div>
+          <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border">
+          <div className="text-xs text-gray-500 mb-1">Declined</div>
+          <div className="text-2xl font-bold text-red-600">{stats.declined}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border">
+          <div className="text-xs text-gray-500 mb-1">Total Value</div>
+          <div className="text-lg font-bold text-gray-900">{fmt(stats.totalValue)} IQD</div>
+        </div>
       </div>
 
-      {tab === 'pr' && (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">PR #</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Department</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Purpose</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Priority</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Est. Total (IQD)</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {prs.map(pr => (
-                  <tr key={pr.pr_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{pr.pr_number}</td>
-                    <td className="px-4 py-3 text-gray-600">{pr.pr_date}</td>
-                    <td className="px-4 py-3">{pr.department_name}</td>
-                    <td className="px-4 py-3 max-w-[200px] truncate">{pr.purpose_ar}</td>
-                    <td className="px-4 py-3 text-center"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${priorityColor(pr.priority)}`}>{pr.priority}</span></td>
-                    <td className="px-4 py-3 text-right font-medium">{fmt(pr.estimated_total)}</td>
-                    <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${prStatusColor(pr.status)}`}>{pr.status}</span></td>
-                    <td className="px-4 py-3 text-center"><button onClick={() => setViewPR(pr)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Filters */}
+      <div className="bg-white rounded-xl p-4 border space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search requests..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm"
+            />
           </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm"
+          >
+            <option value="">All Status</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="DECLINED">Declined</option>
+            <option value="MORE_INFO_NEEDED">More Info Needed</option>
+            <option value="PROCESSING">Processing</option>
+          </select>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm"
+          >
+            <option value="">All Priority</option>
+            <option value="URGENT">Urgent</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
         </div>
-      )}
+      </div>
 
-      {tab === 'po' && (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">PO #</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Supplier</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Total (IQD)</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Balance Due</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Payment</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {pos.map(po => (
-                  <tr key={po.po_id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{po.po_number}</td>
-                    <td className="px-4 py-3 text-gray-600">{po.po_date}</td>
-                    <td className="px-4 py-3">{po.supplier_name_ar}</td>
-                    <td className="px-4 py-3 text-right font-medium">{fmt(po.total_amount)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900">{po.balance_due > 0 ? fmt(po.balance_due) : '-'}</td>
-                    <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${po.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{po.payment_status}</span></td>
-                    <td className="px-4 py-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${poStatusColor(po.status)}`}>{po.status}</span></td>
-                    <td className="px-4 py-3 text-center"><button onClick={() => setViewPO(po)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* View PR Modal */}
-      {viewPR && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewPR(null)}>
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold">{viewPR.pr_number}</h2><span className={`text-xs px-2 py-1 rounded-full font-medium ${prStatusColor(viewPR.status)}`}>{viewPR.status}</span></div>
-            <div className="p-6 grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-gray-500 block text-xs">Department</span>{viewPR.department_name}</div>
-              <div><span className="text-gray-500 block text-xs">Requested By</span>{viewPR.requested_by_name}</div>
-              <div><span className="text-gray-500 block text-xs">Priority</span><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColor(viewPR.priority)}`}>{viewPR.priority}</span></div>
-              <div><span className="text-gray-500 block text-xs">Required By</span>{viewPR.required_by_date || '-'}</div>
-              <div className="col-span-2"><span className="text-gray-500 block text-xs">Purpose</span>{viewPR.purpose_ar}</div>
-              <div><span className="text-gray-500 block text-xs">Estimated Total</span><span className="font-bold">{fmt(viewPR.estimated_total)} IQD</span></div>
-              {viewPR.converted_to_po && <div><span className="text-gray-500 block text-xs">PO Created</span><span className="text-emerald-600 font-medium">Yes</span></div>}
-            </div>
-            <div className="px-6 pb-6">
-              <h3 className="font-semibold text-sm mb-2">Items</h3>
-              <div className="border rounded-lg divide-y text-sm">
-                {financeStore.getPRItemsByPR(viewPR.pr_id).map(item => (
-                  <div key={item.pr_item_id} className="p-3 flex justify-between">
-                    <div><div className="font-medium">{item.item_name_ar}</div><div className="text-xs text-gray-500">{item.quantity} {item.unit_of_measure}</div></div>
-                    <div className="text-right font-medium">{fmt(item.estimated_total_price)} IQD</div>
+      {/* Table */}
+      <div className="bg-white rounded-xl border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Request #</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Date</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Requested By</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Department</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Item</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600">Priority</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600">Est. Total</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600">Status</th>
+              <th className="px-4 py-3 text-center font-medium text-gray-600">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {filteredRequests.map(req => (
+              <tr key={req.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 font-mono text-xs">{req.request_number}</td>
+                <td className="px-4 py-3 text-gray-600">{req.request_date}</td>
+                <td className="px-4 py-3">{req.requested_by}</td>
+                <td className="px-4 py-3 text-gray-600">{req.department}</td>
+                <td className="px-4 py-3">
+                  <div className="font-medium">{req.item_name}</div>
+                  <div className="text-xs text-gray-500">{req.item_name_ar}</div>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColor(req.priority)}`}>
+                    {req.priority}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right font-bold">{fmt(req.estimated_total_price)} IQD</td>
+                <td className="px-4 py-3 text-center">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(req.status)}`}>
+                    {req.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <button onClick={() => setViewRequest(req)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
+                    {req.status === 'PENDING' && (
+                      <>
+                        <button onClick={() => openApprovalModal(req, 'APPROVED')} className="p-1.5 hover:bg-green-50 rounded text-green-600" title="Approve"><CheckCircle size={14} /></button>
+                        <button onClick={() => openApprovalModal(req, 'DECLINED')} className="p-1.5 hover:bg-red-50 rounded text-red-600" title="Decline"><XCircle size={14} /></button>
+                        <button onClick={() => openApprovalModal(req, 'MORE_INFO_NEEDED')} className="p-1.5 hover:bg-blue-50 rounded text-blue-600" title="Request Info"><AlertCircle size={14} /></button>
+                      </>
+                    )}
                   </div>
-                ))}
+                </td>
+              </tr>
+            ))}
+            {filteredRequests.length === 0 && (
+              <tr><td colSpan={9} className="px-4 py-12 text-center text-gray-400">No purchase requests found</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* View Request Modal */}
+      {viewRequest && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewRequest(null)}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b flex justify-between items-start">
+              <div>
+                <h2 className="text-lg font-bold">{viewRequest.request_number}</h2>
+                <p className="text-sm text-gray-500">{viewRequest.request_date}</p>
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewRequest.status)}`}>
+                {viewRequest.status}
+              </span>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><span className="text-gray-500 block text-xs mb-1">Requested By</span><span className="font-medium">{viewRequest.requested_by}</span></div>
+                <div><span className="text-gray-500 block text-xs mb-1">Department</span><span className="font-medium">{viewRequest.department}</span></div>
+                <div><span className="text-gray-500 block text-xs mb-1">Priority</span><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColor(viewRequest.priority)}`}>{viewRequest.priority}</span></div>
+                <div><span className="text-gray-500 block text-xs mb-1">Required By</span><span className="font-medium">{viewRequest.required_by_date || '-'}</span></div>
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="font-semibold text-sm mb-2">Item Details</h3>
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div><span className="text-gray-600">Item:</span> <span className="font-medium">{viewRequest.item_name}</span></div>
+                  <div><span className="text-gray-600">Arabic:</span> <span className="font-medium">{viewRequest.item_name_ar}</span></div>
+                  {viewRequest.item_description && <div><span className="text-gray-600">Description:</span> <span>{viewRequest.item_description}</span></div>}
+                  <div><span className="text-gray-600">Category:</span> <span>{viewRequest.category}</span></div>
+                  <div><span className="text-gray-600">Quantity:</span> <span className="font-medium">{viewRequest.quantity} {viewRequest.unit}</span></div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span className="text-gray-600">Estimated Total:</span>
+                    <span className="font-bold text-lg">{fmt(viewRequest.estimated_total_price)} IQD</span>
+                  </div>
+                </div>
+              </div>
+              {viewRequest.justification && (
+                <div><span className="text-gray-500 block text-xs mb-1">Justification</span><p className="text-sm">{viewRequest.justification}</p></div>
+              )}
+              {viewRequest.preferred_supplier && (
+                <div><span className="text-gray-500 block text-xs mb-1">Preferred Supplier</span><span className="text-sm font-medium">{viewRequest.preferred_supplier}</span></div>
+              )}
+              {viewRequest.reviewed_by && (
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold text-sm mb-2">Review Information</h3>
+                  <div className="bg-blue-50 rounded-lg p-4 space-y-2 text-sm">
+                    <div><span className="text-gray-600">Reviewed By:</span> <span className="font-medium">{viewRequest.reviewed_by}</span></div>
+                    <div><span className="text-gray-600">Reviewed At:</span> <span>{new Date(viewRequest.reviewed_at).toLocaleString()}</span></div>
+                    {viewRequest.approval_comments && <div><span className="text-gray-600">Comments:</span> <span>{viewRequest.approval_comments}</span></div>}
+                    {viewRequest.decline_reason && <div className="text-red-600"><span className="font-medium">Decline Reason:</span> <span>{viewRequest.decline_reason}</span></div>}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t flex gap-2 justify-end">
+              {viewRequest.status === 'PENDING' && (
+                <>
+                  <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'APPROVED'); }} className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Approve</button>
+                  <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'DECLINED'); }} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><XCircle size={14} /> Decline</button>
+                  <button onClick={() => { setViewRequest(null); openApprovalModal(viewRequest, 'MORE_INFO_NEEDED'); }} className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><AlertCircle size={14} /> Request Info</button>
+                </>
+              )}
+              <button onClick={() => setViewRequest(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Action Modal */}
+      {showApprovalModal && approvingRequest && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowApprovalModal(false)}>
+          <div className="bg-white rounded-xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                {approvalAction === 'APPROVED' && <><CheckCircle className="w-5 h-5 text-green-600" /> Approve Request</>}
+                {approvalAction === 'DECLINED' && <><XCircle className="w-5 h-5 text-red-600" /> Decline Request</>}
+                {approvalAction === 'MORE_INFO_NEEDED' && <><AlertCircle className="w-5 h-5 text-blue-600" /> Request More Information</>}
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <div className="text-sm text-gray-600 mb-2">
+                  Request: <span className="font-mono font-medium">{approvingRequest.request_number}</span>
+                </div>
+                <div className="text-sm text-gray-600 mb-4">
+                  Item: <span className="font-medium">{approvingRequest.item_name}</span>
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Requested By:</span>
+                  <span className="font-medium">{approvingRequest.requested_by}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Department:</span>
+                  <span className="font-medium">{approvingRequest.department}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Amount:</span>
+                  <span className="font-medium">{fmt(approvingRequest.estimated_total_price)} IQD</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-600">Current Status:</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(approvingRequest.status)}`}>
+                    {approvingRequest.status}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <User className="inline w-4 h-4 mr-1" />
+                  Your Name (Finance Employee) *
+                </label>
+                <input
+                  type="text"
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg text-sm"
+                  placeholder="Enter your full name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {approvalAction === 'APPROVED' && 'Approval Comments'}
+                  {approvalAction === 'DECLINED' && 'Decline Reason *'}
+                  {approvalAction === 'MORE_INFO_NEEDED' && 'Information Needed *'}
+                </label>
+                <textarea
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg text-sm"
+                  rows={4}
+                  placeholder={
+                    approvalAction === 'APPROVED' ? 'Optional approval comments...' :
+                    approvalAction === 'DECLINED' ? 'Please provide reason for declining...' :
+                    'Please specify what additional information is needed...'
+                  }
+                />
               </div>
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
-              {(viewPR.status === 'SUBMITTED' || viewPR.status === 'PENDING_APPROVAL') && (
-                <button onClick={() => handleApprovePR(viewPR)} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1"><CheckCircle size={14} /> Approve</button>
-              )}
-              <button onClick={() => setViewPR(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
+              <button onClick={() => setShowApprovalModal(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              <button 
+                onClick={handleApprovalAction} 
+                className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 text-white ${
+                  approvalAction === 'APPROVED' ? 'bg-green-500' :
+                  approvalAction === 'DECLINED' ? 'bg-red-500' :
+                  'bg-blue-500'
+                }`}
+              >
+                {approvalAction === 'APPROVED' && <><CheckCircle size={14} /> Approve</>}
+                {approvalAction === 'DECLINED' && <><XCircle size={14} /> Decline</>}
+                {approvalAction === 'MORE_INFO_NEEDED' && <><AlertCircle size={14} /> Request Info</>}
+              </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* View PO Modal */}
-      {viewPO && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewPO(null)}>
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold">{viewPO.po_number}</h2><span className={`text-xs px-2 py-1 rounded-full font-medium ${poStatusColor(viewPO.status)}`}>{viewPO.status}</span></div>
-            <div className="p-6 grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-gray-500 block text-xs">Supplier</span>{viewPO.supplier_name_ar}</div>
-              <div><span className="text-gray-500 block text-xs">Date</span>{viewPO.po_date}</div>
-              <div><span className="text-gray-500 block text-xs">Delivery Location</span>{viewPO.delivery_location_ar || '-'}</div>
-              <div><span className="text-gray-500 block text-xs">Expected Delivery</span>{viewPO.expected_delivery_date || '-'}</div>
-              <div><span className="text-gray-500 block text-xs">Subtotal</span>{fmt(viewPO.subtotal)} IQD</div>
-              <div><span className="text-gray-500 block text-xs">Shipping</span>{fmt(viewPO.shipping_cost)} IQD</div>
-              <div><span className="text-gray-500 block text-xs">Total</span><span className="font-bold">{fmt(viewPO.total_amount)} IQD</span></div>
-              <div><span className="text-gray-500 block text-xs">Paid</span><span className="text-gray-900 font-medium">{fmt(viewPO.amount_paid)} IQD</span></div>
-              <div><span className="text-gray-500 block text-xs">Balance Due</span><span className="text-gray-900 font-bold">{fmt(viewPO.balance_due)} IQD</span></div>
-              <div><span className="text-gray-500 block text-xs">Payment Status</span><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${viewPO.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{viewPO.payment_status}</span></div>
-            </div>
-            <div className="px-6 pb-6">
-              <h3 className="font-semibold text-sm mb-2">Items</h3>
-              <div className="border rounded-lg divide-y text-sm">
-                {financeStore.getPOItemsByPO(viewPO.po_id).map(item => (
-                  <div key={item.po_item_id} className="p-3 flex justify-between">
-                    <div><div className="font-medium">{item.item_name_ar}</div><div className="text-xs text-gray-500">Ordered: {item.ordered_quantity} | Received: {item.received_quantity} {item.unit_of_measure}</div></div>
-                    <div className="text-right font-medium">{fmt(item.line_total)} IQD</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="p-4 border-t flex justify-end"><button onClick={() => setViewPO(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button></div>
           </div>
         </div>
       )}

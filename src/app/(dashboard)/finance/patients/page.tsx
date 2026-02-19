@@ -24,8 +24,41 @@ export default function PatientsPage() {
   const [current, setCurrent] = useState<FinancePatient>(emptyPatient());
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  useEffect(() => { financeStore.initialize(); reload(); setMounted(true); }, []);
-  const reload = () => setPatients(financeStore.getPatients());
+  useEffect(() => { loadPatients(); setMounted(true); }, []);
+  
+  const loadPatients = async () => {
+    try {
+      const res = await fetch('/api/patients');
+      if (res.ok) {
+        const data = await res.json();
+        // Map database fields to match component expectations
+        const mappedData = data.map((p: any) => ({
+          patient_id: p.patient_id,
+          patient_number: p.patient_id,
+          first_name_ar: p.first_name_ar || '',
+          last_name_ar: p.last_name_ar || '',
+          full_name_ar: `${p.first_name_ar || ''} ${p.last_name_ar || ''}`.trim(),
+          first_name_en: p.first_name,
+          last_name_en: p.last_name,
+          full_name_en: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+          date_of_birth: p.date_of_birth || '',
+          gender: p.gender || 'MALE',
+          phone: p.phone || '',
+          email: p.email,
+          national_id: p.national_id,
+          governorate: p.city || p.province,
+          total_balance: 0,
+          is_active: p.is_active,
+          created_at: p.created_at,
+          id: p.id,
+        }));
+        setPatients(mappedData);
+      }
+    } catch (error) {
+      console.error('Failed to load patients:', error);
+      toast.error('Failed to load patients');
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!search) return patients;
@@ -37,24 +70,85 @@ export default function PatientsPage() {
   const openEdit = (p: FinancePatient) => { setCurrent({ ...p }); setModal('edit'); };
   const openView = (p: FinancePatient) => { setCurrent(p); setModal('view'); };
 
-  const handleSave = () => {
-    const p = { ...current, full_name_ar: `${current.first_name_ar} ${current.last_name_ar}`.trim() };
-    if (!p.first_name_ar || !p.last_name_ar || !p.phone) { toast.error('Please fill required fields'); return; }
-    if (modal === 'create') {
-      financeStore.addPatient(p);
-      toast.success('Patient added');
-    } else {
-      financeStore.updatePatient(p.patient_id, p);
-      toast.success('Patient updated');
+  const handleSave = async () => {
+    if (!current.first_name_ar || !current.last_name_ar || !current.phone) { 
+      toast.error('Please fill required fields'); 
+      return; 
     }
-    reload(); setModal(null);
+
+    try {
+      const patientData = {
+        first_name_ar: current.first_name_ar,
+        last_name_ar: current.last_name_ar,
+        first_name_en: current.first_name_en,
+        last_name_en: current.last_name_en,
+        date_of_birth: current.date_of_birth,
+        gender: current.gender,
+        phone: current.phone,
+        email: current.email,
+        national_id: current.national_id,
+        governorate: current.governorate,
+      };
+
+      if (modal === 'create') {
+        const res = await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patientData),
+        });
+        
+        if (res.ok) {
+          toast.success('Patient added to database');
+          loadPatients();
+          setModal(null);
+        } else {
+          const error = await res.json();
+          toast.error(error.error || 'Failed to add patient');
+        }
+      } else {
+        const res = await fetch(`/api/patients/${(current as any).id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patientData),
+        });
+        
+        if (res.ok) {
+          toast.success('Patient updated in database');
+          loadPatients();
+          setModal(null);
+        } else {
+          const error = await res.json();
+          toast.error(error.error || 'Failed to update patient');
+        }
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save patient');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deleteId) return;
-    financeStore.deletePatient(deleteId);
-    toast.success('Patient deleted');
-    reload(); setDeleteId(null);
+    
+    try {
+      const patient = patients.find(p => p.patient_id === deleteId);
+      if (!patient) return;
+
+      const res = await fetch(`/api/patients/${(patient as any).id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        toast.success('Patient deleted from database');
+        loadPatients();
+        setDeleteId(null);
+      } else {
+        toast.error('Failed to delete patient');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete patient');
+    }
   };
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;
@@ -175,17 +269,11 @@ export default function PatientsPage() {
               <div><span className="text-gray-500 block text-xs">Governorate</span>{current.governorate || '-'}</div>
               <div><span className="text-gray-500 block text-xs">Balance</span><span className="font-bold text-gray-900">{fmt(current.total_balance)} IQD</span></div>
             </div>
-            {/* Patient Invoices */}
+            {/* Patient Invoices - Note: Will be loaded from database in future */}
             <div className="px-6 pb-6">
               <h3 className="font-semibold text-sm mb-2">Invoices</h3>
-              <div className="border rounded-lg divide-y text-sm max-h-40 overflow-y-auto">
-                {financeStore.getInvoicesByPatient(current.patient_id).map(inv => (
-                  <div key={inv.invoice_id} className="p-3 flex justify-between">
-                    <div><div className="font-medium">{inv.invoice_number}</div><div className="text-xs text-gray-500">{inv.invoice_date}</div></div>
-                    <div className="text-right"><div className="font-medium">{fmt(inv.total_amount)} IQD</div><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span></div>
-                  </div>
-                ))}
-                {financeStore.getInvoicesByPatient(current.patient_id).length === 0 && <div className="p-3 text-gray-400 text-center">No invoices</div>}
+              <div className="border rounded-lg p-3 text-sm text-gray-400 text-center">
+                Invoice history will be loaded from database
               </div>
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">

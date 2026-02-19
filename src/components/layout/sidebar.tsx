@@ -37,6 +37,7 @@ import {
   BarChart3,
   BookOpen,
   PieChart,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -48,14 +49,16 @@ const moduleLinks = [
     children: [
       { href: '/finance/patients', icon: UserCircle, label: 'Patients' },
       { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
-      { href: '/finance/stakeholders', icon: Handshake, label: 'Stakeholders' },
       { href: '/finance/invoices', icon: Receipt, label: 'Invoices' },
       { href: '/finance/returns', icon: RotateCcw, label: 'Returns' },
       { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
       { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
       { href: '/finance/suppliers', icon: Truck, label: 'Suppliers' },
+      { href: '/finance/budget', icon: PieChart, label: 'Budget' },
       { href: '/finance/accounting', icon: BookOpen, label: 'Accounting' },
       { href: '/finance/reports', icon: BarChart3, label: 'Reports' },
+      { href: '/finance/shareholders', icon: TrendingUp, label: 'Shareholders' },
+      { href: '/finance/stakeholders', icon: Handshake, label: 'Stakeholders' },
     ],
   },
   { href: '/insurance', icon: Shield, label: 'Insurance' },

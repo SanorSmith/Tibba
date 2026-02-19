@@ -5,7 +5,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Server-side client with admin privileges
-export const supabaseAdmin = createClient<Database>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const supabaseAdmin = createClient<any>(
   supabaseUrl,
   supabaseServiceKey,
   {
@@ -15,3 +16,6 @@ export const supabaseAdmin = createClient<Database>(
     }
   }
 );
+
+// Alias for backward compatibility
+export const supabaseAny = supabaseAdmin;

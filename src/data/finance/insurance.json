@@ -11,6 +11,7 @@
       "address_ar": "بغداد - المنطقة الخضراء",
       "support_frequency": "MONTHLY",
       "total_annual_budget": 5000000000,
+      "price": 50000,
       "is_active": true,
       "created_at": "2024-01-01T00:00:00Z"
     },
@@ -24,6 +25,7 @@
       "address_ar": "بغداد - الكرادة",
       "support_frequency": "QUARTERLY",
       "total_annual_budget": 2000000000,
+      "price": 35000,
       "is_active": true,
       "created_at": "2024-01-01T00:00:00Z"
     },
@@ -38,6 +40,7 @@
       "address_ar": "بغداد - شارع السعدون",
       "support_frequency": "MONTHLY",
       "total_annual_budget": 1000000000,
+      "price": 45000,
       "is_active": true,
       "created_at": "2024-01-05T00:00:00Z"
     },
@@ -52,6 +55,7 @@
       "address_ar": "بغداد - المنصور",
       "support_frequency": "MONTHLY",
       "total_annual_budget": 800000000,
+      "price": 40000,
       "is_active": true,
       "created_at": "2024-01-10T00:00:00Z"
     },
@@ -65,6 +69,7 @@
       "address_ar": "بغداد - الجادرية",
       "support_frequency": "SEMI_ANNUAL",
       "total_annual_budget": 500000000,
+      "price": 30000,
       "is_active": true,
       "created_at": "2024-02-01T00:00:00Z"
     }

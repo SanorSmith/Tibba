@@ -5,22 +5,100 @@ import Link from 'next/link';
 import {
   DollarSign, TrendingUp, TrendingDown, Receipt, Users, ShoppingCart,
   Warehouse, AlertTriangle, ArrowRight, FileText, Handshake, RotateCcw,
-  Shield, Truck, BookOpen, BarChart3, Plus, Clock,
+  Shield, Truck, BookOpen, BarChart3, Plus, Clock, PieChart, AlertCircle, CheckCircle,
 } from 'lucide-react';
 import { financeStore } from '@/lib/financeStore';
 import type { MedicalInvoice, PurchaseOrder, Stock } from '@/types/finance';
+import { toast } from 'sonner';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
+const pct = (n: number) => `${n.toFixed(1)}%`;
+
+interface BudgetPeriod {
+  id: string;
+  period_name: string;
+  fiscal_year: number;
+  total_revenue_budget: number;
+  total_expense_budget: number;
+  total_capital_budget: number;
+  total_operational_budget: number;
+  total_revenue_actual: number;
+  total_expense_actual: number;
+  total_capital_actual: number;
+  total_operational_actual: number;
+  status: string;
+}
 
 export default function FinancePage() {
   const [invoices, setInvoices] = useState<MedicalInvoice[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [activeBudget, setActiveBudget] = useState<BudgetPeriod | null>(null);
 
   useEffect(() => {
     financeStore.initialize();
     setInvoices(financeStore.getInvoices());
+    loadActiveBudget();
     setMounted(true);
   }, []);
+
+  const loadActiveBudget = async () => {
+    try {
+      const res = await fetch('/api/budget?type=periods&status=ACTIVE');
+      if (res.ok) {
+        const periods = await res.json();
+        if (periods.length > 0) {
+          setActiveBudget(periods[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load budget:', error);
+    }
+  };
+
+  const budgetStats = useMemo(() => {
+    if (!activeBudget) return null;
+    
+    // Revenue calculations (achievement-based)
+    const revenueUtilization = activeBudget.total_revenue_budget > 0 
+      ? (activeBudget.total_revenue_actual / activeBudget.total_revenue_budget) * 100 : 0;
+    const revenueVariance = activeBudget.total_revenue_budget - activeBudget.total_revenue_actual;
+    
+    // Expense calculations (spending-based)
+    const expenseUtilization = activeBudget.total_expense_budget > 0 
+      ? (activeBudget.total_expense_actual / activeBudget.total_expense_budget) * 100 : 0;
+    const expenseVariance = activeBudget.total_expense_budget - activeBudget.total_expense_actual;
+    
+    // Operational calculations (matches Budget page)
+    const operationalUtilization = activeBudget.total_operational_budget > 0 
+      ? (activeBudget.total_operational_actual / activeBudget.total_operational_budget) * 100 : 0;
+    const operationalVariance = activeBudget.total_operational_budget - activeBudget.total_operational_actual;
+    
+    // Capital calculations (matches Budget page)
+    const capitalUtilization = activeBudget.total_capital_budget > 0 
+      ? (activeBudget.total_capital_actual / activeBudget.total_capital_budget) * 100 : 0;
+    const capitalVariance = activeBudget.total_capital_budget - activeBudget.total_capital_actual;
+
+    // Total budget calculations (matches Budget page totals)
+    const totalBudget = activeBudget.total_revenue_budget + activeBudget.total_expense_budget + activeBudget.total_capital_budget;
+    const totalActual = activeBudget.total_revenue_actual + activeBudget.total_expense_actual + activeBudget.total_capital_actual;
+    const overallUtilization = totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0;
+    const totalVariance = totalBudget - totalActual;
+
+    return {
+      revenueUtilization,
+      revenueVariance,
+      expenseUtilization,
+      expenseVariance,
+      operationalUtilization,
+      operationalVariance,
+      capitalUtilization,
+      capitalVariance,
+      totalBudget,
+      totalActual,
+      totalVariance,
+      overallUtilization,
+    };
+  }, [activeBudget]);
 
   const stats = useMemo(() => {
     if (!mounted) return null;
@@ -83,6 +161,20 @@ export default function FinancePage() {
     { label: 'View Reports', href: '/finance/reports', icon: BarChart3, color: 'bg-blue-400 hover:bg-blue-500' },
   ];
 
+  const getUtilizationColor = (utilization: number) => {
+    if (utilization < 50) return 'text-green-600';
+    if (utilization < 80) return 'text-blue-600';
+    if (utilization < 95) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
+  const getUtilizationBg = (utilization: number) => {
+    if (utilization < 50) return 'bg-green-500';
+    if (utilization < 80) return 'bg-blue-500';
+    if (utilization < 95) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
   const navCards = [
     { label: 'Patients', desc: `${stats.patientCount} registered`, href: '/finance/patients', icon: Users, color: 'border-blue-200' },
     { label: 'Insurance', desc: '5 providers', href: '/finance/insurance', icon: Shield, color: 'border-purple-200' },
@@ -92,6 +184,7 @@ export default function FinancePage() {
     { label: 'Purchases', desc: `${stats.pendingPRs} pending PRs`, href: '/finance/purchases', icon: ShoppingCart, color: 'border-amber-200' },
     { label: 'Inventory', desc: `${stats.lowStockCount} low stock`, href: '/finance/inventory', icon: Warehouse, color: 'border-teal-200' },
     { label: 'Suppliers', desc: `${stats.supplierCount} suppliers`, href: '/finance/suppliers', icon: Truck, color: 'border-gray-200' },
+    { label: 'Budget', desc: 'Budget management', href: '/finance/budget', icon: PieChart, color: 'border-purple-200' },
     { label: 'Accounting', desc: 'Chart of Accounts', href: '/finance/accounting', icon: BookOpen, color: 'border-indigo-200' },
     { label: 'Reports', desc: 'Financial statements', href: '/finance/reports', icon: BarChart3, color: 'border-pink-200' },
   ];
@@ -122,6 +215,143 @@ export default function FinancePage() {
           ))}
         </div>
       </div>
+
+      {/* Budget Overview - Prominent Section */}
+      {activeBudget && budgetStats && (
+        <div className="bg-white rounded-xl p-6 shadow-lg border-4 border-gradient-to-r from-purple-600 via-purple-700 to-indigo-700">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <PieChart className="w-8 h-8 text-purple-600" />
+                <h2 className="text-2xl font-bold text-gray-900">Hospital Budget Overview</h2>
+              </div>
+              <p className="text-gray-600 text-sm">{activeBudget.period_name} • Fiscal Year {activeBudget.fiscal_year}</p>
+            </div>
+            <Link href="/finance/budget" className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
+              View Details <ArrowRight size={16} />
+            </Link>
+          </div>
+
+          {/* Budget Status Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Revenue Budget */}
+            <div className="bg-gray-50 rounded-lg p-4 border-2 border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-600 font-medium">Revenue Budget</span>
+                {budgetStats.revenueUtilization >= 80 ? 
+                  <CheckCircle className="w-4 h-4 text-green-600" /> : 
+                  <AlertCircle className="w-4 h-4 text-yellow-600" />
+                }
+              </div>
+              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(activeBudget.total_revenue_budget)} IQD</div>
+              <div className="text-sm text-gray-600 mb-1">Actual: {fmt(activeBudget.total_revenue_actual)} IQD</div>
+              <div className="text-xs text-gray-500 mb-2">Variance: {fmt(budgetStats.revenueVariance)} IQD</div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min(budgetStats.revenueUtilization, 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-gray-900">{pct(budgetStats.revenueUtilization)}</span>
+              </div>
+            </div>
+
+            {/* Operational Budget */}
+            <div className="bg-gray-50 rounded-lg p-4 border-2 border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-600 font-medium">Operational Budget</span>
+                {budgetStats.operationalUtilization < 95 ? 
+                  <CheckCircle className="w-4 h-4 text-green-600" /> : 
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                }
+              </div>
+              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(activeBudget.total_operational_budget)} IQD</div>
+              <div className="text-sm text-gray-600 mb-1">Spent: {fmt(activeBudget.total_operational_actual)} IQD</div>
+              <div className="text-xs text-gray-500 mb-2">Remaining: {fmt(budgetStats.operationalVariance)} IQD</div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getUtilizationBg(budgetStats.operationalUtilization)}`}
+                    style={{ width: `${Math.min(budgetStats.operationalUtilization, 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-gray-900">{pct(budgetStats.operationalUtilization)}</span>
+              </div>
+            </div>
+
+            {/* Capital Budget */}
+            <div className="bg-gray-50 rounded-lg p-4 border-2 border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-600 font-medium">Capital Budget</span>
+                {budgetStats.capitalUtilization < 95 ? 
+                  <CheckCircle className="w-4 h-4 text-green-600" /> : 
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                }
+              </div>
+              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(activeBudget.total_capital_budget)} IQD</div>
+              <div className="text-sm text-gray-600 mb-1">Spent: {fmt(activeBudget.total_capital_actual)} IQD</div>
+              <div className="text-xs text-gray-500 mb-2">Remaining: {fmt(budgetStats.capitalVariance)} IQD</div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getUtilizationBg(budgetStats.capitalUtilization)}`}
+                    style={{ width: `${Math.min(budgetStats.capitalUtilization, 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-gray-900">{pct(budgetStats.capitalUtilization)}</span>
+              </div>
+            </div>
+
+            {/* Total Budget Summary */}
+            <div className="bg-gray-50 rounded-lg p-4 border-2 border-purple-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-600 font-medium">Total Budget</span>
+                {budgetStats.overallUtilization < 90 ? 
+                  <CheckCircle className="w-4 h-4 text-green-600" /> : 
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                }
+              </div>
+              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(budgetStats.totalBudget)} IQD</div>
+              <div className="text-sm text-gray-600 mb-1">Used: {fmt(budgetStats.totalActual)} IQD</div>
+              <div className="text-xs text-gray-500 mb-2">Available: {fmt(budgetStats.totalVariance)} IQD</div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all ${getUtilizationBg(budgetStats.overallUtilization)}`}
+                    style={{ width: `${Math.min(budgetStats.overallUtilization, 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs font-bold text-gray-900">{pct(budgetStats.overallUtilization)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Budget Alerts */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {budgetStats.operationalUtilization > 90 && (
+              <div className="bg-red-50 border border-red-200 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5">
+                <AlertTriangle size={12} className="text-red-600" /> Operational budget at {pct(budgetStats.operationalUtilization)} - Critical
+              </div>
+            )}
+            {budgetStats.capitalUtilization > 90 && (
+              <div className="bg-orange-50 border border-orange-200 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5">
+                <AlertTriangle size={12} className="text-orange-600" /> Capital budget at {pct(budgetStats.capitalUtilization)} - Warning
+              </div>
+            )}
+            {budgetStats.revenueUtilization < 50 && (
+              <div className="bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5">
+                <AlertCircle size={12} className="text-yellow-600" /> Revenue achievement at {pct(budgetStats.revenueUtilization)} - Below target
+              </div>
+            )}
+            {budgetStats.overallUtilization < 90 && budgetStats.operationalUtilization < 90 && budgetStats.capitalUtilization < 90 && (
+              <div className="bg-green-50 border border-green-200 px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5">
+                <CheckCircle size={12} className="text-green-600" /> Budget utilization healthy - All categories within limits
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

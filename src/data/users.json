@@ -5,11 +5,11 @@
       "password": "demo123",
       "profile": {
         "id": "user_001",
-        "name": "Sanor",
-        "role": "Administrator",
-        "email": "sanor@tibbna.com",
-        "avatar": "S",
-        "permissions": ["all"]
+        "name": "HR Administrator",
+        "role": "HR Administrator",
+        "email": "hr.admin@tibbna.com",
+        "avatar": "HR",
+        "permissions": ["hr", "employees", "attendance", "leaves", "payroll", "recruitment", "training", "performance", "benefits", "organization"]
       }
     },
     {
@@ -53,11 +53,11 @@
       "password": "billing123",
       "profile": {
         "id": "user_005",
-        "name": "Billing Staff",
-        "role": "Billing Staff",
-        "email": "billing@tibbna.com",
-        "avatar": "B",
-        "permissions": ["billing", "insurance"]
+        "name": "Finance Administrator",
+        "role": "Finance Administrator",
+        "email": "finance.admin@tibbna.com",
+        "avatar": "FN",
+        "permissions": ["finance", "billing", "insurance", "invoices", "payments", "purchases", "returns", "budget", "reports", "suppliers", "shareholders"]
       }
     },
     {
