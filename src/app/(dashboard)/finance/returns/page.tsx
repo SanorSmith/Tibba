@@ -47,6 +47,8 @@ export default function ReturnsPage() {
   const [searchResults, setSearchResults] = useState<Invoice[]>([]);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [newReturn, setNewReturn] = useState({ invoice_number: '', reason: '', amount: 0 });
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
+  const [returnItems, setReturnItems] = useState<any[]>([]);
 
   useEffect(() => { loadReturns(); setMounted(true); }, []);
   
@@ -79,15 +81,33 @@ export default function ReturnsPage() {
     }
   };
 
-  const selectInvoice = (invoice: Invoice) => {
+  const selectInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setSearchQuery(`${invoice.invoice_number} - ${invoice.patient_name_ar}`);
     setNewReturn({
       invoice_number: invoice.invoice_number,
       reason: '',
-      amount: invoice.balance_due || 0,
+      amount: 0,
     });
     setSearchResults([]);
+
+    // Fetch invoice items
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        const items = data.items || [];
+        setInvoiceItems(items);
+        // Initialize return items with 0 quantity for each
+        setReturnItems(items.map((item: any) => ({
+          ...item,
+          return_quantity: 0,
+          return_amount: 0,
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load invoice items:', error);
+    }
   };
 
   const stats = useMemo(() => ({
@@ -109,16 +129,29 @@ export default function ReturnsPage() {
 
   const handleCreate = async () => {
     if (!selectedInvoice) { toast.error('Please select an invoice'); return; }
-    if (!newReturn.reason || newReturn.amount <= 0) { toast.error('Fill all fields'); return; }
+    if (!newReturn.reason) { toast.error('Enter return reason'); return; }
+    if (returnItems.every((item: any) => item.return_quantity <= 0)) { toast.error('Select at least one service to return'); return; }
 
+    const totalReturnAmount = returnItems.reduce((sum: number, item: any) => sum + item.return_amount, 0);
     const returnData = {
       invoice_id: selectedInvoice.id,
       invoice_number: selectedInvoice.invoice_number,
       patient_id: selectedInvoice.patient_id,
       patient_name_ar: selectedInvoice.patient_name_ar,
       reason_ar: newReturn.reason,
-      return_amount: newReturn.amount,
+      return_amount: totalReturnAmount,
       status: 'PENDING',
+      items: returnItems.filter((item: any) => item.return_quantity > 0).map((item: any) => ({
+        item_id: item.id,
+        invoice_item_id: item.id,
+        item_code: item.item_code,
+        item_name: item.item_name,
+        item_name_ar: item.item_name_ar,
+        original_quantity: item.quantity,
+        return_quantity: item.return_quantity,
+        unit_price: item.unit_price,
+        return_amount: item.return_amount,
+      })),
     };
 
     try {
@@ -147,6 +180,8 @@ export default function ReturnsPage() {
     setNewReturn({ invoice_number: '', reason: '', amount: 0 });
     setSelectedInvoice(null);
     setSearchQuery('');
+    setInvoiceItems([]);
+    setReturnItems([]);
   };
 
   const handleEdit = async () => {
@@ -236,6 +271,18 @@ export default function ReturnsPage() {
     setEditingReturn({ ...ret });
     setShowEdit(true);
   };
+
+  // Helper to update return quantity for a service
+  const updateReturnQuantity = (index: number, qty: number) => {
+    const updated = [...returnItems];
+    const maxQty = updated[index].quantity;
+    const validQty = Math.max(0, Math.min(qty, maxQty));
+    updated[index].return_quantity = validQty;
+    updated[index].return_amount = validQty * updated[index].unit_price;
+    setReturnItems(updated);
+  };
+
+  const totalReturnAmount = returnItems.reduce((sum, item) => sum + item.return_amount, 0);
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;
 
@@ -517,10 +564,59 @@ export default function ReturnsPage() {
               )}
 
               <div><label className="text-xs text-gray-500 block mb-1">Reason (AR) *</label><textarea value={newReturn.reason} onChange={e => setNewReturn({...newReturn, reason: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} placeholder="سبب الإرجاع..." /></div>
-              <div><label className="text-xs text-gray-500 block mb-1">Return Amount (IQD) *</label><input type="number" value={newReturn.amount} onChange={e => setNewReturn({...newReturn, amount: Number(e.target.value)})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+
+              {/* Services Selection */}
+              {invoiceItems.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Services to Return</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {invoiceItems.map((item, idx) => (
+                      <div key={idx} className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{item.item_name_ar || item.item_name}</div>
+                            {item.item_name_ar && item.item_name && <div className="text-xs text-gray-400">{item.item_name}</div>}
+                            <div className="text-xs text-gray-500 mt-1">
+                              Qty: {item.quantity} × {fmt(item.unit_price)} IQD = {fmt(item.subtotal || item.unit_price * item.quantity)} IQD
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 flex items-center gap-2">
+                            <label className="text-xs text-gray-500">Return Qty:</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={item.quantity}
+                              value={returnItems[idx]?.return_quantity || 0}
+                              onChange={e => updateReturnQuantity(idx, parseInt(e.target.value) || 0)}
+                              className="w-20 border rounded px-2 py-1 text-xs"
+                            />
+                            <span className="text-xs text-gray-400">/ {item.quantity}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-gray-500">Return Amount:</div>
+                            <div className="text-sm font-bold text-red-600">
+                              {fmt(returnItems[idx]?.return_amount || 0)} IQD
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Total Return Amount */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-red-900">Total Return Amount:</span>
+                  <span className="text-lg font-bold text-red-600">{fmt(totalReturnAmount)} IQD</span>
+                </div>
+              </div>
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
-              <button onClick={() => { setShowCreate(false); setSelectedInvoice(null); setSearchQuery(''); setSearchResults([]); }} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              <button onClick={() => { setShowCreate(false); setSelectedInvoice(null); setSearchQuery(''); setSearchResults([]); setInvoiceItems([]); setReturnItems([]); }} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
               <button onClick={handleCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Return</button>
             </div>
           </div>

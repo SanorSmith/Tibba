@@ -90,6 +90,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Insert return items if provided
+    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      const items = body.items.map((item: any) => ({
+        return_id: data.id,
+        invoice_item_id: item.invoice_item_id,
+        item_code: item.item_code || null,
+        item_name: item.item_name,
+        item_name_ar: item.item_name_ar || null,
+        original_quantity: item.original_quantity || 1,
+        return_quantity: item.return_quantity || 0,
+        unit_price: item.unit_price,
+        return_amount: item.return_amount || 0,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('return_items')
+        .insert(items);
+
+      if (itemsError) {
+        console.error('Error creating return items:', itemsError);
+        // Don't fail the whole request, just log the error
+      }
+    }
+
     console.log('✅ Return created:', data.id);
     return NextResponse.json(data, { status: 201 });
 
