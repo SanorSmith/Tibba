@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Receipt, Plus, Search, Eye, Trash2, Edit, X, Percent, RefreshCw } from 'lucide-react';
+import { Receipt, Plus, Search, Eye, Trash2, Edit, X, Percent, RefreshCw, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Invoice {
@@ -39,11 +39,34 @@ interface InsuranceCompany {
   company_name_ar?: string;
 }
 
+interface Service {
+  id: string;
+  code: string;
+  name: string;
+  name_ar: string;
+  category: string;
+  price_self_pay: number;
+  price_insurance: number;
+  price_government: number;
+}
+
+interface LineItem {
+  service_id: string;
+  service_code: string;
+  service_name: string;
+  service_name_ar: string;
+  service_category: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -51,6 +74,7 @@ export default function InvoicesPage() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [formData, setFormData] = useState<Partial<Invoice>>({});
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [discountInvoice, setDiscountInvoice] = useState<Invoice | null>(null);
   const [discountValue, setDiscountValue] = useState(0);
   const [statusInvoice, setStatusInvoice] = useState<Invoice | null>(null);
@@ -66,20 +90,14 @@ export default function InvoicesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Load invoices
-      const invRes = await fetch('/api/invoices');
-      if (invRes.ok) {
-        const invData = await invRes.json();
-        setInvoices(invData);
-      }
-
-      // Load insurance companies
-      const insRes = await fetch('/api/insurance-companies');
-      if (insRes.ok) {
-        const insData = await insRes.json();
-        setInsuranceCompanies(insData);
-      }
+      const [invRes, insRes, svcRes] = await Promise.all([
+        fetch('/api/invoices'),
+        fetch('/api/insurance-companies'),
+        fetch('/api/services'),
+      ]);
+      if (invRes.ok) setInvoices(await invRes.json());
+      if (insRes.ok) setInsuranceCompanies(await insRes.json());
+      if (svcRes.ok) setServices(await svcRes.json());
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load data');
@@ -90,6 +108,7 @@ export default function InvoicesPage() {
 
   const handleCreate = () => {
     setEditingInvoice(null);
+    setLineItems([]);
     setFormData({
       invoice_date: new Date().toISOString().split('T')[0],
       status: 'PENDING',
@@ -110,10 +129,74 @@ export default function InvoicesPage() {
 
   const handleEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
+    setLineItems([]);
     setFormData(invoice);
     setPatientSearch(invoice.patient_name_ar || invoice.patient_name || '');
     setPatientResults([]);
     setShowModal(true);
+  };
+
+  // Line item helpers
+  const addLineItem = () => {
+    setLineItems(prev => [...prev, { service_id: '', service_code: '', service_name: '', service_name_ar: '', service_category: '', quantity: 1, unit_price: 0, line_total: 0 }]);
+  };
+
+  const updateLineService = (idx: number, serviceId: string) => {
+    const svc = services.find(s => s.id === serviceId);
+    if (!svc) return;
+    const updated = [...lineItems];
+    const qty = updated[idx].quantity || 1;
+    const price = svc.price_self_pay;
+    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: qty, unit_price: price, line_total: price * qty };
+    setLineItems(updated);
+    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+  };
+
+  const updateLineQty = (idx: number, qty: number) => {
+    const updated = [...lineItems];
+    updated[idx] = { ...updated[idx], quantity: qty, line_total: updated[idx].unit_price * qty };
+    setLineItems(updated);
+    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+  };
+
+  const updateLinePrice = (idx: number, price: number) => {
+    const updated = [...lineItems];
+    updated[idx] = { ...updated[idx], unit_price: price, line_total: price * updated[idx].quantity };
+    setLineItems(updated);
+    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+  };
+
+  const removeLineItem = (idx: number) => {
+    const updated = lineItems.filter((_, i) => i !== idx);
+    setLineItems(updated);
+    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+  };
+
+  const recalcFromLines = (lines: LineItem[], discPct: number, insPct: number) => {
+    const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
+    const discountAmount = Math.round(subtotal * discPct / 100);
+    const totalAmount = subtotal - discountAmount;
+    const insuranceCoverage = Math.round(totalAmount * insPct / 100);
+    const patientResp = totalAmount - insuranceCoverage;
+    setFormData(prev => ({
+      ...prev,
+      subtotal,
+      discount_amount: discountAmount,
+      total_amount: totalAmount,
+      insurance_coverage_amount: insuranceCoverage,
+      patient_responsibility: patientResp,
+      balance_due: patientResp - (prev.amount_paid || 0),
+    }));
+  };
+
+  const handleDiscountChange = (discPct: number) => {
+    setFormData(prev => ({ ...prev, discount_percentage: discPct }));
+    recalcFromLines(lineItems, discPct, formData.insurance_coverage_percentage || 0);
+  };
+
+  const handleInsurancePctChange = (insPct: number) => {
+    setFormData(prev => ({ ...prev, insurance_coverage_percentage: insPct }));
+    recalcFromLines(lineItems, formData.discount_percentage || 0, insPct);
   };
 
   const searchPatients = async (query: string) => {
@@ -150,21 +233,32 @@ export default function InvoicesPage() {
 
   const handleSave = async () => {
     try {
-      if (!formData.invoice_date) {
-        toast.error('Invoice date is required');
-        return;
-      }
+      if (!formData.invoice_date) { toast.error('Invoice date is required'); return; }
+      if (!editingInvoice && lineItems.length === 0) { toast.error('Add at least one service'); return; }
+      if (lineItems.some(l => !l.service_id)) { toast.error('Select a service for each line'); return; }
 
-      const url = editingInvoice
-        ? `/api/invoices/${editingInvoice.id}`
-        : '/api/invoices';
+      const payload = {
+        ...formData,
+        items: lineItems.map(l => ({
+          item_type: 'SERVICE',
+          item_code: l.service_code,
+          item_name: l.service_name,
+          item_name_ar: l.service_name_ar,
+          description: l.service_category,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          subtotal: l.line_total,
+          insurance_covered: (formData.insurance_company_id || '') !== '',
+          insurance_coverage_percentage: formData.insurance_coverage_percentage || 0,
+          insurance_amount: Math.round(l.line_total * (formData.insurance_coverage_percentage || 0) / 100),
+          patient_amount: l.line_total - Math.round(l.line_total * (formData.insurance_coverage_percentage || 0) / 100),
+        })),
+      };
+
+      const url = editingInvoice ? `/api/invoices/${editingInvoice.id}` : '/api/invoices';
       const method = editingInvoice ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
       if (res.ok) {
         toast.success(editingInvoice ? 'Invoice updated' : 'Invoice created');
@@ -626,6 +720,93 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
+              {/* Services */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Services *</h3>
+                  <button
+                    type="button"
+                    onClick={addLineItem}
+                    className="flex items-center gap-1 text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600"
+                  >
+                    <Plus className="w-3 h-3" /> Add Service
+                  </button>
+                </div>
+
+                {lineItems.length === 0 && (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center text-sm text-gray-400">
+                    No services added yet. Click "Add Service" to begin.
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {lineItems.map((line, idx) => (
+                    <div key={idx} className="grid grid-cols-12 gap-2 items-end bg-gray-50 rounded-lg p-3">
+                      {/* Service selector */}
+                      <div className="col-span-5">
+                        <label className="block text-xs text-gray-500 mb-1">Service</label>
+                        <select
+                          value={line.service_id}
+                          onChange={e => updateLineService(idx, e.target.value)}
+                          className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
+                        >
+                          <option value="">Select service...</option>
+                          {['CONSULTATION', 'LAB', 'IMAGING', 'PROCEDURE', 'DIAGNOSTIC'].map(cat => (
+                            <optgroup key={cat} label={cat}>
+                              {services.filter(s => s.category === cat).map(s => (
+                                <option key={s.id} value={s.id}>{s.name_ar} — {fmt(s.price_self_pay)} IQD</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                      {/* Unit price */}
+                      <div className="col-span-3">
+                        <label className="block text-xs text-gray-500 mb-1">Unit Price (IQD)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={line.unit_price}
+                          onChange={e => updateLinePrice(idx, parseFloat(e.target.value) || 0)}
+                          className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
+                        />
+                      </div>
+                      {/* Quantity */}
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-500 mb-1">Qty</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={line.quantity}
+                          onChange={e => updateLineQty(idx, parseInt(e.target.value) || 1)}
+                          className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
+                        />
+                      </div>
+                      {/* Line total + remove */}
+                      <div className="col-span-2 flex items-end gap-1">
+                        <div className="flex-1 text-right">
+                          <div className="text-xs text-gray-500 mb-1">Total</div>
+                          <div className="text-sm font-bold text-gray-900">{fmt(line.line_total)}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(idx)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded mb-0.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {lineItems.length > 0 && (
+                  <div className="mt-2 flex justify-end text-sm font-medium text-gray-700 bg-blue-50 rounded-lg px-4 py-2">
+                    Services Subtotal: <span className="ml-2 font-bold text-gray-900">{fmt(formData.subtotal || 0)} IQD</span>
+                  </div>
+                )}
+              </div>
+
               {/* Financial Details */}
               <div>
                 <h3 className="font-semibold text-sm mb-3">Financial Details</h3>
@@ -636,10 +817,12 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
+                      readOnly={lineItems.length > 0}
                       value={formData.subtotal || 0}
-                      onChange={e => setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${lineItems.length > 0 ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
                     />
+                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Auto-calculated from services</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Discount %</label>
@@ -649,7 +832,7 @@ export default function InvoicesPage() {
                       max="100"
                       step="0.01"
                       value={formData.discount_percentage || 0}
-                      onChange={e => setFormData({ ...formData, discount_percentage: parseFloat(e.target.value) || 0 })}
+                      onChange={e => handleDiscountChange(parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -659,10 +842,12 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
+                      readOnly={lineItems.length > 0}
                       value={formData.total_amount || 0}
-                      onChange={e => setFormData({ ...formData, total_amount: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, total_amount: parseFloat(e.target.value) || 0 })}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm font-bold ${lineItems.length > 0 ? 'bg-gray-50 text-gray-900 cursor-not-allowed' : ''}`}
                     />
+                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Subtotal minus discount</p>}
                   </div>
                 </div>
               </div>
@@ -693,7 +878,7 @@ export default function InvoicesPage() {
                       min="0"
                       max="100"
                       value={formData.insurance_coverage_percentage || 0}
-                      onChange={e => setFormData({ ...formData, insurance_coverage_percentage: parseFloat(e.target.value) || 0 })}
+                      onChange={e => handleInsurancePctChange(parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -703,10 +888,12 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
+                      readOnly={lineItems.length > 0}
                       value={formData.insurance_coverage_amount || 0}
-                      onChange={e => setFormData({ ...formData, insurance_coverage_amount: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, insurance_coverage_amount: parseFloat(e.target.value) || 0 })}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${lineItems.length > 0 ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
+                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Auto-calculated from coverage %</p>}
                   </div>
                 </div>
               </div>
@@ -721,10 +908,12 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
+                      readOnly={lineItems.length > 0}
                       value={formData.patient_responsibility || 0}
-                      onChange={e => setFormData({ ...formData, patient_responsibility: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, patient_responsibility: parseFloat(e.target.value) || 0 })}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm font-bold ${lineItems.length > 0 ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
+                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Total minus insurance</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Amount Paid (IQD)</label>
@@ -743,10 +932,12 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
+                      readOnly={lineItems.length > 0}
                       value={formData.balance_due || 0}
-                      onChange={e => setFormData({ ...formData, balance_due: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, balance_due: parseFloat(e.target.value) || 0 })}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${lineItems.length > 0 ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
+                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Responsibility minus paid</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
