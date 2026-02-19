@@ -6,47 +6,38 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import stakeholdersJson from '@/data/finance/stakeholders.json';
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = supabaseAdmin;
-    const { searchParams } = new URL(request.url);
-    
-    const status = searchParams.get('status');
-    const type = searchParams.get('type');
-    const search = searchParams.get('search');
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get('status');
+  const type = searchParams.get('type');
+  const search = searchParams.get('search');
+  const fallback = (stakeholdersJson as any).stakeholders || [];
 
-    let query = supabase
+  if (!supabaseAdmin) {
+    return NextResponse.json(fallback);
+  }
+
+  try {
+    let query = supabaseAdmin
       .from('shareholders')
       .select('*')
       .order('share_percentage', { ascending: false });
 
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    if (type) {
-      query = query.eq('shareholder_type', type);
-    }
-
-    if (search) {
-      query = query.or(`full_name.ilike.%${search}%,full_name_ar.ilike.%${search}%,shareholder_id.ilike.%${search}%,email.ilike.%${search}%`);
-    }
+    if (status) query = query.eq('status', status);
+    if (type) query = query.eq('shareholder_type', type);
+    if (search) query = query.or(`full_name.ilike.%${search}%,full_name_ar.ilike.%${search}%,shareholder_id.ilike.%${search}%`);
 
     const { data, error } = await query;
 
     if (error || !data) {
       console.warn('Supabase shareholders error, falling back to JSON:', error?.message);
-      const fallback = (stakeholdersJson as any).stakeholders || [];
       return NextResponse.json(fallback);
     }
 
-    return NextResponse.json(data || []);
+    return NextResponse.json(data.length > 0 ? data : fallback);
 
-  } catch (error: any) {
-    console.error('GET shareholders error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch shareholders' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.warn('GET shareholders exception, falling back to JSON:', err?.message);
+    return NextResponse.json(fallback);
   }
 }
 

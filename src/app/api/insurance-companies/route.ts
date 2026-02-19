@@ -6,46 +6,36 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import insuranceJson from '@/data/finance/insurance.json';
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = supabaseAdmin;
-    const { searchParams } = new URL(request.url);
-    
-    // Optional filters
-    const activeOnly = searchParams.get('active') === 'true';
-    const search = searchParams.get('search');
+  const { searchParams } = new URL(request.url);
+  const activeOnly = searchParams.get('active') === 'true';
+  const search = searchParams.get('search');
+  const fallback = (insuranceJson as any).insurance_providers || [];
 
-    let query = supabase
+  if (!supabaseAdmin) {
+    return NextResponse.json(fallback);
+  }
+
+  try {
+    let query = supabaseAdmin
       .from('insurance_companies')
       .select('*')
       .order('company_name', { ascending: true });
 
-    // Filter by active status
-    if (activeOnly) {
-      query = query.eq('is_active', true);
-    }
-
-    // Search by name or code
-    if (search) {
-      query = query.or(`company_name.ilike.%${search}%,company_code.ilike.%${search}%`);
-    }
+    if (activeOnly) query = query.eq('is_active', true);
+    if (search) query = query.or(`company_name.ilike.%${search}%,company_code.ilike.%${search}%`);
 
     const { data, error } = await query;
 
     if (error || !data) {
       console.warn('Supabase insurance_companies error, falling back to JSON:', error?.message);
-      const fallback = (insuranceJson as any).insurance_providers || [];
       return NextResponse.json(fallback);
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} insurance companies`);
-    return NextResponse.json(data || []);
+    return NextResponse.json(data.length > 0 ? data : fallback);
 
-  } catch (error: any) {
-    console.error('GET insurance companies error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch insurance companies' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.warn('GET insurance-companies exception, falling back to JSON:', err?.message);
+    return NextResponse.json(fallback);
   }
 }
 

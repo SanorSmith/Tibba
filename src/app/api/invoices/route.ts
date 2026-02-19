@@ -6,60 +6,39 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import invoicesJson from '@/data/finance/invoices.json';
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = supabaseAdmin;
-    const { searchParams } = new URL(request.url);
-    
-    // Optional filters
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
-    const patientId = searchParams.get('patient_id');
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get('status');
+  const search = searchParams.get('search');
+  const patientId = searchParams.get('patient_id');
+  const fallback = (invoicesJson as any).invoices || [];
 
-    let query = supabase
+  if (!supabaseAdmin) {
+    return NextResponse.json(fallback);
+  }
+
+  try {
+    let query = supabaseAdmin
       .from('invoices')
-      .select(`
-        *,
-        insurance_companies (
-          company_code,
-          company_name,
-          company_name_ar
-        )
-      `)
+      .select(`*, insurance_companies(company_code,company_name,company_name_ar)`)
       .eq('is_deleted', false)
       .order('invoice_date', { ascending: false });
 
-    // Filter by status
-    if (status && status !== 'ALL') {
-      query = query.eq('status', status);
-    }
-
-    // Filter by patient
-    if (patientId) {
-      query = query.eq('patient_id', patientId);
-    }
-
-    // Search by invoice number or patient name
-    if (search) {
-      query = query.or(`invoice_number.ilike.%${search}%,patient_name.ilike.%${search}%,patient_name_ar.ilike.%${search}%`);
-    }
+    if (status && status !== 'ALL') query = query.eq('status', status);
+    if (patientId) query = query.eq('patient_id', patientId);
+    if (search) query = query.or(`invoice_number.ilike.%${search}%,patient_name.ilike.%${search}%`);
 
     const { data, error } = await query;
 
     if (error || !data) {
       console.warn('Supabase invoices error, falling back to JSON:', error?.message);
-      const fallback = (invoicesJson as any).invoices || [];
       return NextResponse.json(fallback);
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} invoices`);
-    return NextResponse.json(data || []);
+    return NextResponse.json(data.length > 0 ? data : fallback);
 
-  } catch (error: any) {
-    console.error('GET invoices error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch invoices' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.warn('GET invoices exception, falling back to JSON:', err?.message);
+    return NextResponse.json(fallback);
   }
 }
 

@@ -6,43 +6,36 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import invoicesJson from '@/data/finance/invoices.json';
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = supabaseAdmin;
-    const { searchParams } = new URL(request.url);
-    
-    const status = searchParams.get('status');
-    const invoiceId = searchParams.get('invoice_id');
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get('status');
+  const invoiceId = searchParams.get('invoice_id');
+  const fallback = (invoicesJson as any).invoice_returns || [];
 
-    let query = supabase
+  if (!supabaseAdmin) {
+    return NextResponse.json(fallback);
+  }
+
+  try {
+    let query = supabaseAdmin
       .from('invoice_returns')
       .select('*')
       .order('return_date', { ascending: false });
 
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    if (invoiceId) {
-      query = query.eq('invoice_id', invoiceId);
-    }
+    if (status) query = query.eq('status', status);
+    if (invoiceId) query = query.eq('invoice_id', invoiceId);
 
     const { data, error } = await query;
 
     if (error || !data) {
       console.warn('Supabase invoice_returns error, falling back to JSON:', error?.message);
-      const fallback = (invoicesJson as any).invoice_returns || [];
       return NextResponse.json(fallback);
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} returns`);
-    return NextResponse.json(data || []);
+    return NextResponse.json(data.length > 0 ? data : fallback);
 
-  } catch (error: any) {
-    console.error('GET returns error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch returns' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.warn('GET invoice-returns exception, falling back to JSON:', err?.message);
+    return NextResponse.json(fallback);
   }
 }
 

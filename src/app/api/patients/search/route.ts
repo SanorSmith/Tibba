@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Format results for autocomplete
-    const results = (data || []).map(patient => ({
+    const results = (data || []).map((patient: any) => ({
       id: patient.id,
       patient_id: patient.patient_id,
       first_name: patient.first_name,

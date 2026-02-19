@@ -6,13 +6,17 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import patientsJson from '@/data/finance/patients.json';
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = supabaseAdmin;
-    const { searchParams } = new URL(request.url);
-    
-    const activeOnly = searchParams.get('active') === 'true';
+  const { searchParams } = new URL(request.url);
+  const activeOnly = searchParams.get('active') === 'true';
+  const fallback = (patientsJson as any).patients || [];
+  const fallbackFiltered = activeOnly ? fallback.filter((p: any) => p.is_active !== false) : fallback;
 
-    let query = supabase
+  if (!supabaseAdmin) {
+    return NextResponse.json(fallbackFiltered);
+  }
+
+  try {
+    let query = supabaseAdmin
       .from('patients')
       .select('*')
       .order('created_at', { ascending: false });
@@ -25,19 +29,14 @@ export async function GET(request: NextRequest) {
 
     if (error || !data) {
       console.warn('Supabase patients error, falling back to JSON:', error?.message);
-      const fallback = (patientsJson as any).patients || [];
-      return NextResponse.json(activeOnly ? fallback.filter((p: any) => p.is_active !== false) : fallback);
+      return NextResponse.json(fallbackFiltered);
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} patients`);
-    return NextResponse.json(data || []);
+    return NextResponse.json(data.length > 0 ? data : fallbackFiltered);
 
   } catch (error: any) {
-    console.error('GET patients error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch patients' },
-      { status: 500 }
-    );
+    console.warn('GET patients exception, falling back to JSON:', error?.message);
+    return NextResponse.json(fallbackFiltered);
   }
 }
 

@@ -6,52 +6,40 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 import purchasesJson from '@/data/finance/purchases.json';
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = supabaseAdmin;
-    const { searchParams } = new URL(request.url);
-    
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
-    const department = searchParams.get('department');
-    const search = searchParams.get('search');
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get('status');
+  const priority = searchParams.get('priority');
+  const department = searchParams.get('department');
+  const search = searchParams.get('search');
+  const fallback = (purchasesJson as any).purchase_requests || (purchasesJson as any).purchase_orders || [];
 
-    let query = supabase
+  if (!supabaseAdmin) {
+    return NextResponse.json(fallback);
+  }
+
+  try {
+    let query = supabaseAdmin
       .from('purchase_requests')
       .select('*')
       .order('request_date', { ascending: false });
 
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    if (priority) {
-      query = query.eq('priority', priority);
-    }
-
-    if (department) {
-      query = query.eq('department', department);
-    }
-
-    if (search) {
-      query = query.or(`request_number.ilike.%${search}%,item_name.ilike.%${search}%,requested_by.ilike.%${search}%`);
-    }
+    if (status) query = query.eq('status', status);
+    if (priority) query = query.eq('priority', priority);
+    if (department) query = query.eq('department', department);
+    if (search) query = query.or(`request_number.ilike.%${search}%,item_name.ilike.%${search}%,requested_by.ilike.%${search}%`);
 
     const { data, error } = await query;
 
     if (error || !data) {
       console.warn('Supabase purchase_requests error, falling back to JSON:', error?.message);
-      const fallback = (purchasesJson as any).purchase_requests || (purchasesJson as any).purchase_orders || [];
       return NextResponse.json(fallback);
     }
 
-    return NextResponse.json(data || []);
+    return NextResponse.json(data.length > 0 ? data : fallback);
 
-  } catch (error: any) {
-    console.error('GET purchase requests error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch purchase requests' },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    console.warn('GET purchase-requests exception, falling back to JSON:', err?.message);
+    return NextResponse.json(fallback);
   }
 }
 
