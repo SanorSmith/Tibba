@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import stakeholdersJson from '@/data/finance/stakeholders.json';
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,12 +33,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error) {
-      console.error('Error fetching shareholders:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+    if (error || !data) {
+      console.warn('Supabase shareholders error, falling back to JSON:', error?.message);
+      const fallback = (stakeholdersJson as any).stakeholders || [];
+      return NextResponse.json(fallback);
     }
 
     return NextResponse.json(data || []);

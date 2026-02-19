@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import invoicesJson from '@/data/finance/invoices.json';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,12 +28,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error) {
-      console.error('Error fetching returns:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+    if (error || !data) {
+      console.warn('Supabase invoice_returns error, falling back to JSON:', error?.message);
+      const fallback = (invoicesJson as any).invoice_returns || [];
+      return NextResponse.json(fallback);
     }
 
     console.log(`✅ Fetched ${data?.length || 0} returns`);

@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import purchasesJson from '@/data/finance/purchases.json';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,12 +38,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error) {
-      console.error('Error fetching purchase requests:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+    if (error || !data) {
+      console.warn('Supabase purchase_requests error, falling back to JSON:', error?.message);
+      const fallback = (purchasesJson as any).purchase_requests || (purchasesJson as any).purchase_orders || [];
+      return NextResponse.json(fallback);
     }
 
     return NextResponse.json(data || []);

@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import insuranceJson from '@/data/finance/insurance.json';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,12 +31,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error) {
-      console.error('Error fetching insurance companies:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+    if (error || !data) {
+      console.warn('Supabase insurance_companies error, falling back to JSON:', error?.message);
+      const fallback = (insuranceJson as any).insurance_providers || [];
+      return NextResponse.json(fallback);
     }
 
     console.log(`✅ Fetched ${data?.length || 0} insurance companies`);

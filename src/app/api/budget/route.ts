@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error('Error fetching budget periods:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error || !data) {
+        console.warn('Supabase budget_periods error, returning empty:', error?.message);
+        return NextResponse.json([]);
       }
 
       return NextResponse.json(data);
@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error('Error fetching budget categories:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error || !data) {
+        console.warn('Supabase budget_categories error, returning empty:', error?.message);
+        return NextResponse.json([]);
       }
 
       return NextResponse.json(data);
@@ -76,9 +76,9 @@ export async function GET(request: NextRequest) {
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error('Error fetching budget allocations:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error || !data) {
+        console.warn('Supabase budget_allocations error, returning empty:', error?.message);
+        return NextResponse.json([]);
       }
 
       return NextResponse.json(data);
@@ -103,9 +103,9 @@ export async function GET(request: NextRequest) {
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error('Error fetching budget transactions:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error || !data) {
+        console.warn('Supabase budget_transactions error, returning empty:', error?.message);
+        return NextResponse.json([]);
       }
 
       return NextResponse.json(data);
