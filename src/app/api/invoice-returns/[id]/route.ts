@@ -4,13 +4,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
 
-const DB_ERROR = NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+const DB_ERROR = () => NextResponse.json({ error: 'Database not configured' }, { status: 503 });
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!supabaseAdmin) return DB_ERROR;
+  if (!supabaseAdmin) return DB_ERROR();
   try {
     const supabase = supabaseAdmin;
     const { id } = params;
@@ -44,7 +44,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!supabaseAdmin) return DB_ERROR;
+  if (!supabaseAdmin) return DB_ERROR();
   try {
     const supabase = supabaseAdmin;
     const { id } = params;
@@ -100,7 +100,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!supabaseAdmin) return DB_ERROR;
+  if (!supabaseAdmin) return DB_ERROR();
   try {
     const supabase = supabaseAdmin;
     const { id } = params;
@@ -157,7 +157,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!supabaseAdmin) return DB_ERROR;
+  if (!supabaseAdmin) return DB_ERROR();
   try {
     const supabase = supabaseAdmin;
     const { id } = params;

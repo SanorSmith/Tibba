@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const invoiceId = searchParams.get('invoice_id');
-  const fallback = (invoicesJson as any).invoice_returns || [];
+  const fallback = (invoicesJson as any).returns || (invoicesJson as any).invoice_returns || [];
 
   if (!supabaseAdmin) {
     return NextResponse.json(fallback);
