@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const sessionToken = Buffer.from(
-      JSON.stringify({ userId: record.user.id, username: username.toLowerCase().trim(), timestamp: Date.now() })
+      JSON.stringify({ userId: record.user.id, username: username.toLowerCase().trim(), role: record.user.role, timestamp: Date.now() })
     ).toString('base64');
 
     cookies().set('tibbna_session', sessionToken, {
