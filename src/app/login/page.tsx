@@ -9,31 +9,22 @@ const ROLES = [
     username: 'superadmin',
     password: 'super123',
     label: 'Super Admin',
-    desc: 'Access to all modules',
+    desc: 'All modules',
     route: '/dashboard',
-    color: 'border-purple-400 hover:border-purple-500 hover:bg-purple-50',
-    badge: 'bg-purple-100 text-purple-700',
-    icon: '👑',
   },
   {
     username: 'finance',
     password: 'finance123',
     label: 'Finance Admin',
-    desc: 'Finance module only',
+    desc: 'Finance only',
     route: '/finance',
-    color: 'border-emerald-400 hover:border-emerald-500 hover:bg-emerald-50',
-    badge: 'bg-emerald-100 text-emerald-700',
-    icon: '💰',
   },
   {
     username: 'hr',
     password: 'hr123',
     label: 'HR Admin',
-    desc: 'HR module only',
+    desc: 'HR only',
     route: '/hr',
-    color: 'border-blue-400 hover:border-blue-500 hover:bg-blue-50',
-    badge: 'bg-blue-100 text-blue-700',
-    icon: '👥',
   },
 ];
 
@@ -117,11 +108,10 @@ function LoginForm() {
                   key={role.username}
                   onClick={() => quickLogin(role)}
                   disabled={isLoading}
-                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${role.color}`}
+                  className="flex flex-col items-center gap-1 p-3 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="text-2xl">{role.icon}</span>
-                  <span className="text-xs font-bold text-gray-800 text-center leading-tight">{role.label}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${role.badge}`}>{role.desc}</span>
+                  <span className="text-xs font-semibold text-gray-800 text-center leading-tight">{role.label}</span>
+                  <span className="text-[10px] text-gray-400">{role.desc}</span>
                 </button>
               ))}
             </div>
