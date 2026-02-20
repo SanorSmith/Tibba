@@ -86,11 +86,11 @@ export default function StakeholdersPage() {
         </select>
       </div>
 
-      <div className="tibbna-grid-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(s => {
           const stats = shareStats[s.stakeholder_id] || { total: 0, paid: 0, pending: 0 };
           return (
-            <div key={s.stakeholder_id} className="tibbna-card">
+            <div key={s.stakeholder_id} className="bg-white rounded-lg border p-4 hover:shadow-md transition cursor-pointer" onClick={() => openView(s)}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="font-semibold text-gray-900">{s.name_ar}</div>
@@ -98,21 +98,66 @@ export default function StakeholdersPage() {
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleColor(s.role)}`}>{roleLabel[s.role]}</span>
               </div>
-              <div className="space-y-1 text-xs text-gray-600 mb-3">
-                <div className="flex justify-between"><span>Mobile:</span><span>{s.mobile}</span></div>
-                <div className="flex justify-between"><span>Specialty:</span><span>{s.specialty_ar||'-'}</span></div>
-                <div className="flex justify-between"><span>Service:</span><span>{s.service_type ? s.service_type.replace('_', ' ') : '-'}</span></div>
-                <div className="flex justify-between"><span>Share:</span><span>{s.default_share_type === 'PERCENTAGE' ? `${s.default_share_percentage||0}%` : `${fmt(s.default_share_amount||0)} IQD`}</span></div>
+              
+              <div className="space-y-2 mb-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Mobile:</span>
+                  <span className="font-medium">{s.mobile}</span>
+                </div>
+                {s.specialty_ar && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Specialty:</span>
+                    <span className="font-medium">{s.specialty_ar}</span>
+                  </div>
+                )}
+                {s.service_type && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Service:</span>
+                    <span className="font-medium">{s.service_type.replace('_', ' ')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Share:</span>
+                  <span className="font-medium">
+                    {s.default_share_type === 'PERCENTAGE' ? `${s.default_share_percentage||0}%` : `${fmt(s.default_share_amount||0)} IQD`}
+                  </span>
+                </div>
               </div>
-              <div className="border-t pt-2 space-y-1">
-                <div className="flex justify-between text-xs"><span className="text-gray-500">Total Revenue:</span><span className="font-medium">{fmt(stats.total)} IQD</span></div>
-                <div className="flex justify-between text-xs"><span className="text-green-600">Paid:</span><span className="font-medium">{fmt(stats.paid)} IQD</span></div>
-                <div className="flex justify-between text-xs"><span className="text-amber-600">Pending:</span><span className="font-medium">{fmt(stats.pending)} IQD</span></div>
+              
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Total Revenue:</span>
+                  <span className="font-semibold text-gray-900">{fmt(stats.total)} IQD</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-600 font-medium">Paid:</span>
+                  <span className="font-medium text-green-600">{fmt(stats.paid)} IQD</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-amber-600 font-medium">Pending:</span>
+                  <span className="font-medium text-amber-600">{fmt(stats.pending)} IQD</span>
+                </div>
               </div>
-              <div className="flex gap-1 mt-3">
-                <button onClick={() => openView(s)} className="text-xs px-2 py-1 border rounded text-blue-500 hover:bg-blue-50"><Eye size={12} className="inline mr-1" /> View</button>
-                <button onClick={() => openEdit(s)} className="text-xs px-2 py-1 border rounded text-amber-500 hover:bg-amber-50"><Edit size={12} className="inline mr-1" /> Edit</button>
-                <button onClick={e => { e.stopPropagation(); setDeleteId(s.stakeholder_id); }} className="text-xs px-2 py-1 border rounded text-red-500 hover:bg-red-50"><Trash2 size={12} className="inline mr-1" />Delete</button>
+              
+              <div className="flex gap-2 pt-3 border-t mt-3">
+                <button 
+                  onClick={e => { e.stopPropagation(); openView(s); }} 
+                  className="flex-1 text-xs px-2 py-1.5 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Eye size={12} /> View
+                </button>
+                <button 
+                  onClick={e => { e.stopPropagation(); openEdit(s); }} 
+                  className="flex-1 text-xs px-2 py-1.5 border border-amber-500 text-amber-500 rounded hover:bg-amber-50 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Edit size={12} /> Edit
+                </button>
+                <button 
+                  onClick={e => { e.stopPropagation(); setDeleteId(s.stakeholder_id); }} 
+                  className="flex-1 text-xs px-2 py-1.5 border border-red-500 text-red-500 rounded hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
+                >
+                  <Trash2 size={12} /> Delete
+                </button>
               </div>
             </div>
           );
