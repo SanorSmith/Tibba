@@ -448,7 +448,7 @@ export default function InvoicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Medical Invoices</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Customer Invoice</h1>
           <p className="text-gray-500 text-sm">Manage patient invoices and payments</p>
         </div>
         <button
