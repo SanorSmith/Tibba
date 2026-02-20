@@ -27,6 +27,9 @@ export default function AddServicePage() {
     nurseRequired: '0',
     technicianRequired: '0',
     requiresAppointment: true,
+    provider_id: '',
+    provider_name: '',
+    service_fee: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -345,6 +348,66 @@ export default function AddServicePage() {
               <label htmlFor="requiresAppointment" className="ml-2 block text-sm text-gray-700">
                 Requires Appointment
               </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Provider & Service Fee */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Service Provider & Fee</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-500">Link this service to an external provider organization and set the fee the hospital pays them per service rendered.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="provider_id" className="block text-sm font-medium text-gray-700 mb-1">
+                  Provider
+                </label>
+                <select
+                  id="provider_id"
+                  name="provider_id"
+                  value={formData.provider_id}
+                  onChange={e => {
+                    const providers = [
+                      { id: 'PRV001', name: 'Baghdad Medical Center' },
+                      { id: 'PRV002', name: 'Al-Rasheed Radiology Lab' },
+                      { id: 'PRV003', name: 'National Laboratory Services' },
+                      { id: 'PRV004', name: 'Al-Amal Therapy Center' },
+                      { id: 'PRV005', name: 'Iraqi Dental Group' },
+                      { id: 'PRV006', name: 'Emergency Care Solutions' },
+                      { id: 'PRV007', name: 'Preventive Health Institute' },
+                      { id: 'PRV008', name: 'Al-Zahrawi Surgical Center' },
+                    ];
+                    const p = providers.find(x => x.id === e.target.value);
+                    setFormData(prev => ({ ...prev, provider_id: e.target.value, provider_name: p?.name || '' }));
+                  }}
+                  className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">-- No Provider --</option>
+                  <option value="PRV001">Baghdad Medical Center</option>
+                  <option value="PRV002">Al-Rasheed Radiology Lab</option>
+                  <option value="PRV003">National Laboratory Services</option>
+                  <option value="PRV004">Al-Amal Therapy Center</option>
+                  <option value="PRV005">Iraqi Dental Group</option>
+                  <option value="PRV006">Emergency Care Solutions</option>
+                  <option value="PRV007">Preventive Health Institute</option>
+                  <option value="PRV008">Al-Zahrawi Surgical Center</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="service_fee" className="block text-sm font-medium text-gray-700 mb-1">
+                  Service Fee ($) — Amount hospital pays provider
+                </label>
+                <Input
+                  id="service_fee"
+                  name="service_fee"
+                  type="number"
+                  value={formData.service_fee}
+                  onChange={handleChange}
+                  placeholder="e.g., 80"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,18 +1,38 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Edit, Trash2, Clock, DollarSign, Users } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Clock, DollarSign, Users, Building2, CreditCard, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import servicesData from '@/data/services.json';
 import { formatCurrency } from '@/lib/utils';
 
+const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(Math.round(n));
+const STORAGE_KEY = 'tibbna_service_payments';
+
 export default function ServiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const service = servicesData.services.find((s) => s.id === params.id);
+  const [balanceStats, setBalanceStats] = useState({ total: 0, paid: 0, pending: 0, invoiceCount: 0 });
+
+  useEffect(() => {
+    if (!service) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const lines: any[] = raw ? JSON.parse(raw) : [];
+      const svcLines = lines.filter((l: any) => l.service_id === service.id);
+      setBalanceStats({
+        total: svcLines.reduce((s: number, l: any) => s + l.total_fee, 0),
+        paid: svcLines.filter((l: any) => l.status === 'PAID').reduce((s: number, l: any) => s + l.total_fee, 0),
+        pending: svcLines.filter((l: any) => l.status === 'PENDING').reduce((s: number, l: any) => s + l.total_fee, 0),
+        invoiceCount: svcLines.length,
+      });
+    } catch {}
+  }, [service]);
 
   if (!service) {
     return (
@@ -172,6 +192,72 @@ export default function ServiceDetailPage() {
                   {formatCurrency(service.price.government)}
                 </p>
               </div>
+              {service.service_fee && (
+                <div className="pt-3 border-t">
+                  <label className="text-sm font-medium text-gray-600">Provider Service Fee</label>
+                  <p className="mt-1 text-2xl font-bold text-amber-600">
+                    {formatCurrency(service.service_fee)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">Amount hospital pays provider per service</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Provider Card */}
+          {service.provider_id && (() => {
+            const prov = (servicesData as any).providers?.find((p: any) => p.id === service.provider_id);
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5" />
+                    Service Provider
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div><span className="text-gray-500">Organization:</span> <span className="font-medium ml-1">{service.provider_name}</span></div>
+                  {prov?.contact && <div><span className="text-gray-500">Contact:</span> <span className="font-medium ml-1">{prov.contact}</span></div>}
+                  {prov?.phone && <div><span className="text-gray-500">Phone:</span> <span className="font-medium ml-1">{prov.phone}</span></div>}
+                  {prov?.email && <div><span className="text-gray-500">Email:</span> <span className="font-medium ml-1">{prov.email}</span></div>}
+                  <div className="pt-2">
+                    <Link href="/finance/service-payments" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                      <CreditCard className="w-3 h-3" /> View Payment History
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Balance Sheet Counter */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Balance Sheet
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Invoice Lines</span>
+                <span className="font-semibold">{balanceStats.invoiceCount}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Total Fees Owed</span>
+                <span className="font-semibold">{fmt(balanceStats.total)} $</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Paid</span>
+                <span className="font-semibold text-emerald-600">{fmt(balanceStats.paid)} $</span>
+              </div>
+              <div className="flex justify-between text-sm border-t pt-2">
+                <span className="text-amber-600 font-medium">Pending</span>
+                <span className="font-bold text-amber-600">{fmt(balanceStats.pending)} $</span>
+              </div>
+              {balanceStats.invoiceCount === 0 && (
+                <p className="text-xs text-gray-400 text-center pt-1">No invoice data yet</p>
+              )}
             </CardContent>
           </Card>
         </div>

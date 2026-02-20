@@ -1,4 +1,14 @@
 {
+  "providers": [
+    { "id": "PRV001", "name": "Baghdad Medical Center", "contact": "Dr. Khalid Al-Rawi", "phone": "07901234567", "email": "info@baghdadmed.iq" },
+    { "id": "PRV002", "name": "Al-Rasheed Radiology Lab", "contact": "Dr. Sara Ahmed", "phone": "07902345678", "email": "radiology@alrasheed.iq" },
+    { "id": "PRV003", "name": "National Laboratory Services", "contact": "Ahmed Kareem", "phone": "07903456789", "email": "lab@nationallab.iq" },
+    { "id": "PRV004", "name": "Al-Amal Therapy Center", "contact": "Zainab Mohammed", "phone": "07904567890", "email": "therapy@alamal.iq" },
+    { "id": "PRV005", "name": "Iraqi Dental Group", "contact": "Dr. Hassan Ali", "phone": "07905678901", "email": "dental@iraqidental.iq" },
+    { "id": "PRV006", "name": "Emergency Care Solutions", "contact": "Dr. Abbas Hussein", "phone": "07906789012", "email": "emergency@ecs.iq" },
+    { "id": "PRV007", "name": "Preventive Health Institute", "contact": "Dr. Fatima Al-Jubouri", "phone": "07907890123", "email": "preventive@phi.iq" },
+    { "id": "PRV008", "name": "Al-Zahrawi Surgical Center", "contact": "Dr. Mohammed Al-Rawi", "phone": "07908901234", "email": "surgery@alzahrawi.iq" }
+  ],
   "services": [
     {
       "id": "SVC001",
@@ -20,7 +30,10 @@
       "suppliesNeeded": ["gloves", "examination paper"],
       "staffRequired": {
         "doctor": 1
-      }
+      },
+      "provider_id": "PRV001",
+      "provider_name": "Baghdad Medical Center",
+      "service_fee": 80
     },
     {
       "id": "SVC002",
@@ -43,7 +56,10 @@
       "staffRequired": {
         "radiologist": 1,
         "technician": 1
-      }
+      },
+      "provider_id": "PRV002",
+      "provider_name": "Al-Rasheed Radiology Lab",
+      "service_fee": 140
     },
     {
       "id": "SVC003",
@@ -65,7 +81,10 @@
       "suppliesNeeded": ["test tubes", "needles", "gloves"],
       "staffRequired": {
         "lab_technician": 1
-      }
+      },
+      "provider_id": "PRV003",
+      "provider_name": "National Laboratory Services",
+      "service_fee": 90
     },
     {
       "id": "SVC004",
@@ -88,7 +107,10 @@
       "staffRequired": {
         "cardiologist": 1,
         "nurse": 1
-      }
+      },
+      "provider_id": "PRV001",
+      "provider_name": "Baghdad Medical Center",
+      "service_fee": 160
     },
     {
       "id": "SVC005",
@@ -111,7 +133,10 @@
       "staffRequired": {
         "radiologist": 1,
         "technician": 2
-      }
+      },
+      "provider_id": "PRV002",
+      "provider_name": "Al-Rasheed Radiology Lab",
+      "service_fee": 700
     },
     {
       "id": "SVC006",
@@ -133,7 +158,10 @@
       "suppliesNeeded": ["exercise bands", "therapy balls"],
       "staffRequired": {
         "physical_therapist": 1
-      }
+      },
+      "provider_id": "PRV004",
+      "provider_name": "Al-Amal Therapy Center",
+      "service_fee": 65
     },
     {
       "id": "SVC007",
@@ -155,7 +183,10 @@
       "suppliesNeeded": ["ultrasound gel"],
       "staffRequired": {
         "sonographer": 1
-      }
+      },
+      "provider_id": "PRV002",
+      "provider_name": "Al-Rasheed Radiology Lab",
+      "service_fee": 180
     },
     {
       "id": "SVC008",
@@ -178,7 +209,10 @@
       "staffRequired": {
         "dentist": 1,
         "dental_hygienist": 1
-      }
+      },
+      "provider_id": "PRV005",
+      "provider_name": "Iraqi Dental Group",
+      "service_fee": 60
     },
     {
       "id": "SVC009",
@@ -201,7 +235,10 @@
       "staffRequired": {
         "emergency_physician": 1,
         "nurse": 2
-      }
+      },
+      "provider_id": "PRV006",
+      "provider_name": "Emergency Care Solutions",
+      "service_fee": 280
     },
     {
       "id": "SVC010",
@@ -223,7 +260,10 @@
       "suppliesNeeded": ["vaccine", "syringe", "alcohol swab"],
       "staffRequired": {
         "nurse": 1
-      }
+      },
+      "provider_id": "PRV007",
+      "provider_name": "Preventive Health Institute",
+      "service_fee": 15
     },
     {
       "id": "SVC011",
@@ -246,7 +286,10 @@
       "staffRequired": {
         "radiologist": 1,
         "technician": 1
-      }
+      },
+      "provider_id": "PRV002",
+      "provider_name": "Al-Rasheed Radiology Lab",
+      "service_fee": 480
     },
     {
       "id": "SVC012",
@@ -268,7 +311,10 @@
       "suppliesNeeded": ["gloves", "examination paper"],
       "staffRequired": {
         "pediatrician": 1
-      }
+      },
+      "provider_id": "PRV001",
+      "provider_name": "Baghdad Medical Center",
+      "service_fee": 70
     },
     {
       "id": "SVC013",
@@ -292,7 +338,10 @@
         "surgeon": 1,
         "anesthesiologist": 1,
         "nurse": 2
-      }
+      },
+      "provider_id": "PRV008",
+      "provider_name": "Al-Zahrawi Surgical Center",
+      "service_fee": 1200
     },
     {
       "id": "SVC014",
@@ -314,7 +363,10 @@
       "suppliesNeeded": ["gloves"],
       "staffRequired": {
         "dermatologist": 1
-      }
+      },
+      "provider_id": "PRV001",
+      "provider_name": "Baghdad Medical Center",
+      "service_fee": 100
     },
     {
       "id": "SVC015",
@@ -336,7 +388,10 @@
       "suppliesNeeded": ["eye drops"],
       "staffRequired": {
         "ophthalmologist": 1
-      }
+      },
+      "provider_id": "PRV001",
+      "provider_name": "Baghdad Medical Center",
+      "service_fee": 120
     }
   ]
 }
