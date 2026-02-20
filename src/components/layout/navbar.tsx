@@ -27,7 +27,7 @@ export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
           <Menu size={20} />
         </button>
 
-        <h1 className="text-base lg:text-lg font-bold tracking-tight cursor-pointer whitespace-nowrap">
+        <h1 className="text-base lg:text-lg font-bold tracking-tight cursor-pointer whitespace-nowrap title-dark">
           <span className="hidden sm:inline">Tibbna-ERP</span>
           <span className="sm:hidden">Tibbna</span>
         </h1>

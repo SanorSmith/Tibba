@@ -520,7 +520,7 @@ export default function BudgetPage() {
             <div className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold">{viewAllocation.allocation_code}</h2>
+                  <h2 className="text-lg font-bold title-dark">{viewAllocation.allocation_code}</h2>
                   <p className="text-sm text-gray-500">{viewAllocation.department} • {viewAllocation.department_ar}</p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewAllocation.status)}`}>
@@ -559,7 +559,7 @@ export default function BudgetPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Allocated Amount:</span>
-                    <span className="text-lg font-bold text-gray-900">{fmt(viewAllocation.allocated_amount)} IQD</span>
+                    <span className="text-lg font-bold title-dark text-gray-900">{fmt(viewAllocation.allocated_amount)} IQD</span>
                   </div>
                   <div className="flex justify-between items-center border-t pt-2">
                     <span className="text-sm text-gray-600">Committed:</span>
@@ -571,7 +571,7 @@ export default function BudgetPage() {
                   </div>
                   <div className="flex justify-between items-center border-t pt-2">
                     <span className="text-sm text-gray-600">Available:</span>
-                    <span className="text-lg font-bold text-green-600">{fmt(viewAllocation.available_amount)} IQD</span>
+                    <span className="text-lg font-bold title-dark text-green-600">{fmt(viewAllocation.available_amount)} IQD</span>
                   </div>
                   <div className="flex justify-between items-center border-t pt-2">
                     <span className="text-sm text-gray-600">Variance:</span>
