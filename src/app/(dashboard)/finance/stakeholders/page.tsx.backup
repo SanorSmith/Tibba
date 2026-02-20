@@ -48,21 +48,19 @@ export default function StakeholdersPage() {
   });
 
   const openCreate = () => { setCurrent(empty()); setModal('create'); };
-  const openEdit = (s: Stakeholder) => { setCurrent(s); setModal('edit'); };
+  const openEdit = (s: Stakeholder) => { setCurrent({...s}); setModal('edit'); };
   const openView = (s: Stakeholder) => { setCurrent(s); setModal('view'); };
 
   const handleSave = () => {
-    if (!current?.name_ar || !current?.mobile || !current?.role) { toast.error('Fill required fields'); return; }
-    if (modal === 'create') financeStore.addStakeholder(current);
-    else financeStore.updateStakeholder(current.stakeholder_id, current);
-    toast.success(modal === 'create' ? 'Stakeholder created' : 'Stakeholder updated');
-    setModal(null); reload();
+    if (!current || !current.name_ar || !current.mobile) { toast.error('Fill required fields'); return; }
+    if (modal === 'create') { financeStore.addStakeholder(current); toast.success('Stakeholder added'); }
+    else { financeStore.updateStakeholder(current.stakeholder_id, current); toast.success('Stakeholder updated'); }
+    reload(); setModal(null);
   };
 
   const handleDelete = () => {
-    if (deleteId) financeStore.deleteStakeholder(deleteId);
-    toast.success('Stakeholder deleted');
-    setDeleteId(null); reload();
+    if (!deleteId) return;
+    financeStore.deleteStakeholder(deleteId); toast.success('Deleted'); reload(); setDeleteId(null);
   };
 
   const roleColor = (r: string) => {
@@ -86,32 +84,28 @@ export default function StakeholdersPage() {
         </select>
       </div>
 
-      <div className="tibbna-grid-4">
+      {/* Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(s => {
-          const stats = shareStats[s.stakeholder_id] || { total: 0, paid: 0, pending: 0 };
+          const ss = shareStats[s.stakeholder_id];
           return (
-            <div key={s.stakeholder_id} className="tibbna-card">
+            <div key={s.stakeholder_id} className="bg-white rounded-lg border p-4 hover:shadow-md transition cursor-pointer" onClick={() => openView(s)}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="font-semibold text-gray-900">{s.name_ar}</div>
-                  <div className="text-xs text-gray-500">{s.stakeholder_code}</div>
+                  <div className="font-semibold">{s.name_ar}</div>
+                  {s.name_en && <div className="text-xs text-gray-500">{s.name_en}</div>}
+                  <div className="text-xs text-gray-400 mt-0.5">{s.stakeholder_code}</div>
                 </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleColor(s.role)}`}>{roleLabel[s.role]}</span>
               </div>
-              <div className="space-y-1 text-xs text-gray-600 mb-3">
-                <div className="flex justify-between"><span>Mobile:</span><span>{s.mobile}</span></div>
-                <div className="flex justify-between"><span>Specialty:</span><span>{s.specialty_ar||'-'}</span></div>
-                <div className="flex justify-between"><span>Service:</span><span>{s.service_type ? s.service_type.replace('_', ' ') : '-'}</span></div>
-                <div className="flex justify-between"><span>Share:</span><span>{s.default_share_type === 'PERCENTAGE' ? `${s.default_share_percentage||0}%` : `${fmt(s.default_share_amount||0)} IQD`}</span></div>
+              {s.specialty_ar && <div className="text-xs text-gray-600 mb-2">{s.specialty_ar}</div>}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Default: {s.default_share_type === 'PERCENTAGE' ? `${s.default_share_percentage}%` : `${fmt(s.default_share_amount || 0)} IQD`}</span>
+                {ss && <span className="font-medium text-gray-900">{fmt(ss.total)} IQD total</span>}
               </div>
-              <div className="border-t pt-2 space-y-1">
-                <div className="flex justify-between text-xs"><span className="text-gray-500">Total Revenue:</span><span className="font-medium">{fmt(stats.total)} IQD</span></div>
-                <div className="flex justify-between text-xs"><span className="text-green-600">Paid:</span><span className="font-medium">{fmt(stats.paid)} IQD</span></div>
-                <div className="flex justify-between text-xs"><span className="text-amber-600">Pending:</span><span className="font-medium">{fmt(stats.pending)} IQD</span></div>
-              </div>
-              <div className="flex gap-1 mt-3">
-                <button onClick={() => openView(s)} className="text-xs px-2 py-1 border rounded text-blue-500 hover:bg-blue-50"><Eye size={12} className="inline mr-1" /> View</button>
-                <button onClick={() => openEdit(s)} className="text-xs px-2 py-1 border rounded text-amber-500 hover:bg-amber-50"><Edit size={12} className="inline mr-1" /> Edit</button>
+              {ss && ss.pending > 0 && <div className="text-[10px] text-gray-600 mt-1">Pending: {fmt(ss.pending)} IQD</div>}
+              <div className="flex gap-1 mt-3 pt-3 border-t">
+                <button onClick={e => { e.stopPropagation(); openEdit(s); }} className="text-xs px-2 py-1 border rounded hover:bg-gray-50"><Edit size={12} className="inline mr-1" />Edit</button>
                 <button onClick={e => { e.stopPropagation(); setDeleteId(s.stakeholder_id); }} className="text-xs px-2 py-1 border rounded text-red-500 hover:bg-red-50"><Trash2 size={12} className="inline mr-1" />Delete</button>
               </div>
             </div>
@@ -395,19 +389,18 @@ export default function StakeholdersPage() {
               </div>
 
               {/* Share History */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3 text-gray-700">Revenue Share History</h3>
-                <div className="border rounded-lg divide-y text-sm max-h-48 overflow-y-auto">
-                  {financeStore.getSharesByStakeholder(current.stakeholder_id).map(sh => (
-                    <div key={sh.share_id} className="p-3 flex justify-between">
-                      <div><div className="text-xs text-gray-500">Invoice: {sh.invoice_id}</div><div className="text-xs">{sh.share_percentage}% share</div></div>
-                      <div className="text-right"><div className="font-medium">{fmt(sh.share_amount)} IQD</div><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${sh.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{sh.payment_status}</span></div>
-                    </div>
-                  ))}
-                  {financeStore.getSharesByStakeholder(current.stakeholder_id).length === 0 && <div className="p-3 text-center text-gray-400">No shares yet</div>}
-                </div>
+              <div className="px-6 pb-6">
+              <h3 className="font-semibold text-sm mb-2">Revenue Share History</h3>
+              <div className="border rounded-lg divide-y text-sm max-h-48 overflow-y-auto">
+                {financeStore.getSharesByStakeholder(current.stakeholder_id).map(sh => (
+                  <div key={sh.share_id} className="p-3 flex justify-between">
+                    <div><div className="text-xs text-gray-500">Invoice: {sh.invoice_id}</div><div className="text-xs">{sh.share_percentage}% share</div></div>
+                    <div className="text-right"><div className="font-medium">{fmt(sh.share_amount)} IQD</div><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${sh.payment_status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{sh.payment_status}</span></div>
+                  </div>
+                ))}
+                {financeStore.getSharesByStakeholder(current.stakeholder_id).length === 0 && <div className="p-3 text-center text-gray-400">No shares yet</div>}
               </div>
-            </div>
+              </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               <button onClick={() => setModal(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
             </div>
@@ -415,7 +408,6 @@ export default function StakeholdersPage() {
         </div>
       )}
 
-      {/* Delete Confirmation */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteId(null)}>
           <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>

@@ -111,6 +111,7 @@ export interface Stakeholder {
   bank_name_ar?: string;
   account_number?: string;
   iban?: string;
+  service_type?: string; // Type of service provided by stakeholder
   default_share_type: ShareType;
   default_share_percentage?: number;
   default_share_amount?: number;
