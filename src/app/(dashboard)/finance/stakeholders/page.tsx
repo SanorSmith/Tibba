@@ -167,7 +167,7 @@ export default function StakeholdersPage() {
 
       {/* Create/Edit Modal */}
       {(modal === 'create' || modal === 'edit') && current && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setModal(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" >
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
               <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Stakeholder' : 'Edit Stakeholder'}</h2>
@@ -379,7 +379,7 @@ export default function StakeholdersPage() {
 
       {/* View Modal */}
       {modal === 'view' && current && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" >
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
               <h2 className="text-lg font-bold">{current.name_ar}</h2>

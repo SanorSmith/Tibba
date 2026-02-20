@@ -99,7 +99,7 @@ export default function SuppliersPage() {
 
       {/* Create/Edit Modal */}
       {(modal === 'create' || modal === 'edit') && current && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" >
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold">{modal === 'create' ? 'Add Supplier' : 'Edit Supplier'}</h2><button onClick={() => setModal(null)}><X size={18} /></button></div>
             <div className="p-6 space-y-4">
@@ -126,7 +126,7 @@ export default function SuppliersPage() {
 
       {/* View Modal */}
       {modal === 'view' && current && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" >
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b"><h2 className="text-lg font-bold">{current.company_name_ar}</h2><p className="text-xs text-gray-500">{current.company_name_en}</p></div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
