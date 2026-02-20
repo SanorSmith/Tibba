@@ -139,22 +139,22 @@ export default function StakeholdersPage() {
                 </div>
               </div>
               
-              <div className="flex gap-2 pt-3 border-t mt-3">
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t mt-3">
                 <button 
                   onClick={e => { e.stopPropagation(); openView(s); }} 
-                  className="flex-1 text-xs px-2 py-1.5 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
+                  className="text-xs px-2 py-1.5 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <Eye size={12} /> View
                 </button>
                 <button 
                   onClick={e => { e.stopPropagation(); openEdit(s); }} 
-                  className="flex-1 text-xs px-2 py-1.5 border border-amber-500 text-amber-500 rounded hover:bg-amber-50 transition-colors flex items-center justify-center gap-1"
+                  className="text-xs px-2 py-1.5 border border-amber-500 text-amber-500 rounded hover:bg-amber-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <Edit size={12} /> Edit
                 </button>
                 <button 
                   onClick={e => { e.stopPropagation(); setDeleteId(s.stakeholder_id); }} 
-                  className="flex-1 text-xs px-2 py-1.5 border border-red-500 text-red-500 rounded hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
+                  className="text-xs px-2 py-1.5 border border-red-500 text-red-500 rounded hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <Trash2 size={12} /> Delete
                 </button>
