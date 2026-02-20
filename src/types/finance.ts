@@ -119,6 +119,57 @@ export interface Stakeholder {
   created_at: string;
 }
 
+// ============= SERVICE PAYMENTS =============
+
+export type ServicePaymentMethod = 'BANK_TRANSFER' | 'CASH' | 'CHECK';
+export type ServicePaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
+
+export interface ServiceBalanceSheet {
+  id: string;
+  service_provider_id: string;
+  service_type: string;
+  total_earned: number;
+  total_paid: number;
+  balance_due: number;
+  last_payment_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceInvoiceItem {
+  id: string;
+  invoice_id: string;
+  service_provider_id: string;
+  service_type: string;
+  service_name: string;
+  quantity: number;
+  unit_price: number;
+  total_amount: number;
+  service_fee: number; // Fee charged by service provider
+  hospital_earnings: number; // What hospital keeps
+  is_paid: boolean;
+  payment_id?: string;
+  invoice_date: string;
+  patient_name: string;
+  patient_id?: string;
+  created_at: string;
+}
+
+export interface ServicePayment {
+  id: string;
+  payment_number: string; // SP-2024-001 format
+  service_provider_id: string;
+  total_amount: number;
+  payment_date: string;
+  payment_method: ServicePaymentMethod;
+  status: ServicePaymentStatus;
+  notes?: string;
+  processed_by?: string;
+  processed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ============= MEDICAL SERVICES =============
 
 export type ServiceCategory =

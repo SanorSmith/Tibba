@@ -50,6 +50,7 @@ const moduleLinks = [
       { href: '/finance/patients', icon: UserCircle, label: 'Patients' },
       { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
       { href: '/finance/invoices', icon: Receipt, label: 'Customer Invoices' },
+      { href: '/finance/service-payments', icon: DollarSign, label: 'Service Share Payments' },
       { href: '/finance/returns', icon: RotateCcw, label: 'Returns' },
       { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
       { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
