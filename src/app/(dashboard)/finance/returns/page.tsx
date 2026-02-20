@@ -352,7 +352,7 @@ export default function ReturnsPage() {
       {viewRet && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewRet(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex justify-between"><h2 className="modal-title">{viewRet.return_number}</h2><span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewRet.status)}`}>{viewRet.status}</span></div>
+            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold text-red-600">{viewRet.return_number}</h2><span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewRet.status)}`}>{viewRet.status}</span></div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Patient</span>{viewRet.patient_name_ar}</div>
               <div><span className="text-gray-500 block text-xs">Date</span>{viewRet.return_date}</div>
@@ -373,7 +373,7 @@ export default function ReturnsPage() {
       {showEdit && editingReturn && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEdit(false)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="modal-title">Edit Return</h2></div>
+            <div className="p-6 border-b"><h2 className="text-lg font-bold text-red-600">Edit Return</h2></div>
             <div className="p-6 space-y-4">
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Invoice Number</label>
@@ -439,7 +439,7 @@ export default function ReturnsPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowStatusUpdate(false)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
-              <h2 className="modal-title flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2">
                 <RefreshCw className="w-5 h-5 text-green-600" />
                 Update Return Status
               </h2>
@@ -512,7 +512,7 @@ export default function ReturnsPage() {
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="modal-title">New Return</h2></div>
+            <div className="p-6 border-b"><h2 className="text-lg font-bold text-red-600">New Return</h2></div>
             <div className="p-6 space-y-4">
               {/* Search Invoice */}
               <div className="relative">

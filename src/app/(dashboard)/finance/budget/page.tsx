@@ -520,7 +520,7 @@ export default function BudgetPage() {
             <div className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="modal-title">{viewAllocation.allocation_code}</h2>
+                  <h2 className="text-lg font-bold text-red-600">{viewAllocation.allocation_code}</h2>
                   <p className="text-sm text-gray-500">{viewAllocation.department} • {viewAllocation.department_ar}</p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewAllocation.status)}`}>

@@ -169,7 +169,7 @@ export default function AccountingPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewJE(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between">
-              <div><h2 className="modal-title">{viewJE.entry_number}</h2><p className="text-xs text-gray-500">{viewJE.entry_date} &middot; {viewJE.entry_type}</p></div>
+              <div><h2 className="text-lg font-bold text-red-600">{viewJE.entry_number}</h2><p className="text-xs text-gray-500">{viewJE.entry_date} &middot; {viewJE.entry_type}</p></div>
               <span className={`text-xs px-2 py-1 rounded-full font-medium h-fit ${viewJE.status === 'POSTED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{viewJE.status}</span>
             </div>
             <div className="p-6">

@@ -479,7 +479,7 @@ export default function AttendanceExceptionsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl" style={{ border: '1px solid #e4e4e4' }}>
               <div style={{ padding: '16px', borderBottom: '1px solid #e4e4e4' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Add Justification</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#dc2626' }}>Add Justification</h3>
                 {(() => {
                   const exc = exceptions.find(e => e.exception_id === actionModal);
                   return exc ? (

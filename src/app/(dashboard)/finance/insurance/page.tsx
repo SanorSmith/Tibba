@@ -312,7 +312,7 @@ export default function InsurancePage() {
             onClick={e => e.stopPropagation()}
           >
             <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="modal-title">
+              <h2 className="text-lg font-bold text-red-600">
                 {editingCompany ? 'Edit Insurance Company' : 'Add Insurance Company'}
               </h2>
               <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded">

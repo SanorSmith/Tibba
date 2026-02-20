@@ -610,7 +610,7 @@ export default function LeaveRequestsListPage() {
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #e4e4e4', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Leave Request Details</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#dc2626' }}>Leave Request Details</h3>
                 <p style={{ fontSize: '11px', color: '#a3a3a3', fontFamily: 'monospace' }}>{selectedRequest.request_number || selectedRequest.id}</p>
               </div>
               <div className="flex items-center gap-2">
