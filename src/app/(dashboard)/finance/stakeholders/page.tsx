@@ -90,7 +90,7 @@ export default function StakeholdersPage() {
         {filtered.map(s => {
           const stats = shareStats[s.stakeholder_id] || { total: 0, paid: 0, pending: 0 };
           return (
-            <div key={s.stakeholder_id} className="bg-white rounded-lg border p-4 hover:shadow-md transition cursor-pointer" onClick={() => openView(s)}>
+            <div key={s.stakeholder_id} className="bg-white rounded-lg border p-4 hover:shadow-md transition cursor-pointer flex flex-col h-full" onClick={() => openView(s)}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="font-semibold text-gray-900">{s.name_ar}</div>
@@ -99,7 +99,7 @@ export default function StakeholdersPage() {
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleColor(s.role)}`}>{roleLabel[s.role]}</span>
               </div>
               
-              <div className="space-y-2 mb-3">
+              <div className="space-y-2 mb-3 flex-grow">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Mobile:</span>
                   <span className="font-medium">{s.mobile}</span>
@@ -139,22 +139,22 @@ export default function StakeholdersPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t mt-3">
+              <div className="flex gap-2 pt-3 border-t mt-auto">
                 <button 
                   onClick={e => { e.stopPropagation(); openView(s); }} 
-                  className="text-xs px-2 py-1.5 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 text-xs px-2 py-1.5 border border-blue-500 text-blue-500 rounded hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <Eye size={12} /> View
                 </button>
                 <button 
                   onClick={e => { e.stopPropagation(); openEdit(s); }} 
-                  className="text-xs px-2 py-1.5 border border-amber-500 text-amber-500 rounded hover:bg-amber-50 transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 text-xs px-2 py-1.5 border border-amber-500 text-amber-500 rounded hover:bg-amber-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <Edit size={12} /> Edit
                 </button>
                 <button 
                   onClick={e => { e.stopPropagation(); setDeleteId(s.stakeholder_id); }} 
-                  className="text-xs px-2 py-1.5 border border-red-500 text-red-500 rounded hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
+                  className="flex-1 text-xs px-2 py-1.5 border border-red-500 text-red-500 rounded hover:bg-red-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <Trash2 size={12} /> Delete
                 </button>
