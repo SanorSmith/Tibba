@@ -448,8 +448,8 @@ export default function InvoicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customer Invoice</h1>
-          <p className="text-gray-500 text-sm">Manage patient invoices and payments</p>
+          <h1 className="text-2xl font-bold text-gray-900">Customer Invoices</h1>
+          <p className="text-gray-500 text-sm">Manage customer invoices and payments</p>
         </div>
         <button
           onClick={handleCreate}
@@ -463,7 +463,7 @@ export default function InvoicesPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white rounded-lg border p-4">
-          <div className="text-xs text-gray-500">Total Invoices</div>
+          <div className="text-xs text-gray-500">Total Customer Invoices</div>
           <div className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</div>
         </div>
         <div className="bg-white rounded-lg border p-4">
@@ -602,7 +602,7 @@ export default function InvoicesPage() {
         </div>
         {filteredInvoices.length === 0 && (
           <div className="p-8 text-center text-gray-500">
-            No invoices found
+            No customer invoices found
           </div>
         )}
       </div>

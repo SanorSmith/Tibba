@@ -49,7 +49,7 @@ const moduleLinks = [
     children: [
       { href: '/finance/patients', icon: UserCircle, label: 'Patients' },
       { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
-      { href: '/finance/invoices', icon: Receipt, label: 'Invoices' },
+      { href: '/finance/invoices', icon: Receipt, label: 'Customer Invoices' },
       { href: '/finance/returns', icon: RotateCcw, label: 'Returns' },
       { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
       { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
