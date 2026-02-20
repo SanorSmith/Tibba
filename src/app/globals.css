@@ -108,7 +108,7 @@
     line-height: 24px;
     margin: 0;
     padding: 0;
-    color: #151515;
+    color: #EF4444;
   }
 
   @media (min-width: 640px) {
@@ -124,6 +124,15 @@
     color: rgb(82, 82, 82);
     margin: 4px 0 0;
     padding: 0;
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 24px;
+    margin: 0;
+    padding: 0;
+    color: #EF4444;
   }
 
   @media (min-width: 640px) {
@@ -543,7 +552,7 @@
     font-weight: 600;
     line-height: 22px;
     margin: 0 0 10px;
-    color: #151515;
+    color: #EF4444;
   }
   @media (min-width: 640px) {
     .tibbna-section-title {
@@ -558,11 +567,6 @@
   .alert-high { background-color: #FFFBEB; border: 1px solid #FDE68A; }
   .alert-medium { background-color: #EFF6FF; border: 1px solid #BFDBFE; }
   .alert-low { background-color: #F9FAFB; border: 1px solid #E5E7EB; }
-
-  /* === TITLE COLOR UTILITIES === */
-  .title-dark {
-    color: #151515;
-  }
 
   /* === MOBILE UTILITIES === */
   .mobile-card-list {

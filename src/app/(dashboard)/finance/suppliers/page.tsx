@@ -101,7 +101,7 @@ export default function SuppliersPage() {
       {(modal === 'create' || modal === 'edit') && current && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold title-dark">{modal === 'create' ? 'Add Supplier' : 'Edit Supplier'}</h2><button onClick={() => setModal(null)}><X size={18} /></button></div>
+            <div className="p-6 border-b flex justify-between"><h2 className="modal-title">{modal === 'create' ? 'Add Supplier' : 'Edit Supplier'}</h2><button onClick={() => setModal(null)}><X size={18} /></button></div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs text-gray-500 block mb-1">Company Name (AR) *</label><input value={current.company_name_ar} onChange={e => setCurrent({...current, company_name_ar: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
@@ -128,7 +128,7 @@ export default function SuppliersPage() {
       {modal === 'view' && current && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="text-lg font-bold title-dark">{current.company_name_ar}</h2><p className="text-xs text-gray-500">{current.company_name_en}</p></div>
+            <div className="p-6 border-b"><h2 className="modal-title">{current.company_name_ar}</h2><p className="text-xs text-gray-500">{current.company_name_en}</p></div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Code</span>{current.supplier_code}</div>
               <div><span className="text-gray-500 block text-xs">Category</span>{catLabel[current.supplier_category]}</div>
