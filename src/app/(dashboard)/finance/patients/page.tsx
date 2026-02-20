@@ -229,7 +229,7 @@ export default function PatientsPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold text-red-600">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
+              <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
               <button onClick={() => setModal(null)} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -258,7 +258,7 @@ export default function PatientsPage() {
       {modal === 'view' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="text-lg font-bold text-red-600">{current.full_name_ar}</h2><p className="text-xs text-gray-500">{current.patient_number}</p></div>
+            <div className="p-6 border-b"><h2 className="text-lg font-bold">{current.full_name_ar}</h2><p className="text-xs text-gray-500">{current.patient_number}</p></div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Name (EN)</span>{current.full_name_en || '-'}</div>
               <div><span className="text-gray-500 block text-xs">Gender</span>{current.gender}</div>

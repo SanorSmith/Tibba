@@ -390,7 +390,7 @@ export default function ShareholdersPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
-              <h2 className="text-lg font-bold text-red-600">Add New Shareholder</h2>
+              <h2 className="text-lg font-bold">Add New Shareholder</h2>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
@@ -596,7 +596,7 @@ export default function ShareholdersPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowEdit(false)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
-              <h2 className="text-lg font-bold text-red-600">Edit Shareholder</h2>
+              <h2 className="text-lg font-bold">Edit Shareholder</h2>
             </div>
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
@@ -694,7 +694,7 @@ export default function ShareholdersPage() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowView(false)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b">
-              <h2 className="text-lg font-bold text-red-600">{viewingShareholder.full_name}</h2>
+              <h2 className="text-lg font-bold">{viewingShareholder.full_name}</h2>
               <p className="text-sm text-gray-500">{viewingShareholder.full_name_ar}</p>
             </div>
             <div className="p-6 space-y-4">

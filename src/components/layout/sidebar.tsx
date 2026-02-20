@@ -123,7 +123,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           'flex items-center gap-3 mx-2 px-3 py-2.5 rounded transition-colors',
           pathname === '/dashboard'
             ? 'bg-[#f5f5f5] text-black font-semibold'
-            : 'text-[#525252] hover:bg-[#f5f5f5]'
+            : 'text-red-600 hover:bg-[#f5f5f5]'
         )}
         style={{ fontSize: '14px', lineHeight: '20px' }}
       >
@@ -151,7 +151,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                   'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
                   isActive
                     ? 'bg-[#f5f5f5] text-black font-semibold'
-                    : 'text-[#525252] hover:bg-[#f5f5f5]'
+                    : 'text-red-600 hover:bg-[#f5f5f5]'
                 )}
                 style={{ fontSize: '14px', lineHeight: '20px' }}
               >
@@ -174,7 +174,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                           'flex items-center gap-2.5 px-2.5 py-2 rounded transition-colors',
                           isChildActive
                             ? 'bg-[#f0f0f0] text-black font-semibold'
-                            : 'text-[#525252] hover:bg-[#f5f5f5]'
+                            : 'text-red-600 hover:bg-[#f5f5f5]'
                         )}
                         style={{ fontSize: '13px', lineHeight: '18px' }}
                       >
@@ -208,7 +208,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                 'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
                 isActive
                   ? 'bg-[#f5f5f5] text-black font-semibold'
-                  : 'text-[#525252] hover:bg-[#f5f5f5]'
+                  : 'text-red-600 hover:bg-[#f5f5f5]'
               )}
               style={{ fontSize: '14px', lineHeight: '20px' }}
             >

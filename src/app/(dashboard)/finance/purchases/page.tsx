@@ -282,7 +282,7 @@ export default function PurchasesPage() {
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between items-start">
               <div>
-                <h2 className="text-lg font-bold text-red-600">{viewRequest.request_number}</h2>
+                <h2 className="text-lg font-bold">{viewRequest.request_number}</h2>
                 <p className="text-sm text-gray-500">{viewRequest.request_date}</p>
               </div>
               <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(viewRequest.status)}`}>

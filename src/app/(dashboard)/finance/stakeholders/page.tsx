@@ -118,7 +118,7 @@ export default function StakeholdersPage() {
       {(modal === 'create' || modal === 'edit') && current && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold text-red-600">{modal === 'create' ? 'Add Stakeholder' : 'Edit Stakeholder'}</h2><button onClick={() => setModal(null)}><X size={18} /></button></div>
+            <div className="p-6 border-b flex justify-between"><h2 className="text-lg font-bold">{modal === 'create' ? 'Add Stakeholder' : 'Edit Stakeholder'}</h2><button onClick={() => setModal(null)}><X size={18} /></button></div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs text-gray-500 block mb-1">Name (AR) *</label><input value={current.name_ar} onChange={e => setCurrent({...current, name_ar: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
@@ -143,7 +143,7 @@ export default function StakeholdersPage() {
       {modal === 'view' && current && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="text-lg font-bold text-red-600">{current.name_ar}</h2><div className="flex items-center gap-2 mt-1"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleColor(current.role)}`}>{roleLabel[current.role]}</span><span className="text-xs text-gray-400">{current.stakeholder_code}</span></div></div>
+            <div className="p-6 border-b"><h2 className="text-lg font-bold">{current.name_ar}</h2><div className="flex items-center gap-2 mt-1"><span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${roleColor(current.role)}`}>{roleLabel[current.role]}</span><span className="text-xs text-gray-400">{current.stakeholder_code}</span></div></div>
             <div className="p-6 grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Name (EN)</span>{current.name_en||'-'}</div>
               <div><span className="text-gray-500 block text-xs">Specialty</span>{current.specialty_ar||'-'}</div>
