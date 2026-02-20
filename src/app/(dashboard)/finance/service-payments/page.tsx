@@ -153,7 +153,7 @@ export default function ServicePaymentsPage() {
         throw new Error(err.error || 'Failed to create payment');
       }
       const result = await res.json();
-      toast.success(`Payment batch ${batchId} created — ${result.updated} lines marked as paid`);
+      toast.success(`Payment batch ${batchId} created ï¿½ ${result.updated} lines marked as paid`);
       setSelectedIds(new Set());
       setShowCreateModal(false);
       await loadLines();
@@ -228,7 +228,7 @@ export default function ServicePaymentsPage() {
           <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
           <p className="font-semibold text-amber-800">No service payment lines found</p>
           <p className="text-sm text-amber-600 mt-1">
-            Create a Customer Invoice with service items — the services will automatically appear here for payment processing.
+            Create a Customer Invoice with service items ï¿½ the services will automatically appear here for payment processing.
           </p>
         </div>
       )}
@@ -270,7 +270,7 @@ export default function ServicePaymentsPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-gray-900">{group.provider_name}</div>
-                    <div className="text-xs text-gray-500">{provInfo?.contact}{provInfo?.phone ? ` · ${provInfo.phone}` : ''}</div>
+                    <div className="text-xs text-gray-500">{provInfo?.contact}{provInfo?.phone ? ` ï¿½ ${provInfo.phone}` : ''}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -318,7 +318,7 @@ export default function ServicePaymentsPage() {
                           <td className="px-4 py-2 text-right font-semibold">{fmt(line.total_fee)} IQD</td>
                           <td className="px-4 py-2 text-center">
                             {line.payment_status === 'PAID'
-                              ? <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium"><CheckCircle2 size={10} /> Paid {line.payment_date ? `· ${line.payment_date}` : ''}</span>
+                              ? <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium"><CheckCircle2 size={10} /> Paid {line.payment_date ? `ï¿½ ${line.payment_date}` : ''}</span>
                               : <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium"><Clock size={10} /> Pending</span>
                             }
                           </td>
@@ -376,7 +376,7 @@ export default function ServicePaymentsPage() {
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <div className="font-semibold text-sm">{group.provider_name}</div>
-                        {provInfo && <div className="text-xs text-gray-500">{provInfo.contact} · {provInfo.phone} · {provInfo.email}</div>}
+                        {provInfo && <div className="text-xs text-gray-500">{provInfo.contact} ï¿½ {provInfo.phone} ï¿½ {provInfo.email}</div>}
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-gray-500">{pendingLines.length} pending lines</div>
