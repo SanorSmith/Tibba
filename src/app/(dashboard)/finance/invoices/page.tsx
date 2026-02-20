@@ -48,6 +48,9 @@ interface Service {
   price_self_pay: number;
   price_insurance: number;
   price_government: number;
+  provider_id?: string;
+  provider_name?: string;
+  service_fee?: number;
 }
 
 interface LineItem {
@@ -59,6 +62,9 @@ interface LineItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  provider_id?: string;
+  provider_name?: string;
+  service_fee?: number;
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
@@ -156,6 +162,9 @@ export default function InvoicesPage() {
               quantity: item.quantity || 1,
               unit_price: item.unit_price || 0,
               line_total: item.subtotal || (item.unit_price * (item.quantity || 1)) || 0,
+              provider_id: item.provider_id || svc?.provider_id,
+              provider_name: item.provider_name || svc?.provider_name,
+              service_fee: item.service_fee ?? svc?.service_fee,
             };
           });
           setLineItems(mapped);
@@ -177,7 +186,7 @@ export default function InvoicesPage() {
     const updated = [...lineItems];
     const qty = updated[idx].quantity || 1;
     const price = svc.price_self_pay;
-    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: qty, unit_price: price, line_total: price * qty };
+    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: qty, unit_price: price, line_total: price * qty, provider_id: svc.provider_id, provider_name: svc.provider_name, service_fee: svc.service_fee };
     setLineItems(updated);
     recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
   };
@@ -284,6 +293,9 @@ export default function InvoicesPage() {
           insurance_coverage_percentage: formData.insurance_coverage_percentage || 0,
           insurance_amount: Math.round(l.line_total * (formData.insurance_coverage_percentage || 0) / 100),
           patient_amount: l.line_total - Math.round(l.line_total * (formData.insurance_coverage_percentage || 0) / 100),
+          provider_id: l.provider_id || null,
+          provider_name: l.provider_name || null,
+          service_fee: l.service_fee || 0,
         })),
       };
 

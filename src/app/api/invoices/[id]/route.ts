@@ -135,6 +135,10 @@ export async function PUT(
           insurance_coverage_percentage: item.insurance_coverage_percentage || 0,
           insurance_amount: item.insurance_amount || 0,
           patient_amount: item.patient_amount || 0,
+          provider_id: item.provider_id || null,
+          provider_name: item.provider_name || null,
+          service_fee: item.service_fee || 0,
+          payment_status: item.payment_status || 'PENDING',
         }));
 
         await supabase
