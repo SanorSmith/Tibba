@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         insurance_coverage_percentage: item.insurance_coverage_percentage || 0,
         insurance_amount: item.insurance_amount || 0,
         patient_amount: item.patient_amount || 0,
-        provider_id: item.provider_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.provider_id) ? item.provider_id : null,
+        provider_id: item.provider_id || null,
         provider_name: item.provider_name || null,
         service_fee: item.service_fee || 0,
               }));
