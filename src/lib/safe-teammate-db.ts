@@ -37,7 +37,7 @@ export class SafeTeammateDB {
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
     
     const query = `INSERT INTO "${table}" (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
-    return await teammateDb!.execute(query, values);
+    return await teammateDb!.execute(query);
   }
 
   // ✅ SAFE: Update records (no schema changes)
@@ -50,7 +50,7 @@ export class SafeTeammateDB {
     const values = [...Object.values(data)];
     
     const query = `UPDATE "${table}" SET ${setClause} WHERE ${where} RETURNING *`;
-    return await teammateDb!.execute(query, values);
+    return await teammateDb!.execute(query);
   }
 
   // ✅ SAFE: Delete records (no schema changes)

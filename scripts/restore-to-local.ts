@@ -41,8 +41,7 @@ async function restoreToLocalDatabase() {
         for (const row of data as any[]) {
           const values = columns.map(col => row[col]);
           await teammateDb.execute(
-            `INSERT INTO ${tableName} (${columnNames}) VALUES (${placeholders})`,
-            values
+            `INSERT INTO ${tableName} (${columnNames}) VALUES (${placeholders})`
           );
         }
         

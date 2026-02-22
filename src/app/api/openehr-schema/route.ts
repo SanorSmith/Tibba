@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         const recordsQuery = `SELECT * FROM ${table.table_schema}.${table.table_name} LIMIT 5`;
         const recordsResult = await client.query(recordsQuery);
         sampleRecords = recordsResult.rows;
-      } catch (recordError) {
+      } catch (recordError: any) {
         // Some tables might not be accessible or have issues
         console.warn(`Could not fetch records for ${table.table_name}:`, recordError.message);
         sampleRecords = [];
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
         name: table.table_name,
         type: table.table_type,
         columns: columnsResult.rows,
-        primary_key: pkResult.rows.map(row => row.column_name),
+        primary_key: pkResult.rows.map((row: any) => row.column_name),
         foreign_keys: fkResult.rows,
         sample_records: sampleRecords,
         record_count: sampleRecords.length

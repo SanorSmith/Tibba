@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       `);
 
       // Get sample data (first 3 rows)
-      let sampleData = [];
+      let sampleData: any[] = [];
       try {
         sampleData = await teammateDb.execute(`
           SELECT * FROM "${tableName}" LIMIT 3

@@ -11,6 +11,7 @@ interface OpenEHRAnalysis {
 
 interface AnalysisResponse {
   success: boolean;
+  error?: string;
   analysis: OpenEHRAnalysis;
   summary: {
     isOpenEHR: boolean;

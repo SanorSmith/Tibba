@@ -22,6 +22,7 @@ interface TableSchema {
 
 interface SchemaResponse {
   success: boolean;
+  error?: string;
   database: string;
   totalTables: number;
   schema: TableSchema[];

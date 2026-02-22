@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
     // Check for OpenEHR indicators
     const analysis = {
       isOpenEHR: false,
-      evidence: [],
-      tables: [],
+      evidence: [] as string[],
+      tables: [] as string[],
      ehrbaseIntegration: false
     };
 
@@ -34,10 +34,10 @@ export async function GET(request: NextRequest) {
       ORDER BY table_name
     `);
 
-    analysis.tables = (tables as any[]).map(t => t.table_name);
+    analysis.tables = (tables as any[]).map((t: any) => t.table_name);
 
     // 2. Check for OpenEHR table names
-    const foundOpenEHRTables = analysis.tables.filter(table => 
+    const foundOpenEHRTables = analysis.tables.filter((table: string) => 
       openEHRTables.some(openEHRTable => 
         table.toLowerCase().includes(openEHRTable.toLowerCase())
       )
