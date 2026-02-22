@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 
 export async function GET(request: NextRequest) {
   const pool = new Pool({
-    connectionString: process.env.TEAMMATE_DATABASE_URL,
+    connectionString: process.env.OPENEHR_DATABASE_URL,
     ssl: { rejectUnauthorized: false }
   });
 

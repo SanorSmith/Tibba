@@ -3,13 +3,13 @@ import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 
 // Teammate's Drizzle/PostgreSQL connection (server-side only)
-const teammateDatabaseUrl = process.env.TEAMMATE_DATABASE_URL;
+const connectionString = process.env.OPENEHR_DATABASE_URL;
 
-console.log('Teammate DB URL:', teammateDatabaseUrl ? 'Set' : 'Not set');
+console.log('Teammate DB URL:', connectionString ? 'Set' : 'Not set');
 
 // Create postgres client
-export const postgresClient = teammateDatabaseUrl 
-  ? postgres(teammateDatabaseUrl, { ssl: 'require' })
+export const postgresClient = connectionString 
+  ? postgres(connectionString, { ssl: 'require' })
   : null;
 
 // Create Drizzle instance

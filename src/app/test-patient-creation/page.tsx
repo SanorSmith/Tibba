@@ -156,7 +156,7 @@ export default function TestPatientCreation() {
             Make sure your <code className="bg-gray-200 px-1 rounded">.env.local</code> has:
           </p>
           <pre className="text-xs text-gray-600 mt-2 bg-white p-2 rounded border">
-TEAMMATE_DATABASE_URL=postgresql://neondb_owner:npg_...@ep-red-cherry-ag82jhqf-pooler.c-2.eu-central-1.aws.neon.tech/neondb
+OPENEHR_DATABASE_URL=postgresql://neondb_owner:npg_...@ep-red-cherry-ag82jhqf-pooler.c-2.eu-central-1.aws.neon.tech/neondb
           </pre>
         </div>
       </div>

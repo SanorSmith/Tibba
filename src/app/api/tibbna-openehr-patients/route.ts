@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Import the raw postgres connection
-const teammateDatabaseUrl = process.env.TEAMMATE_DATABASE_URL;
+const openehrDatabaseUrl = process.env.OPENEHR_DATABASE_URL;
 
 // Dynamic import of postgres
 let postgres: any;
@@ -13,7 +13,7 @@ let sql: any;
 async function getDbConnection() {
   if (!postgres) {
     postgres = (await import('postgres')).default;
-    sql = postgres(teammateDatabaseUrl!, { 
+    sql = postgres(openehrDatabaseUrl!, { 
       ssl: 'require',
       max: 10,
       idle_timeout: 20,
@@ -25,7 +25,7 @@ async function getDbConnection() {
 
 export async function GET(request: NextRequest) {
   try {
-    if (!teammateDatabaseUrl) {
+    if (!openehrDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!teammateDatabaseUrl) {
+    if (!openehrDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    if (!teammateDatabaseUrl) {
+    if (!openehrDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }
@@ -243,7 +243,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    if (!teammateDatabaseUrl) {
+    if (!openehrDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }
