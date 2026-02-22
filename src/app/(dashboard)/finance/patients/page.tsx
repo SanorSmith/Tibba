@@ -28,35 +28,42 @@ export default function PatientsPage() {
   
   const loadPatients = async () => {
     try {
-      const res = await fetch('/api/patients');
+      // Fetch from Tibbna OpenEHR DB
+      const res = await fetch('/api/tibbna-openehr-patients');
       if (res.ok) {
-        const data = await res.json();
-        // Map database fields to match component expectations
-        const mappedData = data.map((p: any) => ({
-          patient_id: p.patient_id,
-          patient_number: p.patient_id,
-          first_name_ar: p.first_name_ar || '',
-          last_name_ar: p.last_name_ar || '',
-          full_name_ar: `${p.first_name_ar || ''} ${p.last_name_ar || ''}`.trim(),
-          first_name_en: p.first_name,
-          last_name_en: p.last_name,
-          full_name_en: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
-          date_of_birth: p.date_of_birth || '',
+        const response = await res.json();
+        
+        // API now returns raw array of patients
+        const rawPatients = Array.isArray(response) ? response : (response.data || []);
+        
+        // Map to Finance app format
+        const mappedPatients = rawPatients.map((p: any) => ({
+          patient_id: p.patientid || p.patient_id || p.id,
+          patient_number: p.patientid || p.patient_number || p.id,
+          first_name_ar: p.firstname || p.first_name_ar || '',
+          last_name_ar: p.lastname || p.last_name_ar || '',
+          full_name_ar: `${p.firstname || p.first_name_ar || ''} ${p.lastname || p.last_name_ar || ''}`.trim(),
+          first_name_en: p.firstname || p.first_name_en || '',
+          last_name_en: p.lastname || p.last_name_en || '',
+          full_name_en: `${p.firstname || p.first_name_en || ''} ${p.lastname || p.last_name_en || ''}`.trim(),
+          date_of_birth: p.dateofbirth || p.date_of_birth || '',
           gender: p.gender || 'MALE',
           phone: p.phone || '',
-          email: p.email,
-          national_id: p.national_id,
-          governorate: p.city || p.province,
+          email: p.email || '',
+          national_id: p.nationalid || p.national_id || '',
+          governorate: p.address || p.governorate || '',
           total_balance: 0,
-          is_active: p.is_active,
-          created_at: p.created_at,
-          id: p.id,
+          is_active: true,
+          created_at: p.createdat || p.created_at || new Date().toISOString(),
+          id: p.patientid || p.id,
         }));
-        setPatients(mappedData);
+        
+        setPatients(mappedPatients);
+        toast.success(`Loaded ${mappedPatients.length} patients from Tibbna OpenEHR DB`);
       }
     } catch (error) {
-      console.error('Failed to load patients:', error);
-      toast.error('Failed to load patients');
+      console.error('Failed to load patients from Tibbna OpenEHR DB:', error);
+      toast.error('Failed to load patients from Tibbna OpenEHR DB');
     }
   };
 
@@ -76,6 +83,8 @@ export default function PatientsPage() {
       return; 
     }
 
+    console.log('💾 Current state before save:', current);
+
     try {
       const patientData = {
         first_name_ar: current.first_name_ar,
@@ -90,35 +99,37 @@ export default function PatientsPage() {
         governorate: current.governorate,
       };
 
+      console.log('📤 Sending patient data:', patientData);
+
       if (modal === 'create') {
-        const res = await fetch('/api/patients', {
+        const res = await fetch('/api/tibbna-openehr-patients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(patientData),
         });
         
         if (res.ok) {
-          toast.success('Patient added to database');
+          toast.success('Patient added to Tibbna OpenEHR DB');
           loadPatients();
           setModal(null);
         } else {
           const error = await res.json();
-          toast.error(error.error || 'Failed to add patient');
+          toast.error(error.error || 'Failed to add patient to Tibbna OpenEHR DB');
         }
       } else {
-        const res = await fetch(`/api/patients/${(current as any).id}`, {
+        const res = await fetch('/api/tibbna-openehr-patients', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(patientData),
+          body: JSON.stringify({ ...patientData, patient_id: current.patient_id }),
         });
         
         if (res.ok) {
-          toast.success('Patient updated in database');
+          toast.success('Patient updated in Tibbna OpenEHR DB');
           loadPatients();
           setModal(null);
         } else {
           const error = await res.json();
-          toast.error(error.error || 'Failed to update patient');
+          toast.error(error.error || 'Failed to update patient in Tibbna OpenEHR DB');
         }
       }
     } catch (error) {
@@ -134,16 +145,16 @@ export default function PatientsPage() {
       const patient = patients.find(p => p.patient_id === deleteId);
       if (!patient) return;
 
-      const res = await fetch(`/api/patients/${(patient as any).id}`, {
+      const res = await fetch(`/api/tibbna-openehr-patients?id=${patient.patient_id}`, {
         method: 'DELETE',
       });
       
       if (res.ok) {
-        toast.success('Patient deleted from database');
+        toast.success('Patient deleted from Tibbna OpenEHR DB');
         loadPatients();
         setDeleteId(null);
       } else {
-        toast.error('Failed to delete patient');
+        toast.error('Failed to delete patient from Tibbna OpenEHR DB');
       }
     } catch (error) {
       console.error('Delete error:', error);
@@ -159,6 +170,12 @@ export default function PatientsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Patient Management</h1>
           <p className="text-gray-500 text-sm">{patients.length} registered patients</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+              🏥 Tibbna OpenEHR DB
+            </span>
+            <span className="text-xs text-gray-400">Connected to OpenEHR-compliant database</span>
+          </div>
         </div>
         <button onClick={openCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit">
           <Plus size={16} /> Add Patient

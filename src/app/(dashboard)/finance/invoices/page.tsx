@@ -149,9 +149,9 @@ export default function InvoicesPage() {
         const data = await res.json();
         if (data.items && Array.isArray(data.items) && data.items.length > 0) {
           const mapped: LineItem[] = data.items.map((item: any) => {
-            // Try to match back to a service by code or name
+            // Try to match back to a service by service_id or name
             const svc = services.find(
-              s => s.code === item.item_code || s.name === item.item_name
+              s => s.id === item.item_code || s.name_ar === item.item_name_ar
             );
             return {
               service_id: svc?.id || item.item_code || '',
@@ -246,14 +246,41 @@ export default function InvoicesPage() {
     }
 
     try {
-      const res = await fetch(`/api/patients/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/tibbna-openehr-patients?search=${encodeURIComponent(query)}`);
       if (res.ok) {
-        const data = await res.json();
-        setPatientResults(data);
-        setShowPatientDropdown(data.length > 0);
+        const response = await res.json();
+        
+        // API now returns raw array of patients
+        const rawPatients = Array.isArray(response) ? response : (response.data || []);
+        
+        // Map to Finance app format
+        const mappedPatients = rawPatients.map((p: any) => ({
+          patient_id: p.patientid || p.patient_id || p.id,
+          patient_number: p.patientid || p.patient_number || p.id,
+          first_name_ar: p.firstname || p.first_name_ar || '',
+          last_name_ar: p.lastname || p.last_name_ar || '',
+          full_name_ar: `${p.firstname || p.first_name_ar || ''} ${p.lastname || p.last_name_ar || ''}`.trim(),
+          first_name_en: p.firstname || p.first_name_en || '',
+          last_name_en: p.lastname || p.last_name_en || '',
+          full_name_en: `${p.firstname || p.first_name_en || ''} ${p.lastname || p.last_name_en || ''}`.trim(),
+          full_name: `${p.firstname || ''} ${p.lastname || ''}`.trim(),
+          date_of_birth: p.dateofbirth || p.date_of_birth || '',
+          gender: p.gender || 'MALE',
+          phone: p.phone || '',
+          email: p.email || '',
+          national_id: p.nationalid || p.national_id || '',
+          governorate: p.address || p.governorate || '',
+          total_balance: 0,
+          is_active: true,
+          created_at: p.createdat || p.created_at || new Date().toISOString(),
+          id: p.patientid || p.id,
+        }));
+        
+        setPatientResults(mappedPatients);
+        setShowPatientDropdown(mappedPatients.length > 0);
       }
     } catch (error) {
-      console.error('Patient search error:', error);
+      console.error('Patient search error from Tibbna OpenEHR DB:', error);
     }
   };
 
@@ -801,12 +828,10 @@ export default function InvoicesPage() {
                           className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
                         >
                           <option value="">Select service...</option>
-                          {['CONSULTATION', 'LAB', 'IMAGING', 'PROCEDURE', 'DIAGNOSTIC'].map(cat => (
-                            <optgroup key={cat} label={cat}>
-                              {services.filter(s => s.category === cat).map(s => (
-                                <option key={s.id} value={s.id}>{s.name_ar} — {fmt(s.price_self_pay)} IQD</option>
-                              ))}
-                            </optgroup>
+                          {services.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.name_ar} - {fmt(s.price_self_pay)} IQD
+                            </option>
                           ))}
                         </select>
                       </div>

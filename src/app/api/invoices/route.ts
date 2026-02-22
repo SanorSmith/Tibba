@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     console.log('📝 Creating invoice:', body.invoice_number);
+    console.log('📋 Request body items:', body.items);
+    console.log('📋 Items count:', body.items?.length || 0);
+    console.log('📋 Full request body:', JSON.stringify(body, null, 2));
 
     // Get organization ID
     const { data: orgs } = await supabase
@@ -101,6 +104,8 @@ export async function POST(request: NextRequest) {
 
     // Insert invoice items if provided
     if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      console.log('✅ Items array found, preparing to insert:', body.items.length, 'items');
+      
       const items = body.items.map((item: any) => ({
         invoice_id: data.id,
         item_type: item.item_type,
@@ -117,20 +122,39 @@ export async function POST(request: NextRequest) {
         insurance_coverage_percentage: item.insurance_coverage_percentage || 0,
         insurance_amount: item.insurance_amount || 0,
         patient_amount: item.patient_amount || 0,
-        provider_id: item.provider_id || null,
+        provider_id: item.provider_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item.provider_id) ? item.provider_id : null,
         provider_name: item.provider_name || null,
         service_fee: item.service_fee || 0,
-        payment_status: 'PENDING',
-      }));
+              }));
 
-      const { error: itemsError } = await supabase
+      console.log('📦 Prepared items for insert:', JSON.stringify(items, null, 2));
+
+      const { data: insertedItems, error: itemsError } = await supabase
         .from('invoice_items')
-        .insert(items);
+        .insert(items)
+        .select();
 
       if (itemsError) {
-        console.error('Error creating invoice items:', itemsError);
-        // Don't fail the whole request, just log the error
+        console.error('❌ Error creating invoice items:', itemsError);
+        console.error('❌ Items that failed:', JSON.stringify(items, null, 2));
+        // Return error so we know items failed
+        return NextResponse.json(
+          { 
+            error: 'Invoice created but items failed to save',
+            invoiceId: data.id,
+            itemsError: itemsError.message,
+            details: itemsError
+          },
+          { status: 500 }
+        );
+      } else {
+        console.log('✅ Invoice items created successfully:', insertedItems?.length || 0, 'items');
       }
+    } else {
+      console.warn('⚠️ No items provided in request body');
+      console.warn('⚠️ body.items:', body.items);
+      console.warn('⚠️ Is array?', Array.isArray(body.items));
+      console.warn('⚠️ Length:', body.items?.length);
     }
 
     console.log('✅ Invoice created:', data.id);

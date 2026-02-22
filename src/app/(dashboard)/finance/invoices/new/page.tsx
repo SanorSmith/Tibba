@@ -35,12 +35,55 @@ export default function NewInvoicePage() {
   const [lines, setLines] = useState<LineItem[]>([]);
 
   useEffect(() => {
-    financeStore.initialize();
-    setPatients(financeStore.getPatients());
-    setServices(financeStore.getMedicalServices());
-    setProviders(financeStore.getInsuranceProviders());
-    setMounted(true);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      // Load patients from Tibbna OpenEHR DB
+      const patientsRes = await fetch('/api/tibbna-openehr-patients');
+      if (patientsRes.ok) {
+        const response = await patientsRes.json();
+        
+        // API now returns raw array of patients
+        const rawPatients = Array.isArray(response) ? response : (response.data || []);
+        
+        // Map to Finance app format
+        const mappedPatients = rawPatients.map((p: any) => ({
+          patient_id: p.patientid || p.patient_id || p.id,
+          patient_number: p.patientid || p.patient_number || p.id,
+          first_name_ar: p.firstname || p.first_name_ar || '',
+          last_name_ar: p.lastname || p.last_name_ar || '',
+          full_name_ar: `${p.firstname || p.first_name_ar || ''} ${p.lastname || p.last_name_ar || ''}`.trim(),
+          first_name_en: p.firstname || p.first_name_en || '',
+          last_name_en: p.lastname || p.last_name_en || '',
+          full_name_en: `${p.firstname || p.first_name_en || ''} ${p.lastname || p.last_name_en || ''}`.trim(),
+          full_name: `${p.firstname || ''} ${p.lastname || ''}`.trim(),
+          date_of_birth: p.dateofbirth || p.date_of_birth || '',
+          gender: p.gender || 'MALE',
+          phone: p.phone || '',
+          email: p.email || '',
+          national_id: p.nationalid || p.national_id || '',
+          governorate: p.address || p.governorate || '',
+          total_balance: 0,
+          is_active: true,
+          created_at: p.createdat || p.created_at || new Date().toISOString(),
+          id: p.patientid || p.id,
+        }));
+        
+        setPatients(mappedPatients);
+      }
+
+      // Load services and providers from local store
+      financeStore.initialize();
+      setServices(financeStore.getMedicalServices());
+      setProviders(financeStore.getInsuranceProviders());
+      setMounted(true);
+    } catch (error) {
+      console.error('Failed to load data from Tibbna OpenEHR DB:', error);
+      toast.error('Failed to load patient data');
+    }
+  };
 
   const selectedPatient = patients.find(p => p.patient_id === patientId);
   const patientInsurances = patientId ? financeStore.getPatientInsurancesByPatient(patientId) : [];
@@ -82,7 +125,7 @@ export default function NewInvoicePage() {
 
   const removeLine = (idx: number) => setLines(lines.filter((_, i) => i !== idx));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!patientId) { toast.error('Select a patient'); return; }
     if (lines.length === 0) { toast.error('Add at least one service'); return; }
     if (lines.some(l => !l.service_id)) { toast.error('Select a service for each line'); return; }
@@ -95,7 +138,7 @@ export default function NewInvoicePage() {
       invoice_id: invoiceId,
       invoice_number: `INV-2024-${nextNum}`,
       invoice_date: new Date().toISOString().split('T')[0],
-      patient_id: patientId,
+      patient_id: patientId, // Use OpenEHR patient ID directly
       patient_name_ar: selectedPatient?.full_name_ar || '',
       subtotal,
       discount_percentage: discountPct,
@@ -150,12 +193,43 @@ export default function NewInvoicePage() {
       });
     });
 
-    financeStore.addInvoice(invoice);
-    financeStore.addInvoiceItems(invoiceItems);
-    if (allShares.length > 0) financeStore.addInvoiceShares(allShares);
+    // Save invoice to database via API
+    try {
+      const invoicePayload = {
+        ...invoice,
+        items: invoiceItems.map(item => ({
+          item_type: 'SERVICE',
+          item_code: item.service_id,
+          item_name: item.service_name_ar,
+          item_name_ar: item.service_name_ar,
+          description: item.service_category,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          subtotal: item.line_total,
+          patient_amount: item.line_total,
+        })),
+      };
 
-    toast.success(`Invoice ${invoice.invoice_number} created`);
-    router.push('/finance/invoices');
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invoicePayload),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Invoice saved to database:', result);
+        toast.success(`Invoice ${invoice.invoice_number} created and saved to database`);
+        router.push('/finance/invoices');
+      } else {
+        const error = await response.json();
+        console.error('Failed to save invoice:', error);
+        toast.error('Failed to save invoice to database');
+      }
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      toast.error('Error saving invoice');
+    }
   };
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;

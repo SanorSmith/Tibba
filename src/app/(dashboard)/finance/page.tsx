@@ -10,6 +10,8 @@ import {
 import { financeStore } from '@/lib/financeStore';
 import type { MedicalInvoice, PurchaseOrder, Stock } from '@/types/finance';
 import { toast } from 'sonner';
+import TibbnaDBBadge from '@/components/TibbnaDBBadge';
+import { getAllTibbnaPatients } from '@/lib/tibbna-patients-service';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
 const pct = (n: number) => `${n.toFixed(1)}%`;
@@ -33,13 +35,24 @@ export default function FinancePage() {
   const [invoices, setInvoices] = useState<MedicalInvoice[]>([]);
   const [mounted, setMounted] = useState(false);
   const [activeBudget, setActiveBudget] = useState<BudgetPeriod | null>(null);
+  const [patientCount, setPatientCount] = useState(0);
 
   useEffect(() => {
     financeStore.initialize();
     setInvoices(financeStore.getInvoices());
     loadActiveBudget();
+    loadPatientCount();
     setMounted(true);
   }, []);
+
+  const loadPatientCount = async () => {
+    try {
+      const patients = await getAllTibbnaPatients();
+      setPatientCount(patients.length);
+    } catch (error) {
+      console.error('Failed to load patient count from Tibbna OpenEHR DB:', error);
+    }
+  };
 
   const loadActiveBudget = async () => {
     try {
@@ -132,7 +145,7 @@ export default function FinancePage() {
     return {
       totalRevenue, totalPaid, totalDue, insuranceDue, paidCount, pendingCount,
       totalPurchases, poUnpaid, pendingShares, lowStockCount, totalStockValue,
-      totalReturns, patientCount: patients.length, supplierCount: suppliers.length,
+      totalReturns, patientCount, supplierCount: suppliers.length,
       pendingPRs, invoiceCount: inv.length,
     };
   }, [invoices, mounted]);
@@ -206,6 +219,7 @@ export default function FinancePage() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Finance Dashboard</h1>
           <p className="text-gray-500 text-sm mt-1">Hospital Financial Management System - Iraqi Dinar (IQD)</p>
+          <TibbnaDBBadge className="mt-2" />
         </div>
         <div className="flex gap-2">
           {quickActions.map(a => (

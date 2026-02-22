@@ -97,13 +97,16 @@ export default function ReturnsPage() {
       if (res.ok) {
         const data = await res.json();
         const items = data.items || [];
+        console.log('📋 Invoice items loaded:', items);
         setInvoiceItems(items);
         // Initialize return items with 0 quantity for each
-        setReturnItems(items.map((item: any) => ({
+        const returnItemsInit = items.map((item: any) => ({
           ...item,
           return_quantity: 0,
           return_amount: 0,
-        })));
+        }));
+        console.log('🔄 Return items initialized:', returnItemsInit);
+        setReturnItems(returnItemsInit);
       }
     } catch (error) {
       console.error('Failed to load invoice items:', error);
@@ -279,10 +282,20 @@ export default function ReturnsPage() {
     const validQty = Math.max(0, Math.min(qty, maxQty));
     updated[index].return_quantity = validQty;
     updated[index].return_amount = validQty * updated[index].unit_price;
+    console.log(`💰 Item ${index}: ${validQty} × ${updated[index].unit_price} = ${updated[index].return_amount}`);
     setReturnItems(updated);
   };
 
   const totalReturnAmount = returnItems.reduce((sum, item) => sum + item.return_amount, 0);
+  if (returnItems.some(item => item.return_quantity > 0)) {
+    console.log('🧮 Return calculation:', returnItems.map(item => ({
+      name: item.description || item.service_name,
+      qty: item.return_quantity,
+      price: item.unit_price,
+      amount: item.return_amount
+    })));
+    console.log('💰 Total return amount:', totalReturnAmount);
+  }
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;
 
@@ -335,10 +348,10 @@ export default function ReturnsPage() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <button onClick={() => setViewRet(r)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
-                    <button onClick={() => openStatusUpdate(r)} className="p-1.5 hover:bg-blue-50 rounded text-blue-500" title="Update Status"><RefreshCw size={14} /></button>
-                    <button onClick={() => openEdit(r)} className="p-1.5 hover:bg-gray-100 rounded" title="Edit"><Edit size={14} /></button>
-                    <button onClick={() => setDeleteId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete"><Trash2 size={14} /></button>
+                    <button key={`view-${r.id}`} onClick={() => setViewRet(r)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
+                    <button key={`status-${r.id}`} onClick={() => openStatusUpdate(r)} className="p-1.5 hover:bg-blue-50 rounded text-blue-500" title="Update Status"><RefreshCw size={14} /></button>
+                    <button key={`edit-${r.id}`} onClick={() => openEdit(r)} className="p-1.5 hover:bg-gray-100 rounded" title="Edit"><Edit size={14} /></button>
+                    <button key={`delete-${r.id}`} onClick={() => setDeleteId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete"><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -571,7 +584,7 @@ export default function ReturnsPage() {
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Services to Return</h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {invoiceItems.map((item, idx) => (
-                      <div key={idx} className="bg-gray-50 rounded-lg p-3">
+                      <div key={item.id || idx} className="bg-gray-50 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex-1">
                             <div className="font-medium text-sm">{item.item_name_ar || item.item_name}</div>
