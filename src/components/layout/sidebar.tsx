@@ -60,6 +60,7 @@ const moduleLinks = [
       { href: '/finance/shareholders', icon: TrendingUp, label: 'Shareholders' },
       { href: '/finance/stakeholders', icon: Handshake, label: 'Stakeholders' },
       { href: '/finance/service-payments', icon: CreditCard, label: 'Service Payments' },
+      { href: '/finance/service-provider-reports', icon: BarChart3, label: 'Service Provider Reports' },
     ],
   },
   { href: '/insurance', icon: Shield, label: 'Insurance' },

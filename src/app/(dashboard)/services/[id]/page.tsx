@@ -86,17 +86,17 @@ export default function ServiceDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-600">Category</label>
-                  <p className="mt-1">
+                  <div className="mt-1">
                     <Badge variant="outline">{service.category}</Badge>
-                  </p>
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Status</label>
-                  <p className="mt-1">
+                  <div className="mt-1">
                     <Badge variant={service.status === 'active' ? 'success' : 'secondary'}>
                       {service.status}
                     </Badge>
-                  </p>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

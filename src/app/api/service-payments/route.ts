@@ -27,7 +27,7 @@ export async function GET() {
   }
 
   try {
-    // --- Attempt 1: Full query with new columns (migration applied) ---
+    // --- Attempt 1: Full query with relationship and invoice status ---
     const { data, error } = await supabaseAdmin
       .from('invoice_items')
       .select(`
@@ -49,18 +49,19 @@ export async function GET() {
           invoice_number,
           invoice_date,
           patient_name,
-          patient_name_ar
+          patient_name_ar,
+          status
         )
       `)
       .order('created_at', { ascending: false });
 
-    // If the query failed (e.g. columns don't exist yet), fall back to basic query
+    // If the query failed (e.g. columns don't exist yet or relationship missing), fall back to basic query
     if (error) {
-      console.warn('Full query failed (migration may not be applied), trying basic fallback:', error.message);
+      console.warn('Full query failed (migration may not be applied or relationship missing), trying basic fallback:', error.message);
       return await getFallback();
     }
 
-    // Filter rows that have a provider (either from DB or from our map)
+    // Filter rows that have a provider and check invoice status
     const lines = (data || [])
       .map((row: any) => {
         // Use DB provider fields if present, otherwise look up from code map
@@ -70,6 +71,15 @@ export async function GET() {
         const service_fee = row.service_fee ?? mapped?.service_fee ?? 0;
 
         if (!provider_id) return null; // skip items with no provider
+
+        const invoiceStatus = row.invoices?.status;
+        const paymentStatus = (row.payment_status || 'PENDING') as 'PENDING' | 'PAID';
+        
+        // Only show items from PAID invoices (customer has paid) but not yet paid to supplier
+        if (invoiceStatus !== 'PAID') return null;
+        
+        // Don't show items already paid to supplier
+        if (paymentStatus === 'PAID') return null;
 
         return {
           id: row.id,
@@ -86,9 +96,10 @@ export async function GET() {
           provider_name,
           service_fee,
           total_fee: service_fee * (row.quantity || 1),
-          payment_status: (row.payment_status || 'PENDING') as 'PENDING' | 'PAID',
+          payment_status: paymentStatus,
           payment_batch_id: row.payment_batch_id || null,
           payment_date: row.payment_date || null,
+          invoice_status: invoiceStatus,
         };
       })
       .filter(Boolean);
@@ -132,6 +143,8 @@ async function getFallback(): Promise<NextResponse> {
       .map((row: any) => {
         const mapped = row.item_code ? SERVICE_PROVIDER_MAP[row.item_code] : null;
         if (!mapped) return null;
+        
+        // In fallback mode, all items are PENDING payment to supplier
         return {
           id: row.id,
           invoice_id: row.invoice_id,
@@ -147,7 +160,7 @@ async function getFallback(): Promise<NextResponse> {
           provider_name: mapped.provider_name,
           service_fee: mapped.service_fee,
           total_fee: mapped.service_fee * (row.quantity || 1),
-          payment_status: 'PENDING' as const,
+          payment_status: 'PENDING' as const, // All pending in fallback mode
           payment_batch_id: null,
           payment_date: null,
         };
