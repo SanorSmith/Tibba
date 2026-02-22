@@ -25,9 +25,18 @@ async function getDbConnection() {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 OpenEHR DB URL check:', openehrDatabaseUrl ? 'SET' : 'NOT SET');
+    
     if (!openehrDatabaseUrl) {
+      console.error('❌ OPENEHR_DATABASE_URL environment variable is not set');
       return NextResponse.json(
-        { error: 'Teammate database not configured' },
+        { 
+          error: 'OpenEHR database not configured',
+          hint: 'Please set OPENEHR_DATABASE_URL environment variable in Vercel',
+          envCheck: {
+            OPENEHR_DATABASE_URL: 'NOT SET'
+          }
+        },
         { status: 500 }
       );
     }
@@ -37,14 +46,16 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100');
     const id = searchParams.get('id');
 
+    console.log('🔗 Attempting to connect to OpenEHR database...');
     const db = await getDbConnection();
+    console.log('✅ Database connection established');
 
-    // Get single patient by ID
+    // If specific patient ID requested
     if (id) {
+      console.log(`🔍 Fetching patient by ID: ${id}`);
       const result = await db`
         SELECT * FROM patients 
         WHERE patientid = ${id}
-        LIMIT 1
       `;
       
       if (result.length === 0) {
@@ -53,35 +64,38 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-
+      
+      console.log(`✅ Found patient: ${id}`);
       return NextResponse.json(result[0]);
     }
 
     // Search patients
-    if (search) {
-      const searchTerm = `%${search}%`;
-      const result = await db`
+    let query;
+    if (search && search.trim()) {
+      console.log(`🔍 Searching patients with term: "${search}"`);
+      query = db`
         SELECT * FROM patients 
-        WHERE firstname ILIKE ${searchTerm}
-           OR lastname ILIKE ${searchTerm}
-           OR email ILIKE ${searchTerm}
-           OR phone ILIKE ${searchTerm}
-        ORDER BY firstname ASC
+        WHERE 
+          firstname ILIKE ${'%' + search + '%'} OR 
+          lastname ILIKE ${'%' + search + '%'} OR
+          phone ILIKE ${'%' + search + '%'} OR
+          email ILIKE ${'%' + search + '%'}
+        ORDER BY firstname, lastname
         LIMIT ${limit}
       `;
-      
-      return NextResponse.json(result);
+    } else {
+      console.log(`📋 Fetching all patients (limit: ${limit})`);
+      query = db`
+        SELECT * FROM patients 
+        ORDER BY firstname, lastname
+        LIMIT ${limit}
+      `;
     }
 
-    // Get all patients
-    const result = await db`
-      SELECT * FROM patients 
-      ORDER BY firstname ASC 
-      LIMIT ${limit}
-    `;
-
-    console.log(`✅ Fetched ${result.length} patients from Tibbna OpenEHR DB`);
-    return NextResponse.json(result);
+    const patients = await query;
+    console.log(`✅ Fetched ${patients.length} patients from Tibbna OpenEHR DB`);
+    
+    return NextResponse.json(patients);
 
   } catch (error: any) {
     console.error('❌ GET patients error:', error);
