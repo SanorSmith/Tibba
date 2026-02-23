@@ -54,9 +54,31 @@ interface OrderItem {
   unit_price: number;
 }
 
+interface StaffMember {
+  staff_id: string;
+  staff_name: string;
+  staff_email?: string;
+  staff_phone?: string;
+  department_id: string;
+  department_name: string;
+  position?: string;
+  is_active: boolean;
+}
+
+interface Department {
+  department_id: string;
+  department_name: string;
+  department_name_ar?: string;
+  location?: string;
+  manager_name?: string;
+  is_active: boolean;
+}
+
 export default function DepartmentOrdersPage() {
   const [orders, setOrders] = useState<InternalOrder[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [modal, setModal] = useState<'create' | 'view' | null>(null);
@@ -64,8 +86,8 @@ export default function DepartmentOrdersPage() {
   const [loading, setLoading] = useState(false);
 
   // New order form state
-  const [departmentId, setDepartmentId] = useState('DEPT-ER');
-  const [departmentName, setDepartmentName] = useState('Emergency Room');
+  const [departmentId, setDepartmentId] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
   const [requestedBy, setRequestedBy] = useState('');
   const [requestedByEmail, setRequestedByEmail] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState('');
@@ -73,10 +95,16 @@ export default function DepartmentOrdersPage() {
   const [notes, setNotes] = useState('');
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [itemSearch, setItemSearch] = useState('');
+  
+  // Search states
+  const [staffSearch, setStaffSearch] = useState('');
+  const [showStaffResults, setShowStaffResults] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
 
   useEffect(() => {
     loadOrders();
     loadInventoryItems();
+    loadDepartments();
   }, []);
 
   const loadOrders = async () => {
@@ -107,6 +135,49 @@ export default function DepartmentOrdersPage() {
     } catch (error) {
       console.error('Error loading inventory:', error);
     }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const res = await fetch('/api/openehr/departments');
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      toast.error('Failed to load departments');
+    }
+  };
+
+  const searchStaff = async (query: string) => {
+    if (!query) {
+      setStaff([]);
+      setShowStaffResults(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/openehr/staff?search=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStaff(data);
+        setShowStaffResults(true);
+      }
+    } catch (error) {
+      console.error('Error searching staff:', error);
+    }
+  };
+
+  const handleStaffSelect = (staffMember: StaffMember) => {
+    setSelectedStaff(staffMember);
+    setRequestedBy(staffMember.staff_name);
+    setRequestedByEmail(staffMember.staff_email || '');
+    setDepartmentId(staffMember.department_id);
+    setDepartmentName(staffMember.department_name);
+    setDeliveryLocation(staffMember.department_name);
+    setStaffSearch(staffMember.staff_name);
+    setShowStaffResults(false);
   };
 
   const handleCreateOrder = async () => {
@@ -163,12 +234,31 @@ export default function DepartmentOrdersPage() {
   const resetForm = () => {
     setRequestedBy('');
     setRequestedByEmail('');
+    setDepartmentId('');
+    setDepartmentName('');
     setDeliveryLocation('');
     setPriority('NORMAL');
     setNotes('');
     setOrderItems([]);
     setItemSearch('');
+    setStaffSearch('');
+    setSelectedStaff(null);
+    setShowStaffResults(false);
   };
+
+  // Debounced staff search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (staffSearch && staffSearch.length >= 2) {
+        searchStaff(staffSearch);
+      } else {
+        setStaff([]);
+        setShowStaffResults(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [staffSearch]);
 
   const addItemToOrder = (item: InventoryItem) => {
     const existing = orderItems.find(oi => oi.item_id === item.id);
@@ -344,21 +434,19 @@ export default function DepartmentOrdersPage() {
                   <select
                     value={departmentId}
                     onChange={(e) => {
+                      const dept = departments.find(d => d.department_id === e.target.value);
                       setDepartmentId(e.target.value);
-                      const deptNames: Record<string, string> = {
-                        'DEPT-ER': 'Emergency Room',
-                        'DEPT-ICU': 'Intensive Care Unit',
-                        'DEPT-SURG': 'Surgery',
-                        'DEPT-PEDS': 'Pediatrics',
-                      };
-                      setDepartmentName(deptNames[e.target.value] || '');
+                      setDepartmentName(dept?.department_name || '');
+                      setDeliveryLocation(dept?.department_name || '');
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="DEPT-ER">Emergency Room</option>
-                    <option value="DEPT-ICU">Intensive Care Unit</option>
-                    <option value="DEPT-SURG">Surgery</option>
-                    <option value="DEPT-PEDS">Pediatrics</option>
+                    <option value="">Select Department</option>
+                    {departments.map(dept => (
+                      <option key={dept.department_id} value={dept.department_id}>
+                        {dept.department_name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -376,15 +464,42 @@ export default function DepartmentOrdersPage() {
                   </select>
                 </div>
 
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Requested By *</label>
                   <input
                     type="text"
-                    value={requestedBy}
-                    onChange={(e) => setRequestedBy(e.target.value)}
-                    placeholder="Your name"
+                    value={staffSearch}
+                    onChange={(e) => setStaffSearch(e.target.value)}
+                    placeholder="Search staff by name or ID..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  
+                  {/* Staff Search Results */}
+                  {showStaffResults && staff.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {staff.map(staffMember => (
+                        <button
+                          key={staffMember.staff_id}
+                          onClick={() => handleStaffSelect(staffMember)}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium text-sm">{staffMember.staff_name}</p>
+                              <p className="text-xs text-gray-500">ID: {staffMember.staff_id}</p>
+                              <p className="text-xs text-gray-500">{staffMember.position}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-600">{staffMember.department_name}</p>
+                              {staffMember.staff_email && (
+                                <p className="text-xs text-gray-400">{staffMember.staff_email}</p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
