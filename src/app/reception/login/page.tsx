@@ -134,6 +134,20 @@ export default function ReceptionLogin() {
             ← Back to Main / العودة للرئيسية
           </Link>
         </div>
+
+        {/* Other Login Options */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-sm text-gray-600 mb-3 text-center">Other Login Options / خيارات تسجيل الدخول الأخرى:</p>
+          <div className="flex justify-center">
+            <Link 
+              href="/"
+              className="flex flex-col items-center gap-1 p-3 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="text-xs font-semibold text-gray-800 text-center leading-tight">Main Portal</span>
+              <span className="text-[10px] text-gray-400">All modules</span>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
