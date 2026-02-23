@@ -830,7 +830,7 @@ export default function InvoicesPage() {
                           <option value="">Select service...</option>
                           {services.map(s => (
                             <option key={s.id} value={s.id}>
-                              {s.name_ar} - {fmt(s.price_self_pay)} IQD
+                              {s.name} - {s.name_ar}
                             </option>
                           ))}
                         </select>

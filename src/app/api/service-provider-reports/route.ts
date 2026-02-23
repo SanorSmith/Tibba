@@ -7,8 +7,8 @@ export async function GET() {
   }
 
   try {
-    // Get all paid invoice items with provider info
-    const { data: paidItems, error: paidError } = await supabaseAdmin
+    // Get all invoice items with provider info (all statuses)
+    const { data: allInvoiceItems, error: allInvoiceError } = await supabaseAdmin
       .from('invoice_items')
       .select(`
         id,
@@ -33,43 +33,36 @@ export async function GET() {
           status
         )
       `)
-      .eq('payment_status', 'PAID')
-      .order('payment_date', { ascending: false });
+      .order('created_at', { ascending: false });
 
-    if (paidError) {
-      console.error('Error fetching paid items:', paidError);
-      return NextResponse.json({ error: paidError.message }, { status: 500 });
+    if (allInvoiceError) {
+      console.error('Error fetching invoice items:', allInvoiceError);
+      return NextResponse.json({ error: allInvoiceError.message }, { status: 500 });
     }
 
-    // Get all invoice items (for pending calculations)
-    const { data: allItems, error: allError } = await supabaseAdmin
-      .from('invoice_items')
-      .select(`
-        provider_id,
-        provider_name,
-        service_fee,
-        payment_status,
-        invoices!inner (
-          status
-        )
-      `)
-      .eq('invoices.status', 'PAID'); // Only from paid customer invoices
+    console.log(`Fetched ${allInvoiceItems?.length || 0} total invoice items from database`);
 
-    if (allError) {
-      console.error('Error fetching all items:', allError);
-      return NextResponse.json({ error: allError.message }, { status: 500 });
-    }
+    // Debug: Show all PRV001 items to debug the missing invoice
+    const prv001Items = allInvoiceItems?.filter((item: any) => item.provider_id === 'PRV001');
+    console.log('PRV001 items found:', prv001Items?.length || 0);
+    prv001Items?.forEach((item: any) => {
+      console.log(`PRV001 Item: ${item.invoices?.invoice_number} | Service Fee: ${item.service_fee} | Status: ${item.invoices?.status}`);
+    });
 
     // Process provider summaries
     const providerMap = new Map();
+    const processedInvoices = new Map(); // Track processed invoices to avoid double-counting
 
-    // Process all items for provider summaries
-    (allItems || []).forEach((item: any) => {
+    // Process all items for provider summaries - sum service fees per provider
+    (allInvoiceItems || []).forEach((item: any) => {
       const providerId = item.provider_id || 'UNKNOWN';
       const providerName = item.provider_name || 'Unknown Provider';
       const serviceFee = item.service_fee || 0;
-      const isPaid = item.payment_status === 'PAID';
+      const invoiceStatus = item.invoices?.status || 'UNKNOWN';
+      const isInvoicePaid = invoiceStatus === 'PAID';
+      const invoiceNumber = item.invoices?.invoice_number;
 
+      
       if (!providerMap.has(providerId)) {
         providerMap.set(providerId, {
           provider_id: providerId,
@@ -78,15 +71,24 @@ export async function GET() {
           total_amount: 0,
           paid_amount: 0,
           pending_amount: 0,
-          last_payment_date: null
+          last_payment_date: null,
+          invoice_numbers: []
         });
       }
 
       const provider = providerMap.get(providerId);
-      provider.total_invoices += 1;
+      
+      // Add service fee to totals (each service item counted separately)
       provider.total_amount += serviceFee;
       
-      if (isPaid) {
+      // Track unique invoices for invoice count (count ALL invoices, even those with 0 service fees)
+      if (invoiceNumber && !provider.invoice_numbers.includes(invoiceNumber)) {
+        provider.invoice_numbers.push(invoiceNumber);
+        provider.total_invoices += 1;
+      }
+      
+      // Calculate based on invoice status using service fee
+      if (isInvoicePaid) {
         provider.paid_amount += serviceFee;
       } else {
         provider.pending_amount += serviceFee;
@@ -94,9 +96,10 @@ export async function GET() {
     });
 
     // Update last payment date for providers
-    (paidItems || []).forEach((item: any) => {
+    (allInvoiceItems || []).forEach((item: any) => {
       const providerId = item.provider_id || 'UNKNOWN';
-      if (providerMap.has(providerId) && item.payment_date) {
+      const invoiceStatus = item.invoices?.status || 'UNKNOWN';
+      if (providerMap.has(providerId) && item.payment_date && invoiceStatus === 'PAID') {
         const provider = providerMap.get(providerId);
         if (!provider.last_payment_date || new Date(item.payment_date) > new Date(provider.last_payment_date)) {
           provider.last_payment_date = item.payment_date;
@@ -106,8 +109,9 @@ export async function GET() {
 
     const providers = Array.from(providerMap.values());
 
-    // Process payment records
-    const payments = (paidItems || []).map((item: any) => ({
+    
+    // Process payment records - include ALL items for display
+    const payments = (allInvoiceItems || []).map((item: any) => ({
       id: item.id,
       invoice_number: item.invoices?.invoice_number || 'Unknown',
       invoice_date: item.invoices?.invoice_date || '',
@@ -119,7 +123,8 @@ export async function GET() {
       payment_batch_id: item.payment_batch_id || 'Unknown',
       payment_date: item.payment_date || '',
       provider_name: item.provider_name || 'Unknown',
-      provider_id: item.provider_id || 'UNKNOWN'
+      provider_id: item.provider_id || 'UNKNOWN',
+      invoice_status: item.invoices?.status || 'UNKNOWN'
     }));
 
     return NextResponse.json({

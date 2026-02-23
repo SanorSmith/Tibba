@@ -18,12 +18,14 @@ export interface FinancePatient {
   patient_number: string; // P-2024-00001
   first_name_ar: string;
   first_name_en?: string;
+  middle_name?: string;
   last_name_ar: string;
   last_name_en?: string;
   full_name_ar: string;
   full_name_en?: string;
   date_of_birth: string;
   gender: 'MALE' | 'FEMALE';
+  blood_group?: string;
   national_id?: string;
   phone: string;
   mobile?: string;
@@ -34,9 +36,11 @@ export interface FinancePatient {
   emergency_contact_name_ar?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship_ar?: string;
+  medical_history?: string;
   total_balance: number;
   is_active: boolean;
   created_at: string;
+  id?: string;
 }
 
 // ============= INSURANCE =============

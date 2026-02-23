@@ -78,7 +78,7 @@ export default function PatientsPage() {
   const openView = (p: FinancePatient) => { setCurrent(p); setModal('view'); };
 
   const handleSave = async () => {
-    if (!current.first_name_ar || !current.last_name_ar || !current.phone) { 
+    if (!current.phone || !current.date_of_birth || !current.gender) { 
       toast.error('Please fill required fields'); 
       return; 
     }
@@ -87,16 +87,19 @@ export default function PatientsPage() {
 
     try {
       const patientData = {
-        first_name_ar: current.first_name_ar,
-        last_name_ar: current.last_name_ar,
-        first_name_en: current.first_name_en,
-        last_name_en: current.last_name_en,
+        first_name_ar: current.first_name_ar || current.first_name_en || '',
+        last_name_ar: current.last_name_ar || current.last_name_en || '',
+        first_name_en: current.first_name_en || '',
+        middle_name: current.middle_name || '',
+        last_name_en: current.last_name_en || '',
         date_of_birth: current.date_of_birth,
         gender: current.gender,
+        blood_group: current.blood_group,
         phone: current.phone,
         email: current.email,
         national_id: current.national_id,
         governorate: current.governorate,
+        medical_history: current.medical_history,
       };
 
       console.log('📤 Sending patient data:', patientData);
@@ -243,24 +246,150 @@ export default function PatientsPage() {
 
       {/* Create/Edit Modal */}
       {(modal === 'create' || modal === 'edit') && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" >
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-start pt-[63px] pl-[320px]" >
+          <div className="bg-white rounded-xl max-w-[calc(100vw-410px)] w-full overflow-visible" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
               <button onClick={() => setModal(null)} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs text-gray-500 block mb-1">First Name (AR) *</label><input value={current.first_name_ar} onChange={e => setCurrent({...current, first_name_ar: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Last Name (AR) *</label><input value={current.last_name_ar} onChange={e => setCurrent({...current, last_name_ar: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">First Name (EN)</label><input value={current.first_name_en || ''} onChange={e => setCurrent({...current, first_name_en: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Last Name (EN)</label><input value={current.last_name_en || ''} onChange={e => setCurrent({...current, last_name_en: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Date of Birth *</label><input type="date" value={current.date_of_birth} onChange={e => setCurrent({...current, date_of_birth: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Gender *</label><select value={current.gender} onChange={e => setCurrent({...current, gender: e.target.value as 'MALE'|'FEMALE'})} className="w-full border rounded-lg px-3 py-2 text-sm"><option value="MALE">Male</option><option value="FEMALE">Female</option></select></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Phone *</label><input value={current.phone} onChange={e => setCurrent({...current, phone: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">National ID</label><input value={current.national_id || ''} onChange={e => setCurrent({...current, national_id: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Governorate</label><input value={current.governorate || ''} onChange={e => setCurrent({...current, governorate: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="بغداد" /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Email</label><input type="email" value={current.email || ''} onChange={e => setCurrent({...current, email: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" /></div>
+            <div className="p-6 space-y-6">
+              {/* Basic Information */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">First name</label>
+                    <input 
+                      value={current.first_name_en || ''} 
+                      onChange={e => setCurrent({...current, first_name_en: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="John"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Middle name</label>
+                    <input 
+                      value={current.middle_name || ''} 
+                      onChange={e => setCurrent({...current, middle_name: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="A"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Last name</label>
+                    <input 
+                      value={current.last_name_en || ''} 
+                      onChange={e => setCurrent({...current, last_name_en: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Details */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Personal Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">National ID</label>
+                    <input 
+                      value={current.national_id || ''} 
+                      onChange={e => setCurrent({...current, national_id: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="ID number"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Date of Birth *</label>
+                    <input 
+                      type="date" 
+                      value={current.date_of_birth} 
+                      onChange={e => setCurrent({...current, date_of_birth: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Gender *</label>
+                    <select 
+                      value={current.gender} 
+                      onChange={e => setCurrent({...current, gender: e.target.value as 'MALE'|'FEMALE'})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select gender</option>
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Blood Group</label>
+                    <select 
+                      value={current.blood_group || ''} 
+                      onChange={e => setCurrent({...current, blood_group: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select blood group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Telephone *</label>
+                    <input 
+                      value={current.phone} 
+                      onChange={e => setCurrent({...current, phone: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="+1 555-555"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Email</label>
+                    <input 
+                      type="email" 
+                      value={current.email || ''} 
+                      onChange={e => setCurrent({...current, email: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-gray-500 block mb-1">Address</label>
+                    <input 
+                      value={current.governorate || ''} 
+                      onChange={e => setCurrent({...current, governorate: e.target.value})} 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder="123 Main St"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Medical History */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Medical History</h3>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Medical history</label>
+                  <textarea 
+                    value={current.medical_history || ''} 
+                    onChange={e => setCurrent({...current, medical_history: e.target.value})} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    rows={3}
+                    placeholder="Notes, conditions, allergies..."
+                  />
+                </div>
               </div>
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">

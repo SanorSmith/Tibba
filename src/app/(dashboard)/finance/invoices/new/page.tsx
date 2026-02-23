@@ -281,7 +281,7 @@ export default function NewInvoicePage() {
                   <label className="text-xs text-gray-500 block mb-1">Service</label>
                   <select value={line.service_id} onChange={e => updateLine(idx, e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm">
                     <option value="">Select service...</option>
-                    {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name_ar} - {fmt(s.base_price)} IQD</option>)}
+                    {services.map(s => <option key={s.service_id} value={s.service_id}>{s.service_name_en || s.service_name_ar} - {s.service_name_ar}</option>)}
                   </select>
                 </div>
                 <div className="w-20">

@@ -329,7 +329,7 @@ export default function NewInvoicePage() {
                   <option value="">Select service...</option>
                   {services.map((service) => (
                     <option key={service.service_id} value={service.service_id}>
-                      {service.service_name_ar} - {fmt(service.base_price)} IQD
+                      {service.service_name_en || service.service_name_ar} - {service.service_name_ar}
                     </option>
                   ))}
                 </select>

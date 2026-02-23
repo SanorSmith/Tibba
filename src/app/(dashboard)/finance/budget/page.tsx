@@ -274,7 +274,7 @@ export default function BudgetPage() {
                   </div>
                   <div>
                     <div className="text-xs text-gray-500">Revenue Budget</div>
-                    <div className="font-bold text-gray-900">{fmt(selectedPeriod.total_revenue_budget)} IQD</div>
+                    <div className="font-bold text-gray-900 truncate" style={{fontSize: 'clamp(0.875rem, 2.5vw, 1.125rem)'}}>{fmt(selectedPeriod.total_revenue_budget)} IQD</div>
                   </div>
                 </div>
               </div>

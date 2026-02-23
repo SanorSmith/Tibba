@@ -340,8 +340,8 @@ export default function ServicePaymentsPage() {
         })}
       </div>
 
-      {/* Floating selection bar */}
-      {selectedIds.size > 0 && (
+      {/* Floating selection bar - Hidden */}
+      {/* {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-4 z-40">
           <span className="text-sm">{selectedIds.size} line{selectedIds.size > 1 ? 's' : ''} selected</span>
           <span className="font-bold">{fmt(selectedTotal)} IQD</span>
@@ -351,7 +351,7 @@ export default function ServicePaymentsPage() {
           </button>
           <button onClick={() => setSelectedIds(new Set())} className="text-gray-400 hover:text-white"><X size={16} /></button>
         </div>
-      )}
+      )} */}
 
       {/* Create Payment Modal */}
       {showCreateModal && (

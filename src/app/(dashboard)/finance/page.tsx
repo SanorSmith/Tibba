@@ -257,7 +257,7 @@ export default function FinancePage() {
                   <AlertCircle className="w-4 h-4 text-yellow-600" />
                 }
               </div>
-              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(activeBudget.total_revenue_budget)} IQD</div>
+              <div className="text-2xl font-bold mb-1 text-gray-900 truncate" style={{fontSize: 'clamp(1rem, 3vw, 1.5rem)'}}>{fmt(activeBudget.total_revenue_budget)} IQD</div>
               <div className="text-sm text-gray-600 mb-1">Actual: {fmt(activeBudget.total_revenue_actual)} IQD</div>
               <div className="text-xs text-gray-500 mb-2">Variance: {fmt(budgetStats.revenueVariance)} IQD</div>
               <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export default function FinancePage() {
                   <AlertCircle className="w-4 h-4 text-red-600" />
                 }
               </div>
-              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(activeBudget.total_operational_budget)} IQD</div>
+              <div className="text-2xl font-bold mb-1 text-gray-900 truncate" style={{fontSize: 'clamp(1rem, 3vw, 1.5rem)'}}>{fmt(activeBudget.total_operational_budget)} IQD</div>
               <div className="text-sm text-gray-600 mb-1">Spent: {fmt(activeBudget.total_operational_actual)} IQD</div>
               <div className="text-xs text-gray-500 mb-2">Remaining: {fmt(budgetStats.operationalVariance)} IQD</div>
               <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ export default function FinancePage() {
                   <AlertCircle className="w-4 h-4 text-red-600" />
                 }
               </div>
-              <div className="text-2xl font-bold mb-1 text-gray-900">{fmt(activeBudget.total_capital_budget)} IQD</div>
+              <div className="text-2xl font-bold mb-1 text-gray-900 truncate" style={{fontSize: 'clamp(1rem, 3vw, 1.5rem)'}}>{fmt(activeBudget.total_capital_budget)} IQD</div>
               <div className="text-sm text-gray-600 mb-1">Spent: {fmt(activeBudget.total_capital_actual)} IQD</div>
               <div className="text-xs text-gray-500 mb-2">Remaining: {fmt(budgetStats.capitalVariance)} IQD</div>
               <div className="flex items-center gap-2">
