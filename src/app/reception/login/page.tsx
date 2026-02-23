@@ -16,6 +16,8 @@ export default function ReceptionLogin() {
     setIsLoading(true);
     setError('');
 
+    console.log('Starting login process with username:', username);
+
     try {
       const response = await fetch('/api/reception/auth', {
         method: 'POST',
@@ -23,12 +25,22 @@ export default function ReceptionLogin() {
         body: JSON.stringify({ username, password }),
       });
 
+      console.log('Login response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
         console.log('Login successful:', data);
+        
         // Store user info in localStorage for session management
-        localStorage.setItem('reception_user', JSON.stringify(data.user));
+        const userString = JSON.stringify(data.user);
+        console.log('Storing user data:', userString);
+        localStorage.setItem('reception_user', userString);
         console.log('User stored in localStorage');
+        
+        // Verify it was stored
+        const stored = localStorage.getItem('reception_user');
+        console.log('Verification - stored user data:', !!stored);
+        
         router.push('/reception');
       } else {
         const errorData = await response.json();
@@ -36,6 +48,7 @@ export default function ReceptionLogin() {
         setError(errorData.error || 'Login failed');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
@@ -147,6 +160,28 @@ export default function ReceptionLogin() {
               <span className="text-[10px] text-gray-400">All modules</span>
             </Link>
           </div>
+        </div>
+
+        {/* Debug Info */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <button
+            onClick={() => {
+              console.log('Testing localStorage...');
+              try {
+                localStorage.setItem('test', 'value');
+                const test = localStorage.getItem('test');
+                console.log('LocalStorage test result:', test);
+                localStorage.removeItem('test');
+                alert('LocalStorage is working! Check console for details.');
+              } catch (error) {
+                console.error('LocalStorage error:', error);
+                alert('LocalStorage error! Check console for details.');
+              }
+            }}
+            className="w-full text-xs text-gray-500 hover:text-gray-700"
+          >
+            Test LocalStorage (Debug)
+          </button>
         </div>
       </div>
     </div>
