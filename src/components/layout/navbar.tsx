@@ -1,100 +1,60 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Settings, HelpCircle, Bell, Menu, X } from 'lucide-react';
+import { Search, Settings, HelpCircle, Menu, X, ChevronsUpDown } from 'lucide-react';
 import { UserMenu } from './user-menu';
 
 export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   return (
-    <nav
-      className="flex items-center justify-between text-white sticky top-0 z-50 lg:static"
-      style={{
-        width: '100%',
-        height: '56px',
-        padding: '0 12px',
-        backgroundColor: 'rgb(97, 143, 245)',
-      }}
-    >
-      {/* Left: hamburger + logo */}
-      <div className="flex items-center gap-2 lg:gap-6">
+    <header className="flex h-16 shrink-0 items-center bg-[#618FF5] justify-between gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      {/* Left: hamburger + logo + search */}
+      <div className="flex items-center flex-1 min-w-0">
+        {/* Mobile menu button */}
         <button
-          className="lg:hidden p-2 text-white hover:bg-white/10 rounded transition-colors"
+          className="lg:hidden p-2 text-white hover:bg-white/10 rounded transition-colors mr-2"
           onClick={onMobileMenuToggle}
           aria-label="Toggle menu"
         >
           <Menu size={20} />
         </button>
 
-        <h1 className="text-base lg:text-lg font-bold tracking-tight cursor-pointer whitespace-nowrap">
-          <span className="hidden sm:inline">Tibbna-ERP</span>
-          <span className="sm:hidden">Tibbna</span>
-        </h1>
+        {/* Logo */}
+        <h1 className="text-xl text-white font-bold whitespace-nowrap mr-8">Tibbna-EHR</h1>
 
-        {/* Desktop search */}
-        <div className="hidden lg:block relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-          <input
-            type="text"
-            placeholder="Search..."
-            style={{
-              width: '198px',
-              height: '36px',
-              padding: '4px 12px 4px 36px',
-              border: '1px solid rgba(255,255,255,0.3)',
-              borderRadius: '6px',
-              fontSize: '14px',
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              color: '#ffffff',
-            }}
-            className="placeholder-white/60 focus:outline-none focus:bg-white/25"
-          />
-        </div>
-      </div>
-
-      {/* Right controls */}
-      <div className="flex items-center" style={{ gap: '2px' }}>
-        {/* Mobile search toggle */}
-        <button
-          className="lg:hidden p-2 text-white hover:bg-white/10 rounded transition-colors"
-          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-        >
-          {mobileSearchOpen ? <X size={18} /> : <Search size={18} />}
-        </button>
-
-        {/* Desktop-only controls */}
-        <button className="hidden lg:flex p-2 hover:bg-white/10 rounded transition-colors">
-          <Settings className="w-5 h-5" />
-        </button>
-        <button className="hidden lg:flex p-2 hover:bg-white/10 rounded transition-colors">
-          <HelpCircle className="w-5 h-5" />
-        </button>
-
-        {/* Bell - always visible */}
-        <button className="p-2 hover:bg-white/10 rounded transition-colors relative">
-          <Bell size={18} className="lg:w-5 lg:h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-
-        <UserMenu />
-      </div>
-
-      {/* Mobile search overlay */}
-      {mobileSearchOpen && (
-        <div className="lg:hidden absolute top-full left-0 right-0 p-3 z-50" style={{ backgroundColor: 'rgb(97, 143, 245)' }}>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              autoFocus
-              className="w-full h-10 pl-10 pr-4 rounded-lg text-black placeholder-gray-400 focus:outline-none"
-              style={{ fontSize: '16px', backgroundColor: '#ffffff' }}
-            />
+        {/* Search bar */}
+        <div className="flex-1 max-w-xl ml-16">
+          <div className="relative w-full max-w-md">
+            <div className="relative">
+              <Search className="absolute text-white left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search patients by name or ID..."
+                className="file:text-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive pl-9 pr-3 h-9 text-white text-sm placeholder:text-white/80 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-[1px] focus:ring-orange-400 focus:border-orange-400"
+              />
+            </div>
           </div>
         </div>
-      )}
-    </nav>
+      </div>
+
+      {/* Right: controls + user menu */}
+      <div className="flex items-center gap-2">
+        {/* Settings button */}
+        <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:hover:bg-accent/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5 text-white hover:bg-white/20 hover:text-blue-900">
+          <Settings className="h-4 w-4" />
+          <span className="ml-2 hidden sm:inline">Settings</span>
+        </button>
+
+        {/* Help button */}
+        <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:hover:bg-accent/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5 text-white hover:bg-white/20 hover:text-blue-900">
+          <HelpCircle className="h-4 w-4" />
+          <span className="ml-2 hidden sm:inline">Help</span>
+        </button>
+
+        {/* User menu dropdown */}
+        <UserMenu />
+      </div>
+    </header>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, User, Settings, LogOut } from 'lucide-react';
+import { ChevronsUpDown, User, Settings, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,17 +61,23 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 hover:bg-white/10 px-3 py-2 rounded-md transition-colors focus:outline-none">
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-white text-blue-600 font-bold text-sm">
+      <DropdownMenuTrigger 
+        className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-hidden ring-sidebar-ring focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 h-12 text-sm group-data-[collapsible=icon]:p-0! data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground text-white hover:bg-white/20 hover:text-blue-900 transition-colors" 
+        type="button"
+      >
+        <Avatar className="relative flex size-8 shrink-0 overflow-hidden h-8 w-8 rounded-lg text-blue-900">
+          <AvatarFallback className="bg-muted flex size-full items-center justify-center rounded-lg">
             {getInitials(user.name)}
           </AvatarFallback>
         </Avatar>
-        <div className="hidden lg:flex flex-col items-start leading-tight">
-          <span className="text-sm font-semibold text-white">{user.name}</span>
-          <span className="text-[11px] text-white/70">{formatRole(user.role)}</span>
+        <div className="grid flex-1 text-left text-sm leading-tight transition-colors">
+          <span className="truncate font-medium">{user.name}</span>
+          <span className="truncate text-xs opacity-90">{formatRole(user.role)}</span>
+          <span className="truncate text-[10px] opacity-80">
+            {new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} • {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+          </span>
         </div>
-        <ChevronDown className="w-4 h-4 text-white/80" />
+        <ChevronsUpDown className="ml-auto size-4" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-60">
