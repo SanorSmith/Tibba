@@ -64,12 +64,16 @@ export function UserMenu() {
       <DropdownMenuTrigger 
         className="peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left outline-hidden ring-sidebar-ring focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 h-12 text-sm group-data-[collapsible=icon]:p-0! data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground text-white hover:bg-white/20 hover:text-blue-900 transition-colors" 
         type="button"
+        id="radix-_r_8_" 
+        aria-haspopup="menu" 
+        aria-expanded="false" 
+        data-state="closed"
       >
-        <Avatar className="relative flex size-8 shrink-0 overflow-hidden h-8 w-8 rounded-lg text-blue-900">
-          <AvatarFallback className="bg-muted flex size-full items-center justify-center rounded-lg">
+        <span data-slot="avatar" className="relative flex size-8 shrink-0 overflow-hidden h-8 w-8 rounded-lg text-blue-900">
+          <span data-slot="avatar-fallback" className="bg-muted flex size-full items-center justify-center rounded-lg">
             {getInitials(user.name)}
-          </AvatarFallback>
-        </Avatar>
+          </span>
+        </span>
         <div className="grid flex-1 text-left text-sm leading-tight transition-colors">
           <span className="truncate font-medium">{user.name}</span>
           <span className="truncate text-xs opacity-90">{formatRole(user.role)}</span>
@@ -77,7 +81,10 @@ export function UserMenu() {
             {new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} • {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </span>
         </div>
-        <ChevronsUpDown className="ml-auto size-4" />
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevrons-up-down ml-auto size-4" aria-hidden="true">
+          <path d="m7 15 5 5 5-5"></path>
+          <path d="m7 9 5-5 5 5"></path>
+        </svg>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-60">
