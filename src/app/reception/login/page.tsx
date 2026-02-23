@@ -44,7 +44,7 @@ export default function ReceptionLogin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-8">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-8 overflow-y-auto max-h-screen">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
@@ -103,15 +103,26 @@ export default function ReceptionLogin() {
 
         {/* Demo Accounts */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-600 mb-3">Demo Accounts / حسابات تجريبية:</p>
-          <div className="space-y-2 text-xs">
-            <div className="bg-gray-50 p-2 rounded">
-              <strong>Receptionist:</strong> reception1 / reception123
+          <p className="text-sm font-semibold text-gray-700 mb-3">Demo Accounts / حسابات تجريبية:</p>
+          <div className="space-y-3">
+            <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+              <p className="font-semibold text-blue-900 mb-1">Receptionist / موظف استقبال</p>
+              <p className="text-sm text-gray-700">
+                <strong>Username:</strong> reception1<br/>
+                <strong>Password:</strong> reception123
+              </p>
             </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <strong>Manager:</strong> reception_manager / manager123
+            <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
+              <p className="font-semibold text-green-900 mb-1">Manager / مدير</p>
+              <p className="text-sm text-gray-700">
+                <strong>Username:</strong> reception_manager<br/>
+                <strong>Password:</strong> manager123
+              </p>
             </div>
           </div>
+          <p className="text-xs text-gray-500 mt-3 text-center">
+            💡 Use these credentials to test the Reception Counter system
+          </p>
         </div>
 
         {/* Back Link */}
