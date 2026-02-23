@@ -1,113 +1,116 @@
 // FILE: src/app/api/patients/route.ts
-// GET all patients, POST create new patient
+// REDIRECTED: Now uses Neon database instead of Supabase
+// This route forwards to the main Neon patient API
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/server';
-import patientsJson from '@/data/finance/patients.json';
 
+// Forward all requests to the main Neon patient API
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const activeOnly = searchParams.get('active') === 'true';
-  const fallback = (patientsJson as any).patients || [];
-  const fallbackFiltered = activeOnly ? fallback.filter((p: any) => p.is_active !== false) : fallback;
-
-  if (!supabaseAdmin) {
-    return NextResponse.json(fallbackFiltered);
-  }
-
   try {
-    let query = supabaseAdmin
-      .from('patients')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Forward to the main Neon patient API
+    const { searchParams } = new URL(request.url);
+    const forwardUrl = new URL('/api/tibbna-openehr-patients', request.url);
+    
+    // Copy all search parameters
+    searchParams.forEach((value, key) => {
+      forwardUrl.searchParams.set(key, value);
+    });
 
-    if (activeOnly) {
-      query = query.eq('is_active', true);
-    }
+    const response = await fetch(forwardUrl.toString(), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-    const { data, error } = await query;
-
-    if (error || !data) {
-      console.warn('Supabase patients error, falling back to JSON:', error?.message);
-      return NextResponse.json(fallbackFiltered);
-    }
-
-    return NextResponse.json(data.length > 0 ? data : fallbackFiltered);
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
 
   } catch (error: any) {
-    console.warn('GET patients exception, falling back to JSON:', error?.message);
-    return NextResponse.json(fallbackFiltered);
+    console.error('❌ GET patients redirect error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch patients from Neon database' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = supabaseAdmin;
+    // Forward to the main Neon patient API
     const body = await request.json();
+    const forwardUrl = new URL('/api/tibbna-openehr-patients', request.url);
 
-    console.log('📝 Creating patient:', body.first_name_ar, body.last_name_ar);
+    const response = await fetch(forwardUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
 
-    // Get organization ID
-    const { data: orgs } = await supabase
-      .from('organizations')
-      .select('id')
-      .limit(1);
-    const orgId = orgs?.[0]?.id || '00000000-0000-0000-0000-000000000000';
-
-    // Generate patient_id if not provided
-    const patientId = body.patient_id || `P-${Date.now()}`;
-
-    // Prepare patient data
-    const patientData: any = {
-      organization_id: orgId,
-      patient_id: patientId,
-      first_name: body.first_name_en || body.first_name || null,
-      last_name: body.last_name_en || body.last_name || null,
-      first_name_ar: body.first_name_ar || null,
-      last_name_ar: body.last_name_ar || null,
-      date_of_birth: body.date_of_birth || null,
-      gender: body.gender || 'MALE',
-      phone: body.phone || null,
-      email: body.email || null,
-      address: body.address || null,
-      city: body.governorate || body.city || null,
-      province: body.governorate || body.province || null,
-      country: body.country || 'Iraq',
-      postal_code: body.postal_code || null,
-      insurance_provider_id: body.insurance_provider_id || null,
-      insurance_policy_number: body.insurance_policy_number || null,
-      insurance_status: body.insurance_status || 'ACTIVE',
-      emergency_contact_name: body.emergency_contact_name || null,
-      emergency_contact_phone: body.emergency_contact_phone || null,
-      emergency_contact_relationship: body.emergency_contact_relationship || null,
-      blood_type: body.blood_type || null,
-      allergies: body.allergies || null,
-      chronic_conditions: body.chronic_conditions || null,
-      is_active: body.is_active !== false,
-      notes: body.notes || null,
-    };
-
-    const { data, error } = await supabase
-      .from('patients')
-      .insert(patientData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating patient:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
-    }
-
-    console.log('✅ Patient created:', data.id);
-    return NextResponse.json(data, { status: 201 });
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
 
   } catch (error: any) {
-    console.error('POST patient error:', error);
+    console.error('❌ POST patients redirect error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create patient' },
+      { error: 'Failed to create patient in Neon database' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Forward to the main Neon patient API
+    const body = await request.json();
+    const forwardUrl = new URL('/api/tibbna-openehr-patients', request.url);
+
+    const response = await fetch(forwardUrl.toString(), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+
+  } catch (error: any) {
+    console.error('❌ PUT patients redirect error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update patient in Neon database' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Forward to the main Neon patient API
+    const { searchParams } = new URL(request.url);
+    const forwardUrl = new URL('/api/tibbna-openehr-patients', request.url);
+    
+    // Copy all search parameters
+    searchParams.forEach((value, key) => {
+      forwardUrl.searchParams.set(key, value);
+    });
+
+    const response = await fetch(forwardUrl.toString(), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+
+  } catch (error: any) {
+    console.error('❌ DELETE patients redirect error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete patient from Neon database' },
       { status: 500 }
     );
   }
