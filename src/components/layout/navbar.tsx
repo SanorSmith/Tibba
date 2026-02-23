@@ -6,6 +6,7 @@ import { UserMenu } from './user-menu';
 
 export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   return (
     <header className="flex h-16 shrink-0 items-center bg-[#618FF5] justify-between mt-8 gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -20,10 +21,11 @@ export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
               </svg>
               <input 
                 data-slot="input" 
-                className="file:text-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive pl-9 pr-3 h-9 text-white text-sm placeholder:text-white/80 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-[1px] focus:ring-orange-400 focus:border-orange-400" 
+                className="file:text-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:hover:bg-accent/50 pl-9 pr-3 h-9 text-white text-sm placeholder:text-white/80 focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-[1px] focus:ring-orange-400 focus:border-orange-400" 
                 placeholder="Search patients by name or ID..." 
                 type="text" 
-                value=""
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
               />
             </div>
           </div>
