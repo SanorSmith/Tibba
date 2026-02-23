@@ -26,6 +26,13 @@ const ROLES = [
     desc: 'HR only',
     route: '/hr',
   },
+  {
+    username: 'reception',
+    password: 'reception123',
+    label: 'Reception Admin',
+    desc: 'Reception only',
+    route: '/reception',
+  },
 ];
 
 function LoginForm() {

@@ -43,16 +43,20 @@ import {
 import { cn } from '@/lib/utils';
 
 const moduleLinks = [
-  { href: '/reception', icon: Bell, label: 'Reception' },
+  {
+    href: '/reception', icon: Bell, label: 'Reception',
+    children: [
+      { href: '/reception/patients', icon: UserCircle, label: 'Patients' },
+      { href: '/reception/invoices', icon: Receipt, label: 'Customer Invoices' },
+      { href: '/reception/returns', icon: RotateCcw, label: 'Returns' },
+    ],
+  },
   { href: '/services', icon: Hospital, label: 'Services' },
   { href: '/inventory', icon: Package, label: 'Inventory' },
   {
     href: '/finance', icon: DollarSign, label: 'Finance',
     children: [
-      { href: '/finance/patients', icon: UserCircle, label: 'Patients' },
       { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
-      { href: '/finance/invoices', icon: Receipt, label: 'Customer Invoices' },
-      { href: '/finance/returns', icon: RotateCcw, label: 'Returns' },
       { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
       { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
       { href: '/finance/suppliers', icon: Truck, label: 'Suppliers' },

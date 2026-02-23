@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-type UserRole = 'SUPER_ADMIN' | 'FINANCE_ADMIN' | 'HR_ADMIN' | 'INVENTORY_ADMIN';
+type UserRole = 'SUPER_ADMIN' | 'FINANCE_ADMIN' | 'HR_ADMIN' | 'INVENTORY_ADMIN' | 'RECEPTION_ADMIN';
 
 interface User {
   id: string;
@@ -27,6 +27,10 @@ const USERS: Record<string, { password: string; user: User }> = {
   inventory: {
     password: 'inventory123',
     user: { id: '4', name: 'Inventory Administrator', email: 'inventory@tibbna.iq', role: 'INVENTORY_ADMIN', allowedModules: ['/inventory'] },
+  },
+  reception: {
+    password: 'reception123',
+    user: { id: '5', name: 'Reception Administrator', email: 'reception@tibbna.iq', role: 'RECEPTION_ADMIN', allowedModules: ['/reception'] },
   },
 };
 

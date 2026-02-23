@@ -7,6 +7,7 @@ const ROLE_MODULES: Record<string, string[]> = {
   FINANCE_ADMIN:    ['/finance'],
   HR_ADMIN:         ['/hr'],
   INVENTORY_ADMIN:  ['/inventory'],
+  RECEPTION_ADMIN:  ['/reception'],
 };
 
 // Paths that are always public
