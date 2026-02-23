@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ReceptionLayout({
@@ -13,8 +13,15 @@ export default function ReceptionLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
+    // Skip auth check for login page
+    if (pathname === '/reception/login') {
+      setIsLoading(false);
+      return;
+    }
+
     // Check if user is logged in
     const checkAuth = () => {
       try {
@@ -38,7 +45,7 @@ export default function ReceptionLayout({
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -66,6 +73,11 @@ export default function ReceptionLayout({
         </div>
       </div>
     );
+  }
+
+  // If on login page, just render children without auth wrapper
+  if (pathname === '/reception/login') {
+    return <>{children}</>;
   }
 
   if (!user) {
