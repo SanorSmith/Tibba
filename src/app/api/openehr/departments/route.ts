@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import postgres from 'postgres';
 
-const sql = postgres(process.env.NEXT_PUBLIC_SUPABASE_URL!, {
+const sql = postgres(process.env.OPENEHR_DATABASE_URL!, {
   ssl: 'require',
   max: 10,
   idle_timeout: 20,
