@@ -26,6 +26,13 @@ const ROLES = [
     desc: 'HR only',
     route: '/hr',
   },
+  {
+    username: 'reception1',
+    password: 'reception123',
+    label: 'Reception Counter',
+    desc: 'استقبال و الصندوق',
+    route: '/reception',
+  },
 ];
 
 function LoginForm() {
@@ -42,22 +49,44 @@ function LoginForm() {
     setError('');
     setIsLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        // Full page navigation so middleware sees the new cookie
-        const role = ROLES.find(r => r.username === u.toLowerCase());
-        const dest = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
-          ? returnTo
-          : (role?.route ?? '/dashboard');
-        window.location.href = dest;
+      // Check if this is a reception login
+      const isReception = u.toLowerCase() === 'reception1' || u.toLowerCase() === 'reception_manager';
+      
+      if (isReception) {
+        // Use reception auth API
+        const res = await fetch('/api/reception/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+          // Store user in localStorage for reception
+          localStorage.setItem('reception_user', JSON.stringify(data.user));
+          window.location.href = '/reception';
+        } else {
+          setError(data.error || 'Invalid credentials');
+          setIsLoading(false);
+        }
       } else {
-        setError(data.error || 'Invalid credentials');
-        setIsLoading(false);
+        // Use regular auth API
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          // Full page navigation so middleware sees the new cookie
+          const role = ROLES.find(r => r.username === u.toLowerCase());
+          const dest = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
+            ? returnTo
+            : (role?.route ?? '/dashboard');
+          window.location.href = dest;
+        } else {
+          setError(data.error || 'Invalid credentials');
+          setIsLoading(false);
+        }
       }
     } catch {
       setError('Network error — please try again');
@@ -102,7 +131,7 @@ function LoginForm() {
           {/* Quick Login Cards */}
           <div className="p-6 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Login</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {ROLES.map(role => (
                 <button
                   key={role.username}
