@@ -29,11 +29,14 @@ const RECEPTION_USERS = [
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json();
+    console.log('Login attempt:', { username, password: '***' });
 
     // Find user by username
     const user = RECEPTION_USERS.find(u => u.username === username && u.is_active);
+    console.log('User found:', !!user);
     
     if (!user) {
+      console.log('User not found or inactive');
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
@@ -42,12 +45,14 @@ export async function POST(request: NextRequest) {
 
     // Check password (in production, use bcrypt.compare)
     if (user.password !== password) {
+      console.log('Password mismatch');
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
       );
     }
 
+    console.log('Password correct, creating session');
     // Update last login
     user.last_login = new Date().toISOString();
 
@@ -65,6 +70,8 @@ export async function POST(request: NextRequest) {
       },
       token: sessionToken
     });
+
+    console.log('Session created successfully');
 
     // Set session cookie
     response.cookies.set('reception_session', sessionToken, {

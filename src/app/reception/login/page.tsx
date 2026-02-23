@@ -25,11 +25,14 @@ export default function ReceptionLogin() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Login successful:', data);
         // Store user info in localStorage for session management
         localStorage.setItem('reception_user', JSON.stringify(data.user));
+        console.log('User stored in localStorage');
         router.push('/reception');
       } else {
         const errorData = await response.json();
+        console.error('Login failed:', errorData);
         setError(errorData.error || 'Login failed');
       }
     } catch (err) {

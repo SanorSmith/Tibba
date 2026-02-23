@@ -10,17 +10,34 @@ export default function ReceptionLayout({
   children: React.ReactNode;
 }) {
   const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     // Check if user is logged in
-    const userData = localStorage.getItem('reception_user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    } else {
-      router.push('/reception/login');
-    }
+    const checkAuth = () => {
+      try {
+        console.log('Checking auth...');
+        const userData = localStorage.getItem('reception_user');
+        console.log('User data in localStorage:', !!userData);
+        if (userData) {
+          const user = JSON.parse(userData);
+          console.log('Parsed user:', user);
+          setUser(user);
+        } else {
+          console.log('No user data found, redirecting to login');
+          router.push('/reception/login');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        router.push('/reception/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
   }, [router]);
 
   const handleLogout = async () => {
@@ -35,8 +52,31 @@ export default function ReceptionLayout({
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+            <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <p className="text-gray-600">Loading Reception Counter...</p>
+          <p className="text-gray-500 text-sm">جاري تحميل الاستقبال والصندوق...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Redirecting to login...</p>
+          <p className="text-gray-500 text-sm">جاري التوجيه إلى تسجيل الدخول...</p>
+        </div>
+      </div>
+    );
   }
 
   const menuItems = [
