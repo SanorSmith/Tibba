@@ -39,6 +39,7 @@ import {
   PieChart,
   TrendingUp,
   Bell,
+  PackageSearch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -52,7 +53,12 @@ const moduleLinks = [
     ],
   },
   { href: '/services', icon: Hospital, label: 'Services' },
-  { href: '/inventory', icon: Package, label: 'Inventory' },
+  {
+    href: '/inventory', icon: Package, label: 'Inventory',
+    children: [
+      { href: '/inventory/incoming-orders', icon: PackageSearch, label: 'Incoming Orders' },
+    ],
+  },
   {
     href: '/finance', icon: DollarSign, label: 'Finance',
     children: [
@@ -94,7 +100,14 @@ const existingLinks = [
   { href: '/staff', icon: UsersRound, label: 'Staff/Contacts' },
   { href: '/laboratories', icon: FlaskConical, label: 'Laboratories' },
   { href: '/pharmacies', icon: Pill, label: 'Pharmacies' },
-  { href: '/departments', icon: Building2, label: 'Departments' },
+  { 
+    href: '/departments', 
+    icon: Building2, 
+    label: 'Departments',
+    children: [
+      { href: '/departments/orders', icon: ShoppingCart, label: 'Department Orders' },
+    ],
+  },
 ];
 
 interface SidebarProps {
