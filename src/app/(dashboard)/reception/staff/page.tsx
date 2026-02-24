@@ -250,127 +250,91 @@ export default function StaffInfoPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStaff.map((member) => (
-            <div
-              key={member.staffid}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 overflow-hidden group"
-            >
-              {/* Card Header with Gradient */}
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
-                
-                <div className="relative flex items-center gap-4">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30 shadow-lg">
-                    <User className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white mb-1 line-clamp-1">
-                      {member.name}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      {member.userid ? (
-                        <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                          <UserCheck className="w-3 h-3 text-white" />
-                          <span className="text-xs text-white font-medium">Has Account</span>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Name</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Role</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Specialty</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Phone</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Account</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStaff.map((member, index) => (
+                  <tr key={member.staffid} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-blue-600" />
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                          <User className="w-3 h-3 text-white/70" />
-                          <span className="text-xs text-white/70">No Account</span>
+                        <div>
+                          <div className="font-medium text-sm text-gray-900">
+                            {member.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ID: {member.staffid.slice(0, 8)}...
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-6 space-y-4">
-                {/* Occupation */}
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 mb-1">Occupation</p>
-                    <p className="text-sm font-semibold text-gray-900 capitalize">
-                      {member.occupation || 'Not specified'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Department */}
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 mb-1">Department</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                        {member.occupation || 'Not specified'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900">
                       {member.unit || 'Not assigned'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Specialty */}
-                {member.specialty && member.specialty !== '-' && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Briefcase className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500 mb-1">Specialty</p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {member.specialty}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Contact Info */}
-                <div className="pt-4 border-t border-gray-100 space-y-3">
-                  {/* Email */}
-                  {member.email && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Mail className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <a
-                        href={`mailto:${member.email}`}
-                        className="text-sm text-blue-600 hover:text-blue-700 hover:underline truncate"
-                      >
-                        {member.email}
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Phone */}
-                  {member.phone && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Phone className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <a
-                        href={`tel:${member.phone}`}
-                        className="text-sm text-gray-700 hover:text-gray-900 font-medium"
-                      >
-                        {member.phone}
-                      </a>
-                    </div>
-                  )}
-                </div>
-
-                {/* Staff ID */}
-                <div className="pt-3 border-t border-gray-100">
-                  <p className="text-xs text-gray-400">
-                    Staff ID: <span className="font-mono text-gray-600">{member.staffid}</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-900">
+                      {member.specialty || '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      {member.phone ? (
+                        <a
+                          href={`tel:${member.phone}`}
+                          className="text-sm text-gray-700 hover:text-blue-600 flex items-center gap-1"
+                        >
+                          <Phone className="w-4 h-4" />
+                          {member.phone}
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      {member.email ? (
+                        <a
+                          href={`mailto:${member.email}`}
+                          className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 truncate max-w-[200px]"
+                        >
+                          <Mail className="w-4 h-4" />
+                          {member.email}
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      {member.userid ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                          Has Account
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                          No Account
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
