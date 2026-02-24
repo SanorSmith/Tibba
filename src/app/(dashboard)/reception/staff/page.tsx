@@ -19,6 +19,7 @@ interface Staff {
   name: string;
   occupation: string;
   unit: string;
+  specialty?: string;
   phone: string;
   email: string;
   userid?: string;
@@ -298,6 +299,21 @@ export default function StaffInfoPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Specialty */}
+                {member.specialty && member.specialty !== '-' && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Briefcase className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-500 mb-1">Specialty</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {member.specialty}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Contact Info */}
                 <div className="pt-4 border-t border-gray-100 space-y-3">

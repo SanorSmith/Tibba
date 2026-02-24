@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
           s.name,
           s.occupation,
           s.unit,
+          s.specialty,
           s.phone,
           s.email,
           s.userid,
