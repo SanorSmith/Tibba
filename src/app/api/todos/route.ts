@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     
     const searchParams = request.nextUrl.searchParams;
     const workspaceid = searchParams.get('workspaceid') || 'fa9fb036-a7eb-49af-890c-54406dad139d';
-    const userid = searchParams.get('userid') || 'current-receptionist-user';
+    // Use a proper UUID for the current receptionist user
+    const userid = searchParams.get('userid') || '00000000-0000-0000-0000-000000000001';
 
     console.log('Fetching todos for workspace:', workspaceid, 'user:', userid);
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       const db = await getDbConnection();
       console.log('Database connection successful');
       
-      // Check if table exists and has correct schema
+      // Check if table exists
       const tableCheck = await db`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
@@ -53,47 +54,32 @@ export async function GET(request: NextRequest) {
       
       console.log('Table exists check:', tableCheck[0].exists);
       
-      if (tableCheck[0].exists) {
-        // Check if userid column is UUID type (wrong type)
-        const columnCheck = await db`
-          SELECT data_type 
-          FROM information_schema.columns 
-          WHERE table_name = 'todos' 
-          AND column_name = 'userid';
+      if (!tableCheck[0].exists) {
+        console.log('Creating todos table...');
+        await db`
+          CREATE TABLE IF NOT EXISTS todos (
+            todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            workspaceid UUID NOT NULL,
+            userid UUID NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            completed BOOLEAN NOT NULL DEFAULT false,
+            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+            duedate TIMESTAMP WITH TIME ZONE,
+            createdat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updatedat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+          );
         `;
         
-        if (columnCheck.length > 0 && columnCheck[0].data_type === 'uuid') {
-          console.log('Dropping old todos table with UUID userid...');
-          await db`DROP TABLE IF EXISTS todos CASCADE;`;
-          console.log('Old table dropped');
-        }
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_workspace_idx ON todos(workspaceid);
+        `;
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_user_idx ON todos(userid);
+        `;
+        
+        console.log('Todos table created successfully');
       }
-      
-      // Create table with correct schema
-      console.log('Creating todos table with VARCHAR userid...');
-      await db`
-        CREATE TABLE IF NOT EXISTS todos (
-          todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          workspaceid UUID NOT NULL,
-          userid VARCHAR(255) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          description TEXT,
-          completed BOOLEAN NOT NULL DEFAULT false,
-          priority VARCHAR(20) NOT NULL DEFAULT 'medium',
-          duedate TIMESTAMP WITH TIME ZONE,
-          createdat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-          updatedat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-        );
-      `;
-      
-      await db`
-        CREATE INDEX IF NOT EXISTS todos_workspace_idx ON todos(workspaceid);
-      `;
-      await db`
-        CREATE INDEX IF NOT EXISTS todos_user_idx ON todos(userid);
-      `;
-      
-      console.log('Todos table created successfully with correct schema');
 
       // Now fetch todos
       const todos = await db`
@@ -156,7 +142,8 @@ export async function POST(request: NextRequest) {
     console.log('Request body:', body);
     
     const workspaceid = 'fa9fb036-a7eb-49af-890c-54406dad139d';
-    const userid = body.userid || 'current-receptionist-user';
+    // Use a proper UUID for the current receptionist user
+    const userid = body.userid || '00000000-0000-0000-0000-000000000001';
 
     const { title, description, priority, duedate } = body;
 
@@ -171,7 +158,7 @@ export async function POST(request: NextRequest) {
       const db = await getDbConnection();
       console.log('Database connection successful for POST');
       
-      // Check if table exists and has correct schema
+      // Ensure table exists before inserting
       const tableCheck = await db`
         SELECT EXISTS (
           SELECT FROM information_schema.tables 
@@ -180,47 +167,30 @@ export async function POST(request: NextRequest) {
         );
       `;
       
-      if (tableCheck[0].exists) {
-        // Check if userid column is UUID type (wrong type)
-        const columnCheck = await db`
-          SELECT data_type 
-          FROM information_schema.columns 
-          WHERE table_name = 'todos' 
-          AND column_name = 'userid';
+      if (!tableCheck[0].exists) {
+        console.log('Creating todos table before insert...');
+        await db`
+          CREATE TABLE IF NOT EXISTS todos (
+            todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            workspaceid UUID NOT NULL,
+            userid UUID NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            completed BOOLEAN NOT NULL DEFAULT false,
+            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+            duedate TIMESTAMP WITH TIME ZONE,
+            createdat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updatedat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+          );
         `;
         
-        if (columnCheck.length > 0 && columnCheck[0].data_type === 'uuid') {
-          console.log('Dropping old todos table with UUID userid...');
-          await db`DROP TABLE IF EXISTS todos CASCADE;`;
-          console.log('Old table dropped');
-        }
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_workspace_idx ON todos(workspaceid);
+        `;
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_user_idx ON todos(userid);
+        `;
       }
-      
-      // Create table with correct schema
-      console.log('Creating todos table with VARCHAR userid...');
-      await db`
-        CREATE TABLE IF NOT EXISTS todos (
-          todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          workspaceid UUID NOT NULL,
-          userid VARCHAR(255) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          description TEXT,
-          completed BOOLEAN NOT NULL DEFAULT false,
-          priority VARCHAR(20) NOT NULL DEFAULT 'medium',
-          duedate TIMESTAMP WITH TIME ZONE,
-          createdat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-          updatedat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-        );
-      `;
-      
-      await db`
-        CREATE INDEX IF NOT EXISTS todos_workspace_idx ON todos(workspaceid);
-      `;
-      await db`
-        CREATE INDEX IF NOT EXISTS todos_user_idx ON todos(userid);
-      `;
-      
-      console.log('Todos table ready with correct schema');
 
       const result = await db`
         INSERT INTO todos (

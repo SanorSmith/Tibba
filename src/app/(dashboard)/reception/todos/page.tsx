@@ -60,8 +60,8 @@ export default function TodosPage() {
   const loadTodos = async () => {
     try {
       setLoading(true);
-      // For now, use a mock user ID. In production, this should come from authentication/session
-      const userid = 'current-receptionist-user';
+      // Use a proper UUID for the current receptionist user
+      const userid = '00000000-0000-0000-0000-000000000001';
       const response = await fetch(`/api/todos?userid=${userid}`);
       if (response.ok) {
         const data = await response.json();
@@ -99,8 +99,8 @@ export default function TodosPage() {
     if (!formData.title.trim()) return;
 
     try {
-      // For now, use a mock user ID. In production, this should come from authentication/session
-      const userid = 'current-receptionist-user';
+      // Use a proper UUID for the current receptionist user
+      const userid = '00000000-0000-0000-0000-000000000001';
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,8 +124,8 @@ export default function TodosPage() {
     if (!selectedTodo || !formData.title.trim()) return;
 
     try {
-      // For now, use a mock user ID. In production, this should come from authentication/session
-      const userid = 'current-receptionist-user';
+      // Use a proper UUID for the current receptionist user
+      const userid = '00000000-0000-0000-0000-000000000001';
       const response = await fetch('/api/todos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -167,8 +167,8 @@ export default function TodosPage() {
     const newCompleted = !todo.completed;
     
     try {
-      // For now, use a mock user ID. In production, this should come from authentication/session
-      const userid = 'current-receptionist-user';
+      // Use a proper UUID for the current receptionist user
+      const userid = '00000000-0000-0000-0000-000000000001';
       const response = await fetch('/api/todos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
