@@ -36,8 +36,8 @@ export default function StaffInfoPage() {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Get unique occupations and departments
-  const occupations = Array.from(new Set(staff.map(s => s.occupation).filter(Boolean)));
+  // Get unique specialties and departments
+  const occupations = Array.from(new Set(staff.map(s => s.specialty).filter(Boolean)));
   const departments = Array.from(new Set(staff.map(s => s.unit).filter(Boolean)));
 
   useEffect(() => {
@@ -76,14 +76,14 @@ export default function StaffInfoPage() {
         s.name?.toLowerCase().includes(search) ||
         s.email?.toLowerCase().includes(search) ||
         s.phone?.toLowerCase().includes(search) ||
-        s.occupation?.toLowerCase().includes(search) ||
+        s.specialty?.toLowerCase().includes(search) ||
         s.unit?.toLowerCase().includes(search)
       );
     }
 
-    // Occupation filter
+    // Specialty filter
     if (occupationFilter !== 'all') {
-      filtered = filtered.filter(s => s.occupation === occupationFilter);
+      filtered = filtered.filter(s => s.specialty === occupationFilter);
     }
 
     // Department filter
@@ -172,17 +172,17 @@ export default function StaffInfoPage() {
         {/* Filter Options */}
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Occupation Filter */}
+            {/* Specialty Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Occupation
+                Specialty
               </label>
               <select
                 value={occupationFilter}
                 onChange={(e) => setOccupationFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="all">All Occupations</option>
+                <option value="all">All Specialties</option>
                 {occupations.map(occ => (
                   <option key={occ} value={occ}>{occ}</option>
                 ))}

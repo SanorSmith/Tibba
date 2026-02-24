@@ -5,6 +5,12 @@ export const dynamic = 'force-dynamic';
 
 const databaseUrl = process.env.TIBBNA_DATABASE_URL || process.env.DATABASE_URL || "postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 
+// EHRbase connection details
+const EHRBASE_URL = process.env.EHRBASE_URL || 'https://base.tibbna.com';
+const EHRBASE_USER = process.env.EHRBASE_USER || 'auto-speed-ranting';
+const EHRBASE_PASSWORD = process.env.EHRBASE_PASSWORD || 'KivLWsQgN4f8aiHAvwuq';
+const EHRBASE_API_KEY = process.env.EHRBASE_API_KEY || 'BgMxGMZk5isfCWezE5CF';
+
 // Singleton connection for serverless
 let postgres: any;
 let sql: any;
@@ -25,23 +31,62 @@ async function getDbConnection() {
   return sql;
 }
 
+async function fetchEHRbaseStaff() {
+  try {
+    console.log('Fetching staff from EHRbase...');
+    
+    // Fetch staff from EHRbase REST API
+    const response = await fetch(`${EHRBASE_URL}/rest/v1/staff`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${EHRBASE_USER}:${EHRBASE_PASSWORD}`).toString('base64')}`,
+        'X-API-Key': EHRBASE_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('EHRbase API error:', response.status, response.statusText);
+      return [];
+    }
+
+    const ehrbaseStaff = await response.json();
+    console.log(`Found ${ehrbaseStaff.length} staff members from EHRbase`);
+    
+    return ehrbaseStaff.map((staff: any) => ({
+      staffid: staff.staff_id || staff.id,
+      name: staff.name || `${staff.first_name} ${staff.last_name}`,
+      occupation: staff.role || staff.occupation,
+      unit: staff.department || staff.unit,
+      specialty: staff.specialty,
+      phone: staff.phone,
+      email: staff.email,
+      userid: staff.user_id,
+      source: 'ehrbase'
+    }));
+  } catch (error) {
+    console.error('Error fetching EHRbase staff:', error);
+    return [];
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const db = await getDbConnection();
     const searchParams = request.nextUrl.searchParams;
     const searchTerm = searchParams.get('q') || '';
-    const occupation = searchParams.get('occupation');
+    const specialty = searchParams.get('occupation'); // Still using 'occupation' param for compatibility
     const department = searchParams.get('department');
 
     console.log('Fetching staff from database...');
     console.log('Search term:', searchTerm);
-    console.log('Occupation filter:', occupation);
+    console.log('Specialty filter:', specialty);
     console.log('Department filter:', department);
 
     // Build the query with filters
     let staff;
     
-    if (searchTerm || occupation || department) {
+    if (searchTerm || specialty || department) {
       // Build WHERE conditions
       const conditions = [];
       
@@ -53,8 +98,8 @@ export async function GET(request: NextRequest) {
         )`);
       }
       
-      if (occupation && occupation !== 'all') {
-        conditions.push(`s.occupation = '${occupation}'`);
+      if (specialty && specialty !== 'all') {
+        conditions.push(`s.specialty = '${specialty}'`);
       }
       
       if (department && department !== 'all') {
@@ -102,11 +147,26 @@ export async function GET(request: NextRequest) {
       `;
     }
 
-    console.log(`Found ${staff.length} staff members`);
+    console.log(`Found ${staff.length} staff members from local database`);
+
+    // Also fetch from EHRbase
+    const ehrbaseStaff = await fetchEHRbaseStaff();
+    
+    // Combine staff from both sources
+    const allStaff = [...staff, ...ehrbaseStaff];
+    
+    // Remove duplicates based on staffid or email
+    const uniqueStaff = allStaff.filter((staff, index, self) => 
+      index === self.findIndex((s) => 
+        s.staffid === staff.staffid || s.email === staff.email
+      )
+    );
+
+    console.log(`Total unique staff members: ${uniqueStaff.length}`);
 
     return NextResponse.json({ 
-      staff,
-      count: staff.length 
+      staff: uniqueStaff,
+      count: uniqueStaff.length 
     });
 
   } catch (error) {
