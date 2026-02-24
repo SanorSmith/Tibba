@@ -465,26 +465,7 @@ export default function PatientsPage() {
         </div>
       )}
 
-      {/* Patient List Content - Only show when no modal is active */}
-      {modal === null && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manage Patients</h1>
-            <p className="text-gray-500 text-sm">{patients.length} registered patients</p>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">🏥 Tibbna Non-Medical DB</span>
-              <span className="text-xs text-gray-400">Connected to Non-Medical database</span>
-            </div>
-          </div>
-          <button 
-            onClick={openCreate}
-            className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit"
-          >
-            <Plus size={16} /> Add Patient
-          </button>
-        </div>
-      )}
-
+      
       {/* View Modal */}
       {modal === 'view' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" >
