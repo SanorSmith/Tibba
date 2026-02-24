@@ -60,7 +60,9 @@ export default function TodosPage() {
   const loadTodos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/todos');
+      // For now, use a mock user ID. In production, this should come from authentication/session
+      const userid = 'current-receptionist-user';
+      const response = await fetch(`/api/todos?userid=${userid}`);
       if (response.ok) {
         const data = await response.json();
         setTodos(data.todos || []);
@@ -97,10 +99,15 @@ export default function TodosPage() {
     if (!formData.title.trim()) return;
 
     try {
+      // For now, use a mock user ID. In production, this should come from authentication/session
+      const userid = 'current-receptionist-user';
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          userid
+        })
       });
 
       if (response.ok) {
@@ -117,11 +124,14 @@ export default function TodosPage() {
     if (!selectedTodo || !formData.title.trim()) return;
 
     try {
+      // For now, use a mock user ID. In production, this should come from authentication/session
+      const userid = 'current-receptionist-user';
       const response = await fetch('/api/todos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           todoid: selectedTodo.todoid,
+          userid,
           ...formData
         })
       });
@@ -157,11 +167,14 @@ export default function TodosPage() {
     const newCompleted = !todo.completed;
     
     try {
+      // For now, use a mock user ID. In production, this should come from authentication/session
+      const userid = 'current-receptionist-user';
       const response = await fetch('/api/todos', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           todoid: todo.todoid,
+          userid,
           title: todo.title,
           description: todo.description,
           completed: newCompleted,

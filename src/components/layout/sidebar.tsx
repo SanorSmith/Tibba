@@ -53,6 +53,7 @@ const moduleLinks = [
       { href: '/reception/returns', icon: RotateCcw, label: 'Returns' },
       { href: '/reception/staff', icon: UsersRound, label: 'Staff Info' },
       { href: '/reception/todos', icon: FileText, label: 'Todo List' },
+      { href: 'https://app.tibbna.com', icon: Bell, label: 'Tibbna App', external: true },
     ],
   },
   {

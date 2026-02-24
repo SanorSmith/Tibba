@@ -32,8 +32,11 @@ export async function GET(request: NextRequest) {
     const db = await getDbConnection();
     const searchParams = request.nextUrl.searchParams;
     const workspaceid = searchParams.get('workspaceid') || 'fa9fb036-a7eb-49af-890c-54406dad139d';
+    
+    // For now, use a mock user ID. In production, this should come from authentication/session
+    const userid = searchParams.get('userid') || 'current-receptionist-user';
 
-    console.log('Fetching todos from database for workspace:', workspaceid);
+    console.log('Fetching todos from database for workspace:', workspaceid, 'user:', userid);
 
     const todos = await db`
       SELECT 
@@ -48,11 +51,11 @@ export async function GET(request: NextRequest) {
         createdat,
         updatedat
       FROM todos
-      WHERE workspaceid = ${workspaceid}
+      WHERE workspaceid = ${workspaceid} AND userid = ${userid}
       ORDER BY createdat DESC
     `;
 
-    console.log(`Found ${todos.length} todos`);
+    console.log(`Found ${todos.length} todos for user ${userid}`);
 
     return NextResponse.json({ 
       todos,
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
     const db = await getDbConnection();
     const body = await request.json();
     const workspaceid = 'fa9fb036-a7eb-49af-890c-54406dad139d';
-    const userid = body.userid || 'current-user'; // This should come from session
+    const userid = body.userid || 'current-receptionist-user'; // This should come from session
 
     const { title, description, priority, duedate } = body;
 
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `;
 
-    console.log('Created new todo:', result[0].todoid);
+    console.log('Created new todo:', result[0].todoid, 'for user:', userid);
 
     return NextResponse.json(result[0]);
 
