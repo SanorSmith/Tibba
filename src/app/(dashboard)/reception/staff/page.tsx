@@ -35,6 +35,8 @@ export default function StaffInfoPage() {
   const [occupationFilter, setOccupationFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [showStaffModal, setShowStaffModal] = useState(false);
 
   // Get unique specialties and departments
   const occupations = Array.from(new Set(staff.map(s => s.specialty).filter(Boolean)));
@@ -115,6 +117,16 @@ export default function StaffInfoPage() {
   };
 
   const hasActiveFilters = searchTerm || occupationFilter !== 'all' || departmentFilter !== 'all';
+
+  const handleStaffClick = (staffMember: Staff) => {
+    setSelectedStaff(staffMember);
+    setShowStaffModal(true);
+  };
+
+  const closeStaffModal = () => {
+    setShowStaffModal(false);
+    setSelectedStaff(null);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -266,7 +278,11 @@ export default function StaffInfoPage() {
               </thead>
               <tbody>
                 {filteredStaff.map((member, index) => (
-                  <tr key={member.staffid} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={member.staffid} 
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => handleStaffClick(member)}
+                  >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -334,6 +350,174 @@ export default function StaffInfoPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Details Modal */}
+      {showStaffModal && selectedStaff && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/30">
+                    <User className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">{selectedStaff.name}</h2>
+                    <p className="text-blue-100">
+                      {selectedStaff.occupation || 'Staff Member'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeStaffModal}
+                  className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Staff ID</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg font-mono text-sm">
+                      {selectedStaff.staffid}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg font-mono text-sm">
+                      {selectedStaff.userid || 'Not assigned'}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Account Status</label>
+                    <div className="flex items-center gap-2">
+                      {selectedStaff.userid ? (
+                        <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700">
+                          <UserCheck className="w-4 h-4 mr-1" />
+                          Has User Account
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-600">
+                          <User className="w-4 h-4 mr-1" />
+                          No User Account
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Professional Information */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role/Occupation</label>
+                    <div className="bg-purple-50 px-3 py-2 rounded-lg">
+                      <span className="text-purple-700 font-medium capitalize">
+                        {selectedStaff.occupation || 'Not specified'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <div className="bg-green-50 px-3 py-2 rounded-lg">
+                      <span className="text-green-700 font-medium">
+                        {selectedStaff.unit || 'Not assigned'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
+                    <div className="bg-indigo-50 px-3 py-2 rounded-lg">
+                      <span className="text-indigo-700 font-medium">
+                        {selectedStaff.specialty || 'Not specified'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <div className="bg-blue-50 px-3 py-2 rounded-lg">
+                      {selectedStaff.phone ? (
+                        <a
+                          href={`tel:${selectedStaff.phone}`}
+                          className="text-blue-700 hover:text-blue-900 flex items-center gap-2"
+                        >
+                          <Phone className="w-4 h-4" />
+                          {selectedStaff.phone}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">Not provided</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <div className="bg-blue-50 px-3 py-2 rounded-lg">
+                      {selectedStaff.email ? (
+                        <a
+                          href={`mailto:${selectedStaff.email}`}
+                          className="text-blue-700 hover:text-blue-900 flex items-center gap-2 truncate"
+                        >
+                          <Mail className="w-4 h-4" />
+                          {selectedStaff.email}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">Not provided</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">System Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg text-sm">
+                      {selectedStaff.username || 'Not available'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">User Email</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg text-sm">
+                      {selectedStaff.useremail || 'Not available'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="border-t pt-6 flex justify-end gap-3">
+                <button
+                  onClick={closeStaffModal}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
