@@ -45,14 +45,14 @@ import { cn } from '@/lib/utils';
 
 const moduleLinks = [
   {
-    href: '/reception', icon: Bell, label: 'Reception',
+    href: '/reception', icon: Bell, label: 'Reception Desk',
     children: [
-      { href: '/reception/patients', icon: UserCircle, label: 'Patients' },
-      { href: '/reception/invoices', icon: Receipt, label: 'Customer Invoices' },
+      { href: '/reception/patients', icon: UserCircle, label: 'Manage Patients' },
+      { href: '/reception/appointments', icon: Calendar, label: 'Appointments' },
+      { href: '/reception/invoices', icon: Receipt, label: 'Customer Billing' },
       { href: '/reception/returns', icon: RotateCcw, label: 'Returns' },
     ],
   },
-  { href: '/services', icon: Hospital, label: 'Services' },
   {
     href: '/inventory', icon: Package, label: 'Inventory',
     children: [
@@ -62,6 +62,7 @@ const moduleLinks = [
   {
     href: '/finance', icon: DollarSign, label: 'Finance',
     children: [
+      { href: '/services', icon: Hospital, label: 'Services' },
       { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
       { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
       { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
@@ -100,6 +101,7 @@ const existingLinks = [
   { href: '/staff', icon: UsersRound, label: 'Staff/Contacts' },
   { href: '/laboratories', icon: FlaskConical, label: 'Laboratories' },
   { href: '/pharmacies', icon: Pill, label: 'Pharmacies' },
+  { href: '/register', icon: UserPlus, label: 'Register' },
   { 
     href: '/departments', 
     icon: Building2, 
@@ -187,6 +189,27 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                   {link.children!.map((child) => {
                     const ChildIcon = child.icon;
                     const isChildActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                    const isExternal = child.href.startsWith('http');
+                    
+                    if (isExternal) {
+                      return (
+                        <a
+                          key={child.href}
+                          href={child.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            'flex items-center gap-2.5 px-2.5 py-2 rounded transition-colors',
+                            'text-[#151515] hover:bg-[#f5f5f5]'
+                          )}
+                          style={{ fontSize: '13px', lineHeight: '18px' }}
+                        >
+                          <ChildIcon className="w-[15px] h-[15px] flex-shrink-0" />
+                          <span>{child.label}</span>
+                        </a>
+                      );
+                    }
+                    
                     return (
                       <Link
                         key={child.href}

@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Import the raw postgres connection
-const openehrDatabaseUrl = process.env.OPENEHR_DATABASE_URL;
+const nonMedicalDatabaseUrl = process.env.DATABASE_URL;
 
 // Dynamic import of postgres
 let postgres: any;
@@ -13,7 +13,7 @@ let sql: any;
 async function getDbConnection() {
   if (!postgres) {
     postgres = (await import('postgres')).default;
-    sql = postgres(openehrDatabaseUrl!, { 
+    sql = postgres(nonMedicalDatabaseUrl!, { 
       ssl: 'require',
       max: 10,
       idle_timeout: 20,
@@ -25,16 +25,16 @@ async function getDbConnection() {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 OpenEHR DB URL check:', openehrDatabaseUrl ? 'SET' : 'NOT SET');
+    console.log('🔍 Non-Medical DB URL check:', nonMedicalDatabaseUrl ? 'SET' : 'NOT SET');
     
-    if (!openehrDatabaseUrl) {
-      console.error('❌ OPENEHR_DATABASE_URL environment variable is not set');
+    if (!nonMedicalDatabaseUrl) {
+      console.error('❌ NON_MEDICAL_DATABASE_URL environment variable is not set');
       return NextResponse.json(
         { 
-          error: 'OpenEHR database not configured',
-          hint: 'Please set OPENEHR_DATABASE_URL environment variable in Vercel',
+          error: 'Non-Medical database not configured',
+          hint: 'Please set NON_MEDICAL_DATABASE_URL environment variable in Vercel',
           envCheck: {
-            OPENEHR_DATABASE_URL: 'NOT SET'
+            NON_MEDICAL_DATABASE_URL: 'NOT SET'
           }
         },
         { status: 500 }
@@ -45,8 +45,9 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const limit = parseInt(searchParams.get('limit') || '100');
     const id = searchParams.get('id');
+    const workspaceId = 'fa9fb036-a7eb-49af-890c-54406dad139d';
 
-    console.log('🔗 Attempting to connect to OpenEHR database...');
+    console.log('🔗 Attempting to connect to Non-Medical database...');
     const db = await getDbConnection();
     console.log('✅ Database connection established');
 
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       console.log(`🔍 Fetching patient by ID: ${id}`);
       const result = await db`
         SELECT * FROM patients 
-        WHERE patientid = ${id}
+        WHERE patientid = ${id} AND workspaceid = ${workspaceId}
       `;
       
       if (result.length === 0) {
@@ -71,15 +72,17 @@ export async function GET(request: NextRequest) {
 
     // Search patients
     let query;
+    
     if (search && search.trim()) {
       console.log(`🔍 Searching patients with term: "${search}"`);
       query = db`
         SELECT * FROM patients 
-        WHERE 
+        WHERE workspaceid = ${workspaceId} AND (
           firstname ILIKE ${'%' + search + '%'} OR 
           lastname ILIKE ${'%' + search + '%'} OR
           phone ILIKE ${'%' + search + '%'} OR
           email ILIKE ${'%' + search + '%'}
+        )
         ORDER BY firstname, lastname
         LIMIT ${limit}
       `;
@@ -87,13 +90,14 @@ export async function GET(request: NextRequest) {
       console.log(`📋 Fetching all patients (limit: ${limit})`);
       query = db`
         SELECT * FROM patients 
+        WHERE workspaceid = ${workspaceId}
         ORDER BY firstname, lastname
         LIMIT ${limit}
       `;
     }
 
     const patients = await query;
-    console.log(`✅ Fetched ${patients.length} patients from Tibbna OpenEHR DB`);
+    console.log(`✅ Fetched ${patients.length} patients from Non-Medical DB`);
     
     return NextResponse.json(patients);
 
@@ -101,7 +105,7 @@ export async function GET(request: NextRequest) {
     console.error('❌ GET patients error:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to fetch patients from Tibbna OpenEHR DB',
+        error: 'Failed to fetch patients from Non-Medical DB',
         details: error.message 
       },
       { status: 500 }
@@ -111,7 +115,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!openehrDatabaseUrl) {
+    if (!nonMedicalDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }
@@ -171,14 +175,14 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `;
 
-    console.log('✅ Patient created in Tibbna OpenEHR DB:', result[0].patientid);
+    console.log('✅ Patient created in Non-Medical DB:', result[0].patientid);
     return NextResponse.json(result[0], { status: 201 });
 
   } catch (error: any) {
     console.error('❌ POST patient error:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to create patient in Tibbna OpenEHR DB',
+        error: 'Failed to create patient in Non-Medical DB',
         details: error.message 
       },
       { status: 500 }
@@ -188,7 +192,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    if (!openehrDatabaseUrl) {
+    if (!nonMedicalDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }
@@ -240,14 +244,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    console.log('✅ Patient updated in Tibbna OpenEHR DB:', patientId);
+    console.log('✅ Patient updated in Non-Medical DB:', patientId);
     return NextResponse.json(result[0]);
 
   } catch (error: any) {
     console.error('❌ PUT patient error:', error);
     return NextResponse.json(
       { 
-        error: 'Failed to update patient in Tibbna OpenEHR DB',
+        error: 'Failed to update patient in Non-Medical DB',
         details: error.message 
       },
       { status: 500 }
@@ -257,7 +261,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    if (!openehrDatabaseUrl) {
+    if (!nonMedicalDatabaseUrl) {
       return NextResponse.json(
         { error: 'Teammate database not configured' },
         { status: 500 }

@@ -3,17 +3,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import invoicesJson from '@/data/finance/invoices.json';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const search = searchParams.get('search');
   const patientId = searchParams.get('patient_id');
-  const fallback = (invoicesJson as any).invoices || [];
 
   if (!supabaseAdmin) {
-    return NextResponse.json(fallback);
+    return NextResponse.json(
+      { error: 'Supabase not configured' },
+      { status: 500 }
+    );
   }
 
   try {
@@ -29,16 +30,22 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error || !data) {
-      console.warn('Supabase invoices error, falling back to JSON:', error?.message);
-      return NextResponse.json(fallback);
+    if (error) {
+      console.error('Supabase invoices error:', error?.message);
+      return NextResponse.json(
+        { error: 'Failed to fetch invoices', details: error.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(data.length > 0 ? data : fallback);
+    return NextResponse.json(data || []);
 
   } catch (err: any) {
-    console.warn('GET invoices exception, falling back to JSON:', err?.message);
-    return NextResponse.json(fallback);
+    console.error('GET invoices exception:', err?.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch invoices', details: err.message },
+      { status: 500 }
+    );
   }
 }
 

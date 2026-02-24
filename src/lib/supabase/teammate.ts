@@ -3,7 +3,7 @@ import postgres from 'postgres';
 import { sql } from 'drizzle-orm';
 
 // Teammate's Drizzle/PostgreSQL connection (server-side only)
-const connectionString = process.env.OPENEHR_DATABASE_URL;
+const connectionString = process.env.DATABASE_URL;
 
 console.log('Teammate DB URL:', connectionString ? 'Set' : 'Not set');
 

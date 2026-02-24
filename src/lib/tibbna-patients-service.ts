@@ -1,4 +1,4 @@
-// Centralized service for accessing Tibbna OpenEHR DB patients across all Finance apps
+// Centralized service for accessing Tibbna Non-Medical DB patients across all Finance apps
 
 export interface TibbnaPatient {
   patient_id: string;
@@ -19,7 +19,7 @@ export interface TibbnaPatient {
   is_active: boolean;
   created_at: string;
   id: string;
-  // OpenEHR specific fields
+  // Non-Medical DB specific fields
   ehrid?: string;
   workspaceid?: string;
   medicalhistory?: any;
@@ -50,7 +50,7 @@ class TibbnaPatientService {
     try {
       const response = await fetch('/api/tibbna-openehr-patients');
       if (!response.ok) {
-        throw new Error('Failed to fetch patients from Tibbna OpenEHR DB');
+        throw new Error('Failed to fetch patients from Tibbna Non-Medical DB');
       }
 
       const result = await response.json();
@@ -81,14 +81,14 @@ class TibbnaPatientService {
         ehrid: p.ehrid,
         workspaceid: p.workspaceid,
         medicalhistory: p.medicalhistory,
-        source: 'Tibbna OpenEHR DB'
+        source: 'Tibbna Non-Medical DB'
       }));
       
       this.cache = mappedPatients;
       this.cacheTime = now;
       return mappedPatients;
     } catch (error) {
-      console.error('Tibbna OpenEHR DB fetch error:', error);
+      console.error('Tibbna Non-Medical DB fetch error:', error);
       // Return cached data if available, even if expired
       if (this.cache) {
         return this.cache;
@@ -227,10 +227,10 @@ class TibbnaPatientService {
       is_active: patient.is_active,
       created_at: patient.created_at,
       id: patient.id,
-      // OpenEHR metadata
+      // Non-Medical DB metadata
       ehrid: patient.ehrid,
       workspaceid: patient.workspaceid,
-      source: 'Tibbna OpenEHR DB'
+      source: 'Tibbna Non-Medical DB'
     };
   }
 }

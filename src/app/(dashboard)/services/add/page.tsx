@@ -15,18 +15,10 @@ export default function AddServicePage() {
     category: 'Consultation',
     specialty: '',
     duration: '',
-    cptCode: '',
-    icd10Code: '',
     description: '',
     insurancePrice: '',
     selfPayPrice: '',
     governmentPrice: '',
-    equipmentNeeded: '',
-    suppliesNeeded: '',
-    doctorRequired: '1',
-    nurseRequired: '0',
-    technicianRequired: '0',
-    requiresAppointment: true,
     provider_id: '',
     provider_name: '',
     service_fee: '',
@@ -146,7 +138,7 @@ export default function AddServicePage() {
 
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description *
+                Customer Billing *
               </label>
               <textarea
                 id="description"
@@ -155,199 +147,9 @@ export default function AddServicePage() {
                 onChange={handleChange}
                 rows={3}
                 className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Describe the service..."
+                placeholder="Enter customer billing information..."
                 required
               />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Medical Codes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Medical Codes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="cptCode" className="block text-sm font-medium text-gray-700 mb-1">
-                  CPT Code *
-                </label>
-                <Input
-                  id="cptCode"
-                  name="cptCode"
-                  value={formData.cptCode}
-                  onChange={handleChange}
-                  placeholder="99213"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="icd10Code" className="block text-sm font-medium text-gray-700 mb-1">
-                  ICD-10 Code *
-                </label>
-                <Input
-                  id="icd10Code"
-                  name="icd10Code"
-                  value={formData.icd10Code}
-                  onChange={handleChange}
-                  placeholder="Z00.00"
-                  required
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pricing */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Pricing</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="insurancePrice" className="block text-sm font-medium text-gray-700 mb-1">
-                  Insurance Price ($) *
-                </label>
-                <Input
-                  id="insurancePrice"
-                  name="insurancePrice"
-                  type="number"
-                  value={formData.insurancePrice}
-                  onChange={handleChange}
-                  placeholder="150"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="selfPayPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                  Self-Pay Price ($) *
-                </label>
-                <Input
-                  id="selfPayPrice"
-                  name="selfPayPrice"
-                  type="number"
-                  value={formData.selfPayPrice}
-                  onChange={handleChange}
-                  placeholder="200"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="governmentPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                  Government Price ($) *
-                </label>
-                <Input
-                  id="governmentPrice"
-                  name="governmentPrice"
-                  type="number"
-                  value={formData.governmentPrice}
-                  onChange={handleChange}
-                  placeholder="100"
-                  required
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Resources Required */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Resources Required</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="equipmentNeeded" className="block text-sm font-medium text-gray-700 mb-1">
-                  Equipment Needed
-                </label>
-                <Input
-                  id="equipmentNeeded"
-                  name="equipmentNeeded"
-                  value={formData.equipmentNeeded}
-                  onChange={handleChange}
-                  placeholder="Comma-separated list"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="suppliesNeeded" className="block text-sm font-medium text-gray-700 mb-1">
-                  Supplies Needed
-                </label>
-                <Input
-                  id="suppliesNeeded"
-                  name="suppliesNeeded"
-                  value={formData.suppliesNeeded}
-                  onChange={handleChange}
-                  placeholder="Comma-separated list"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="doctorRequired" className="block text-sm font-medium text-gray-700 mb-1">
-                  Doctors Required *
-                </label>
-                <Input
-                  id="doctorRequired"
-                  name="doctorRequired"
-                  type="number"
-                  min="0"
-                  value={formData.doctorRequired}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="nurseRequired" className="block text-sm font-medium text-gray-700 mb-1">
-                  Nurses Required *
-                </label>
-                <Input
-                  id="nurseRequired"
-                  name="nurseRequired"
-                  type="number"
-                  min="0"
-                  value={formData.nurseRequired}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="technicianRequired" className="block text-sm font-medium text-gray-700 mb-1">
-                  Technicians Required *
-                </label>
-                <Input
-                  id="technicianRequired"
-                  name="technicianRequired"
-                  type="number"
-                  min="0"
-                  value={formData.technicianRequired}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <input
-                id="requiresAppointment"
-                name="requiresAppointment"
-                type="checkbox"
-                checked={formData.requiresAppointment}
-                onChange={handleChange}
-                className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <label htmlFor="requiresAppointment" className="ml-2 block text-sm text-gray-700">
-                Requires Appointment
-              </label>
             </div>
           </CardContent>
         </Card>
@@ -406,6 +208,61 @@ export default function AddServicePage() {
                   value={formData.service_fee}
                   onChange={handleChange}
                   placeholder="e.g., 80"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pricing */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Pricing</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="insurancePrice" className="block text-sm font-medium text-gray-700 mb-1">
+                  Insurance Price ($) *
+                </label>
+                <Input
+                  id="insurancePrice"
+                  name="insurancePrice"
+                  type="number"
+                  value={formData.insurancePrice}
+                  onChange={handleChange}
+                  placeholder="150"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="selfPayPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                  Self-Pay Price ($) *
+                </label>
+                <Input
+                  id="selfPayPrice"
+                  name="selfPayPrice"
+                  type="number"
+                  value={formData.selfPayPrice}
+                  onChange={handleChange}
+                  placeholder="200"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="governmentPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                  Government Price ($) *
+                </label>
+                <Input
+                  id="governmentPrice"
+                  name="governmentPrice"
+                  type="number"
+                  value={formData.governmentPrice}
+                  onChange={handleChange}
+                  placeholder="100"
+                  required
                 />
               </div>
             </div>

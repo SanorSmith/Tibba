@@ -72,7 +72,7 @@ export class SafeTeammateDB {
     const allowedTables = [
       'users', 'workspaces', 'patients', 'appointments', 
       'staff', 'departments', 'lab', 'pharmacy', 'operations', 'todo',
-      // OpenEHR tables (read-only access)
+      // Non-Medical DB tables (read-only access)
       'ehr', 'composition', 'archetype', 'folder', 'party_identified',
       'participation', 'audit_details', 'object_version_id', 'versioned_object',
       'contribution', 'demographic', 'party', 'actor_role', 'relationship'
@@ -82,18 +82,18 @@ export class SafeTeammateDB {
       throw new Error(`❌ Table "${table}" is not in the allowed list`);
     }
     
-    // Protect OpenEHR system tables
-    const openEHRSystemTables = [
+    // Protect Non-Medical DB system tables
+    const nonMedicalSystemTables = [
       'ehr', 'composition', 'archetype', 'folder', 'party_identified',
       'participation', 'audit_details', 'object_version_id', 'versioned_object',
       'contribution', 'demographic', 'party', 'actor_role', 'relationship'
     ];
     
-    if (openEHRSystemTables.includes(table)) {
-      // Allow only SELECT operations on OpenEHR system tables
+    if (nonMedicalSystemTables.includes(table)) {
+      // Allow only SELECT operations on Non-Medical DB system tables
       const caller = new Error().stack;
       if (caller && !caller.includes('select') && !caller.includes('readRecords')) {
-        throw new Error(`🚨 OpenEHR system table "${table}" is READ-ONLY. Only SELECT operations allowed.`);
+        throw new Error(`🚨 Non-Medical DB system table "${table}" is READ-ONLY. Only SELECT operations allowed.`);
       }
     }
   }

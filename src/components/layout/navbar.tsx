@@ -11,7 +11,7 @@ export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
   return (
     <header className="flex h-16 shrink-0 items-center bg-[#618FF5] justify-between mt-8 gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex items-center flex-1 min-w-0">
-        <h1 className="text-xl text-white font-bold whitespace-nowrap mr-8">Tibbna-EHR</h1>
+        <h1 className="text-xl text-white font-bold whitespace-nowrap mr-8">Tibbna-ERP</h1>
         <div className="flex-1 max-w-xl ml-16">
           <div className="relative w-full max-w-md">
             <div className="relative">

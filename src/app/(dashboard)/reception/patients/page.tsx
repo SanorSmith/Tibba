@@ -25,10 +25,26 @@ export default function PatientsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => { loadPatients(); setMounted(true); }, []);
-  
+
+  useEffect(() => {
+    const mainWrapper = document.querySelector('.main-wrapper') as HTMLElement;
+    if (mainWrapper) {
+      if (modal === 'create' || modal === 'edit') {
+        mainWrapper.style.padding = '16px';
+      } else {
+        mainWrapper.style.padding = '';
+      }
+    }
+    return () => {
+      if (mainWrapper) {
+        mainWrapper.style.padding = '';
+      }
+    };
+  }, [modal]);
+
   const loadPatients = async () => {
     try {
-      // Fetch from Tibbna OpenEHR DB
+      // Fetch from Tibbna Non-Medical DB
       const res = await fetch('/api/tibbna-openehr-patients');
       if (res.ok) {
         const response = await res.json();
@@ -59,11 +75,11 @@ export default function PatientsPage() {
         }));
         
         setPatients(mappedPatients);
-        toast.success(`Loaded ${mappedPatients.length} patients from Tibbna OpenEHR DB`);
+        toast.success(`Loaded ${mappedPatients.length} patients from Tibbna Non-Medical DB`);
       }
     } catch (error) {
-      console.error('Failed to load patients from Tibbna OpenEHR DB:', error);
-      toast.error('Failed to load patients from Tibbna OpenEHR DB');
+      console.error('Failed to load patients from Tibbna Non-Medical DB:', error);
+      toast.error('Failed to load patients from Tibbna Non-Medical DB');
     }
   };
 
@@ -112,12 +128,12 @@ export default function PatientsPage() {
         });
         
         if (res.ok) {
-          toast.success('Patient added to Tibbna OpenEHR DB');
+          toast.success('Patient added to Tibbna Non-Medical DB');
           loadPatients();
           setModal(null);
         } else {
           const error = await res.json();
-          toast.error(error.error || 'Failed to add patient to Tibbna OpenEHR DB');
+          toast.error(error.error || 'Failed to add patient to Tibbna Non-Medical DB');
         }
       } else {
         const res = await fetch('/api/tibbna-openehr-patients', {
@@ -127,12 +143,12 @@ export default function PatientsPage() {
         });
         
         if (res.ok) {
-          toast.success('Patient updated in Tibbna OpenEHR DB');
+          toast.success('Patient updated in Tibbna Non-Medical DB');
           loadPatients();
           setModal(null);
         } else {
           const error = await res.json();
-          toast.error(error.error || 'Failed to update patient in Tibbna OpenEHR DB');
+          toast.error(error.error || 'Failed to update patient in Tibbna Non-Medical DB');
         }
       }
     } catch (error) {
@@ -153,11 +169,11 @@ export default function PatientsPage() {
       });
       
       if (res.ok) {
-        toast.success('Patient deleted from Tibbna OpenEHR DB');
+        toast.success('Patient deleted from Tibbna Non-Medical DB');
         loadPatients();
         setDeleteId(null);
       } else {
-        toast.error('Failed to delete patient from Tibbna OpenEHR DB');
+        toast.error('Failed to delete patient from Tibbna Non-Medical DB');
       }
     } catch (error) {
       console.error('Delete error:', error);
@@ -168,235 +184,304 @@ export default function PatientsPage() {
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Patient Management</h1>
-          <p className="text-gray-500 text-sm">{patients.length} registered patients</p>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-              🏥 Tibbna OpenEHR DB
-            </span>
-            <span className="text-xs text-gray-400">Connected to OpenEHR-compliant database</span>
+    <div className={modal === null ? "p-4 lg:p-6 space-y-6" : "space-y-6"}>
+      {modal === null && (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Manage Patients</h1>
+              <p className="text-gray-500 text-sm">{patients.length} registered patients</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                  🏥 Tibbna Non-Medical DB
+                </span>
+                <span className="text-xs text-gray-400">Connected to Non-Medical database</span>
+              </div>
+            </div>
+            <button onClick={openCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit">
+              <Plus size={16} /> Add Patient
+            </button>
           </div>
-        </div>
-        <button onClick={openCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit">
-          <Plus size={16} /> Add Patient
-        </button>
-      </div>
 
-      <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input type="text" placeholder="Search patients..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm" />
-      </div>
+          <div className="relative max-w-md">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              placeholder="Search patients..."
+              className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg border overflow-hidden">
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Patient #</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Name (AR)</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Name (EN)</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Governorate</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Balance (IQD)</th>
-                <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Patient #</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Name (AR)</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Name (EN)</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-600">Governorate</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-600">Balance (IQD)</th>
+                    <th className="text-center px-4 py-3 font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filtered.map(p => (
+                    <tr key={p.patient_id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs">{p.patient_number}</td>
+                      <td className="px-4 py-3 font-medium">{p.full_name_ar}</td>
+                      <td className="px-4 py-3 text-gray-600">{p.full_name_en}</td>
+                      <td className="px-4 py-3">{p.phone}</td>
+                      <td className="px-4 py-3">{p.governorate}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-900">{p.total_balance.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => openView(p)} className="p-1.5 hover:bg-gray-100 rounded">
+                            <Eye size={14} />
+                          </button>
+                          <button onClick={() => openEdit(p)} className="p-1.5 hover:bg-gray-100 rounded">
+                            <Edit size={14} />
+                          </button>
+                          <button onClick={() => { setDeleteId(p.patient_id); }} className="p-1.5 hover:bg-red-50 rounded text-red-500">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="md:hidden divide-y">
               {filtered.map(p => (
-                <tr key={p.patient_id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{p.patient_number}</td>
-                  <td className="px-4 py-3 font-medium">{p.full_name_ar}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.full_name_en || '-'}</td>
-                  <td className="px-4 py-3">{p.phone}</td>
-                  <td className="px-4 py-3">{p.governorate || '-'}</td>
-                  <td className="px-4 py-3 text-right font-medium text-gray-900">{p.total_balance > 0 ? fmt(p.total_balance) : '0'}</td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => openView(p)} className="p-1.5 hover:bg-gray-100 rounded"><Eye size={14} /></button>
-                      <button onClick={() => openEdit(p)} className="p-1.5 hover:bg-gray-100 rounded"><Edit size={14} /></button>
-                      <button onClick={() => setDeleteId(p.patient_id)} className="p-1.5 hover:bg-red-50 rounded text-red-500"><Trash2 size={14} /></button>
+                <div key={p.patient_id} className="p-4 cursor-pointer hover:bg-gray-50">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium">{p.full_name_ar}</div>
+                      <div className="text-xs text-gray-500">{p.patient_number}</div>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                  <div className="flex gap-3 mt-1 text-xs text-gray-500">
+                    {p.phone && <span className="flex items-center gap-1"><Phone size={10} />{p.phone}</span>}
+                    {p.governorate && <span className="flex items-center gap-1"><MapPin size={10} />{p.governorate}</span>}
+                  </div>
+                </div>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No patients found</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        {/* Mobile */}
-        <div className="md:hidden divide-y">
-          {filtered.map(p => (
-            <div key={p.patient_id} className="p-4 cursor-pointer hover:bg-gray-50" onClick={() => openView(p)}>
-              <div className="flex justify-between items-start">
-                <div><div className="font-medium">{p.full_name_ar}</div><div className="text-xs text-gray-500">{p.patient_number}</div></div>
-                {p.total_balance > 0 && <span className="text-xs font-bold text-gray-900">{fmt(p.total_balance)} IQD</span>}
-              </div>
-              <div className="flex gap-3 mt-1 text-xs text-gray-500">
-                <span className="flex items-center gap-1"><Phone size={10} />{p.phone}</span>
-                {p.governorate && <span className="flex items-center gap-1"><MapPin size={10} />{p.governorate}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Create/Edit Modal */}
-      {(modal === 'create' || modal === 'edit') && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-start pt-[63px] pl-[320px]" >
-          <div className="bg-white rounded-xl max-w-[calc(100vw-410px)] w-full overflow-visible" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
-              <button onClick={() => setModal(null)} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
-            </div>
-            <div className="p-6 space-y-6">
-              {/* Basic Information */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">First name</label>
-                    <input 
-                      value={current.first_name_en || ''} 
-                      onChange={e => setCurrent({...current, first_name_en: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="John"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Middle name</label>
-                    <input 
-                      value={current.middle_name || ''} 
-                      onChange={e => setCurrent({...current, middle_name: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="A"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Last name</label>
-                    <input 
-                      value={current.last_name_en || ''} 
-                      onChange={e => setCurrent({...current, last_name_en: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="Doe"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Personal Details */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Personal Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">National ID</label>
-                    <input 
-                      value={current.national_id || ''} 
-                      onChange={e => setCurrent({...current, national_id: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="ID number"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Date of Birth *</label>
-                    <input 
-                      type="date" 
-                      value={current.date_of_birth} 
-                      onChange={e => setCurrent({...current, date_of_birth: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Gender *</label>
-                    <select 
-                      value={current.gender} 
-                      onChange={e => setCurrent({...current, gender: e.target.value as 'MALE'|'FEMALE'})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select gender</option>
-                      <option value="MALE">Male</option>
-                      <option value="FEMALE">Female</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Blood Group</label>
-                    <select 
-                      value={current.blood_group || ''} 
-                      onChange={e => setCurrent({...current, blood_group: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select blood group</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Contact Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Telephone *</label>
-                    <input 
-                      value={current.phone} 
-                      onChange={e => setCurrent({...current, phone: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="+1 555-555"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Email</label>
-                    <input 
-                      type="email" 
-                      value={current.email || ''} 
-                      onChange={e => setCurrent({...current, email: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="name@example.com"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-xs text-gray-500 block mb-1">Address</label>
-                    <input 
-                      value={current.governorate || ''} 
-                      onChange={e => setCurrent({...current, governorate: e.target.value})} 
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder="123 Main St"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Medical History */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Medical History</h3>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Medical history</label>
-                  <textarea 
-                    value={current.medical_history || ''} 
-                    onChange={e => setCurrent({...current, medical_history: e.target.value})} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                    rows={3}
-                    placeholder="Notes, conditions, allergies..."
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t flex gap-2 justify-end">
-              <button onClick={() => setModal(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleSave} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-500">Save</button>
             </div>
           </div>
+        </>
+      )}
+
+      {/* Create/Edit Form */}
+      {(modal === 'create' || 'edit') && (
+        <div className="bg-white rounded-xl h-[calc(100vh-80px)]" style={{width: 'calc(100% + 400px)', maxWidth: 'none', marginLeft: '-200px', marginRight: '-200px'}} onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b flex items-center justify-between">
+            <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
+            <button onClick={() => setModal(null)} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="bg-muted/50 rounded-xl p-3">
+              <form className="space-y-4">
+                {/* Personal Information Section */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Personal Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        First name <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        value={current.first_name_en || ''} 
+                        onChange={e => setCurrent({...current, first_name_en: e.target.value})} 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="John"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">Middle name</label>
+                      <input 
+                        value={current.middle_name || ''} 
+                        onChange={e => setCurrent({...current, middle_name: e.target.value})} 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="A."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        Last name <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        value={current.last_name_en || ''} 
+                        onChange={e => setCurrent({...current, last_name_en: e.target.value})} 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="Doe"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        National ID <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        value={current.national_id || ''} 
+                        onChange={e => setCurrent({...current, national_id: e.target.value})} 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="ID number"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Demographics Section */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Demographics</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        Date of Birth <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        type="date" 
+                        value={current.date_of_birth} 
+                        onChange={e => setCurrent({...current, date_of_birth: e.target.value})} 
+                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        Gender <span className="text-red-500">*</span>
+                      </label>
+                      <select 
+                        value={current.gender} 
+                        onChange={e => setCurrent({...current, gender: e.target.value as 'MALE'|'FEMALE'})} 
+                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                        required
+                      >
+                        <option value="">Select gender</option>
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                        Telephone <span className="text-red-500">*</span>
+                      </label>
+                      <input 
+                        value={current.phone} 
+                        onChange={e => setCurrent({...current, phone: e.target.value})} 
+                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="+1 555 555"
+                        type="tel"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">Blood Group</label>
+                      <select 
+                        value={current.blood_group || ''} 
+                        onChange={e => setCurrent({...current, blood_group: e.target.value})} 
+                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                      >
+                        <option value="">Select blood group</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Information Section */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Contact Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">Email</label>
+                      <input 
+                        type="email" 
+                        value={current.email || ''} 
+                        onChange={e => setCurrent({...current, email: e.target.value})} 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="name@example.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700">Address</label>
+                      <input 
+                        value={current.governorate || ''} 
+                        onChange={e => setCurrent({...current, governorate: e.target.value})} 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        placeholder="123 Main St"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Medical History Section */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Medical History</h3>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">Medical History</label>
+                    <textarea 
+                      value={current.medical_history || ''} 
+                      onChange={e => setCurrent({...current, medical_history: e.target.value})} 
+                      className="flex min-h-[80px] w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors resize-y" 
+                      rows={3}
+                      placeholder="Notes, conditions, allergies, medications..."
+                    />
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex justify-end gap-4 pt-4 border-t">
+                  <button 
+                    type="button"
+                    onClick={() => setModal(null)}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleSave}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                  >
+                    {modal === 'create' ? 'Register Patient' : 'Update Patient'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Patient List Content - Only show when no modal is active */}
+      {modal === null && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Manage Patients</h1>
+            <p className="text-gray-500 text-sm">{patients.length} registered patients</p>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">🏥 Tibbna Non-Medical DB</span>
+              <span className="text-xs text-gray-400">Connected to Non-Medical database</span>
+            </div>
+          </div>
+          <button 
+            onClick={openCreate}
+            className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-500 w-fit"
+          >
+            <Plus size={16} /> Add Patient
+          </button>
         </div>
       )}
 
