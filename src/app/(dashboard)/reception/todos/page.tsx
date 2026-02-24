@@ -444,6 +444,23 @@ export default function TodosPage() {
             </div>
           </div>
         </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Overdue</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {todos.filter(t => {
+                  if (!t.duedate) return false;
+                  return new Date(t.duedate) < new Date() && !t.completed;
+                }).length}
+              </p>
+            </div>
+            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
