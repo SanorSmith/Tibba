@@ -51,11 +51,25 @@ export default function StaffInfoPage() {
   const loadStaff = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/staff');
+      const response = await fetch('/api/ehrbase-doctors');
       if (response.ok) {
         const data = await response.json();
-        setStaff(data.staff || []);
-        setFilteredStaff(data.staff || []);
+        // Transform the doctors data to match Staff interface
+        const transformedStaff = data.doctors.map((doctor: any) => ({
+          staffid: doctor.staffid || doctor.userid,
+          name: doctor.name,
+          occupation: doctor.role || 'doctor',
+          unit: doctor.unit || doctor.unit,
+          specialty: doctor.specialty || '',
+          phone: doctor.phone || '',
+          email: doctor.email || '',
+          userid: doctor.userid,
+          username: doctor.name,
+          useremail: doctor.email,
+          hasUserAccount: doctor.has_user_account
+        }));
+        setStaff(transformedStaff);
+        setFilteredStaff(transformedStaff);
       } else {
         console.error('Failed to load staff');
       }
