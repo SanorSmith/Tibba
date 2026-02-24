@@ -2,17 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const databaseUrl = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 
+// Singleton connection for serverless
+let postgres: any;
+let sql: any;
+
 async function getDbConnection() {
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is not defined');
   }
-  const postgres = (await import('postgres')).default;
-  const sql = postgres(databaseUrl, {
-    ssl: 'require',
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
+  if (!postgres) {
+    postgres = (await import('postgres')).default;
+    sql = postgres(databaseUrl, {
+      ssl: 'require',
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+  }
   return sql;
 }
 
