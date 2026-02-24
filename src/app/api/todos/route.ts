@@ -29,41 +29,97 @@ async function getDbConnection() {
 // GET - Fetch all todos for current user
 export async function GET(request: NextRequest) {
   try {
-    const db = await getDbConnection();
+    console.log('Starting GET request for todos...');
+    
     const searchParams = request.nextUrl.searchParams;
     const workspaceid = searchParams.get('workspaceid') || 'fa9fb036-a7eb-49af-890c-54406dad139d';
-    
-    // For now, use a mock user ID. In production, this should come from authentication/session
     const userid = searchParams.get('userid') || 'current-receptionist-user';
 
-    console.log('Fetching todos from database for workspace:', workspaceid, 'user:', userid);
+    console.log('Fetching todos for workspace:', workspaceid, 'user:', userid);
 
-    const todos = await db`
-      SELECT 
-        todoid,
-        workspaceid,
-        userid,
-        title,
-        description,
-        completed,
-        priority,
-        duedate,
-        createdat,
-        updatedat
-      FROM todos
-      WHERE workspaceid = ${workspaceid} AND userid = ${userid}
-      ORDER BY createdat DESC
-    `;
+    // First, check if we can connect to database
+    try {
+      const db = await getDbConnection();
+      console.log('Database connection successful');
+      
+      // Check if table exists
+      const tableCheck = await db`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'todos'
+        );
+      `;
+      
+      console.log('Table exists check:', tableCheck[0].exists);
+      
+      if (!tableCheck[0].exists) {
+        console.log('Creating todos table...');
+        await db`
+          CREATE TABLE IF NOT EXISTS todos (
+            todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            workspaceid UUID NOT NULL,
+            userid UUID NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            completed BOOLEAN NOT NULL DEFAULT false,
+            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+            duedate TIMESTAMP WITH TIME ZONE,
+            createdat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updatedat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+          );
+        `;
+        
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_workspace_idx ON todos(workspaceid);
+        `;
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_user_idx ON todos(userid);
+        `;
+        
+        console.log('Todos table created successfully');
+      }
 
-    console.log(`Found ${todos.length} todos for user ${userid}`);
+      // Now fetch todos
+      const todos = await db`
+        SELECT 
+          todoid,
+          workspaceid,
+          userid,
+          title,
+          description,
+          completed,
+          priority,
+          duedate,
+          createdat,
+          updatedat
+        FROM todos
+        WHERE workspaceid = ${workspaceid} AND userid = ${userid}
+        ORDER BY createdat DESC
+      `;
 
-    return NextResponse.json({ 
-      todos,
-      count: todos.length 
-    });
+      console.log(`Found ${todos.length} todos for user ${userid}`);
+
+      return NextResponse.json({ 
+        todos,
+        count: todos.length 
+      });
+      
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      return NextResponse.json(
+        { 
+          error: 'Database connection failed',
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error',
+          todos: [],
+          count: 0
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
-    console.error('Error fetching todos:', error);
+    console.error('General error fetching todos:', error);
     return NextResponse.json(
       { 
         error: 'Failed to fetch todos',
