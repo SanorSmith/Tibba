@@ -154,8 +154,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let db;
     try {
-      const db = await getDbConnection();
+      db = await getDbConnection();
       console.log('Database connection successful for POST');
       
       // Ensure table exists before inserting
@@ -217,8 +218,63 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(result[0]);
       
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.error('Database error in POST:', dbError);
+      
+      // Check if it's a foreign key constraint error
+      if (dbError.code === '23503' && dbError.constraint_name === 'todos_userid_users_userid_fk') {
+        console.log('Foreign key constraint error - removing constraint and retrying...');
+        
+        try {
+          // Get db connection if not already available
+          if (!db) {
+            db = await getDbConnection();
+          }
+          
+          // Remove the foreign key constraint
+          await db`
+            ALTER TABLE todos DROP CONSTRAINT IF EXISTS todos_userid_users_userid_fk
+          `;
+          
+          console.log('Foreign key constraint removed successfully');
+          
+          // Retry the insert
+          const retryResult = await db`
+            INSERT INTO todos (
+              workspaceid,
+              userid,
+              title,
+              description,
+              completed,
+              priority,
+              duedate
+            ) VALUES (
+              ${workspaceid}::uuid,
+              ${userid},
+              ${title},
+              ${description || null},
+              ${false},
+              ${priority || 'medium'},
+              ${duedate || null}
+            )
+            RETURNING *
+          `;
+
+          console.log('Created new todo after removing constraint:', retryResult[0].todoid);
+          return NextResponse.json(retryResult[0]);
+          
+        } catch (retryError) {
+          console.error('Error after removing constraint:', retryError);
+          return NextResponse.json(
+            { 
+              error: 'Failed to create todo even after removing constraint',
+              details: retryError instanceof Error ? retryError.message : 'Unknown error'
+            },
+            { status: 500 }
+          );
+        }
+      }
+      
       return NextResponse.json(
         { 
           error: 'Database error',

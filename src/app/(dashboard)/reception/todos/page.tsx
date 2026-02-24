@@ -114,9 +114,14 @@ export default function TodosPage() {
         await loadTodos();
         setShowAddModal(false);
         resetForm();
+      } else {
+        const errorData = await response.json();
+        console.error('Error adding todo:', errorData);
+        alert(errorData.details || 'Failed to add todo. Please try again.');
       }
     } catch (error) {
       console.error('Error adding todo:', error);
+      alert('Failed to add todo. Please check your connection and try again.');
     }
   };
 
