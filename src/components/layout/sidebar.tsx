@@ -51,6 +51,7 @@ const moduleLinks = [
       { href: '/reception/appointments', icon: Calendar, label: 'Appointments' },
       { href: '/reception/invoices', icon: Receipt, label: 'Customer Billing' },
       { href: '/reception/returns', icon: RotateCcw, label: 'Returns' },
+      { href: '/reception/staff', icon: UsersRound, label: 'Staff Info' },
     ],
   },
   {
