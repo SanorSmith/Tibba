@@ -349,7 +349,7 @@ export default function AppointmentsPage() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Date & Time</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Patient ID</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Patient</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Clinical Indication</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Location</th>
@@ -376,9 +376,16 @@ export default function AppointmentsPage() {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <User size={16} className="text-gray-400" />
-                            <span className="text-sm text-gray-900">
-                              {appt.patientid ? appt.patientid.slice(0, 8) + '...' : 'Unknown'}
-                            </span>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {appt.firstname && appt.lastname 
+                                  ? `${appt.firstname} ${appt.middlename ? appt.middlename + ' ' : ''}${appt.lastname}`
+                                  : 'Unknown Patient'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {appt.patientid ? appt.patientid.slice(0, 8) + '...' : ''}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
