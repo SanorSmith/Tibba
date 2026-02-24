@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 async function getDbConnection() {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env.TIBBNA_DATABASE_URL || process.env.DATABASE_URL || "postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is not defined');
   }
