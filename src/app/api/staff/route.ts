@@ -38,38 +38,38 @@ export async function GET(request: NextRequest) {
     console.log('Occupation filter:', occupation);
     console.log('Department filter:', department);
 
-    // Build dynamic query based on filters
-    let query;
+    // Build the query with filters
+    let staff;
     
     if (searchTerm || occupation || department) {
       // Build WHERE conditions
       const conditions = [];
-      const params: any = {};
       
       if (searchTerm) {
         conditions.push(`(
-          s.name ILIKE ${'%' + searchTerm + '%'} OR 
-          s.email ILIKE ${'%' + searchTerm + '%'} OR 
-          s.phone ILIKE ${'%' + searchTerm + '%'}
+          s.name ILIKE '%${searchTerm}%' OR 
+          s.email ILIKE '%${searchTerm}%' OR 
+          s.phone ILIKE '%${searchTerm}%'
         )`);
       }
       
       if (occupation && occupation !== 'all') {
-        conditions.push(`s.occupation = ${occupation}`);
+        conditions.push(`s.occupation = '${occupation}'`);
       }
       
       if (department && department !== 'all') {
-        conditions.push(`s.unit = ${department}`);
+        conditions.push(`s.unit = '${department}'`);
       }
 
       const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
       
-      query = db`
+      staff = await db`
         SELECT 
           s.staffid,
           s.name,
           s.occupation,
           s.unit,
+          s.specialty,
           s.phone,
           s.email,
           s.userid,
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       `;
     } else {
       // No filters - get all staff
-      query = db`
+      staff = await db`
         SELECT 
           s.staffid,
           s.name,
@@ -101,8 +101,6 @@ export async function GET(request: NextRequest) {
         LIMIT 100
       `;
     }
-
-    const staff = await query;
 
     console.log(`Found ${staff.length} staff members`);
 
