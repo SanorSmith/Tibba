@@ -17,15 +17,15 @@ import {
 
 interface Todo {
   todoid: string;
+  workspaceid: string;
+  userid: string;
   title: string;
-  description?: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'pending' | 'in_progress' | 'completed';
-  duedate?: string;
+  description: string | null;
+  completed: boolean;
+  priority: string;
+  duedate: string | null;
   createdat: string;
   updatedat: string;
-  createdby?: string;
-  assignedto?: string;
 }
 
 export default function TodosPage() {
@@ -45,7 +45,7 @@ export default function TodosPage() {
     title: '',
     description: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
-    status: 'pending' as 'pending' | 'in_progress' | 'completed',
+    completed: false as boolean,
     duedate: ''
   });
 
@@ -79,7 +79,11 @@ export default function TodosPage() {
     let filtered = [...todos];
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(t => t.status === statusFilter);
+      if (statusFilter === 'completed') {
+        filtered = filtered.filter(t => t.completed === true);
+      } else if (statusFilter === 'pending') {
+        filtered = filtered.filter(t => t.completed === false);
+      }
     }
 
     if (priorityFilter !== 'all') {
@@ -150,7 +154,7 @@ export default function TodosPage() {
   };
 
   const handleToggleStatus = async (todo: Todo) => {
-    const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
+    const newCompleted = !todo.completed;
     
     try {
       const response = await fetch('/api/todos', {
@@ -158,7 +162,11 @@ export default function TodosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           todoid: todo.todoid,
-          status: newStatus
+          title: todo.title,
+          description: todo.description,
+          completed: newCompleted,
+          priority: todo.priority,
+          duedate: todo.duedate
         })
       });
 
@@ -175,8 +183,8 @@ export default function TodosPage() {
     setFormData({
       title: todo.title,
       description: todo.description || '',
-      priority: todo.priority,
-      status: todo.status,
+      priority: todo.priority as 'low' | 'medium' | 'high',
+      completed: todo.completed,
       duedate: todo.duedate ? new Date(todo.duedate).toISOString().slice(0, 16) : ''
     });
     setShowEditModal(true);
@@ -187,7 +195,7 @@ export default function TodosPage() {
       title: '',
       description: '',
       priority: 'medium',
-      status: 'pending',
+      completed: false,
       duedate: ''
     });
   };
@@ -201,12 +209,11 @@ export default function TodosPage() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle2 className="w-5 h-5 text-green-600" />;
-      case 'in_progress': return <Clock className="w-5 h-5 text-blue-600" />;
-      default: return <Circle className="w-5 h-5 text-gray-400" />;
+  const getStatusIcon = (completed: boolean) => {
+    if (completed) {
+      return <CheckCircle2 className="w-5 h-5 text-green-600" />;
     }
+    return <Circle className="w-5 h-5 text-gray-400" />;
   };
 
   // Calendar functions
@@ -362,7 +369,6 @@ export default function TodosPage() {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
           </select>
 
@@ -398,7 +404,7 @@ export default function TodosPage() {
             <div>
               <p className="text-sm text-gray-500">Pending</p>
               <p className="text-2xl font-bold text-gray-900">
-                {todos.filter(t => t.status === 'pending').length}
+                {todos.filter(t => !t.completed).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -410,23 +416,9 @@ export default function TodosPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">In Progress</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {todos.filter(t => t.status === 'in_progress').length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
               <p className="text-sm text-gray-500">Completed</p>
               <p className="text-2xl font-bold text-gray-900">
-                {todos.filter(t => t.status === 'completed').length}
+                {todos.filter(t => t.completed).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -478,12 +470,12 @@ export default function TodosPage() {
                           onClick={() => handleToggleStatus(todo)}
                           className="hover:scale-110 transition-transform"
                         >
-                          {getStatusIcon(todo.status)}
+                          {getStatusIcon(todo.completed)}
                         </button>
                       </td>
                       <td className="py-3 px-4">
                         <div>
-                          <div className={`font-medium text-sm ${todo.status === 'completed' ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                          <div className={`font-medium text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             {todo.title}
                           </div>
                           {todo.description && (
@@ -499,8 +491,8 @@ export default function TodosPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="text-sm text-gray-700 capitalize">
-                          {todo.status.replace('_', ' ')}
+                        <span className="text-sm text-gray-700">
+                          {todo.completed ? 'Completed' : 'Pending'}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -684,36 +676,19 @@ export default function TodosPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Priority
-                    </label>
-                    <select
-                      value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
-                    </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
                 </div>
 
                 <div>

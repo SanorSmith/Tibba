@@ -26,47 +26,31 @@ async function getDbConnection() {
   return sql;
 }
 
-// GET - Fetch all todos
+// GET - Fetch all todos for current user
 export async function GET(request: NextRequest) {
   try {
     const db = await getDbConnection();
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
+    const workspaceid = searchParams.get('workspaceid') || 'fa9fb036-a7eb-49af-890c-54406dad139d';
 
-    console.log('Fetching todos from database...');
+    console.log('Fetching todos from database for workspace:', workspaceid);
 
-    let query = `
+    const todos = await db`
       SELECT 
         todoid,
+        workspaceid,
+        userid,
         title,
         description,
+        completed,
         priority,
-        status,
         duedate,
         createdat,
-        updatedat,
-        createdby,
-        assignedto
+        updatedat
       FROM todos
-      WHERE 1=1
+      WHERE workspaceid = ${workspaceid}
+      ORDER BY createdat DESC
     `;
-
-    const conditions = [];
-    if (status && status !== 'all') {
-      conditions.push(`status = '${status}'`);
-    }
-    if (priority && priority !== 'all') {
-      conditions.push(`priority = '${priority}'`);
-    }
-
-    if (conditions.length > 0) {
-      query += ' AND ' + conditions.join(' AND ');
-    }
-
-    query += ' ORDER BY createdat DESC';
-
-    const todos = await db.unsafe(query);
 
     console.log(`Found ${todos.length} todos`);
 
@@ -94,8 +78,10 @@ export async function POST(request: NextRequest) {
   try {
     const db = await getDbConnection();
     const body = await request.json();
+    const workspaceid = 'fa9fb036-a7eb-49af-890c-54406dad139d';
+    const userid = body.userid || 'current-user'; // This should come from session
 
-    const { title, description, priority, status, duedate, createdby, assignedto } = body;
+    const { title, description, priority, duedate } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -106,31 +92,28 @@ export async function POST(request: NextRequest) {
 
     const result = await db`
       INSERT INTO todos (
+        workspaceid,
+        userid,
         title,
         description,
+        completed,
         priority,
-        status,
-        duedate,
-        createdby,
-        assignedto
+        duedate
       ) VALUES (
+        ${workspaceid},
+        ${userid},
         ${title},
         ${description || null},
+        ${false},
         ${priority || 'medium'},
-        ${status || 'pending'},
-        ${duedate || null},
-        ${createdby || null},
-        ${assignedto || null}
+        ${duedate || null}
       )
       RETURNING *
     `;
 
     console.log('Created new todo:', result[0].todoid);
 
-    return NextResponse.json({ 
-      success: true,
-      todo: result[0]
-    });
+    return NextResponse.json(result[0]);
 
   } catch (error) {
     console.error('Error creating todo:', error);
@@ -150,7 +133,7 @@ export async function PATCH(request: NextRequest) {
     const db = await getDbConnection();
     const body = await request.json();
 
-    const { todoid, title, description, priority, status, duedate, assignedto } = body;
+    const { todoid, title, description, completed, priority, duedate } = body;
 
     if (!todoid) {
       return NextResponse.json(
@@ -159,47 +142,18 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const updates = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (title !== undefined) {
-      updates.push(`title = $${paramIndex++}`);
-      values.push(title);
-    }
-    if (description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      values.push(description);
-    }
-    if (priority !== undefined) {
-      updates.push(`priority = $${paramIndex++}`);
-      values.push(priority);
-    }
-    if (status !== undefined) {
-      updates.push(`status = $${paramIndex++}`);
-      values.push(status);
-    }
-    if (duedate !== undefined) {
-      updates.push(`duedate = $${paramIndex++}`);
-      values.push(duedate);
-    }
-    if (assignedto !== undefined) {
-      updates.push(`assignedto = $${paramIndex++}`);
-      values.push(assignedto);
-    }
-
-    updates.push(`updatedat = NOW()`);
-
-    const query = `
+    const result = await db`
       UPDATE todos 
-      SET ${updates.join(', ')}
-      WHERE todoid = $${paramIndex}
+      SET 
+        title = ${title},
+        description = ${description},
+        completed = ${completed},
+        priority = ${priority},
+        duedate = ${duedate},
+        updatedat = NOW()
+      WHERE todoid = ${todoid}
       RETURNING *
     `;
-
-    values.push(todoid);
-
-    const result = await db.unsafe(query, values);
 
     if (result.length === 0) {
       return NextResponse.json(
@@ -210,10 +164,7 @@ export async function PATCH(request: NextRequest) {
 
     console.log('Updated todo:', todoid);
 
-    return NextResponse.json({ 
-      success: true,
-      todo: result[0]
-    });
+    return NextResponse.json(result[0]);
 
   } catch (error) {
     console.error('Error updating todo:', error);
