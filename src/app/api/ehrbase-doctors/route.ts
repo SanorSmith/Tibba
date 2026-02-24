@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     `;
 
     // Transform the data to match the expected format
-    const transformedDoctors = doctors.map(doctor => ({
+    const transformedDoctors = doctors.map((doctor: any) => ({
       userid: doctor.user_id || doctor.staffid, // Use user_id if available, otherwise staffid
       staffid: doctor.staffid, // Keep original staffid for reference
       name: doctor.name.replace(/\s+/g, ' ').trim(), // Clean up extra spaces
