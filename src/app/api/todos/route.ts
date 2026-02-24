@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
           CREATE TABLE IF NOT EXISTS todos (
             todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             workspaceid UUID NOT NULL,
-            userid UUID NOT NULL,
+            userid VARCHAR(255) NOT NULL,
             title VARCHAR(255) NOT NULL,
             description TEXT,
             completed BOOLEAN NOT NULL DEFAULT false,
@@ -135,10 +135,13 @@ export async function GET(request: NextRequest) {
 // POST - Create new todo
 export async function POST(request: NextRequest) {
   try {
-    const db = await getDbConnection();
+    console.log('Starting POST request for todo...');
+    
     const body = await request.json();
+    console.log('Request body:', body);
+    
     const workspaceid = 'fa9fb036-a7eb-49af-890c-54406dad139d';
-    const userid = body.userid || 'current-receptionist-user'; // This should come from session
+    const userid = body.userid || 'current-receptionist-user';
 
     const { title, description, priority, duedate } = body;
 
@@ -149,33 +152,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await db`
-      INSERT INTO todos (
-        workspaceid,
-        userid,
-        title,
-        description,
-        completed,
-        priority,
-        duedate
-      ) VALUES (
-        ${workspaceid},
-        ${userid},
-        ${title},
-        ${description || null},
-        ${false},
-        ${priority || 'medium'},
-        ${duedate || null}
-      )
-      RETURNING *
-    `;
+    try {
+      const db = await getDbConnection();
+      console.log('Database connection successful for POST');
+      
+      // Ensure table exists before inserting
+      const tableCheck = await db`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'todos'
+        );
+      `;
+      
+      if (!tableCheck[0].exists) {
+        console.log('Creating todos table before insert...');
+        await db`
+          CREATE TABLE IF NOT EXISTS todos (
+            todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            workspaceid UUID NOT NULL,
+            userid VARCHAR(255) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            completed BOOLEAN NOT NULL DEFAULT false,
+            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+            duedate TIMESTAMP WITH TIME ZONE,
+            createdat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updatedat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+          );
+        `;
+        
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_workspace_idx ON todos(workspaceid);
+        `;
+        await db`
+          CREATE INDEX IF NOT EXISTS todos_user_idx ON todos(userid);
+        `;
+      }
 
-    console.log('Created new todo:', result[0].todoid, 'for user:', userid);
+      const result = await db`
+        INSERT INTO todos (
+          workspaceid,
+          userid,
+          title,
+          description,
+          completed,
+          priority,
+          duedate
+        ) VALUES (
+          ${workspaceid}::uuid,
+          ${userid},
+          ${title},
+          ${description || null},
+          ${false},
+          ${priority || 'medium'},
+          ${duedate || null}
+        )
+        RETURNING *
+      `;
 
-    return NextResponse.json(result[0]);
+      console.log('Created new todo:', result[0].todoid, 'for user:', userid);
+
+      return NextResponse.json(result[0]);
+      
+    } catch (dbError) {
+      console.error('Database error in POST:', dbError);
+      return NextResponse.json(
+        { 
+          error: 'Database error',
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
-    console.error('Error creating todo:', error);
+    console.error('General error creating todo:', error);
     return NextResponse.json(
       { 
         error: 'Failed to create todo',

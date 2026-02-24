@@ -2,7 +2,7 @@
 CREATE TABLE IF NOT EXISTS todos (
     todoid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspaceid UUID NOT NULL,
-    userid UUID NOT NULL,
+    userid VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     completed BOOLEAN NOT NULL DEFAULT false,
