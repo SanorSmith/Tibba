@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const databaseUrl = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+
 async function getDbConnection() {
-  const databaseUrl = process.env.DATABASE_URL || "postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is not defined');
   }
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
       has_user_account: doctor.has_user_account, // Indicates if this staff can be assigned to appointments
     }));
 
-    await db.end();
+    // Don't close connection in serverless environment - let postgres handle it
 
     return NextResponse.json({ 
       doctors: transformedDoctors,
@@ -70,6 +71,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching doctors from database:', error);
+    console.error('Database URL:', databaseUrl ? 'SET' : 'NOT SET');
+    console.error('Error details:', error instanceof Error ? error.stack : 'Unknown error');
     
     // Return fallback doctors list if database query fails
     const fallbackDoctors = [
