@@ -275,7 +275,7 @@ export default function PatientsPage() {
       )}
 
       {/* Create/Edit Form */}
-      {(modal === 'create' || 'edit') && (
+      {(modal === 'create' || modal === 'edit') && (
         <div className="bg-white rounded-xl h-[calc(100vh-80px)]" style={{width: 'calc(100% + 400px)', maxWidth: 'none', marginLeft: '-200px', marginRight: '-200px'}} onClick={e => e.stopPropagation()}>
           <div className="p-6 border-b flex items-center justify-between">
             <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
