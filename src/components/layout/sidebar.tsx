@@ -141,23 +141,23 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   }, [mobileOpen]);
 
   const SidebarNav = () => (
-    <div className="flex-1 overflow-y-auto py-3">
+    <div className="flex-1 overflow-y-auto py-3 sm:py-4">
       <Link
         href="/dashboard"
         className={cn(
-          'flex items-center gap-3 mx-2 px-3 py-2.5 rounded transition-colors',
+          'flex items-center gap-3 mx-2 px-3 py-2.5 sm:py-3 rounded transition-colors',
           pathname === '/dashboard'
             ? 'bg-[#f5f5f5] text-black font-semibold'
             : 'text-[#151515] hover:bg-[#f5f5f5]'
         )}
         style={{ fontSize: '14px', lineHeight: '20px' }}
       >
-        <LayoutDashboard className="w-[18px] h-[18px] flex-shrink-0" />
-        <span>Dashboard</span>
+        <LayoutDashboard className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
+        <span className="text-sm sm:text-base">Dashboard</span>
       </Link>
 
-      <div className="px-4 mt-5 mb-1.5">
-        <h3 style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div className="px-4 mt-5 mb-1.5 sm:mt-6 sm:mb-2">
+        <h3 className="text-[11px] sm:text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
           Modules
         </h3>
       </div>
@@ -173,17 +173,17 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
               <Link
                 href={link.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded transition-colors',
                   isActive
                     ? 'bg-[#f5f5f5] text-black font-semibold'
                     : 'text-[#151515] hover:bg-[#f5f5f5]'
                 )}
                 style={{ fontSize: '14px', lineHeight: '20px' }}
               >
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                <span className="flex-1">{link.label}</span>
+                <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
+                <span className="flex-1 text-sm sm:text-base">{link.label}</span>
                 {hasChildren && (
-                  <ChevronDown className={cn('w-4 h-4 transition-transform', isExpanded ? 'rotate-180' : '')} />
+                  <ChevronDown className={cn('w-4 h-4 sm:w-5 sm:h-5 transition-transform', isExpanded ? 'rotate-180' : '')} />
                 )}
               </Link>
               {isExpanded && hasChildren && (
@@ -217,15 +217,15 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                         key={child.href}
                         href={child.href}
                         className={cn(
-                          'flex items-center gap-2.5 px-2.5 py-2 rounded transition-colors',
+                          'flex items-center gap-2.5 px-2.5 py-2 sm:py-2.5 rounded transition-colors',
                           isChildActive
                             ? 'bg-[#f0f0f0] text-black font-semibold'
                             : 'text-[#151515] hover:bg-[#f5f5f5]'
                         )}
                         style={{ fontSize: '13px', lineHeight: '18px' }}
                       >
-                        <ChildIcon className="w-[15px] h-[15px] flex-shrink-0" />
-                        <span>{child.label}</span>
+                        <ChildIcon className="w-[15px] h-[15px] sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm">{child.label}</span>
                       </Link>
                     );
                   })}
@@ -236,8 +236,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         })}
       </nav>
 
-      <div className="px-4 mt-5 mb-1.5">
-        <h3 style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div className="px-4 mt-5 mb-1.5 sm:mt-6 sm:mb-2">
+        <h3 className="text-[11px] sm:text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
           Existing System
         </h3>
       </div>
@@ -251,15 +251,15 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
               key={link.href}
               href={link.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded transition-colors',
                 isActive
                   ? 'bg-[#f5f5f5] text-black font-semibold'
                   : 'text-[#151515] hover:bg-[#f5f5f5]'
               )}
               style={{ fontSize: '14px', lineHeight: '20px' }}
             >
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-              <span>{link.label}</span>
+              <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="text-sm sm:text-base">{link.label}</span>
             </Link>
           );
         })}
@@ -269,9 +269,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop sidebar - always visible on lg+ */}
+      {/* Desktop sidebar - responsive width for different screen sizes */}
       <aside
-        className="hidden lg:flex flex-col w-60 flex-shrink-0"
+        className="hidden lg:flex flex-col flex-shrink-0 w-60 xl:w-64 2xl:w-72"
         style={{
           backgroundColor: '#ffffff',
           borderRight: '1px solid #e4e4e4',
@@ -280,28 +280,29 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         <SidebarNav />
       </aside>
 
-      {/* Mobile sidebar drawer */}
+      {/* Mobile/Tablet sidebar drawer */}
       {mobileOpen && (
         <>
           {/* Overlay */}
           <div
-            className="lg:hidden fixed inset-0 bg-black/50 z-40"
+            className="lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity"
             onClick={onMobileClose}
           />
 
-          {/* Drawer */}
+          {/* Drawer - responsive width */}
           <aside
-            className="lg:hidden fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] z-50 flex flex-col"
+            className="lg:hidden fixed top-0 left-0 bottom-0 w-64 sm:w-72 md:w-80 max-w-[85vw] z-50 flex flex-col shadow-2xl"
             style={{ backgroundColor: '#ffffff' }}
           >
             {/* Mobile header */}
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #e4e4e4' }}>
-              <span className="font-semibold text-base">Menu</span>
+            <div className="flex items-center justify-between px-4 py-3 sm:px-5 sm:py-4" style={{ borderBottom: '1px solid #e4e4e4' }}>
+              <span className="font-semibold text-base sm:text-lg">Menu</span>
               <button
                 onClick={onMobileClose}
                 className="p-1.5 hover:bg-[#f5f5f5] rounded transition-colors"
+                aria-label="Close menu"
               >
-                <X size={20} />
+                <X size={20} className="sm:w-6 sm:h-6" />
               </button>
             </div>
 
