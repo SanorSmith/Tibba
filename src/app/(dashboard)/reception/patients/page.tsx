@@ -287,7 +287,7 @@ export default function PatientsPage() {
                 {/* Personal Information Section */}
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Personal Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                         First name <span className="text-red-500">*</span>
@@ -339,7 +339,7 @@ export default function PatientsPage() {
                 {/* Demographics Section */}
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Demographics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                         Date of Birth <span className="text-red-500">*</span>
@@ -348,7 +348,7 @@ export default function PatientsPage() {
                         type="date" 
                         value={current.date_of_birth} 
                         onChange={e => setCurrent({...current, date_of_birth: e.target.value})} 
-                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
                         required
                       />
                     </div>
@@ -359,7 +359,7 @@ export default function PatientsPage() {
                       <select 
                         value={current.gender} 
                         onChange={e => setCurrent({...current, gender: e.target.value as 'MALE'|'FEMALE'})} 
-                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
                         required
                       >
                         <option value="">Select gender</option>
@@ -374,7 +374,7 @@ export default function PatientsPage() {
                       <input 
                         value={current.phone} 
                         onChange={e => setCurrent({...current, phone: e.target.value})} 
-                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors" 
                         placeholder="+1 555 555"
                         type="tel"
                         required
@@ -385,7 +385,7 @@ export default function PatientsPage() {
                       <select 
                         value={current.blood_group || ''} 
                         onChange={e => setCurrent({...current, blood_group: e.target.value})} 
-                        className="flex h-11 w-1/2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                        className="flex h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
                       >
                         <option value="">Select blood group</option>
                         <option value="A+">A+</option>
@@ -404,7 +404,7 @@ export default function PatientsPage() {
                 {/* Contact Information Section */}
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-gray-800 border-b pb-1">Contact Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 text-sm font-medium text-gray-700">Email</label>
                       <input 
@@ -443,18 +443,18 @@ export default function PatientsPage() {
                 </div>
 
                 {/* Form Actions */}
-                <div className="flex justify-end gap-4 pt-4 border-t">
+                <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t">
                   <button 
                     type="button"
                     onClick={() => setModal(null)}
-                    className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                    className="w-full sm:w-auto px-6 py-2.5 sm:py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
                   >
                     Cancel
                   </button>
                   <button 
                     type="button"
                     onClick={handleSave}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
+                    className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 transition-colors"
                   >
                     {modal === 'create' ? 'Register Patient' : 'Update Patient'}
                   </button>
@@ -470,8 +470,8 @@ export default function PatientsPage() {
       {modal === 'view' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" >
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b"><h2 className="text-lg font-bold">{current.full_name_ar}</h2><p className="text-xs text-gray-500">{current.patient_number}</p></div>
-            <div className="p-6 grid grid-cols-2 gap-4 text-sm">
+            <div className="p-4 sm:p-6 border-b"><h2 className="text-base sm:text-lg font-bold">{current.full_name_ar}</h2><p className="text-xs text-gray-500">{current.patient_number}</p></div>
+            <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
               <div><span className="text-gray-500 block text-xs">Name (EN)</span>{current.full_name_en || '-'}</div>
               <div><span className="text-gray-500 block text-xs">Gender</span>{current.gender}</div>
               <div><span className="text-gray-500 block text-xs">Date of Birth</span>{current.date_of_birth}</div>
