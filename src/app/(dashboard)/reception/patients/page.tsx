@@ -276,12 +276,13 @@ export default function PatientsPage() {
 
       {/* Create/Edit Form */}
       {(modal === 'create' || modal === 'edit') && (
-        <div className="bg-white rounded-xl h-[calc(100vh-80px)]" style={{width: 'calc(100% + 400px)', maxWidth: 'none', marginLeft: '-200px', marginRight: '-200px'}} onClick={e => e.stopPropagation()}>
-          <div className="p-6 border-b flex items-center justify-between">
-            <h2 className="text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
-            <button onClick={() => setModal(null)} className="p-1 hover:bg-gray-100 rounded"><X size={18} /></button>
-          </div>
-          <div className="p-4 space-y-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 lg:p-6 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-4 sm:p-6 border-b flex items-center justify-between sticky top-0 bg-white z-10">
+              <h2 className="text-base sm:text-lg font-bold">{modal === 'create' ? 'Add Patient' : 'Edit Patient'}</h2>
+              <button onClick={() => setModal(null)} className="p-1.5 hover:bg-gray-100 rounded transition-colors"><X size={18} /></button>
+            </div>
+            <div className="p-4 sm:p-6 space-y-4">
             <div className="bg-muted/50 rounded-xl p-3">
               <form className="space-y-4">
                 {/* Personal Information Section */}
@@ -461,6 +462,7 @@ export default function PatientsPage() {
                 </div>
               </form>
             </div>
+          </div>
           </div>
         </div>
       )}
