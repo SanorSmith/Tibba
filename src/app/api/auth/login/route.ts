@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-type UserRole = 'SUPER_ADMIN' | 'FINANCE_ADMIN' | 'HR_ADMIN' | 'INVENTORY_ADMIN' | 'RECEPTION_ADMIN' | 'DOCTOR' | 'PHARMACY' | 'LABORATORY';
+type UserRole = 'SUPER_ADMIN' | 'FINANCE_ADMIN' | 'HR_ADMIN' | 'INVENTORY_ADMIN' | 'RECEPTION_ADMIN' | 'DOCTOR' | 'NURSE' | 'LAB_TECHNICIAN' | 'PHARMACIST' | 'RADIOLOGIST' | 'ADMINISTRATOR';
 
 interface User {
   id: string;
@@ -16,33 +16,45 @@ const USERS: Record<string, { password: string; user: User }> = {
     password: 'super123',
     user: { id: '1', name: 'Super Administrator', email: 'superadmin@tibbna.iq', role: 'SUPER_ADMIN', allowedModules: ['*'] },
   },
-  reception: {
-    password: 'reception123',
-    user: { id: '2', name: 'Reception Administrator', email: 'reception@tibbna.iq', role: 'RECEPTION_ADMIN', allowedModules: ['/reception', '/appointments', '/billing'] },
-  },
   finance: {
     password: 'finance123',
-    user: { id: '3', name: 'Finance Administrator', email: 'finance@tibbna.iq', role: 'FINANCE_ADMIN', allowedModules: ['/finance', '/billing', '/insurance'] },
+    user: { id: '2', name: 'Finance Administrator', email: 'finance@tibbna.iq', role: 'FINANCE_ADMIN', allowedModules: ['/finance'] },
   },
   hr: {
     password: 'hr123',
-    user: { id: '4', name: 'HR Administrator', email: 'hr@tibbna.iq', role: 'HR_ADMIN', allowedModules: ['/hr'] },
+    user: { id: '3', name: 'HR Administrator', email: 'hr@tibbna.iq', role: 'HR_ADMIN', allowedModules: ['/hr'] },
   },
   inventory: {
     password: 'inventory123',
-    user: { id: '5', name: 'Inventory Administrator', email: 'inventory@tibbna.iq', role: 'INVENTORY_ADMIN', allowedModules: ['/inventory'] },
+    user: { id: '4', name: 'Inventory Administrator', email: 'inventory@tibbna.iq', role: 'INVENTORY_ADMIN', allowedModules: ['/inventory'] },
+  },
+  reception: {
+    password: 'reception123',
+    user: { id: '5', name: 'Reception Administrator', email: 'reception@tibbna.iq', role: 'RECEPTION_ADMIN', allowedModules: ['/reception'] },
   },
   doctor: {
     password: 'doctor123',
-    user: { id: '6', name: 'Doctor', email: 'doctor@tibbna.iq', role: 'DOCTOR', allowedModules: ['/dashboard', '/patients', '/appointments', '/pharmacies', '/laboratories'] },
+    user: { id: '6', name: 'Dr. Ahmed Ali', email: 'doctor@tibbna.iq', role: 'DOCTOR', allowedModules: ['/appointments', '/reception/patients', '/dashboard'] },
   },
-  pharmacy: {
-    password: 'pharmacy123',
-    user: { id: '7', name: 'Pharmacy Administrator', email: 'pharmacy@tibbna.iq', role: 'PHARMACY', allowedModules: ['/pharmacies', '/inventory'] },
+  nurse: {
+    password: 'nurse123',
+    user: { id: '7', name: 'Nurse Sarah', email: 'nurse@tibbna.iq', role: 'NURSE', allowedModules: ['/appointments', '/reception/patients'] },
   },
   lab: {
     password: 'lab123',
-    user: { id: '8', name: 'Laboratory Administrator', email: 'lab@tibbna.iq', role: 'LABORATORY', allowedModules: ['/laboratories'] },
+    user: { id: '8', name: 'Lab Technician', email: 'lab@tibbna.iq', role: 'LAB_TECHNICIAN', allowedModules: ['/laboratory', '/reception/patients'] },
+  },
+  pharmacist: {
+    password: 'pharmacy123',
+    user: { id: '9', name: 'Pharmacist', email: 'pharmacy@tibbna.iq', role: 'PHARMACIST', allowedModules: ['/pharmacy', '/reception/patients'] },
+  },
+  radiologist: {
+    password: 'radio123',
+    user: { id: '10', name: 'Radiologist', email: 'radio@tibbna.iq', role: 'RADIOLOGIST', allowedModules: ['/radiology', '/reception/patients'] },
+  },
+  admin: {
+    password: 'admin123',
+    user: { id: '11', name: 'System Administrator', email: 'admin@tibbna.iq', role: 'ADMINISTRATOR', allowedModules: ['*'] },
   },
 };
 

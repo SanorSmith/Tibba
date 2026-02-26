@@ -5,135 +5,87 @@ import { useSearchParams } from 'next/navigation';
 import { Hospital, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const ROLES = [
+  // Administrative Roles
   {
     username: 'superadmin',
     password: 'super123',
     label: 'Super Admin',
-    desc: 'Full System Access',
+    desc: 'All modules',
     route: '/dashboard',
-    icon: '👑',
-    modules: [
-      { name: 'Dashboard', route: '/dashboard' },
-      { name: 'Reception', route: '/reception' },
-      { name: 'Finance', route: '/finance' },
-      { name: 'HR', route: '/hr' },
-      { name: 'Inventory', route: '/inventory' },
-      { name: 'Billing', route: '/billing' },
-      { name: 'Departments', route: '/departments' },
-      { name: 'Staff', route: '/staff' },
-      { name: 'Patients', route: '/reception/patients' },
-      { name: 'Appointments', route: '/appointments' },
-      { name: 'Laboratories', route: '/laboratories' },
-      { name: 'Pharmacies', route: '/pharmacies' },
-      { name: 'Services', route: '/services' },
-      { name: 'Insurance', route: '/insurance' },
-    ],
+    category: 'admin',
   },
   {
-    username: 'reception',
-    password: 'reception123',
-    label: 'Reception',
-    desc: 'Patient Management',
-    route: '/reception',
-    icon: '🏥',
-    modules: [
-      { name: 'Patients', route: '/reception/patients' },
-      { name: 'Appointments', route: '/appointments' },
-      { name: 'Registration', route: '/reception' },
-      { name: 'Check-in', route: '/reception/checkin' },
-      { name: 'Billing', route: '/billing' },
-    ],
+    username: 'admin',
+    password: 'admin123',
+    label: 'Administrator',
+    desc: 'System Admin',
+    route: '/dashboard',
+    category: 'admin',
   },
   {
     username: 'finance',
     password: 'finance123',
     label: 'Finance',
-    desc: 'Financial Operations',
+    desc: 'Finance module',
     route: '/finance',
-    icon: '💰',
-    modules: [
-      { name: 'Invoices', route: '/finance/invoices' },
-      { name: 'Payments', route: '/finance/payments' },
-      { name: 'Returns', route: '/finance/returns' },
-      { name: 'Reports', route: '/finance/reports' },
-      { name: 'Billing', route: '/billing' },
-      { name: 'Insurance Claims', route: '/insurance' },
-    ],
+    category: 'admin',
   },
   {
     username: 'hr',
     password: 'hr123',
     label: 'HR',
-    desc: 'Human Resources',
+    desc: 'HR module',
     route: '/hr',
-    icon: '👥',
-    modules: [
-      { name: 'Employees', route: '/hr/employees' },
-      { name: 'Attendance', route: '/hr/attendance' },
-      { name: 'Leaves', route: '/hr/leaves' },
-      { name: 'Payroll', route: '/hr/payroll' },
-      { name: 'Recruitment', route: '/hr/recruitment' },
-      { name: 'Training', route: '/hr/training' },
-      { name: 'Performance', route: '/hr/performance' },
-    ],
+    category: 'admin',
   },
   {
-    username: 'inventory',
-    password: 'inventory123',
-    label: 'Inventory',
-    desc: 'Stock Management',
-    route: '/inventory',
-    icon: '📦',
-    modules: [
-      { name: 'Items', route: '/inventory/items' },
-      { name: 'Stock', route: '/inventory/stock' },
-      { name: 'Movements', route: '/inventory/movements' },
-      { name: 'Purchase Orders', route: '/inventory/purchase-orders' },
-      { name: 'Suppliers', route: '/inventory/suppliers' },
-    ],
+    username: 'reception',
+    password: 'reception123',
+    label: 'Reception',
+    desc: 'Reception desk',
+    route: '/reception',
+    category: 'admin',
   },
+  // Medical Staff Roles
   {
     username: 'doctor',
     password: 'doctor123',
     label: 'Doctor',
-    desc: 'Clinical Access',
-    route: '/dashboard',
-    icon: '⚕️',
-    modules: [
-      { name: 'My Patients', route: '/patients' },
-      { name: 'Appointments', route: '/appointments' },
-      { name: 'Medical Records', route: '/patients/records' },
-      { name: 'Prescriptions', route: '/pharmacies' },
-      { name: 'Lab Orders', route: '/laboratories' },
-    ],
+    desc: 'Medical staff',
+    route: '/appointments',
+    category: 'medical',
   },
   {
-    username: 'pharmacy',
-    password: 'pharmacy123',
-    label: 'Pharmacy',
-    desc: 'Medication Management',
-    route: '/pharmacies',
-    icon: '💊',
-    modules: [
-      { name: 'Prescriptions', route: '/pharmacies/prescriptions' },
-      { name: 'Dispensing', route: '/pharmacies/dispensing' },
-      { name: 'Stock', route: '/inventory/pharmacy' },
-      { name: 'Returns', route: '/pharmacies/returns' },
-    ],
+    username: 'nurse',
+    password: 'nurse123',
+    label: 'Nurse',
+    desc: 'Nursing staff',
+    route: '/appointments',
+    category: 'medical',
   },
   {
     username: 'lab',
     password: 'lab123',
     label: 'Laboratory',
-    desc: 'Lab Operations',
-    route: '/laboratories',
-    icon: '🔬',
-    modules: [
-      { name: 'Test Orders', route: '/laboratories/orders' },
-      { name: 'Results Entry', route: '/laboratories/results' },
-      { name: 'Reports', route: '/laboratories/reports' },
-      { name: 'Quality Control', route: '/laboratories/qc' },
-    ],
+    desc: 'Lab technician',
+    route: '/laboratory',
+    category: 'medical',
+  },
+  {
+    username: 'pharmacist',
+    password: 'pharmacy123',
+    label: 'Pharmacist',
+    desc: 'Pharmacy staff',
+    route: '/pharmacy',
+    category: 'medical',
+  },
+  {
+    username: 'radiologist',
+    password: 'radio123',
+    label: 'Radiologist',
+    desc: 'Radiology dept',
+    route: '/radiology',
+    category: 'medical',
   },
 ];
 
@@ -146,7 +98,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<typeof ROLES[number] | null>(null);
 
   const doLogin = async (u: string, p: string) => {
     setError('');
@@ -210,73 +161,47 @@ function LoginForm() {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
 
           {/* Quick Login Cards */}
-          <div className="p-4 sm:p-6 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Login - Select Your Role</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-              {ROLES.map(role => (
-                <button
-                  key={role.username}
-                  onClick={() => setSelectedRole(role)}
-                  disabled={isLoading}
-                  className={`flex flex-col items-center gap-1.5 p-3 sm:p-4 rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                    selectedRole?.username === role.username
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-2xl sm:text-3xl">{role.icon}</span>
-                  <span className="text-xs sm:text-sm font-semibold text-gray-800 text-center leading-tight">{role.label}</span>
-                  <span className="text-[10px] sm:text-xs text-gray-500 text-center">{role.desc}</span>
-                </button>
-              ))}
+          <div className="p-6 border-b border-gray-100">
+            {/* Administrative Roles */}
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <Shield className="w-3 h-3" /> Administrative Staff
+              </p>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {ROLES.filter(r => r.category === 'admin').map(role => (
+                  <button
+                    key={role.username}
+                    onClick={() => quickLogin(role)}
+                    disabled={isLoading}
+                    className="flex flex-col items-center gap-1 p-2.5 rounded-lg border border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="text-xs font-semibold text-blue-900 text-center leading-tight">{role.label}</span>
+                    <span className="text-[10px] text-blue-600">{role.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Medical Staff Roles */}
+            <div>
+              <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <Hospital className="w-3 h-3" /> Medical Staff
+              </p>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {ROLES.filter(r => r.category === 'medical').map(role => (
+                  <button
+                    key={role.username}
+                    onClick={() => quickLogin(role)}
+                    disabled={isLoading}
+                    className="flex flex-col items-center gap-1 p-2.5 rounded-lg border border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="text-xs font-semibold text-green-900 text-center leading-tight">{role.label}</span>
+                    <span className="text-[10px] text-green-600">{role.desc}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-
-          {/* Selected Role Details */}
-          {selectedRole && (
-            <div className="p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-br from-blue-50 to-indigo-50">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl sm:text-4xl">{selectedRole.icon}</span>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-gray-900">{selectedRole.label}</h3>
-                    <p className="text-xs sm:text-sm text-gray-600">{selectedRole.desc}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedRole(null)}
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-gray-600 mb-2">Accessible Modules ({selectedRole.modules.length}):</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {selectedRole.modules.map((module, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-1.5 px-2 py-1.5 bg-white rounded-lg border border-gray-200 text-xs"
-                    >
-                      <span className="text-blue-500">✓</span>
-                      <span className="text-gray-700 font-medium truncate">{module.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={() => quickLogin(selectedRole)}
-                disabled={isLoading}
-                className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-lg text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
-              >
-                {isLoading
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in as {selectedRole.label}...</>
-                  : <><Shield className="w-4 h-4" /> Login as {selectedRole.label}</>}
-              </button>
-            </div>
-          )}
 
           {/* Manual Form */}
           <div className="p-6">
