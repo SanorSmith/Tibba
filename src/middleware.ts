@@ -4,10 +4,13 @@ import type { NextRequest } from 'next/server';
 // Role → allowed path prefixes (* means all)
 const ROLE_MODULES: Record<string, string[]> = {
   SUPER_ADMIN:      ['*'],
-  FINANCE_ADMIN:    ['/finance'],
+  RECEPTION_ADMIN:  ['/reception', '/appointments', '/billing'],
+  FINANCE_ADMIN:    ['/finance', '/billing', '/insurance'],
   HR_ADMIN:         ['/hr'],
   INVENTORY_ADMIN:  ['/inventory'],
-  RECEPTION_ADMIN:  ['/reception'],
+  DOCTOR:           ['/dashboard', '/patients', '/appointments', '/pharmacies', '/laboratories'],
+  PHARMACY:         ['/pharmacies', '/inventory'],
+  LABORATORY:       ['/laboratories'],
 };
 
 // Paths that are always public

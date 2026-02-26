@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-type UserRole = 'SUPER_ADMIN' | 'FINANCE_ADMIN' | 'HR_ADMIN' | 'INVENTORY_ADMIN' | 'RECEPTION_ADMIN';
+type UserRole = 'SUPER_ADMIN' | 'FINANCE_ADMIN' | 'HR_ADMIN' | 'INVENTORY_ADMIN' | 'RECEPTION_ADMIN' | 'DOCTOR' | 'PHARMACY' | 'LABORATORY';
 
 interface User {
   id: string;
@@ -16,21 +16,33 @@ const USERS: Record<string, { password: string; user: User }> = {
     password: 'super123',
     user: { id: '1', name: 'Super Administrator', email: 'superadmin@tibbna.iq', role: 'SUPER_ADMIN', allowedModules: ['*'] },
   },
+  reception: {
+    password: 'reception123',
+    user: { id: '2', name: 'Reception Administrator', email: 'reception@tibbna.iq', role: 'RECEPTION_ADMIN', allowedModules: ['/reception', '/appointments', '/billing'] },
+  },
   finance: {
     password: 'finance123',
-    user: { id: '2', name: 'Finance Administrator', email: 'finance@tibbna.iq', role: 'FINANCE_ADMIN', allowedModules: ['/finance'] },
+    user: { id: '3', name: 'Finance Administrator', email: 'finance@tibbna.iq', role: 'FINANCE_ADMIN', allowedModules: ['/finance', '/billing', '/insurance'] },
   },
   hr: {
     password: 'hr123',
-    user: { id: '3', name: 'HR Administrator', email: 'hr@tibbna.iq', role: 'HR_ADMIN', allowedModules: ['/hr'] },
+    user: { id: '4', name: 'HR Administrator', email: 'hr@tibbna.iq', role: 'HR_ADMIN', allowedModules: ['/hr'] },
   },
   inventory: {
     password: 'inventory123',
-    user: { id: '4', name: 'Inventory Administrator', email: 'inventory@tibbna.iq', role: 'INVENTORY_ADMIN', allowedModules: ['/inventory'] },
+    user: { id: '5', name: 'Inventory Administrator', email: 'inventory@tibbna.iq', role: 'INVENTORY_ADMIN', allowedModules: ['/inventory'] },
   },
-  reception: {
-    password: 'reception123',
-    user: { id: '5', name: 'Reception Administrator', email: 'reception@tibbna.iq', role: 'RECEPTION_ADMIN', allowedModules: ['/reception'] },
+  doctor: {
+    password: 'doctor123',
+    user: { id: '6', name: 'Doctor', email: 'doctor@tibbna.iq', role: 'DOCTOR', allowedModules: ['/dashboard', '/patients', '/appointments', '/pharmacies', '/laboratories'] },
+  },
+  pharmacy: {
+    password: 'pharmacy123',
+    user: { id: '7', name: 'Pharmacy Administrator', email: 'pharmacy@tibbna.iq', role: 'PHARMACY', allowedModules: ['/pharmacies', '/inventory'] },
+  },
+  lab: {
+    password: 'lab123',
+    user: { id: '8', name: 'Laboratory Administrator', email: 'lab@tibbna.iq', role: 'LABORATORY', allowedModules: ['/laboratories'] },
   },
 };
 
