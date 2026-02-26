@@ -5,87 +5,54 @@ import { useSearchParams } from 'next/navigation';
 import { Hospital, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const ROLES = [
-  // Administrative Roles
   {
     username: 'superadmin',
     password: 'super123',
     label: 'Super Admin',
     desc: 'All modules',
     route: '/dashboard',
-    category: 'admin',
-  },
-  {
-    username: 'admin',
-    password: 'admin123',
-    label: 'Administrator',
-    desc: 'System Admin',
-    route: '/dashboard',
-    category: 'admin',
   },
   {
     username: 'finance',
     password: 'finance123',
-    label: 'Finance',
-    desc: 'Finance module',
+    label: 'Finance Admin',
+    desc: 'Finance only',
     route: '/finance',
-    category: 'admin',
   },
   {
     username: 'hr',
     password: 'hr123',
-    label: 'HR',
-    desc: 'HR module',
+    label: 'HR Admin',
+    desc: 'HR only',
     route: '/hr',
-    category: 'admin',
   },
   {
     username: 'reception',
     password: 'reception123',
-    label: 'Reception',
-    desc: 'Reception desk',
+    label: 'Reception Admin',
+    desc: 'Reception only',
     route: '/reception',
-    category: 'admin',
   },
-  // Medical Staff Roles
+];
+
+const DIRECT_ACCESS_ROLES = [
   {
-    username: 'doctor',
-    password: 'doctor123',
     label: 'Doctor',
-    desc: 'Medical staff',
-    route: '/appointments',
-    category: 'medical',
+    desc: 'Medical Staff',
+    route: '/reception',
+    icon: '👨‍⚕️',
   },
   {
-    username: 'nurse',
-    password: 'nurse123',
     label: 'Nurse',
-    desc: 'Nursing staff',
-    route: '/appointments',
-    category: 'medical',
+    desc: 'Nursing Staff',
+    route: '/reception',
+    icon: '👩‍⚕️',
   },
   {
-    username: 'lab',
-    password: 'lab123',
-    label: 'Laboratory',
-    desc: 'Lab technician',
-    route: '/laboratory',
-    category: 'medical',
-  },
-  {
-    username: 'pharmacist',
-    password: 'pharmacy123',
-    label: 'Pharmacist',
-    desc: 'Pharmacy staff',
-    route: '/pharmacy',
-    category: 'medical',
-  },
-  {
-    username: 'radiologist',
-    password: 'radio123',
-    label: 'Radiologist',
-    desc: 'Radiology dept',
-    route: '/radiology',
-    category: 'medical',
+    label: 'Lab Technician',
+    desc: 'Laboratory',
+    route: '/reception',
+    icon: '🔬',
   },
 ];
 
@@ -140,6 +107,13 @@ function LoginForm() {
     doLogin(role.username, role.password);
   };
 
+  const directAccess = (role: typeof DIRECT_ACCESS_ROLES[number]) => {
+    setError('');
+    setIsLoading(true);
+    // Direct access without authentication
+    window.location.href = role.route;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -162,44 +136,19 @@ function LoginForm() {
 
           {/* Quick Login Cards */}
           <div className="p-6 border-b border-gray-100">
-            {/* Administrative Roles */}
-            <div className="mb-4">
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Shield className="w-3 h-3" /> Administrative Staff
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {ROLES.filter(r => r.category === 'admin').map(role => (
-                  <button
-                    key={role.username}
-                    onClick={() => quickLogin(role)}
-                    disabled={isLoading}
-                    className="flex flex-col items-center gap-1 p-2.5 rounded-lg border border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-xs font-semibold text-blue-900 text-center leading-tight">{role.label}</span>
-                    <span className="text-[10px] text-blue-600">{role.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Medical Staff Roles */}
-            <div>
-              <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Hospital className="w-3 h-3" /> Medical Staff
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {ROLES.filter(r => r.category === 'medical').map(role => (
-                  <button
-                    key={role.username}
-                    onClick={() => quickLogin(role)}
-                    disabled={isLoading}
-                    className="flex flex-col items-center gap-1 p-2.5 rounded-lg border border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-xs font-semibold text-green-900 text-center leading-tight">{role.label}</span>
-                    <span className="text-[10px] text-green-600">{role.desc}</span>
-                  </button>
-                ))}
-              </div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Login</p>
+            <div className="grid grid-cols-3 gap-2">
+              {ROLES.map(role => (
+                <button
+                  key={role.username}
+                  onClick={() => quickLogin(role)}
+                  disabled={isLoading}
+                  className="flex flex-col items-center gap-1 p-3 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-xs font-semibold text-gray-800 text-center leading-tight">{role.label}</span>
+                  <span className="text-[10px] text-gray-400">{role.desc}</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -270,6 +219,30 @@ function LoginForm() {
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Direct Access Section */}
+          <div className="p-6 border-t border-gray-100 bg-gradient-to-br from-green-50 to-emerald-50">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span>🚀</span> Direct Access (No Login Required)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {DIRECT_ACCESS_ROLES.map(role => (
+                <button
+                  key={role.label}
+                  onClick={() => directAccess(role)}
+                  disabled={isLoading}
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white border-2 border-green-200 hover:border-green-400 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-2xl">{role.icon}</span>
+                  <span className="text-xs font-semibold text-gray-800 text-center leading-tight">{role.label}</span>
+                  <span className="text-[10px] text-green-600 font-medium">{role.desc}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-green-600 mt-3 text-center">
+              Click any role above to access the system directly without authentication
+            </p>
           </div>
         </div>
       </div>
