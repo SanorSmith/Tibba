@@ -90,7 +90,8 @@ const moduleLinks = [
       { href: '/hr/training', icon: GraduationCap, label: 'Training' },
       { href: '/hr/performance', icon: Star, label: 'Performance' },
       { href: '/hr/benefits', icon: Heart, label: 'Benefits' },
-      { href: '/hr/organization', icon: Building2, label: 'Organization' },
+      { href: '/departments', icon: Building2, label: 'Departments' },
+      { href: '/specialties', icon: Star, label: 'Specialties' },
       { href: '/hr/reports', icon: FileText, label: 'Reports' },
     ],
   },
@@ -104,14 +105,6 @@ const existingLinks = [
   { href: '/laboratories', icon: FlaskConical, label: 'Laboratories' },
   { href: '/pharmacies', icon: Pill, label: 'Pharmacies' },
   { href: '/register', icon: UserPlus, label: 'Register' },
-  { 
-    href: '/departments', 
-    icon: Building2, 
-    label: 'Departments',
-    children: [
-      { href: '/departments/orders', icon: ShoppingCart, label: 'Department Orders' },
-    ],
-  },
 ];
 
 interface SidebarProps {

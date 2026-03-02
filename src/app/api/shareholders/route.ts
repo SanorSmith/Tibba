@@ -1,22 +1,23 @@
 // FILE: src/app/api/shareholders/route.ts
-// GET all shareholders, POST create shareholder
+// GET all shareholders, POST create shareholder - PURE DATABASE CONNECTION
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import stakeholdersJson from '@/data/finance/stakeholders.json';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const type = searchParams.get('type');
-  const search = searchParams.get('search');
-  const fallback = (stakeholdersJson as any).stakeholders || [];
-
   if (!supabaseAdmin) {
-    return NextResponse.json(fallback);
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const type = searchParams.get('type');
+    const search = searchParams.get('search');
+
     let query = supabaseAdmin
       .from('shareholders')
       .select('*')
@@ -28,22 +29,34 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error || !data) {
-      console.warn('Supabase shareholders error, falling back to JSON:', error?.message);
-      return NextResponse.json(fallback);
+    if (error) {
+      console.error('Supabase shareholders error:', error?.message);
+      return NextResponse.json(
+        { error: 'Failed to fetch shareholders', details: error.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(data.length > 0 ? data : fallback);
+    return NextResponse.json(data || []);
 
   } catch (err: any) {
-    console.warn('GET shareholders exception, falling back to JSON:', err?.message);
-    return NextResponse.json(fallback);
+    console.error('GET shareholders exception:', err?.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch shareholders', details: err.message },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
-    const supabase = supabaseAdmin;
     const body = await request.json();
 
     console.log('📝 Creating shareholder:', body);
@@ -79,7 +92,7 @@ export async function POST(request: NextRequest) {
       notes: body.notes || null,
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('shareholders')
       .insert(shareholderData)
       .select()

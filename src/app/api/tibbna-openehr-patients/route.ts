@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
 
     // Generate UUID for new patient
     const patientId = crypto.randomUUID();
+    console.log('🆔 Generated patient UUID:', patientId);
 
     // First, get a valid workspaceid from existing patients
     const existingPatients = await db`SELECT workspaceid FROM patients LIMIT 1`;
@@ -151,6 +152,31 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('📝 Mapped patient data to save:', JSON.stringify(patientData, null, 2));
+
+    // Validate required fields
+    if (!patientData.firstname || !patientData.lastname) {
+      return NextResponse.json(
+        { 
+          error: 'First name and last name are required',
+          received: { firstname: patientData.firstname, lastname: patientData.lastname }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(patientData.patientid)) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid patient ID format',
+          patientId: patientData.patientid
+        },
+        { status: 400 }
+      );
+    }
+
+    console.log('🔍 Attempting to insert patient with UUID:', patientData.patientid);
 
     // Insert patient
     const result = await db`

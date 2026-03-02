@@ -11,12 +11,12 @@ import { toast } from 'sonner';
 import departmentsData from '@/data/hr/departments.json';
 import payrollData from '@/data/hr/payroll.json';
 import attendanceData from '@/data/hr/attendance.json';
+import { countriesWithCommonFirst } from '@/data/countries';
 
 const initialForm: EmployeeFormData = {
   first_name: '',
   middle_name: '',
   last_name: '',
-  full_name_arabic: '',
   date_of_birth: '',
   gender: 'MALE',
   marital_status: 'SINGLE',
@@ -27,7 +27,7 @@ const initialForm: EmployeeFormData = {
   address: '',
   employment_type: 'FULL_TIME',
   employee_category: 'ADMINISTRATIVE',
-  job_title: '',
+  job_category_id: '',
   department_id: '',
   grade_id: '',
   date_of_hire: new Date().toISOString().split('T')[0],
@@ -58,7 +58,14 @@ export default function NewEmployeePage() {
     if (!form.first_name.trim()) e.first_name = 'First name is required';
     if (!form.last_name.trim()) e.last_name = 'Last name is required';
     if (!form.date_of_birth) e.date_of_birth = 'Date of birth is required';
-    if (!form.national_id.trim()) e.national_id = 'National ID is required';
+    
+    // National ID validation - exactly 12 digits
+    if (!form.national_id.trim()) {
+      e.national_id = 'National ID is required';
+    } else if (!/^\d{12}$/.test(form.national_id.trim())) {
+      e.national_id = 'National ID must be exactly 12 digits';
+    }
+    
     if (!form.email.trim()) e.email = 'Work email is required';
     if (!form.phone.trim()) e.phone = 'Phone number is required';
     setErrors(e);
@@ -92,7 +99,6 @@ export default function NewEmployeePage() {
       employee_number: empNum,
       first_name: form.first_name,
       last_name: form.last_name,
-      full_name_arabic: form.full_name_arabic || '',
       date_of_birth: form.date_of_birth,
       gender: form.gender,
       marital_status: form.marital_status,
@@ -235,11 +241,6 @@ export default function NewEmployeePage() {
                   <input className="tibbna-input" value={form.last_name} onChange={e => update('last_name', e.target.value)} placeholder="e.g. Al-Bayati" />
                 </FormGroup>
               </FormRow>
-              <FormRow columns={1}>
-                <FormGroup label="Full Name (Arabic)" helper="الاسم الكامل بالعربية">
-                  <input className="tibbna-input" dir="rtl" value={form.full_name_arabic} onChange={e => update('full_name_arabic', e.target.value)} placeholder="أحمد حسن البياتي" />
-                </FormGroup>
-              </FormRow>
             </FormSection>
 
             <FormSection title="Personal Details">
@@ -264,10 +265,26 @@ export default function NewEmployeePage() {
               </FormRow>
               <FormRow columns={2}>
                 <FormGroup label="Nationality">
-                  <input className="tibbna-input" value={form.nationality} onChange={e => update('nationality', e.target.value)} />
+                  <select className="tibbna-input" value={form.nationality} onChange={e => update('nationality', e.target.value)}>
+                    {countriesWithCommonFirst.map(country => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
                 </FormGroup>
                 <FormGroup label="National ID" required error={errors.national_id}>
-                  <input className="tibbna-input" value={form.national_id} onChange={e => update('national_id', e.target.value)} placeholder="e.g. 12345678901" />
+                  <input 
+                    className="tibbna-input" 
+                    type="text"
+                    pattern="\d{12}"
+                    maxLength={12}
+                    inputMode="numeric"
+                    placeholder="e.g. 123456789012"
+                    value={form.national_id} 
+                    onChange={e => update('national_id', e.target.value.replace(/\D/g, ''))} 
+                  />
+                  <span style={{ fontSize: '11px', color: 'rgb(163, 163, 163)' }}>
+                    Must be exactly 12 digits
+                  </span>
                 </FormGroup>
               </FormRow>
             </FormSection>
@@ -408,7 +425,6 @@ export default function NewEmployeePage() {
             <FormSection title="Personal Information">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" style={{ fontSize: '13px' }}>
                 <div><span style={{ color: '#a3a3a3' }}>Full Name</span><p style={{ fontWeight: 500 }}>{form.first_name} {form.middle_name} {form.last_name}</p></div>
-                {form.full_name_arabic && <div><span style={{ color: '#a3a3a3' }}>Arabic Name</span><p style={{ fontWeight: 500 }} dir="rtl">{form.full_name_arabic}</p></div>}
                 <div><span style={{ color: '#a3a3a3' }}>Date of Birth</span><p style={{ fontWeight: 500 }}>{form.date_of_birth}</p></div>
                 <div><span style={{ color: '#a3a3a3' }}>Gender</span><p style={{ fontWeight: 500 }}>{form.gender}</p></div>
                 <div><span style={{ color: '#a3a3a3' }}>Marital Status</span><p style={{ fontWeight: 500 }}>{form.marital_status}</p></div>

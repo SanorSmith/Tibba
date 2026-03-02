@@ -20,7 +20,8 @@ const USERS: Record<string, User> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionToken = cookies().get('tibbna_session')?.value;
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get('tibbna_session')?.value;
     if (!sessionToken) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

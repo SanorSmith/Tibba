@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
       JSON.stringify({ userId: record.user.id, username: username.toLowerCase().trim(), role: record.user.role, timestamp: Date.now() })
     ).toString('base64');
 
-    cookies().set('tibbna_session', sessionToken, {
+    const cookieStore = await cookies();
+    cookieStore.set('tibbna_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

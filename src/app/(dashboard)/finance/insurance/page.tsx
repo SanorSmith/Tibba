@@ -6,8 +6,38 @@ import { toast } from 'sonner';
 
 interface InsuranceCompany {
   id: string;
-  company_code: string;
-  company_name: string;
+  code: string;
+  name: string;
+  name_ar?: string;
+  type: string;
+  contact?: {
+    contact_person?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+  };
+  address?: {
+    address_line1?: string;
+    city?: string;
+    province?: string;
+    country?: string;
+  };
+  payment_terms?: number;
+  credit_limit?: number;
+  annual_budget?: number;
+  active: boolean;
+  metadata?: {
+    default_discount_percentage?: number;
+    default_copay_percentage?: number;
+    claim_payment_terms_days?: number;
+    contract_start_date?: string;
+    contract_end_date?: string;
+    coverage_limit?: number;
+    notes?: string;
+  };
+  // Backward compatibility properties for UI
+  company_code?: string;
+  company_name?: string;
   company_name_ar?: string;
   contact_person?: string;
   phone?: string;
@@ -23,9 +53,45 @@ interface InsuranceCompany {
   contract_start_date?: string;
   contract_end_date?: string;
   coverage_limit?: number;
-  is_active: boolean;
+  is_active?: boolean;
   notes?: string;
 }
+
+// Helper function to map database data to UI format
+const mapInsuranceData = (data: any): InsuranceCompany => ({
+  id: data.id,
+  code: data.code,
+  name: data.name,
+  name_ar: data.name_ar,
+  type: data.type,
+  contact: data.contact || {},
+  address: data.address || {},
+  payment_terms: data.payment_terms,
+  credit_limit: data.credit_limit,
+  annual_budget: data.annual_budget,
+  active: data.active,
+  metadata: data.metadata || {},
+  // For backward compatibility with existing UI
+  company_code: data.code,
+  company_name: data.name,
+  company_name_ar: data.name_ar,
+  contact_person: data.contact?.contact_person,
+  phone: data.contact?.phone,
+  email: data.contact?.email,
+  website: data.contact?.website,
+  address_line1: data.address?.address_line1,
+  city: data.address?.city,
+  province: data.address?.province,
+  country: data.address?.country,
+  default_discount_percentage: data.metadata?.default_discount_percentage,
+  default_copay_percentage: data.metadata?.default_copay_percentage,
+  claim_payment_terms_days: data.metadata?.claim_payment_terms_days,
+  contract_start_date: data.metadata?.contract_start_date,
+  contract_end_date: data.metadata?.contract_end_date,
+  coverage_limit: data.metadata?.coverage_limit,
+  is_active: data.active,
+  notes: data.metadata?.notes,
+});
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
 const fmtM = (n: number) => `${(n / 1000000).toFixed(1)}M`;
@@ -49,7 +115,8 @@ export default function InsurancePage() {
       const res = await fetch('/api/insurance-companies');
       if (res.ok) {
         const data = await res.json();
-        setCompanies(data);
+        const mappedData = data.map(mapInsuranceData);
+        setCompanies(mappedData);
       }
     } catch (error) {
       console.error('Failed to load insurance companies:', error);
@@ -62,11 +129,19 @@ export default function InsurancePage() {
   const handleCreate = () => {
     setEditingCompany(null);
     setFormData({
-      country: 'Iraq',
-      is_active: true,
-      default_discount_percentage: 0,
-      default_copay_percentage: 0,
-      claim_payment_terms_days: 30,
+      type: 'PRIVATE',
+      active: true,
+      payment_terms: 30,
+      credit_limit: 0,
+      annual_budget: 0,
+      address: {
+        country: 'Iraq'
+      },
+      metadata: {
+        default_discount_percentage: 0,
+        default_copay_percentage: 0,
+        claim_payment_terms_days: 30
+      }
     });
     setShowModal(true);
   };
@@ -79,7 +154,7 @@ export default function InsurancePage() {
 
   const handleSave = async () => {
     try {
-      if (!formData.company_code || !formData.company_name) {
+      if (!formData.code || !formData.name) {
         toast.error('Company code and name are required');
         return;
       }
@@ -89,10 +164,33 @@ export default function InsurancePage() {
         : '/api/insurance-companies';
       const method = editingCompany ? 'PUT' : 'POST';
 
+      // Transform form data to match API expectations
+      const apiData = {
+        code: formData.code,
+        name: formData.name,
+        name_ar: formData.name_ar,
+        type: formData.type || 'PRIVATE',
+        contact: formData.contact || {},
+        address: formData.address || {},
+        payment_terms: formData.payment_terms || 30,
+        credit_limit: formData.credit_limit || 0,
+        annual_budget: formData.annual_budget || 0,
+        active: formData.active !== false,
+        metadata: {
+          default_discount_percentage: formData.metadata?.default_discount_percentage || 0,
+          default_copay_percentage: formData.metadata?.default_copay_percentage || 0,
+          claim_payment_terms_days: formData.metadata?.claim_payment_terms_days || 30,
+          contract_start_date: formData.metadata?.contract_start_date || null,
+          contract_end_date: formData.metadata?.contract_end_date || null,
+          coverage_limit: formData.metadata?.coverage_limit || null,
+          notes: formData.metadata?.notes || null
+        }
+      };
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(apiData),
       });
 
       if (res.ok) {
@@ -130,19 +228,19 @@ export default function InsurancePage() {
   };
 
   const filteredCompanies = companies.filter(c => {
-    if (activeOnly && !c.is_active) return false;
+    if (activeOnly && !c.active) return false;
     if (search) {
       const s = search.toLowerCase();
       return (
-        c.company_name.toLowerCase().includes(s) ||
-        c.company_name_ar?.toLowerCase().includes(s) ||
-        c.company_code.toLowerCase().includes(s)
+        c.name.toLowerCase().includes(s) ||
+        c.name_ar?.toLowerCase().includes(s) ||
+        c.code.toLowerCase().includes(s)
       );
     }
     return true;
   });
 
-  const activeCompanies = companies.filter(c => c.is_active);
+  const activeCompanies = companies.filter(c => c.active);
   const avgDiscount = activeCompanies.length
     ? activeCompanies.reduce((s, c) => s + (c.default_discount_percentage || 0), 0) / activeCompanies.length
     : 0;
@@ -237,11 +335,11 @@ export default function InsurancePage() {
             <tbody className="divide-y">
               {filteredCompanies.map(company => (
                 <tr key={company.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{company.company_code}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{company.code}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{company.company_name}</div>
-                    {company.company_name_ar && (
-                      <div className="text-xs text-gray-500">{company.company_name_ar}</div>
+                    <div className="font-medium">{company.name}</div>
+                    {company.name_ar && (
+                      <div className="text-xs text-gray-500">{company.name_ar}</div>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -263,12 +361,12 @@ export default function InsurancePage() {
                   <td className="px-4 py-3 text-center">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        company.is_active
+                        company.active
                           ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-red-100 text-red-700'
                       }`}
                     >
-                      {company.is_active ? 'Active' : 'Inactive'}
+                      {company.active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -331,8 +429,8 @@ export default function InsurancePage() {
                     </label>
                     <input
                       type="text"
-                      value={formData.company_code || ''}
-                      onChange={e => setFormData({ ...formData, company_code: e.target.value })}
+                      value={formData.code || ''}
+                      onChange={e => setFormData({ ...formData, code: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       placeholder="INS-001"
                     />
@@ -343,8 +441,8 @@ export default function InsurancePage() {
                     </label>
                     <input
                       type="text"
-                      value={formData.company_name || ''}
-                      onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+                      value={formData.name || ''}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       placeholder="National Insurance Co."
                     />
@@ -355,8 +453,8 @@ export default function InsurancePage() {
                     </label>
                     <input
                       type="text"
-                      value={formData.company_name_ar || ''}
-                      onChange={e => setFormData({ ...formData, company_name_ar: e.target.value })}
+                      value={formData.name_ar || ''}
+                      onChange={e => setFormData({ ...formData, name_ar: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       placeholder="شركة التأمين الوطنية"
                     />
@@ -374,8 +472,11 @@ export default function InsurancePage() {
                     </label>
                     <input
                       type="text"
-                      value={formData.contact_person || ''}
-                      onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
+                      value={formData.contact?.contact_person || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        contact: { ...formData.contact, contact_person: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -383,8 +484,11 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
                     <input
                       type="text"
-                      value={formData.phone || ''}
-                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                      value={formData.contact?.phone || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        contact: { ...formData.contact, phone: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -392,8 +496,11 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
                     <input
                       type="email"
-                      value={formData.email || ''}
-                      onChange={e => setFormData({ ...formData, email: e.target.value })}
+                      value={formData.contact?.email || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        contact: { ...formData.contact, email: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -401,8 +508,11 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Website</label>
                     <input
                       type="text"
-                      value={formData.website || ''}
-                      onChange={e => setFormData({ ...formData, website: e.target.value })}
+                      value={formData.contact?.website || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        contact: { ...formData.contact, website: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -417,8 +527,11 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
                     <input
                       type="text"
-                      value={formData.address_line1 || ''}
-                      onChange={e => setFormData({ ...formData, address_line1: e.target.value })}
+                      value={formData.address?.address_line1 || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        address: { ...formData.address, address_line1: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -426,8 +539,11 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">City</label>
                     <input
                       type="text"
-                      value={formData.city || ''}
-                      onChange={e => setFormData({ ...formData, city: e.target.value })}
+                      value={formData.address?.city || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        address: { ...formData.address, city: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -435,8 +551,11 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Province</label>
                     <input
                       type="text"
-                      value={formData.province || ''}
-                      onChange={e => setFormData({ ...formData, province: e.target.value })}
+                      value={formData.address?.province || ''}
+                      onChange={e => setFormData({ 
+                        ...formData, 
+                        address: { ...formData.address, province: e.target.value }
+                      })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -456,11 +575,11 @@ export default function InsurancePage() {
                       min="0"
                       max="100"
                       step="0.01"
-                      value={formData.default_discount_percentage || 0}
+                      value={formData.metadata?.default_discount_percentage || 0}
                       onChange={e =>
                         setFormData({
                           ...formData,
-                          default_discount_percentage: parseFloat(e.target.value) || 0,
+                          metadata: { ...formData.metadata, default_discount_percentage: parseFloat(e.target.value) || 0 }
                         })
                       }
                       className="w-full px-3 py-2 border rounded-lg text-sm"
@@ -473,11 +592,11 @@ export default function InsurancePage() {
                       min="0"
                       max="100"
                       step="0.01"
-                      value={formData.default_copay_percentage || 0}
+                      value={formData.metadata?.default_copay_percentage || 0}
                       onChange={e =>
                         setFormData({
                           ...formData,
-                          default_copay_percentage: parseFloat(e.target.value) || 0,
+                          metadata: { ...formData.metadata, default_copay_percentage: parseFloat(e.target.value) || 0 }
                         })
                       }
                       className="w-full px-3 py-2 border rounded-lg text-sm"
@@ -490,11 +609,11 @@ export default function InsurancePage() {
                     <input
                       type="number"
                       min="0"
-                      value={formData.claim_payment_terms_days || 30}
+                      value={formData.metadata?.claim_payment_terms_days || 30}
                       onChange={e =>
                         setFormData({
                           ...formData,
-                          claim_payment_terms_days: parseInt(e.target.value) || 30,
+                          metadata: { ...formData.metadata, claim_payment_terms_days: parseInt(e.target.value) || 30 }
                         })
                       }
                       className="w-full px-3 py-2 border rounded-lg text-sm"
@@ -513,9 +632,9 @@ export default function InsurancePage() {
                     </label>
                     <input
                       type="date"
-                      value={formData.contract_start_date || ''}
+                      value={formData.metadata?.contract_start_date || ''}
                       onChange={e =>
-                        setFormData({ ...formData, contract_start_date: e.target.value })
+                        setFormData({ ...formData, metadata: { ...formData.metadata, contract_start_date: e.target.value } })
                       }
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
@@ -524,8 +643,10 @@ export default function InsurancePage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
                     <input
                       type="date"
-                      value={formData.contract_end_date || ''}
-                      onChange={e => setFormData({ ...formData, contract_end_date: e.target.value })}
+                      value={formData.metadata?.contract_end_date || ''}
+                      onChange={e =>
+                        setFormData({ ...formData, metadata: { ...formData.metadata, contract_end_date: e.target.value } })
+                      }
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -536,12 +657,9 @@ export default function InsurancePage() {
                     <input
                       type="number"
                       min="0"
-                      value={formData.coverage_limit || ''}
+                      value={formData.metadata?.coverage_limit || ''}
                       onChange={e =>
-                        setFormData({
-                          ...formData,
-                          coverage_limit: parseFloat(e.target.value) || undefined,
-                        })
+                        setFormData({ ...formData, metadata: { ...formData.metadata, coverage_limit: parseFloat(e.target.value) || undefined } })
                       }
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       placeholder="50000000"
@@ -554,8 +672,8 @@ export default function InsurancePage() {
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
-                  value={formData.notes || ''}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  value={formData.metadata?.notes || ''}
+                  onChange={e => setFormData({ ...formData, metadata: { ...formData.metadata, notes: e.target.value } })}
                   className="w-full px-3 py-2 border rounded-lg text-sm"
                   rows={3}
                 />
@@ -565,8 +683,8 @@ export default function InsurancePage() {
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={formData.is_active !== false}
-                    onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                    checked={formData.active !== false}
+                    onChange={e => setFormData({ ...formData, active: e.target.checked })}
                     className="rounded"
                   />
                   Active

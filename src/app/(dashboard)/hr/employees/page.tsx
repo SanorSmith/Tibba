@@ -2,12 +2,24 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, UserPlus, ChevronRight, Download, Trash2 } from 'lucide-react';
-import { dataStore } from '@/lib/dataStore';
+import { Search, UserPlus, ChevronRight, Download, Trash2, Mail, Phone, MapPin, Database } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import type { Employee } from '@/types/hr';
-import departmentsData from '@/data/hr/departments.json';
+
+interface Staff {
+  staffid: string;
+  firstname: string;
+  middlename: string | null;
+  lastname: string;
+  role: string;
+  unit: string | null;
+  specialty: string | null;
+  phone: string;
+  email: string;
+  workspaceid: string;
+  createdat: string;
+  updatedat: string;
+}
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
   MEDICAL_STAFF: { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -15,6 +27,9 @@ const categoryColors: Record<string, { bg: string; text: string }> = {
   ADMINISTRATIVE: { bg: '#E0E7FF', text: '#4338CA' },
   TECHNICAL: { bg: '#D1FAE5', text: '#065F46' },
   SUPPORT: { bg: '#FEF3C7', text: '#92400E' },
+  DOCTOR: { bg: '#DBEAFE', text: '#1D4ED8' },
+  NURSE: { bg: '#FCE7F3', text: '#BE185D' },
+  STAFF: { bg: '#E0E7FF', text: '#4338CA' },
 };
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -28,29 +43,36 @@ const ITEMS_PER_PAGE = 10;
 
 export default function EmployeesPage() {
   const { hasRole } = useAuth();
-  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  const [allStaff, setAllStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [occupationFilter, setOccupationFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
 
   // =========================================================================
-  // LOAD DATA FROM DATASTORE
+  // LOAD DATA FROM DATABASE
   // =========================================================================
 
   useEffect(() => {
-    loadEmployees();
+    loadStaff();
   }, []);
 
-  const loadEmployees = () => {
+  const loadStaff = async () => {
     try {
-      const data = dataStore.getEmployees();
-      setAllEmployees(data);
+      setLoading(true);
+      const response = await fetch('/api/staff');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setAllStaff(data.staff || []);
+      } else {
+        console.error('❌ Error loading staff:', data.error);
+        toast.error('Failed to load staff from database');
+      }
     } catch (error) {
-      console.error('❌ Error loading employees:', error);
-      toast.error('Failed to load employees');
+      console.error('❌ Error loading staff:', error);
+      toast.error('Failed to load staff');
     } finally {
       setLoading(false);
     }
@@ -60,89 +82,112 @@ export default function EmployeesPage() {
   // FILTERING & SEARCH
   // =========================================================================
 
-  const employees = useMemo(() => {
-    return allEmployees.filter(emp => {
-      const fullName = `${emp.first_name} ${emp.last_name}`;
+  const staff = useMemo(() => {
+    return allStaff.filter(person => {
       const matchesSearch = search === '' ||
-        fullName.toLowerCase().includes(search.toLowerCase()) ||
-        emp.employee_number.toLowerCase().includes(search.toLowerCase()) ||
-        emp.job_title.toLowerCase().includes(search.toLowerCase()) ||
-        ((emp.email || (emp as any).email_work || '') as string).toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = categoryFilter === 'all' || emp.employee_category === categoryFilter;
-      const matchesDept = departmentFilter === 'all' || emp.department_id === departmentFilter;
-      const matchesStatus = statusFilter === 'all' || emp.employment_status === statusFilter;
-      return matchesSearch && matchesCategory && matchesDept && matchesStatus;
+        person.firstname.toLowerCase().includes(search.toLowerCase()) ||
+        person.lastname.toLowerCase().includes(search.toLowerCase()) ||
+        person.email.toLowerCase().includes(search.toLowerCase()) ||
+        person.phone.toLowerCase().includes(search.toLowerCase()) ||
+        person.role.toLowerCase().includes(search.toLowerCase()) ||
+        (person.unit && person.unit.toLowerCase().includes(search.toLowerCase()));
+
+      const matchesDept = departmentFilter === 'all' || (person.unit && person.unit === departmentFilter);
+      const matchesOccupation = occupationFilter === 'all' || (person.specialty && person.specialty === occupationFilter);
+      return matchesSearch && matchesDept && matchesOccupation;
     });
-  }, [allEmployees, search, categoryFilter, departmentFilter, statusFilter]);
+  }, [allStaff, search, departmentFilter, occupationFilter]);
 
   // =========================================================================
   // PAGINATION
   // =========================================================================
 
-  const totalPages = Math.ceil(employees.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(staff.length / ITEMS_PER_PAGE);
 
-  const paginatedEmployees = useMemo(() => {
+  const paginatedStaff = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return employees.slice(start, start + ITEMS_PER_PAGE);
-  }, [employees, currentPage]);
+    return staff.slice(start, start + ITEMS_PER_PAGE);
+  }, [staff, currentPage]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, categoryFilter, departmentFilter, statusFilter]);
+  }, [search, departmentFilter, occupationFilter]);
 
   // =========================================================================
   // ACTIONS
   // =========================================================================
 
-  const handleDelete = (employeeId: string, employeeName: string) => {
+  const handleDelete = async (staffId: string, staffName: string) => {
     if (!hasRole('HR_ADMIN')) {
-      toast.error('Only HR Admin can delete employees');
+      toast.error('Only HR Admin can delete staff');
       return;
     }
-    if (!confirm(`Are you sure you want to delete ${employeeName}?`)) return;
+    if (!confirm(`Are you sure you want to delete ${staffName}?`)) return;
 
     try {
-      const success = dataStore.deleteEmployee(employeeId);
-      if (success) {
-        toast.success(`${employeeName} deleted successfully`);
-        loadEmployees();
+      setLoading(true);
+      const response = await fetch(`/api/staff?staffId=${staffId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log('Staff member deleted successfully:', result);
+        toast.success('Staff member deleted successfully');
+        // Reload staff list
+        await loadStaff();
       } else {
-        toast.error('Failed to delete employee');
+        console.error('Error deleting staff member:', result);
+        toast.error(result.error || 'Failed to delete staff member');
       }
     } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Error deleting employee');
+      console.error('Error deleting staff member:', error);
+      toast.error('Failed to delete staff member');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleExport = () => {
     try {
-      const headers = ['Employee ID', 'Name', 'Email', 'Department', 'Position', 'Category', 'Status', 'Hire Date'];
-      const rows = employees.map(emp => [
-        emp.employee_number,
-        `${emp.first_name} ${emp.last_name}`,
-        emp.email || (emp as any).email_work || '',
-        emp.department_name,
-        emp.job_title,
-        emp.employee_category,
-        emp.employment_status,
-        emp.date_of_hire,
+      const headers = ['Staff ID', 'Name', 'Email', 'Phone', 'Department', 'Role', 'Specialty', 'Created Date'];
+      const rows = staff.map(person => [
+        person.staffid,
+        `${person.firstname} ${person.lastname}`,
+        person.email,
+        person.phone,
+        person.unit || '',
+        person.role,
+        person.specialty || '',
+        new Date(person.createdat).toLocaleDateString(),
       ]);
       const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `employees_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `staff_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Employees exported to CSV');
+      toast.success('Staff exported to CSV');
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export employees');
+      toast.error('Failed to export staff');
     }
   };
+
+  // Get unique departments and occupations for filters
+  const departments = useMemo(() => {
+    const depts = [...new Set(allStaff.map(person => person.unit).filter(Boolean))];
+    return depts.sort();
+  }, [allStaff]);
+
+  const occupations = useMemo(() => {
+    const occs = [...new Set(allStaff.map(person => person.specialty).filter(Boolean))];
+    return occs.sort();
+  }, [allStaff]);
 
   // =========================================================================
   // RENDER
@@ -153,7 +198,7 @@ export default function EmployeesPage() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 mx-auto mb-3" style={{ borderColor: '#618FF5' }} />
-          <p style={{ color: '#a3a3a3', fontSize: '14px' }}>Loading employees...</p>
+          <p style={{ color: '#a3a3a3', fontSize: '14px' }}>Loading staff...</p>
         </div>
       </div>
     );
@@ -163,8 +208,8 @@ export default function EmployeesPage() {
     <>
       <div className="page-header-section">
         <div>
-          <h2 className="page-title">Employee Directory</h2>
-          <p className="page-description">{employees.length} employees found</p>
+          <h2 className="page-title">Staff Directory</h2>
+          <p className="page-description">{staff.length} staff members found</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -174,7 +219,7 @@ export default function EmployeesPage() {
             <Download size={16} />
             <span className="hidden sm:inline">Export CSV</span>
           </button>
-          <Link href="/hr/employees/new">
+          <Link href="/hr/employees/add">
             <button className="btn-primary flex items-center gap-2">
               <UserPlus size={16} />
               <span className="hidden sm:inline">Add Employee</span>
@@ -186,12 +231,12 @@ export default function EmployeesPage() {
       {/* Filters */}
       <div className="tibbna-card tibbna-section">
         <div className="tibbna-card-content">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#a3a3a3' }} />
               <input
                 type="text"
-                placeholder="Search employees..."
+                placeholder="Search staff..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="tibbna-input pl-10"
@@ -199,57 +244,70 @@ export default function EmployeesPage() {
               />
             </div>
             <select
-              value={categoryFilter}
-              onChange={e => setCategoryFilter(e.target.value)}
-              className="tibbna-input"
-            >
-              <option value="all">All Categories</option>
-              <option value="MEDICAL_STAFF">Medical Staff</option>
-              <option value="NURSING">Nursing</option>
-              <option value="ADMINISTRATIVE">Administrative</option>
-              <option value="TECHNICAL">Technical</option>
-              <option value="SUPPORT">Support</option>
-            </select>
-            <select
               value={departmentFilter}
               onChange={e => setDepartmentFilter(e.target.value)}
               className="tibbna-input"
             >
               <option value="all">All Departments</option>
-              {departmentsData.departments.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept || ''}>{dept}</option>
               ))}
             </select>
             <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              value={occupationFilter}
+              onChange={e => setOccupationFilter(e.target.value)}
               className="tibbna-input"
             >
-              <option value="all">All Statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="ON_LEAVE">On Leave</option>
-              <option value="TERMINATED">Terminated</option>
+              <option value="all">All Occupations</option>
+              {occupations.map(occ => (
+                <option key={occ} value={occ || ''}>{occ}</option>
+              ))}
             </select>
           </div>
         </div>
       </div>
 
-      {employees.length === 0 ? (
+      {staff.length === 0 ? (
         <div className="tibbna-card">
           <div className="tibbna-card-content text-center py-12">
-            <p style={{ fontSize: '15px', fontWeight: 500, color: '#525252' }}>No employees found</p>
+            <p style={{ fontSize: '15px', fontWeight: 500, color: '#525252' }}>No staff found</p>
             <p style={{ fontSize: '13px', color: '#a3a3a3', marginTop: '4px' }}>
-              {search || categoryFilter !== 'all' || departmentFilter !== 'all' || statusFilter !== 'all'
+              {search || departmentFilter !== 'all' || occupationFilter !== 'all'
                 ? 'Try adjusting your filters'
-                : 'Get started by adding your first employee'}
+                : 'The staff table needs to be set up first'}
             </p>
-            {(search || categoryFilter !== 'all' || departmentFilter !== 'all' || statusFilter !== 'all') && (
+            {(search || departmentFilter !== 'all' || occupationFilter !== 'all') && (
               <button
-                onClick={() => { setSearch(''); setCategoryFilter('all'); setDepartmentFilter('all'); setStatusFilter('all'); }}
+                onClick={() => { setSearch(''); setDepartmentFilter('all'); setOccupationFilter('all'); }}
                 className="btn-secondary mt-4"
               >
                 Clear Filters
               </button>
+            )}
+            {!search && departmentFilter === 'all' && occupationFilter === 'all' && (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Database className="text-blue-600" size={20} />
+                    <h4 className="text-blue-900 font-semibold">Staff Table Setup Required</h4>
+                  </div>
+                  <p className="text-blue-700 text-sm mb-4">
+                    The staff table doesn't exist in the database yet. You need to set it up first before adding employees.
+                  </p>
+                  <Link href="/hr/setup-staff">
+                    <button className="btn-primary">
+                      <Database size={16} className="mr-2" />
+                      Setup Staff Table
+                    </button>
+                  </Link>
+                </div>
+                <Link href="/hr/employees/add">
+                  <button className="btn-secondary">
+                    <UserPlus size={16} className="mr-2" />
+                    Add Employee (After Setup)
+                  </button>
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -261,56 +319,62 @@ export default function EmployeesPage() {
               <table className="tibbna-table">
                 <thead>
                   <tr>
-                    <th>Employee</th>
-                    <th>ID</th>
+                    <th>Staff Member</th>
+                    <th>Contact</th>
                     <th>Department</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th>Hire Date</th>
+                    <th>Role</th>
+                    <th>Staff ID</th>
+                    <th>Created</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedEmployees.map(emp => {
-                    const catColor = categoryColors[emp.employee_category] || { bg: '#F3F4F6', text: '#374151' };
-                    const statColor = statusColors[emp.employment_status] || { bg: '#F3F4F6', text: '#374151' };
+                  {paginatedStaff.map(person => {
+                    const fullName = `${person.firstname} ${person.lastname}`;
+                    const deptColor = categoryColors[person.unit || ''] || { bg: '#F3F4F6', text: '#374151' };
                     return (
-                      <tr key={emp.id}>
+                      <tr key={person.staffid}>
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#618FF5' }}>
-                              {emp.first_name[0]}{emp.last_name[0]}
+                              {fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                             </div>
                             <div>
-                              <p style={{ fontSize: '14px', fontWeight: 500 }}>{emp.first_name} {emp.last_name}</p>
-                              <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{emp.job_title}</p>
+                              <p style={{ fontSize: '14px', fontWeight: 500 }}>{fullName}</p>
+                              <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{person.specialty || 'No specialty'}</p>
                             </div>
                           </div>
                         </td>
-                        <td style={{ fontSize: '13px', color: '#525252' }}>{emp.employee_number}</td>
-                        <td style={{ fontSize: '13px' }}>{emp.department_name}</td>
                         <td>
-                          <span className="tibbna-badge" style={{ backgroundColor: catColor.bg, color: catColor.text }}>
-                            {emp.employee_category.replace('_', ' ')}
-                          </span>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1" style={{ fontSize: '13px', color: '#525252' }}>
+                              <Mail size={12} style={{ color: '#a3a3a3' }} />
+                              {person.email}
+                            </div>
+                            <div className="flex items-center gap-1" style={{ fontSize: '13px', color: '#525252' }}>
+                              <Phone size={12} style={{ color: '#a3a3a3' }} />
+                              {person.phone}
+                            </div>
+                          </div>
                         </td>
                         <td>
-                          <span className="tibbna-badge" style={{ backgroundColor: statColor.bg, color: statColor.text }}>
-                            {emp.employment_status}
+                          <span className="tibbna-badge" style={{ backgroundColor: deptColor.bg, color: deptColor.text }}>
+                            {person.unit || 'General'}
                           </span>
                         </td>
-                        <td style={{ fontSize: '13px', color: '#525252' }}>{emp.date_of_hire}</td>
+                        <td style={{ fontSize: '13px' }}>{person.role}</td>
+                        <td style={{ fontSize: '13px', color: '#525252' }}>{person.staffid}</td>
+                        <td style={{ fontSize: '13px', color: '#525252' }}>
+                          {new Date(person.createdat).toLocaleDateString()}
+                        </td>
                         <td>
                           <div className="flex items-center gap-2">
-                            <Link href={`/hr/employees/${emp.id}`}>
+                            <Link href={`/hr/employees/${person.staffid}`}>
                               <button className="btn-secondary btn-sm">View</button>
-                            </Link>
-                            <Link href={`/hr/employees/${emp.id}/edit`}>
-                              <button className="btn-secondary btn-sm">Edit</button>
                             </Link>
                             {hasRole('HR_ADMIN') && (
                               <button
-                                onClick={() => handleDelete(emp.id, `${emp.first_name} ${emp.last_name}`)}
+                                onClick={() => handleDelete(person.staffid, person.name)}
                                 className="btn-sm flex items-center justify-center"
                                 style={{ color: '#EF4444', padding: '4px 8px', borderRadius: '6px', border: '1px solid #FCA5A5' }}
                                 title="Delete"
@@ -330,33 +394,40 @@ export default function EmployeesPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2">
-            {paginatedEmployees.map(emp => {
-              const catColor = categoryColors[emp.employee_category] || { bg: '#F3F4F6', text: '#374151' };
-              const statColor = statusColors[emp.employment_status] || { bg: '#F3F4F6', text: '#374151' };
+            {paginatedStaff.map(person => {
+              const fullName = `${person.firstname} ${person.lastname}`;
+              const deptColor = categoryColors[person.unit || ''] || { bg: '#F3F4F6', text: '#374151' };
               return (
-                <Link key={emp.id} href={`/hr/employees/${emp.id}`}>
+                <Link key={person.staffid} href={`/hr/employees/${person.staffid}`}>
                   <div className="tibbna-card cursor-pointer active:bg-gray-50">
                     <div className="tibbna-card-content">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: '#618FF5' }}>
-                            {emp.first_name[0]}{emp.last_name[0]}
+                            {fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <p style={{ fontSize: '14px', fontWeight: 600 }}>{emp.first_name} {emp.last_name}</p>
-                            <p style={{ fontSize: '12px', color: '#525252' }}>{emp.job_title}</p>
-                            <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{emp.department_name}</p>
+                            <p style={{ fontSize: '14px', fontWeight: 600 }}>{fullName}</p>
+                            <p style={{ fontSize: '12px', color: '#525252' }}>{person.role}</p>
+                            <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{person.unit}</p>
                           </div>
                         </div>
                         <ChevronRight size={16} style={{ color: '#a3a3a3' }} />
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="tibbna-badge" style={{ backgroundColor: catColor.bg, color: catColor.text, fontSize: '10px' }}>
-                          {emp.employee_category.replace('_', ' ')}
+                        <span className="tibbna-badge" style={{ backgroundColor: deptColor.bg, color: deptColor.text, fontSize: '10px' }}>
+                          {person.unit || 'General'}
                         </span>
-                        <span className="tibbna-badge" style={{ backgroundColor: statColor.bg, color: statColor.text, fontSize: '10px' }}>
-                          {emp.employment_status}
-                        </span>
+                      </div>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-1" style={{ fontSize: '12px', color: '#525252' }}>
+                          <Mail size={10} style={{ color: '#a3a3a3' }} />
+                          {person.email}
+                        </div>
+                        <div className="flex items-center gap-1" style={{ fontSize: '12px', color: '#525252' }}>
+                          <Phone size={10} style={{ color: '#a3a3a3' }} />
+                          {person.phone}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -370,7 +441,7 @@ export default function EmployeesPage() {
             <div className="tibbna-card tibbna-section">
               <div className="tibbna-card-content flex flex-col sm:flex-row items-center justify-between gap-3">
                 <p style={{ fontSize: '13px', color: '#525252' }}>
-                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, employees.length)} of {employees.length}
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, staff.length)} of {staff.length}
                 </p>
                 <div className="flex items-center gap-1">
                   <button

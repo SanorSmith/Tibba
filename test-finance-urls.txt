@@ -1,0 +1,101 @@
+# Finance API Test URLs - Copy and paste these to test each API
+
+# === CORE FINANCE APIS ===
+# Budget Management
+curl "http://localhost:3000/api/budget"
+
+# Invoices
+curl "http://localhost:3000/api/invoices"
+
+# Service Payments (to providers)
+curl "http://localhost:3000/api/service-payments"
+
+# Insurance Companies
+curl "http://localhost:3000/api/insurance-companies"
+
+# Invoice Returns
+curl "http://localhost:3000/api/invoice-returns"
+
+# === MIGRATED APIS (Should be pure database) ===
+# Shareholders (Recently migrated)
+curl "http://localhost:3000/api/shareholders"
+
+# Purchase Requests (Recently migrated)
+curl "http://localhost:3000/api/purchase-requests"
+
+# Services (Recently migrated)
+curl "http://localhost:3000/api/services"
+
+# === TEST WITH PARAMETERS ===
+# Budget by fiscal year
+curl "http://localhost:3000/api/budget?fiscal_year=2024"
+
+# Budget by status
+curl "http://localhost:3000/api/budget?status=ACTIVE"
+
+# Invoices by status
+curl "http://localhost:3000/api/invoices?status=PAID"
+
+# Invoices by patient
+curl "http://localhost:3000/api/invoices?patient_id=uuid-here"
+
+# Search invoices
+curl "http://localhost:3000/api/invoices?search=invoice"
+
+# Services by category
+curl "http://localhost:3000/api/services?category=CONSULTATION"
+
+# Services search
+curl "http://localhost:3000/api/services?search=consultation"
+
+# Shareholders by status
+curl "http://localhost:3000/api/shareholders?status=ACTIVE"
+
+# Shareholders search
+curl "http://localhost:3000/api/shareholders?search=hospital"
+
+# Purchase requests by status
+curl "http://localhost:3000/api/purchase-requests?status=PENDING"
+
+# Purchase requests by priority
+curl "http://localhost:3000/api/purchase-requests?priority=HIGH"
+
+# === POST TESTS (Create new data) ===
+# Create new shareholder
+curl -X POST "http://localhost:3000/api/shareholders" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shareholder_id": "test-001",
+    "full_name": "Test Shareholder",
+    "shareholder_type": "INDIVIDUAL",
+    "share_percentage": 5,
+    "status": "ACTIVE"
+  }'
+
+# Create new purchase request
+curl -X POST "http://localhost:3000/api/purchase-requests" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requested_by": "Test User",
+    "department": "Test Department",
+    "item_name": "Test Medical Supply",
+    "estimated_total_price": 50000,
+    "status": "PENDING"
+  }'
+
+# === INDICATORS TO CHECK ===
+# DATABASE CONNECTED INDICATORS:
+# - Response contains UUID IDs like: "id": "550e8400-e29b-41d4-a716-446655440000"
+# - Real data from database (not hardcoded arrays)
+# - Proper error handling with status codes
+
+# DEMO DATA INDICATORS:
+# - Response contains hardcoded data like "svc-001", "sh-001"
+# - No UUID IDs
+# - Fallback to JSON data
+# - Contains "fallback" logic in API code
+
+# ERROR INDICATORS:
+# - HTTP 500 errors
+# - "Database not configured" errors
+# - Empty responses when data should exist

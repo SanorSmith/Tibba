@@ -35,27 +35,6 @@ const ROLES = [
   },
 ];
 
-const DIRECT_ACCESS_ROLES = [
-  {
-    label: 'Doctor',
-    desc: 'Medical Staff',
-    route: '/reception',
-    icon: '👨‍⚕️',
-  },
-  {
-    label: 'Nurse',
-    desc: 'Nursing Staff',
-    route: '/reception',
-    icon: '👩‍⚕️',
-  },
-  {
-    label: 'Lab Technician',
-    desc: 'Laboratory',
-    route: '/reception',
-    icon: '🔬',
-  },
-];
-
 function LoginForm() {
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '';
@@ -105,13 +84,6 @@ function LoginForm() {
     setPassword(role.password);
     setError('');
     doLogin(role.username, role.password);
-  };
-
-  const directAccess = (role: typeof DIRECT_ACCESS_ROLES[number]) => {
-    setError('');
-    setIsLoading(true);
-    // Direct access without authentication
-    window.location.href = role.route;
   };
 
   return (
@@ -219,30 +191,6 @@ function LoginForm() {
                 ))}
               </div>
             </div>
-          </div>
-
-          {/* Direct Access Section */}
-          <div className="p-6 border-t border-gray-100 bg-gradient-to-br from-green-50 to-emerald-50">
-            <p className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span>🚀</span> Direct Access (No Login Required)
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {DIRECT_ACCESS_ROLES.map(role => (
-                <button
-                  key={role.label}
-                  onClick={() => directAccess(role)}
-                  disabled={isLoading}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white border-2 border-green-200 hover:border-green-400 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="text-2xl">{role.icon}</span>
-                  <span className="text-xs font-semibold text-gray-800 text-center leading-tight">{role.label}</span>
-                  <span className="text-[10px] text-green-600 font-medium">{role.desc}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-green-600 mt-3 text-center">
-              Click any role above to access the system directly without authentication
-            </p>
           </div>
         </div>
       </div>

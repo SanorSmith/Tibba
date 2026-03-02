@@ -15,8 +15,8 @@ export async function GET(
     const supabase = supabaseAdmin;
     const { id } = params;
 
-    const { data, error } = await supabase
-      .from('insurance_companies')
+    const { data, error } = await supabaseAdmin
+      .from('insurance_providers')
       .select('*')
       .eq('id', id)
       .single();
@@ -52,34 +52,44 @@ export async function PUT(
 
     console.log('📝 Updating insurance company:', id);
 
-    // Prepare update data
+    // Prepare update data for insurance_providers table
     const updateData: any = {
-      company_code: body.company_code,
-      company_name: body.company_name,
-      company_name_ar: body.company_name_ar || null,
-      contact_person: body.contact_person || null,
-      phone: body.phone || null,
-      email: body.email || null,
-      website: body.website || null,
-      address_line1: body.address_line1 || null,
-      address_line2: body.address_line2 || null,
-      city: body.city || null,
-      province: body.province || null,
-      country: body.country || 'Iraq',
-      postal_code: body.postal_code || null,
-      default_discount_percentage: body.default_discount_percentage || 0,
-      default_copay_percentage: body.default_copay_percentage || 0,
-      claim_payment_terms_days: body.claim_payment_terms_days || 30,
-      contract_start_date: body.contract_start_date || null,
-      contract_end_date: body.contract_end_date || null,
-      coverage_limit: body.coverage_limit || null,
-      is_active: body.is_active !== false,
-      notes: body.notes || null,
+      code: body.code,
+      name: body.name,
+      name_ar: body.name_ar || null,
+      type: body.type || 'PRIVATE',
+      contact: {
+        contact_person: body.contact_person || null,
+        phone: body.phone || null,
+        email: body.email || null,
+        website: body.website || null
+      },
+      address: {
+        address_line1: body.address_line1 || null,
+        address_line2: body.address_line2 || null,
+        city: body.city || null,
+        province: body.province || null,
+        country: body.country || 'Iraq',
+        postal_code: body.postal_code || null
+      },
+      payment_terms: body.payment_terms || 30,
+      credit_limit: body.credit_limit || 0,
+      annual_budget: body.annual_budget || 0,
+      active: body.active !== false,
+      metadata: {
+        default_discount_percentage: body.default_discount_percentage || 0,
+        default_copay_percentage: body.default_copay_percentage || 0,
+        claim_payment_terms_days: body.claim_payment_terms_days || 30,
+        contract_start_date: body.contract_start_date || null,
+        contract_end_date: body.contract_end_date || null,
+        coverage_limit: body.coverage_limit || null,
+        notes: body.notes || null
+      },
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from('insurance_companies')
+    const { data, error } = await supabaseAdmin
+      .from('insurance_providers')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -117,10 +127,10 @@ export async function DELETE(
     console.log('🗑️ Deactivating insurance company:', id);
 
     // Soft delete - set is_active to false
-    const { data, error } = await supabase
-      .from('insurance_companies')
+    const { data, error } = await supabaseAdmin
+      .from('insurance_providers')
       .update({ 
-        is_active: false,
+        active: false,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

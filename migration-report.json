@@ -1,0 +1,61 @@
+{
+  "success": true,
+  "totalRecords": 1486,
+  "totalInserted": 1486,
+  "totalFailed": 0,
+  "stats": [
+    {
+      "table": "departments",
+      "jsonCount": 24,
+      "inserted": 24,
+      "failed": 0,
+      "errors": [],
+      "startTime": "2026-02-28T10:41:43.420Z",
+      "endTime": "2026-02-28T10:41:43.984Z",
+      "duration": 564
+    },
+    {
+      "table": "employees",
+      "jsonCount": 56,
+      "inserted": 56,
+      "failed": 0,
+      "errors": [],
+      "startTime": "2026-02-28T10:41:43.985Z",
+      "endTime": "2026-02-28T10:41:44.427Z",
+      "duration": 442
+    },
+    {
+      "table": "attendance_records",
+      "jsonCount": 1296,
+      "inserted": 1296,
+      "failed": 0,
+      "errors": [],
+      "startTime": "2026-02-28T10:41:44.427Z",
+      "endTime": "2026-02-28T10:41:48.747Z",
+      "duration": 4320
+    },
+    {
+      "table": "leave_requests",
+      "jsonCount": 110,
+      "inserted": 110,
+      "failed": 0,
+      "errors": [],
+      "startTime": "2026-02-28T10:41:48.747Z",
+      "endTime": "2026-02-28T10:41:49.465Z",
+      "duration": 718
+    },
+    {
+      "table": "payroll_transactions",
+      "jsonCount": 0,
+      "inserted": 0,
+      "failed": 0,
+      "errors": [],
+      "startTime": "2026-02-28T10:41:49.465Z",
+      "endTime": "2026-02-28T10:41:49.466Z",
+      "duration": 1
+    }
+  ],
+  "startTime": "2026-02-28T10:41:42.719Z",
+  "endTime": "2026-02-28T10:41:49.466Z",
+  "duration": 6747
+}

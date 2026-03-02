@@ -1,23 +1,24 @@
 // FILE: src/app/api/purchase-requests/route.ts
-// GET all purchase requests, POST create purchase request
+// GET all purchase requests, POST create purchase request - PURE DATABASE CONNECTION
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import purchasesJson from '@/data/finance/purchases.json';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const department = searchParams.get('department');
-  const search = searchParams.get('search');
-  const fallback = (purchasesJson as any).purchase_requests || (purchasesJson as any).purchase_orders || [];
-
   if (!supabaseAdmin) {
-    return NextResponse.json(fallback);
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const priority = searchParams.get('priority');
+    const department = searchParams.get('department');
+    const search = searchParams.get('search');
+
     let query = supabaseAdmin
       .from('purchase_requests')
       .select('*')
@@ -30,22 +31,34 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
-    if (error || !data) {
-      console.warn('Supabase purchase_requests error, falling back to JSON:', error?.message);
-      return NextResponse.json(fallback);
+    if (error) {
+      console.error('Supabase purchase_requests error:', error?.message);
+      return NextResponse.json(
+        { error: 'Failed to fetch purchase requests', details: error.message },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(data.length > 0 ? data : fallback);
+    return NextResponse.json(data || []);
 
   } catch (err: any) {
-    console.warn('GET purchase-requests exception, falling back to JSON:', err?.message);
-    return NextResponse.json(fallback);
+    console.error('GET purchase-requests exception:', err?.message);
+    return NextResponse.json(
+      { error: 'Failed to fetch purchase requests', details: err.message },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
-    const supabase = supabaseAdmin;
     const body = await request.json();
 
     console.log('📝 Creating purchase request:', body);
@@ -72,7 +85,7 @@ export async function POST(request: NextRequest) {
       notes: body.notes || null,
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('purchase_requests')
       .insert(requestData)
       .select()
