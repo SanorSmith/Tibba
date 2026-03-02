@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, requireRoles } from '@/lib/auth/middleware';
-import { payslipGenerator } from '@/services/payslip-generator';
+import { PayslipGenerator } from '@/services/payslip-generator';
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +20,9 @@ export async function GET(
     const { payrollId } = params;
 
     // Generate payslip PDF
-    const pdfBuffer = await payslipGenerator.generatePayslip(payrollId);
+    const generator = new PayslipGenerator();
+    // For single payslip, we need to extract employeeId from payroll record
+    const pdfBuffer = await generator.generatePayslip('', payrollId);
 
     // Return PDF file
     return new NextResponse(new Uint8Array(pdfBuffer), {
