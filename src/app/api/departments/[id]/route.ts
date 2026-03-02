@@ -124,9 +124,9 @@ export async function GET(request: NextRequest) {
 }
 
 // PUT /api/departments/[id] - Update department
-export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest) {
   try {
-    const { id } = await context.params;
+    const id = getIdFromRequest(request);
     
     if (!process.env.OPENEHR_DATABASE_URL) {
       return NextResponse.json(

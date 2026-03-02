@@ -1,9 +1,9 @@
 /**
  * Payslip Generator Service
  * Generates PDF payslips for employees with detailed earnings and deductions
- * Temporarily simplified for deployment
  */
 
+import PDFDocument from 'pdfkit';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -16,12 +16,12 @@ interface PayslipData {
   department: string;
   position: string;
   pay_period: string;
-  gross_salary: number;
-  base_salary: number;
+  payment_date: string;
+  basic_salary: number;
   allowances: number;
   overtime_pay: number;
-  night_shift_differential: number;
-  hazard_pay: number;
+  bonus: number;
+  gross_salary: number;
   social_security: number;
   health_insurance: number;
   loan_deduction: number;
@@ -34,174 +34,418 @@ interface PayslipData {
 }
 
 export class PayslipGenerator {
-  private supabase = createClient(supabaseUrl, supabaseKey);
+  private supabase;
 
-  /**
-   * Generate payslip for an employee
-   */
-  async generatePayslip(employeeId: string, payrollId: string): Promise<Buffer> {
-    try {
-      // Get employee data
-      const { data: employee, error: employeeError } = await this.supabase
-        .from('employees')
-        .select('*')
-        .eq('id', employeeId)
-        .single();
-
-      if (employeeError || !employee) {
-        throw new Error('Employee not found');
-      }
-
-      // Get payroll data
-      const { data: payroll, error: payrollError } = await this.supabase
-        .from('payroll_records')
-        .select('*')
-        .eq('id', payrollId)
-        .eq('employee_id', employeeId)
-        .single();
-
-      if (payrollError || !payroll) {
-        throw new Error('Payroll record not found');
-      }
-
-      // Prepare payslip data
-      const payslipData = this.preparePayslipData(employee, payroll);
-
-      // Generate PDF (simplified for deployment)
-      return await this.createPayslipPDF(payslipData);
-    } catch (error) {
-      console.error('Error generating payslip:', error);
-      throw error;
-    }
+  constructor() {
+    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   /**
-   * Generate bulk payslips for multiple employees
+   * Generate single payslip PDF
    */
-  async generateBulkPayslips(payrollId: string): Promise<{ employee_id: string; payslip: Buffer }[]> {
-    try {
-      // Get all payroll records for this payroll period
-      const { data: payrollRecords, error } = await this.supabase
-        .from('payroll_records')
-        .select('employee_id')
-        .eq('payroll_id', payrollId);
+  async generatePayslip(payrollId: string): Promise<Buffer> {
+    // Fetch payroll data with employee details
+    const payslipData = await this.fetchPayrollData(payrollId);
 
-      if (error) {
-        throw new Error('Failed to fetch payroll records');
-      }
-
-      const payslips = [];
-      
-      for (const record of payrollRecords || []) {
-        try {
-          const payslip = await this.generatePayslip(record.employee_id, payrollId);
-          payslips.push({
-            employee_id: record.employee_id,
-            payslip
-          });
-        } catch (error) {
-          console.error(`Failed to generate payslip for employee ${record.employee_id}:`, error);
-          // Continue with other employees
-        }
-      }
-
-      return payslips;
-    } catch (error) {
-      console.error('Error generating bulk payslips:', error);
-      throw error;
-    }
+    // Generate PDF
+    return this.createPayslipPDF(payslipData);
   }
 
   /**
-   * Prepare payslip data from employee and payroll records
+   * Generate bulk payslips for a period
    */
-  private preparePayslipData(employee: any, payroll: any): PayslipData {
+  async generateBulkPayslips(periodId: string): Promise<Array<{
+    employee_id: string;
+    employee_name: string;
+    employee_number: string;
+    pdf_buffer: Buffer;
+  }>> {
+    // Fetch all payroll records for the period
+    const { data: payrollRecords, error } = await this.supabase
+      .from('payroll_transactions')
+      .select(`
+        id,
+        employee_id,
+        employees(
+          employee_number,
+          first_name,
+          last_name,
+          position,
+          departments(name),
+          metadata
+        )
+      `)
+      .eq('period_id', periodId)
+      .eq('status', 'approved');
+
+    if (error) {
+      throw new Error(`Failed to fetch payroll records: ${error.message}`);
+    }
+
+    if (!payrollRecords || payrollRecords.length === 0) {
+      throw new Error('No approved payroll records found for this period');
+    }
+
+    // Generate payslip for each employee
+    const payslips = await Promise.all(
+      payrollRecords.map(async (record: any) => {
+        const payslipData = await this.fetchPayrollData(record.id);
+        const pdfBuffer = await this.createPayslipPDF(payslipData);
+
+        return {
+          employee_id: record.employee_id,
+          employee_name: `${record.employees.first_name} ${record.employees.last_name}`,
+          employee_number: record.employees.employee_number,
+          pdf_buffer: pdfBuffer,
+        };
+      })
+    );
+
+    return payslips;
+  }
+
+  /**
+   * Fetch payroll data from database
+   */
+  private async fetchPayrollData(payrollId: string): Promise<PayslipData> {
+    const { data: payroll, error } = await this.supabase
+      .from('payroll_transactions')
+      .select(`
+        *,
+        employees(
+          employee_number,
+          first_name,
+          last_name,
+          position,
+          departments(name),
+          metadata
+        )
+      `)
+      .eq('id', payrollId)
+      .single();
+
+    if (error || !payroll) {
+      throw new Error(`Payroll record not found: ${payrollId}`);
+    }
+
+    const employee = payroll.employees;
+    const metadata = payroll.metadata || {};
+
+    // Extract deductions from metadata
+    const deductionsBreakdown = metadata.deductions_breakdown || {};
+
     return {
-      employee_id: employee.id,
+      employee_id: payroll.employee_id,
       employee_number: employee.employee_number,
       employee_name: `${employee.first_name} ${employee.last_name}`,
-      department: employee.department || 'Not Assigned',
-      position: employee.position || employee.job_title || 'Not Assigned',
-      pay_period: payroll.pay_period || 'Not Specified',
-      gross_salary: payroll.gross_salary || 0,
-      base_salary: payroll.base_salary || 0,
+      department: employee.departments?.name || 'N/A',
+      position: employee.position || 'N/A',
+      pay_period: this.formatPayPeriod(payroll.created_at),
+      payment_date: new Date(payroll.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      basic_salary: payroll.basic_salary || 0,
       allowances: payroll.allowances || 0,
       overtime_pay: payroll.overtime_pay || 0,
-      night_shift_differential: payroll.night_shift_differential || 0,
-      hazard_pay: payroll.hazard_pay || 0,
-      social_security: payroll.social_security || 0,
-      health_insurance: payroll.health_insurance || 0,
-      loan_deduction: payroll.loan_deduction || 0,
-      advance_deduction: payroll.advance_deduction || 0,
-      other_deductions: payroll.other_deductions || 0,
-      total_deductions: payroll.total_deductions || 0,
+      bonus: payroll.bonus || 0,
+      gross_salary: payroll.gross_salary || 0,
+      social_security: deductionsBreakdown.social_security || 0,
+      health_insurance: deductionsBreakdown.health_insurance || 0,
+      loan_deduction: deductionsBreakdown.loan_deduction || 0,
+      advance_deduction: deductionsBreakdown.advance_deduction || 0,
+      other_deductions: deductionsBreakdown.other_deductions || 0,
+      total_deductions: payroll.deductions || 0,
       net_salary: payroll.net_salary || 0,
-      bank_name: employee.bank_name,
-      account_number: employee.account_number,
+      bank_name: employee.metadata?.bank_name,
+      account_number: employee.metadata?.account_number,
     };
   }
 
   /**
-   * Create payslip PDF (simplified for deployment)
+   * Create PDF document for payslip
    */
   private async createPayslipPDF(data: PayslipData): Promise<Buffer> {
-    // Temporarily return a text-based payslip for deployment
-    // TODO: Re-enable PDF generation when fontkit compatibility is fixed
-    const payslipText = `
-===========================================
-TIBBNA HOSPITAL - PAYSLIP
-===========================================
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      const chunks: Buffer[] = [];
 
-Employee Information:
---------------------
-Name: ${data.employee_name}
-ID: ${data.employee_number}
-Department: ${data.department}
-Position: ${data.position}
-Pay Period: ${data.pay_period}
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-Earnings:
---------
-Base Salary: ${this.formatCurrency(data.base_salary)}
-Allowances: ${this.formatCurrency(data.allowances)}
-Overtime Pay: ${this.formatCurrency(data.overtime_pay)}
-Night Shift: ${this.formatCurrency(data.night_shift_differential)}
-Hazard Pay: ${this.formatCurrency(data.hazard_pay)}
-----------------------------------------
-Gross Salary: ${this.formatCurrency(data.gross_salary)}
+      // Hospital Header
+      this.addHeader(doc);
 
-Deductions:
------------
-Social Security: ${this.formatCurrency(data.social_security)}
-Health Insurance: ${this.formatCurrency(data.health_insurance)}
-Loan Deduction: ${this.formatCurrency(data.loan_deduction)}
-Advance Deduction: ${this.formatCurrency(data.advance_deduction)}
-Other Deductions: ${this.formatCurrency(data.other_deductions)}
-----------------------------------------
-Total Deductions: ${this.formatCurrency(data.total_deductions)}
+      // Payslip Title
+      doc.moveDown(2);
+      doc.fontSize(18).font('Helvetica-Bold').text('SALARY SLIP', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(10).font('Helvetica').text(data.pay_period, { align: 'center' });
+      doc.moveDown(2);
 
-Net Salary: ${this.formatCurrency(data.net_salary)}
+      // Employee Information
+      this.addEmployeeInfo(doc, data);
 
-Payment Information:
-------------------
-${data.bank_name ? `Bank: ${data.bank_name}` : ''}
-${data.account_number ? `Account: ${this.maskAccountNumber(data.account_number)}` : ''}
+      // Earnings Table
+      doc.moveDown(1);
+      this.addEarningsTable(doc, data);
 
-===========================================
-Generated on: ${new Date().toLocaleDateString()}
-===========================================
-    `.trim();
+      // Deductions Table
+      doc.moveDown(1);
+      this.addDeductionsTable(doc, data);
 
-    return Buffer.from(payslipText, 'utf-8');
+      // Net Salary
+      doc.moveDown(1);
+      this.addNetSalary(doc, data);
+
+      // Bank Details (if available)
+      if (data.bank_name && data.account_number) {
+        doc.moveDown(1);
+        this.addBankDetails(doc, data);
+      }
+
+      // Footer
+      doc.moveDown(2);
+      this.addFooter(doc);
+
+      doc.end();
+    });
   }
 
   /**
-   * Format currency amount
+   * Add hospital header to PDF
+   */
+  private addHeader(doc: PDFKit.PDFDocument): void {
+    doc.fontSize(20).font('Helvetica-Bold').text('Tibbna Hospital', { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text('HR Management System', { align: 'center' });
+    doc.fontSize(9).text('Riyadh, Saudi Arabia', { align: 'center' });
+    doc.fontSize(9).text('Tel: +966 11 234 5678 | Email: hr@tibbna.sa', { align: 'center' });
+    
+    // Draw line
+    doc.moveDown(0.5);
+    doc.strokeColor('#0066CC')
+       .lineWidth(2)
+       .moveTo(50, doc.y)
+       .lineTo(doc.page.width - 50, doc.y)
+       .stroke();
+  }
+
+  /**
+   * Add employee information section
+   */
+  private addEmployeeInfo(doc: PDFKit.PDFDocument, data: PayslipData): void {
+    const startY = doc.y;
+    const leftX = 50;
+    const rightX = 300;
+
+    doc.fontSize(10).font('Helvetica-Bold');
+
+    // Left column
+    doc.text('Employee Number:', leftX, startY);
+    doc.font('Helvetica').text(data.employee_number, leftX + 120, startY);
+
+    doc.font('Helvetica-Bold').text('Employee Name:', leftX, startY + 20);
+    doc.font('Helvetica').text(data.employee_name, leftX + 120, startY + 20);
+
+    // Right column
+    doc.font('Helvetica-Bold').text('Department:', rightX, startY);
+    doc.font('Helvetica').text(data.department, rightX + 80, startY);
+
+    doc.font('Helvetica-Bold').text('Position:', rightX, startY + 20);
+    doc.font('Helvetica').text(data.position, rightX + 80, startY + 20);
+
+    doc.font('Helvetica-Bold').text('Payment Date:', rightX, startY + 40);
+    doc.font('Helvetica').text(data.payment_date, rightX + 80, startY + 40);
+
+    doc.y = startY + 60;
+  }
+
+  /**
+   * Add earnings table
+   */
+  private addEarningsTable(doc: PDFKit.PDFDocument, data: PayslipData): void {
+    const tableTop = doc.y;
+    const col1X = 50;
+    const col2X = 400;
+    const rowHeight = 25;
+
+    // Table header
+    doc.fontSize(12).font('Helvetica-Bold');
+    doc.fillColor('#0066CC').text('EARNINGS', col1X, tableTop);
+    doc.fillColor('#000000');
+
+    // Draw header line
+    doc.strokeColor('#0066CC')
+       .lineWidth(1)
+       .moveTo(col1X, tableTop + 15)
+       .lineTo(doc.page.width - 50, tableTop + 15)
+       .stroke();
+
+    let currentY = tableTop + 25;
+
+    // Earnings items
+    const earnings = [
+      { label: 'Basic Salary', amount: data.basic_salary },
+      { label: 'Allowances', amount: data.allowances },
+      { label: 'Overtime Pay', amount: data.overtime_pay },
+      { label: 'Bonus', amount: data.bonus },
+    ];
+
+    doc.fontSize(10).font('Helvetica');
+
+    earnings.forEach((item) => {
+      doc.text(item.label, col1X, currentY);
+      doc.text(this.formatCurrency(item.amount), col2X, currentY, { align: 'right' });
+      currentY += rowHeight;
+    });
+
+    // Gross total
+    doc.strokeColor('#CCCCCC')
+       .lineWidth(0.5)
+       .moveTo(col1X, currentY - 5)
+       .lineTo(doc.page.width - 50, currentY - 5)
+       .stroke();
+
+    doc.fontSize(11).font('Helvetica-Bold');
+    doc.fillColor('#0066CC').text('GROSS SALARY', col1X, currentY);
+    doc.text(this.formatCurrency(data.gross_salary), col2X, currentY, { align: 'right' });
+    doc.fillColor('#000000');
+
+    doc.y = currentY + rowHeight;
+  }
+
+  /**
+   * Add deductions table
+   */
+  private addDeductionsTable(doc: PDFKit.PDFDocument, data: PayslipData): void {
+    const tableTop = doc.y;
+    const col1X = 50;
+    const col2X = 400;
+    const rowHeight = 25;
+
+    // Table header
+    doc.fontSize(12).font('Helvetica-Bold');
+    doc.fillColor('#CC0000').text('DEDUCTIONS', col1X, tableTop);
+    doc.fillColor('#000000');
+
+    // Draw header line
+    doc.strokeColor('#CC0000')
+       .lineWidth(1)
+       .moveTo(col1X, tableTop + 15)
+       .lineTo(doc.page.width - 50, tableTop + 15)
+       .stroke();
+
+    let currentY = tableTop + 25;
+
+    // Deductions items
+    const deductions = [
+      { label: 'Social Security (9%)', amount: data.social_security },
+      { label: 'Health Insurance', amount: data.health_insurance },
+      { label: 'Loan Deduction', amount: data.loan_deduction },
+      { label: 'Advance Deduction', amount: data.advance_deduction },
+      { label: 'Other Deductions', amount: data.other_deductions },
+    ];
+
+    doc.fontSize(10).font('Helvetica');
+
+    deductions.forEach((item) => {
+      if (item.amount > 0) {
+        doc.text(item.label, col1X, currentY);
+        doc.text(this.formatCurrency(item.amount), col2X, currentY, { align: 'right' });
+        currentY += rowHeight;
+      }
+    });
+
+    // Total deductions
+    doc.strokeColor('#CCCCCC')
+       .lineWidth(0.5)
+       .moveTo(col1X, currentY - 5)
+       .lineTo(doc.page.width - 50, currentY - 5)
+       .stroke();
+
+    doc.fontSize(11).font('Helvetica-Bold');
+    doc.fillColor('#CC0000').text('TOTAL DEDUCTIONS', col1X, currentY);
+    doc.text(this.formatCurrency(data.total_deductions), col2X, currentY, { align: 'right' });
+    doc.fillColor('#000000');
+
+    doc.y = currentY + rowHeight;
+  }
+
+  /**
+   * Add net salary section
+   */
+  private addNetSalary(doc: PDFKit.PDFDocument, data: PayslipData): void {
+    const boxTop = doc.y;
+    const boxHeight = 50;
+    const boxWidth = doc.page.width - 100;
+
+    // Draw box
+    doc.rect(50, boxTop, boxWidth, boxHeight)
+       .fillAndStroke('#E8F4F8', '#0066CC');
+
+    // Net salary text
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
+    doc.text('NET SALARY (SAR)', 70, boxTop + 10);
+    
+    doc.fontSize(20).font('Helvetica-Bold').fillColor('#0066CC');
+    doc.text(
+      this.formatCurrency(data.net_salary),
+      70,
+      boxTop + 28,
+      { width: boxWidth - 40, align: 'right' }
+    );
+
+    doc.fillColor('#000000');
+    doc.y = boxTop + boxHeight + 10;
+  }
+
+  /**
+   * Add bank details section
+   */
+  private addBankDetails(doc: PDFKit.PDFDocument, data: PayslipData): void {
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('Payment Method: Bank Transfer', 50, doc.y);
+    
+    doc.font('Helvetica');
+    doc.text(`Bank: ${data.bank_name}`, 50, doc.y + 15);
+    doc.text(`Account: ${this.maskAccountNumber(data.account_number!)}`, 50, doc.y + 30);
+  }
+
+  /**
+   * Add footer
+   */
+  private addFooter(doc: PDFKit.PDFDocument): void {
+    const footerY = doc.page.height - 100;
+
+    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666');
+    doc.text(
+      'This is a computer-generated payslip and does not require a signature.',
+      50,
+      footerY,
+      { align: 'center', width: doc.page.width - 100 }
+    );
+
+    doc.text(
+      `Generated on: ${new Date().toLocaleString()}`,
+      50,
+      footerY + 15,
+      { align: 'center', width: doc.page.width - 100 }
+    );
+
+    doc.fillColor('#000000');
+  }
+
+  /**
+   * Format currency (SAR)
    */
   private formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-SA', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'SAR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   }
 
@@ -210,9 +454,9 @@ Generated on: ${new Date().toLocaleDateString()}
    */
   private formatPayPeriod(dateString: string): string {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-SA', {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
       month: 'long',
-      year: 'numeric'
     });
   }
 
@@ -220,9 +464,11 @@ Generated on: ${new Date().toLocaleDateString()}
    * Mask account number for security
    */
   private maskAccountNumber(accountNumber: string): string {
-    if (!accountNumber) return '';
-    const last4 = accountNumber.slice(-4);
+    if (accountNumber.length <= 4) return accountNumber;
+    const lastFour = accountNumber.slice(-4);
     const masked = '*'.repeat(accountNumber.length - 4);
-    return masked + last4;
+    return masked + lastFour;
   }
 }
+
+export const payslipGenerator = new PayslipGenerator();

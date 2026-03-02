@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoles, logAudit } from '@/lib/auth/middleware';
-import { PayslipGenerator } from '@/services/payslip-generator';
+import { payslipGenerator } from '@/services/payslip-generator';
 import { z } from 'zod';
 
 const bulkPayslipSchema = z.object({
@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
     const validatedData = bulkPayslipSchema.parse(body);
 
     // Generate bulk payslips
-    const generator = new PayslipGenerator();
-    const payslips = await generator.generateBulkPayslips(validatedData.period_id);
+    const payslips = await payslipGenerator.generateBulkPayslips(validatedData.period_id);
 
     // Log audit trail
     await logAudit({

@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/middleware';
 import { reportGenerator, ReportType, ReportParameters } from '@/services/report-generator';
-// import { reportExporter } from '@/services/report-exporter'; // Temporarily disabled
+import { reportExporter } from '@/services/report-exporter';
 
 const VALID_REPORT_TYPES: ReportType[] = [
   'daily-attendance',
