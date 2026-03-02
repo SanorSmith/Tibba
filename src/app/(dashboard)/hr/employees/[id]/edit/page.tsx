@@ -332,7 +332,6 @@ export default function EditEmployeePage() {
     </>
   );
 }
-          national_id: form.national_id,
       email: form.email,
       email_work: form.email,
       phone: form.phone,
