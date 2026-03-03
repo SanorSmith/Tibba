@@ -53,18 +53,35 @@ export async function POST(request: NextRequest) {
         id: `user-${role.username}`,
         username: role.username,
         name: role.label,
-        role: role.username,
+        role: role.username.toUpperCase(), // Match the role names in middleware
         route: role.route
       };
 
-      // Create a simple token (in production, use JWT)
-      const token = Buffer.from(JSON.stringify({ user })).toString('base64');
+      // Create session data for cookie
+      const sessionData = {
+        username: role.username,
+        role: role.username.toUpperCase(), // SUPER_ADMIN, HR_ADMIN, etc.
+        timestamp: Date.now()
+      };
 
-      return NextResponse.json({
+      // Create session cookie
+      const sessionCookie = Buffer.from(JSON.stringify(sessionData)).toString('base64');
+
+      const response = NextResponse.json({
         success: true,
-        user,
-        token
+        user
       });
+
+      // Set the session cookie that middleware expects
+      response.cookies.set('tibbna_session', sessionCookie, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 8 * 60 * 60 * 1000, // 8 hours
+        path: '/'
+      });
+
+      return response;
     }
 
     return NextResponse.json(
