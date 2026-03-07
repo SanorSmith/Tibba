@@ -1,26 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({
+    console.log('Logout request received');
+
+    return NextResponse.json({
       success: true,
-      message: 'Logged out successfully'
+      message: 'Logout successful'
     });
 
-    // Clear the session cookie
-    response.cookies.set('tibbna_session', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/'
-    });
-
-    return response;
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('Error during logout:', error);
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Logout failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

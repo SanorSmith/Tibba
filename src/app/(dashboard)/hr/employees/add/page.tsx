@@ -15,6 +15,7 @@ interface EmployeeFormData {
   role: string;
   unit: string;
   specialty: string;
+  dateOfBirth: string;
 }
 
 interface Department {
@@ -48,6 +49,7 @@ export default function AddEmployeePage() {
     email: '',
     phone: '',
     role: 'Staff',
+    dateOfBirth: '',
     unit: '',
     specialty: '',
   });
@@ -154,6 +156,15 @@ export default function AddEmployeePage() {
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
     }
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    }
+    if (!formData.unit) {
+      newErrors.unit = 'Department is required';
+    }
+    if (!formData.specialty) {
+      newErrors.specialty = 'Specialty is required';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -185,6 +196,7 @@ export default function AddEmployeePage() {
           role: formData.role,
           unit: formData.unit,
           specialty: formData.specialty,
+          dateOfBirth: formData.dateOfBirth,
         }),
       });
 
@@ -265,6 +277,26 @@ export default function AddEmployeePage() {
                     onChange={(e) => updateField('lastName', e.target.value)}
                   />
                   {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                </div>
+              </div>
+              
+              {/* Date of Birth */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date of Birth <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.dateOfBirth ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    value={formData.dateOfBirth}
+                    onChange={(e) => updateField('dateOfBirth', e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                  />
+                  {errors.dateOfBirth && <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>}
+                  <p className="mt-1 text-xs text-gray-500">Used to generate Staff ID</p>
                 </div>
               </div>
             </div>

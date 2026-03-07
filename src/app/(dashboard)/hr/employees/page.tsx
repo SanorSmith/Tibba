@@ -7,18 +7,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface Staff {
-  staffid: string;
-  firstname: string;
-  middlename: string | null;
-  lastname: string;
+  id: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
   role: string;
   unit: string | null;
   specialty: string | null;
   phone: string;
   email: string;
-  workspaceid: string;
-  createdat: string;
-  updatedat: string;
+  dateOfBirth: string | null;
+  customStaffId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const categoryColors: Record<string, { bg: string; text: string }> = {
@@ -61,10 +62,19 @@ export default function EmployeesPage() {
   const loadStaff = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/staff');
+      const timestamp = Date.now();
+      const response = await fetch(`/api/staff?t=${timestamp}`);
       const data = await response.json();
       
       if (response.ok) {
+        console.log('✅ Staff loaded:', data.staff?.length || 0, 'members');
+        if (data.staff && data.staff.length > 0) {
+          console.log('Sample staff data:', {
+            firstName: data.staff[0].firstName,
+            lastName: data.staff[0].lastName,
+            email: data.staff[0].email
+          });
+        }
         setAllStaff(data.staff || []);
       } else {
         console.error('❌ Error loading staff:', data.error);
@@ -85,8 +95,8 @@ export default function EmployeesPage() {
   const staff = useMemo(() => {
     return allStaff.filter(person => {
       const matchesSearch = search === '' ||
-        person.firstname.toLowerCase().includes(search.toLowerCase()) ||
-        person.lastname.toLowerCase().includes(search.toLowerCase()) ||
+        person.firstName.toLowerCase().includes(search.toLowerCase()) ||
+        person.lastName.toLowerCase().includes(search.toLowerCase()) ||
         person.email.toLowerCase().includes(search.toLowerCase()) ||
         person.phone.toLowerCase().includes(search.toLowerCase()) ||
         person.role.toLowerCase().includes(search.toLowerCase()) ||
@@ -154,14 +164,14 @@ export default function EmployeesPage() {
     try {
       const headers = ['Staff ID', 'Name', 'Email', 'Phone', 'Department', 'Role', 'Specialty', 'Created Date'];
       const rows = staff.map(person => [
-        person.staffid,
-        `${person.firstname} ${person.lastname}`,
+        person.id,
+        `${person.firstName} ${person.lastName}`,
         person.email,
         person.phone,
         person.unit || '',
         person.role,
         person.specialty || '',
-        new Date(person.createdat).toLocaleDateString(),
+        new Date(person.createdAt).toLocaleDateString(),
       ]);
       const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -320,6 +330,7 @@ export default function EmployeesPage() {
                 <thead>
                   <tr>
                     <th>Staff Member</th>
+                    <th>Date of Birth</th>
                     <th>Contact</th>
                     <th>Department</th>
                     <th>Role</th>
@@ -330,10 +341,10 @@ export default function EmployeesPage() {
                 </thead>
                 <tbody>
                   {paginatedStaff.map(person => {
-                    const fullName = `${person.firstname} ${person.lastname}`;
+                    const fullName = `${person.firstName} ${person.lastName}`;
                     const deptColor = categoryColors[person.unit || ''] || { bg: '#F3F4F6', text: '#374151' };
                     return (
-                      <tr key={person.staffid}>
+                      <tr key={person.id}>
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#618FF5' }}>
@@ -344,6 +355,9 @@ export default function EmployeesPage() {
                               <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{person.specialty || 'No specialty'}</p>
                             </div>
                           </div>
+                        </td>
+                        <td style={{ fontSize: '13px', color: '#525252' }}>
+                          {person.dateOfBirth ? new Date(person.dateOfBirth).toLocaleDateString() : 'Not set'}
                         </td>
                         <td>
                           <div className="space-y-1">
@@ -363,18 +377,20 @@ export default function EmployeesPage() {
                           </span>
                         </td>
                         <td style={{ fontSize: '13px' }}>{person.role}</td>
-                        <td style={{ fontSize: '13px', color: '#525252' }}>{person.staffid}</td>
                         <td style={{ fontSize: '13px', color: '#525252' }}>
-                          {new Date(person.createdat).toLocaleDateString()}
+  {person.customStaffId || person.id}
+</td>
+                        <td style={{ fontSize: '13px', color: '#525252' }}>
+                          {new Date(person.createdAt).toLocaleDateString()}
                         </td>
                         <td>
                           <div className="flex items-center gap-2">
-                            <Link href={`/hr/employees/${person.staffid}`}>
+                            <Link href={`/hr/employees/${person.id}`}>
                               <button className="btn-secondary btn-sm">View</button>
                             </Link>
                             {hasRole('HR_ADMIN') && (
                               <button
-                                onClick={() => handleDelete(person.staffid, person.name)}
+                                onClick={() => handleDelete(person.id, `${person.firstName} ${person.lastName}`)}
                                 className="btn-sm flex items-center justify-center"
                                 style={{ color: '#EF4444', padding: '4px 8px', borderRadius: '6px', border: '1px solid #FCA5A5' }}
                                 title="Delete"
@@ -395,10 +411,10 @@ export default function EmployeesPage() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2">
             {paginatedStaff.map(person => {
-              const fullName = `${person.firstname} ${person.lastname}`;
+              const fullName = `${person.firstName} ${person.lastName}`;
               const deptColor = categoryColors[person.unit || ''] || { bg: '#F3F4F6', text: '#374151' };
               return (
-                <Link key={person.staffid} href={`/hr/employees/${person.staffid}`}>
+                <Link key={person.id} href={`/hr/employees/${person.id}`}>
                   <div className="tibbna-card cursor-pointer active:bg-gray-50">
                     <div className="tibbna-card-content">
                       <div className="flex items-center justify-between">

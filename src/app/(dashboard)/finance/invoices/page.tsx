@@ -34,9 +34,9 @@ interface Invoice {
 
 interface InsuranceCompany {
   id: string;
-  company_code: string;
-  company_name: string;
-  company_name_ar?: string;
+  code: string;
+  name: string;
+  name_ar?: string;
 }
 
 interface Service {
@@ -102,7 +102,10 @@ export default function InvoicesPage() {
         fetch('/api/insurance-companies'),
         fetch('/api/services'),
       ]);
-      if (invRes.ok) setInvoices(await invRes.json());
+      if (invRes.ok) { 
+        const invData = await invRes.json();
+        setInvoices(invData.data || []);
+      }
       if (insRes.ok) setInsuranceCompanies(await insRes.json());
       if (svcRes.ok) setServices(await svcRes.json());
     } catch (error) {
@@ -253,17 +256,18 @@ export default function InvoicesPage() {
         // API now returns raw array of patients
         const rawPatients = Array.isArray(response) ? response : (response.data || []);
         
-        // Map to Finance app format
+        // Map to Finance app format, preserving original API fields
         const mappedPatients = rawPatients.map((p: any) => ({
-          patient_id: p.patientid || p.patient_id || p.id,
-          patient_number: p.patientid || p.patient_number || p.id,
-          first_name_ar: p.firstname || p.first_name_ar || '',
-          last_name_ar: p.lastname || p.last_name_ar || '',
-          full_name_ar: `${p.firstname || p.first_name_ar || ''} ${p.lastname || p.last_name_ar || ''}`.trim(),
-          first_name_en: p.firstname || p.first_name_en || '',
-          last_name_en: p.lastname || p.last_name_en || '',
-          full_name_en: `${p.firstname || p.first_name_en || ''} ${p.lastname || p.last_name_en || ''}`.trim(),
-          full_name: `${p.firstname || ''} ${p.lastname || ''}`.trim(),
+          id: p.id || p.patientid || p.patient_id,
+          patient_id: p.id || p.patientid || p.patient_id,
+          patient_number: p.patientNumber || p.patient_number || p.id,
+          first_name_ar: p.firstNameAr || p.firstname || p.first_name_ar || '',
+          last_name_ar: p.lastNameAr || p.lastname || p.last_name_ar || '',
+          full_name_ar: p.fullNameAr || `${p.firstNameAr || p.firstname || p.first_name_ar || ''} ${p.lastNameAr || p.lastname || p.last_name_ar || ''}`.trim(),
+          first_name_en: p.firstNameEn || p.firstname || p.first_name_en || '',
+          last_name_en: p.lastNameEn || p.lastname || p.last_name_en || '',
+          full_name_en: p.fullNameEn || `${p.firstNameEn || p.firstname || p.first_name_en || ''} ${p.lastNameEn || p.lastname || p.last_name_en || ''}`.trim(),
+          full_name: p.fullNameEn || p.fullNameAr || `${p.firstNameEn || p.firstname || ''} ${p.lastNameEn || p.lastname || ''}`.trim(),
           date_of_birth: p.dateofbirth || p.date_of_birth || '',
           gender: p.gender || 'MALE',
           phone: p.phone || '',
@@ -273,7 +277,6 @@ export default function InvoicesPage() {
           total_balance: 0,
           is_active: true,
           created_at: p.createdat || p.created_at || new Date().toISOString(),
-          id: p.patientid || p.id,
         }));
         
         setPatientResults(mappedPatients);
@@ -287,12 +290,12 @@ export default function InvoicesPage() {
   const selectPatient = (patient: any) => {
     setFormData({
       ...formData,
-      patient_id: patient.patient_id,
-      patient_name: patient.full_name,
-      patient_name_ar: patient.full_name_ar,
-      insurance_company_id: patient.insurance_provider_id || formData.insurance_company_id,
+      patient_id: patient.id || patient.patient_id,
+      patient_name: patient.fullNameEn || patient.full_name,
+      patient_name_ar: patient.fullNameAr || patient.full_name_ar,
+      insurance_company_id: patient.insuranceCompany?.id || patient.insurance_provider_id || formData.insurance_company_id,
     });
-    setPatientSearch(patient.full_name_ar || patient.full_name);
+    setPatientSearch(patient.fullNameAr || patient.fullNameEn || patient.full_name_ar || patient.full_name);
     setShowPatientDropdown(false);
     setPatientResults([]);
   };
@@ -841,7 +844,7 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           min="0"
-                          value={line.unit_price}
+                          value={line.unit_price || 0}
                           onChange={e => updateLinePrice(idx, parseFloat(e.target.value) || 0)}
                           className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
                         />
@@ -852,7 +855,7 @@ export default function InvoicesPage() {
                         <input
                           type="number"
                           min="1"
-                          value={line.quantity}
+                          value={line.quantity || 1}
                           onChange={e => updateLineQty(idx, parseInt(e.target.value) || 1)}
                           className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
                         />
@@ -935,13 +938,13 @@ export default function InvoicesPage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Insurance Company</label>
                     <select
                       value={formData.insurance_company_id || ''}
-                      onChange={e => setFormData({ ...formData, insurance_company_id: e.target.value || undefined })}
+                      onChange={e => setFormData({ ...formData, insurance_company_id: e.target.value || '' })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
                       <option value="">No Insurance</option>
                       {insuranceCompanies.map(ins => (
                         <option key={ins.id} value={ins.id}>
-                          {ins.company_name} ({ins.company_code})
+                          {ins.name} ({ins.code})
                         </option>
                       ))}
                     </select>
@@ -1032,7 +1035,7 @@ export default function InvoicesPage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
                     <select
                       value={formData.payment_method || ''}
-                      onChange={e => setFormData({ ...formData, payment_method: e.target.value || undefined })}
+                      onChange={e => setFormData({ ...formData, payment_method: e.target.value || '' })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
                       <option value="">Select Method</option>
@@ -1048,7 +1051,7 @@ export default function InvoicesPage() {
                     <input
                       type="date"
                       value={formData.payment_date || ''}
-                      onChange={e => setFormData({ ...formData, payment_date: e.target.value || undefined })}
+                      onChange={e => setFormData({ ...formData, payment_date: e.target.value || '' })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>

@@ -24,12 +24,14 @@ export interface FinancePatient {
   full_name_ar: string;
   full_name_en?: string;
   date_of_birth: string;
+  age?: number;
   gender: 'MALE' | 'FEMALE';
   blood_group?: string;
   national_id?: string;
   phone: string;
   mobile?: string;
   email?: string;
+  address?: string;
   governorate?: string;
   district?: string;
   neighborhood?: string;
@@ -39,6 +41,10 @@ export interface FinancePatient {
   medical_history?: string;
   total_balance: number;
   is_active: boolean;
+  insurance_state?: string;
+  insurance_number?: string;
+  insurance_company?: string;
+  next_appointment?: string;
   created_at: string;
   id?: string;
 }

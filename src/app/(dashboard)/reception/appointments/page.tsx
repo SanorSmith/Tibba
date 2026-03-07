@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, User, Stethoscope, Plus, Filter, X, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Stethoscope, Plus, Filter, X, Edit, Trash2, Search } from 'lucide-react';
 import { AppointmentCalendar } from '@/components/calendar/appointment-calendar';
 
 type Appointment = {
@@ -27,28 +27,34 @@ type Appointment = {
   nationalid?: string | null;
   phone?: string | null;
   email?: string | null;
+  // Doctor data from JOIN
+  doctor_firstname?: string;
+  doctor_middlename?: string | null;
+  doctor_lastname?: string;
+  doctor_role?: string | null;
   createdat?: string;
   updatedat?: string;
 };
 
 type Doctor = {
-  userid: string;
-  staffid: string;
-  name: string;
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   email: string;
   unit?: string;
   specialty?: string;
   phone?: string;
   role: string;
-  has_user_account: boolean;
+  customStaffId?: string;
 };
 
 type Patient = {
-  patientid: string;
-  firstname: string;
-  middlename?: string;
-  lastname: string;
-  nationalid?: string;
+  id: string;
+  firstNameAr: string;
+  middleName?: string;
+  lastNameAr: string;
+  nationalId?: string;
 };
 
 const statusConfig = {
@@ -83,6 +89,9 @@ export default function AppointmentsPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
+  const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
+  const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [formData, setFormData] = useState({
     patientid: '',
     doctorid: '',
@@ -110,10 +119,15 @@ export default function AppointmentsPage() {
       const response = await fetch(`/api/appointments?workspaceid=${workspaceid}`);
       if (response.ok) {
         const data = await response.json();
-        setAppointments(data.appointments || []);
+        setAppointments(data.data || []);
+      } else {
+        // API doesn't exist yet, set empty appointments array
+        console.log('Appointments API not available - using empty array');
+        setAppointments([]);
       }
     } catch (error) {
       console.error('Error loading appointments:', error);
+      setAppointments([]);
     } finally {
       setLoading(false);
     }
@@ -121,10 +135,10 @@ export default function AppointmentsPage() {
 
   const loadDoctors = async () => {
     try {
-      const response = await fetch(`/api/ehrbase-doctors`);
+      const response = await fetch(`/api/staff`);
       if (response.ok) {
         const data = await response.json();
-        setDoctors(data.doctors || []);
+        setDoctors(data.staff || []);
         if (data.message) {
           console.log('Doctors API message:', data.message);
         }
@@ -137,10 +151,10 @@ export default function AppointmentsPage() {
   const loadPatients = async () => {
     try {
       // Load all patients initially (empty search query)
-      const response = await fetch(`/api/patient-search?q=`);
+      const response = await fetch(`/api/tibbna-openehr-patients`);
       if (response.ok) {
         const data = await response.json();
-        setPatients(data.patients || []);
+        setPatients(data.data || []);
       }
     } catch (error) {
       console.error('Error loading patients:', error);
@@ -177,21 +191,26 @@ export default function AppointmentsPage() {
       });
 
       if (response.ok) {
-        setShowDialog(false);
-        setPatientSearchTerm('');
-        setFormData({
-          patientid: '',
-          doctorid: '',
-          starttime: '',
-          appointmentname: 'new_patient',
-          appointmenttype: 'visiting',
-          clinicalindication: '',
-          reasonforrequest: '',
-          unit: '',
-          location: '',
-        });
-        loadAppointments();
-        alert('Appointment created successfully!');
+        const result = await response.json();
+        if (result.success) {
+          setShowDialog(false);
+          setPatientSearchTerm('');
+          setFormData({
+            patientid: '',
+            doctorid: '',
+            starttime: '',
+            appointmentname: 'new_patient',
+            appointmenttype: 'visiting',
+            clinicalindication: '',
+            reasonforrequest: '',
+            unit: '',
+            location: '',
+          });
+          loadAppointments();
+          alert(result.message || 'Appointment created successfully!');
+        } else {
+          alert(`Failed to create appointment: ${result.error || 'Unknown error'}`);
+        }
       } else {
         const error = await response.json();
         alert(`Failed to create appointment: ${error.error || 'Unknown error'}`);
@@ -209,10 +228,10 @@ export default function AppointmentsPage() {
     setTimeout(async () => {
       if (searchTerm.length >= 2) {
         try {
-          const response = await fetch(`/api/patient-search?q=${encodeURIComponent(searchTerm)}`);
+          const response = await fetch(`/api/tibbna-openehr-patients?search=${encodeURIComponent(searchTerm)}`);
           if (response.ok) {
             const data = await response.json();
-            setPatients(data.patients || []);
+            setPatients(data.data || []);
           }
         } catch (error) {
           console.error('Error searching patients:', error);
@@ -225,8 +244,8 @@ export default function AppointmentsPage() {
   };
 
   const selectPatient = (patient: Patient) => {
-    setFormData({ ...formData, patientid: patient.patientid });
-    setPatientSearchTerm(`${patient.firstname} ${patient.lastname} - ${patient.nationalid || 'No ID'}`);
+    setFormData({ ...formData, patientid: patient.id });
+    setPatientSearchTerm(`${patient.firstNameAr} ${patient.lastNameAr} - ${patient.nationalId || 'No ID'}`);
     setShowPatientDropdown(false);
   };
 
@@ -245,6 +264,21 @@ export default function AppointmentsPage() {
     }
   };
 
+  // Click outside handler for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showPatientDropdown && !(event.target as Element).closest('.patient-search-container')) {
+        setShowPatientDropdown(false);
+      }
+      if (showDoctorDropdown && !(event.target as Element).closest('.doctor-search-container')) {
+        setShowDoctorDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPatientDropdown, showDoctorDropdown]);
+
   const filterAppointments = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -254,16 +288,32 @@ export default function AppointmentsPage() {
     return appointments.filter((appt) => {
       const apptDate = new Date(appt.starttime);
 
+      // Time-based filtering
+      let timeMatch = true;
       switch (filter) {
         case 'today':
-          return apptDate >= today && apptDate < tomorrow;
+          timeMatch = apptDate >= today && apptDate < tomorrow;
+          break;
         case 'upcoming':
-          return apptDate >= now;
+          timeMatch = apptDate >= now;
+          break;
         case 'past':
-          return apptDate < now;
+          timeMatch = apptDate < now;
+          break;
         default:
-          return true;
+          timeMatch = true;
       }
+
+      // Doctor-based filtering
+      let doctorMatch = true;
+      if (selectedDoctor) {
+        const doctorFullName = `${appt.doctor_firstname || ''} ${appt.doctor_middlename || ''} ${appt.doctor_lastname || ''}`.trim().toLowerCase();
+        const searchDoctorName = `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName}`.trim().toLowerCase();
+        doctorMatch = doctorFullName.includes(searchDoctorName.toLowerCase()) || 
+                    (appt.doctorid === selectedDoctor.id);
+      }
+
+      return timeMatch && doctorMatch;
     });
   };
 
@@ -289,7 +339,7 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -330,6 +380,83 @@ export default function AppointmentsPage() {
         >
           Past
         </button>
+        
+        {/* Doctor Search Input */}
+        <div className="relative doctor-search-container">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+            <input
+              type="text"
+              placeholder="Select medical staff (optional)"
+              value={selectedDoctor ? `${selectedDoctor.firstName} ${selectedDoctor.middleName || ''} ${selectedDoctor.lastName}`.trim() + ` - ${selectedDoctor.role}` : doctorSearchTerm}
+              onChange={(e) => {
+                setDoctorSearchTerm(e.target.value);
+                setShowDoctorDropdown(true);
+                if (!e.target.value) {
+                  setSelectedDoctor(null);
+                }
+              }}
+              onFocus={() => setShowDoctorDropdown(true)}
+              className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {selectedDoctor && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDoctor(null);
+                  setDoctorSearchTerm('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          
+          {/* Doctor Dropdown */}
+          {showDoctorDropdown && doctorSearchTerm && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+              {doctors
+                .filter(doctor => {
+                  const searchLower = doctorSearchTerm.toLowerCase();
+                  const fullName = `${doctor.firstName} ${doctor.middleName || ''} ${doctor.lastName}`.toLowerCase();
+                  const roleMatch = doctor.role.toLowerCase().includes(searchLower);
+                  return fullName.includes(searchLower) || roleMatch;
+                })
+                .map(doctor => (
+                  <button
+                    key={doctor.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDoctor(doctor);
+                      setDoctorSearchTerm('');
+                      setShowDoctorDropdown(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-sm">
+                          {doctor.firstName} {doctor.middleName && doctor.middleName + ' '}{doctor.lastName}
+                        </div>
+                        <div className="text-xs text-gray-500">{doctor.role}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              {doctors.filter(doctor => {
+                const searchLower = doctorSearchTerm.toLowerCase();
+                const fullName = `${doctor.firstName} ${doctor.middleName || ''} ${doctor.lastName}`.toLowerCase();
+                const roleMatch = doctor.role.toLowerCase().includes(searchLower);
+                return fullName.includes(searchLower) || roleMatch;
+              }).length === 0 && (
+                <div className="px-4 py-3 text-sm text-gray-500">
+                  No doctors found
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Appointments Table */}
@@ -350,6 +477,7 @@ export default function AppointmentsPage() {
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Date & Time</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Patient</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Doctor</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Clinical Indication</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Location</th>
@@ -384,6 +512,21 @@ export default function AppointmentsPage() {
                               </div>
                               <div className="text-xs text-gray-500">
                                 {appt.patientid ? appt.patientid.slice(0, 8) + '...' : ''}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <User size={16} className="text-gray-400" />
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {appt.doctor_firstname && appt.doctor_lastname 
+                                  ? `${appt.doctor_firstname} ${appt.doctor_middlename ? appt.doctor_middlename + ' ' : ''}${appt.doctor_lastname}`
+                                  : 'Unknown Doctor'}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {appt.doctor_role || 'Staff'}
                               </div>
                             </div>
                           </div>
@@ -469,15 +612,15 @@ export default function AppointmentsPage() {
                         ) : (
                           filteredPatients.map((patient) => (
                             <div
-                              key={patient.patientid}
+                              key={patient.id}
                               onClick={() => selectPatient(patient)}
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                             >
                               <div className="font-medium text-sm">
-                                {patient.firstname} {patient.middlename || ''} {patient.lastname}
+                                {patient.firstNameAr} {patient.middleName || ''} {patient.lastNameAr}
                               </div>
                               <div className="text-xs text-gray-500">
-                                ID: {patient.nationalid || 'No ID'}
+                                ID: {patient.nationalId || 'No ID'}
                               </div>
                             </div>
                           ))
@@ -499,12 +642,10 @@ export default function AppointmentsPage() {
                       <option value="">Select medical staff (optional)</option>
                       {doctors.map((doctor) => (
                         <option 
-                          key={doctor.userid} 
-                          value={doctor.userid}
-                          disabled={!doctor.has_user_account}
-                          title={doctor.has_user_account ? 'Can be assigned to appointments' : 'No user account - cannot be assigned to appointments'}
+                          key={doctor.id} 
+                          value={doctor.id}
                         >
-                          {doctor.name} - {doctor.role.charAt(0).toUpperCase() + doctor.role.slice(1).replace('_', ' ')}{doctor.unit ? ` (${doctor.unit})` : ''} {!doctor.has_user_account ? ' (No User Account)' : ''}
+                          {doctor.firstName} {doctor.lastName} - {doctor.role.charAt(0).toUpperCase() + doctor.role.slice(1).replace('_', ' ')}{doctor.unit ? ` (${doctor.unit})` : ''}
                         </option>
                       ))}
                     </select>

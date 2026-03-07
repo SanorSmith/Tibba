@@ -16,16 +16,16 @@ import {
 } from 'lucide-react';
 
 interface Todo {
-  todoid: string;
-  workspaceid: string;
-  userid: string;
+  todoId: string;
+  workspaceId: string;
+  userId: string;
   title: string;
   description: string | null;
   completed: boolean;
   priority: string;
-  duedate: string | null;
-  createdat: string;
-  updatedat: string;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function TodosPage() {
@@ -46,7 +46,7 @@ export default function TodosPage() {
     description: '',
     priority: 'medium' as 'low' | 'medium' | 'high',
     completed: false as boolean,
-    duedate: ''
+    dueDate: ''
   });
 
   useEffect(() => {
@@ -100,13 +100,13 @@ export default function TodosPage() {
 
     try {
       // Use a proper UUID for the current receptionist user
-      const userid = '00000000-0000-0000-0000-000000000001';
+      const userId = '00000000-0000-0000-0000-000000000001';
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          userid
+          userId
         })
       });
 
@@ -132,11 +132,11 @@ export default function TodosPage() {
       // Use a proper UUID for the current receptionist user
       const userid = '00000000-0000-0000-0000-000000000001';
       const response = await fetch('/api/todos', {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          todoid: selectedTodo.todoid,
-          userid,
+          todoId: selectedTodo.todoId,
+          userId: userid,
           ...formData
         })
       });
@@ -152,11 +152,11 @@ export default function TodosPage() {
     }
   };
 
-  const handleDeleteTodo = async (todoid: string) => {
+  const handleDeleteTodo = async (todoId: string) => {
     if (!confirm('Are you sure you want to delete this todo?')) return;
 
     try {
-      const response = await fetch(`/api/todos?todoid=${todoid}`, {
+      const response = await fetch(`/api/todos?todoId=${todoId}`, {
         method: 'DELETE'
       });
 
@@ -175,16 +175,16 @@ export default function TodosPage() {
       // Use a proper UUID for the current receptionist user
       const userid = '00000000-0000-0000-0000-000000000001';
       const response = await fetch('/api/todos', {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          todoid: todo.todoid,
-          userid,
+          todoId: todo.todoId,
+          userId: userid,
           title: todo.title,
           description: todo.description,
           completed: newCompleted,
           priority: todo.priority,
-          duedate: todo.duedate
+          dueDate: todo.dueDate
         })
       });
 
@@ -203,7 +203,7 @@ export default function TodosPage() {
       description: todo.description || '',
       priority: todo.priority as 'low' | 'medium' | 'high',
       completed: todo.completed,
-      duedate: todo.duedate ? new Date(todo.duedate).toISOString().slice(0, 16) : ''
+      dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString().slice(0, 16) : ''
     });
     setShowEditModal(true);
   };
@@ -214,7 +214,7 @@ export default function TodosPage() {
       description: '',
       priority: 'medium',
       completed: false,
-      duedate: ''
+      dueDate: ''
     });
   };
 
@@ -248,8 +248,8 @@ export default function TodosPage() {
 
   const getTodosForDate = (date: Date) => {
     return filteredTodos.filter(todo => {
-      if (!todo.duedate) return false;
-      const todoDate = new Date(todo.duedate);
+      if (!todo.dueDate) return false;
+      const todoDate = new Date(todo.dueDate);
       return todoDate.toDateString() === date.toDateString();
     });
   };
@@ -281,7 +281,7 @@ export default function TodosPage() {
           <div className="space-y-1">
             {todosForDay.slice(0, 2).map(todo => (
               <div
-                key={todo.todoid}
+                key={todo.todoId}
                 className={`text-xs px-1 py-0.5 rounded truncate ${getPriorityColor(todo.priority)}`}
                 title={todo.title}
               >
@@ -451,8 +451,8 @@ export default function TodosPage() {
               <p className="text-sm text-gray-500">Overdue</p>
               <p className="text-2xl font-bold text-gray-900">
                 {todos.filter(t => {
-                  if (!t.duedate) return false;
-                  return new Date(t.duedate) < new Date() && !t.completed;
+                  if (!t.dueDate) return false;
+                  return new Date(t.dueDate) < new Date() && !t.completed;
                 }).length}
               </p>
             </div>
@@ -499,7 +499,7 @@ export default function TodosPage() {
                   </tr>
                 ) : (
                   filteredTodos.map((todo) => (
-                    <tr key={todo.todoid} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <tr key={todo.todoId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-4">
                         <button
                           onClick={() => handleToggleStatus(todo)}
@@ -531,9 +531,9 @@ export default function TodosPage() {
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        {todo.duedate ? (
+                        {todo.dueDate ? (
                           <div className="text-sm text-gray-700">
-                            {new Date(todo.duedate).toLocaleDateString()}
+                            {new Date(todo.dueDate).toLocaleDateString()}
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400">-</span>
@@ -548,7 +548,7 @@ export default function TodosPage() {
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteTodo(todo.todoid)}
+                            onClick={() => handleDeleteTodo(todo.todoId)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -634,8 +634,8 @@ export default function TodosPage() {
                   </label>
                   <input
                     type="datetime-local"
-                    value={formData.duedate}
-                    onChange={(e) => setFormData({ ...formData, duedate: e.target.value })}
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -732,8 +732,8 @@ export default function TodosPage() {
                   </label>
                   <input
                     type="datetime-local"
-                    value={formData.duedate}
-                    onChange={(e) => setFormData({ ...formData, duedate: e.target.value })}
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

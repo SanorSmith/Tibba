@@ -13,7 +13,8 @@ import {
   Eye,
   Star,
   Users,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -41,15 +42,39 @@ export default function SpecialtiesPage() {
     loadSpecialties();
   }, []);
 
+  // Add a refresh mechanism when page gains focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadSpecialties();
+      }
+    };
+
+    const handleFocus = () => {
+      loadSpecialties();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
   const loadSpecialties = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/specialties');
+      // Add cache-busting timestamp
+      const timestamp = Date.now();
+      const response = await fetch(`/api/specialties?t=${timestamp}`);
       const data = await response.json();
       
       if (response.ok) {
         setSpecialties(data.data || []);
         console.log('Specialties loaded:', data.data?.length || 0, 'specialties');
+        console.log('Specialty names:', data.data?.map((s: any) => s.name).join(', '));
       } else {
         console.error('Error loading specialties:', data.error);
         
@@ -184,6 +209,14 @@ export default function SpecialtiesPage() {
             <p className="text-gray-600">Manage medical specialties and professional disciplines</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={loadSpecialties}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              title="Refresh specialties list"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </button>
             <button
               onClick={handleExport}
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"

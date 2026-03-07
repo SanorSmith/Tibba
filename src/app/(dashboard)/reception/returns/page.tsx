@@ -49,6 +49,7 @@ export default function ReturnsPage() {
   const [newReturn, setNewReturn] = useState({ invoice_number: '', reason: '', amount: 0 });
   const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
   const [returnItems, setReturnItems] = useState<any[]>([]);
+  const [existingReturns, setExistingReturns] = useState<any[]>([]);
 
   useEffect(() => { loadReturns(); setMounted(true); }, []);
   
@@ -57,7 +58,7 @@ export default function ReturnsPage() {
       const res = await fetch('/api/invoice-returns');
       if (res.ok) {
         const data = await res.json();
-        setReturns(data);
+        setReturns(data.data || []); // Extract the data array from response
       }
     } catch (error) {
       console.error('Failed to load returns:', error);
@@ -73,7 +74,9 @@ export default function ReturnsPage() {
     try {
       const res = await fetch(`/api/invoices?search=${encodeURIComponent(query)}`);
       if (res.ok) {
-        const data = await res.json();
+        const response = await res.json();
+        // Handle both direct array and wrapped response formats
+        const data = Array.isArray(response) ? response : (response.data || []);
         setSearchResults(data.slice(0, 5));
       }
     } catch (error) {
@@ -91,22 +94,63 @@ export default function ReturnsPage() {
     });
     setSearchResults([]);
 
-    // Fetch invoice items
+    // Fetch invoice items and existing returns
     try {
+      // Fetch invoice items
       const res = await fetch(`/api/invoices/${invoice.id}`);
       if (res.ok) {
         const data = await res.json();
-        const items = data.items || [];
-        console.log('📋 Invoice items loaded:', items);
+        const items = data.data?.items || [];
         setInvoiceItems(items);
-        // Initialize return items with 0 quantity for each
-        const returnItemsInit = items.map((item: any) => ({
-          ...item,
-          return_quantity: 0,
-          return_amount: 0,
-        }));
-        console.log('🔄 Return items initialized:', returnItemsInit);
-        setReturnItems(returnItemsInit);
+        
+        // Fetch existing returns for this invoice
+        const returnsRes = await fetch(`/api/invoice-returns?invoice_id=${invoice.id}`);
+        if (returnsRes.ok) {
+          const returnsData = await returnsRes.json();
+          const invoiceReturns = returnsData.data || [];
+          setExistingReturns(invoiceReturns);
+          
+          // Calculate returned quantities for each item based on existing returns
+          const returnedQuantities = new Map();
+          
+          invoiceReturns.forEach((ret: any) => {
+            if (ret.items && Array.isArray(ret.items)) {
+              ret.items.forEach((item: any) => {
+                const currentReturned = returnedQuantities.get(item.item_id) || 0;
+                returnedQuantities.set(item.item_id, currentReturned + (item.return_quantity || 0));
+              });
+            }
+          });
+          
+          // Calculate remaining quantities and filter returnable items
+          const returnItemsInit = items
+            .map((item: any) => {
+              const totalQuantity = parseFloat(item.quantity);
+              const returnedQuantity = returnedQuantities.get(item.id) || 0;
+              const remainingQuantity = Math.max(0, totalQuantity - returnedQuantity);
+              
+              return {
+                ...item,
+                return_quantity: 0,
+                return_amount: 0,
+                original_quantity: totalQuantity,
+                returned_quantity: returnedQuantity,
+                remaining_quantity: remainingQuantity,
+                max_return_quantity: remainingQuantity
+              };
+            })
+            .filter((item: any) => item.remaining_quantity > 0); // Only show items with remaining quantity
+          
+          setReturnItems(returnItemsInit);
+        } else {
+          // Initialize all items if no returns found
+          const returnItemsInit = items.map((item: any) => ({
+            ...item,
+            return_quantity: 0,
+            return_amount: 0,
+          }));
+          setReturnItems(returnItemsInit);
+        }
       }
     } catch (error) {
       console.error('Failed to load invoice items:', error);
@@ -114,10 +158,10 @@ export default function ReturnsPage() {
   };
 
   const stats = useMemo(() => ({
-    total: returns.length,
-    totalAmount: returns.reduce((s, r) => s + r.return_amount, 0),
-    processed: returns.filter(r => r.status === 'REFUNDED').length,
-    pending: returns.filter(r => r.status === 'PENDING').length,
+    total: returns?.length || 0,
+    totalAmount: (returns || []).reduce((s, r) => s + parseFloat(String(r.return_amount || '0')), 0),
+    processed: (returns || []).filter(r => r.status === 'REFUNDED').length,
+    pending: (returns || []).filter(r => r.status === 'PENDING').length,
   }), [returns]);
 
   const statusColor = (s: string) => {
@@ -133,7 +177,16 @@ export default function ReturnsPage() {
   const handleCreate = async () => {
     if (!selectedInvoice) { toast.error('Please select an invoice'); return; }
     if (!newReturn.reason) { toast.error('Enter return reason'); return; }
-    if (returnItems.every((item: any) => item.return_quantity <= 0)) { toast.error('Select at least one service to return'); return; }
+    
+    // Check if all items have been fully returned
+    if (returnItems.length === 0) {
+      toast.error('All items in this invoice have been fully returned. No additional returns are possible.');
+      return;
+    }
+    
+    const hasValidItems = returnItems.some((item: any) => item.return_quantity > 0);
+    
+    if (!hasValidItems) { toast.error('Select at least one service to return'); return; }
 
     const totalReturnAmount = returnItems.reduce((sum: number, item: any) => sum + item.return_amount, 0);
     const returnData = {
@@ -278,11 +331,10 @@ export default function ReturnsPage() {
   // Helper to update return quantity for a service
   const updateReturnQuantity = (index: number, qty: number) => {
     const updated = [...returnItems];
-    const maxQty = updated[index].quantity;
+    const maxQty = updated[index].max_return_quantity || updated[index].remaining_quantity;
     const validQty = Math.max(0, Math.min(qty, maxQty));
     updated[index].return_quantity = validQty;
     updated[index].return_amount = validQty * updated[index].unit_price;
-    console.log(`💰 Item ${index}: ${validQty} × ${updated[index].unit_price} = ${updated[index].return_amount}`);
     setReturnItems(updated);
   };
 
@@ -348,15 +400,15 @@ export default function ReturnsPage() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-1">
-                    <button key={`view-${r.id}`} onClick={() => setViewRet(r)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
-                    <button key={`status-${r.id}`} onClick={() => openStatusUpdate(r)} className="p-1.5 hover:bg-blue-50 rounded text-blue-500" title="Update Status"><RefreshCw size={14} /></button>
-                    <button key={`edit-${r.id}`} onClick={() => openEdit(r)} className="p-1.5 hover:bg-gray-100 rounded" title="Edit"><Edit size={14} /></button>
-                    <button key={`delete-${r.id}`} onClick={() => setDeleteId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete"><Trash2 size={14} /></button>
+                    <button onClick={() => setViewRet(r)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
+                    <button onClick={() => openStatusUpdate(r)} className="p-1.5 hover:bg-blue-50 rounded text-blue-500" title="Update Status"><RefreshCw size={14} /></button>
+                    <button onClick={() => openEdit(r)} className="p-1.5 hover:bg-gray-100 rounded" title="Edit"><Edit size={14} /></button>
+                    <button onClick={() => setDeleteId(r.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete"><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {returns.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No returns found</td></tr>}
+            {returns.length === 0 && <tr key="no-returns"><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No returns found</td></tr>}
           </tbody>
         </table>
       </div>
@@ -578,20 +630,43 @@ export default function ReturnsPage() {
 
               <div><label className="text-xs text-gray-500 block mb-1">Reason (AR) *</label><textarea value={newReturn.reason} onChange={e => setNewReturn({...newReturn, reason: e.target.value})} className="w-full border rounded-lg px-3 py-2 text-sm" rows={3} placeholder="سبب الإرجاع..." /></div>
 
+              {/* Warning for existing returns */}
+              {existingReturns.length > 0 && returnItems.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-alert-triangle">
+                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span className="font-medium">Partial Returns Available</span>
+                  </div>
+                  <p className="text-sm text-amber-700 mt-1">
+                    This invoice has {existingReturns.length} previous return{existingReturns.length > 1 ? 's' : ''}. 
+                    Only items with remaining quantities are shown for return.
+                  </p>
+                </div>
+              )}
+
               {/* Services Selection */}
-              {invoiceItems.length > 0 && (
+              {returnItems.length > 0 ? (
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">Select Services to Return</h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {invoiceItems.map((item, idx) => (
+                    {returnItems.map((item, idx) => (
                       <div key={item.id || idx} className="bg-gray-50 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex-1">
-                            <div className="font-medium text-sm">{item.item_name_ar || item.item_name}</div>
-                            {item.item_name_ar && item.item_name && <div className="text-xs text-gray-400">{item.item_name}</div>}
+                            <div className="font-medium text-sm">{item.service_name || item.service_name_ar}</div>
+                            {item.service_name_ar && item.service_name && <div className="text-xs text-gray-400">{item.service_name_ar}</div>}
                             <div className="text-xs text-gray-500 mt-1">
-                              Qty: {item.quantity} × {fmt(item.unit_price)} IQD = {fmt(item.subtotal || item.unit_price * item.quantity)} IQD
+                              Original: {item.original_quantity} × {fmt(item.unit_price)} IQD = {fmt(item.unit_price * item.original_quantity)} IQD
                             </div>
+                            {(item.returned_quantity > 0 || item.remaining_quantity < item.original_quantity) && (
+                              <div className="text-xs text-orange-600 mt-1">
+                                Already returned: {item.returned_quantity} | Remaining: {item.remaining_quantity}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -600,12 +675,12 @@ export default function ReturnsPage() {
                             <input
                               type="number"
                               min={0}
-                              max={item.quantity}
+                              max={item.remaining_quantity}
                               value={returnItems[idx]?.return_quantity || 0}
                               onChange={e => updateReturnQuantity(idx, parseInt(e.target.value) || 0)}
                               className="w-20 border rounded px-2 py-1 text-xs"
                             />
-                            <span className="text-xs text-gray-400">/ {item.quantity}</span>
+                            <span className="text-xs text-gray-400">/ {item.remaining_quantity}</span>
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-gray-500">Return Amount:</div>
@@ -617,6 +692,17 @@ export default function ReturnsPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    <span className="font-medium">All Items Returned</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">All items from this invoice have been fully returned. No additional returns are possible.</p>
                 </div>
               )}
 
@@ -630,7 +716,17 @@ export default function ReturnsPage() {
             </div>
             <div className="p-4 border-t flex gap-2 justify-end">
               <button onClick={() => { setShowCreate(false); setSelectedInvoice(null); setSearchQuery(''); setSearchResults([]); setInvoiceItems([]); setReturnItems([]); }} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
-              <button onClick={handleCreate} className="bg-blue-400 text-white px-4 py-2 rounded-lg text-sm font-medium">Create Return</button>
+              <button 
+                onClick={handleCreate} 
+                disabled={returnItems.length === 0}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  returnItems.length === 0 
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-400 text-white hover:bg-blue-500'
+                }`}
+              >
+                {returnItems.length === 0 ? 'All Items Returned' : 'Create Return'}
+              </button>
             </div>
           </div>
         </div>

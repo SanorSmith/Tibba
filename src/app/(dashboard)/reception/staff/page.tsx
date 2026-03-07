@@ -15,16 +15,18 @@ import {
 } from 'lucide-react';
 
 interface Staff {
-  staffid: string;
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
   name: string;
-  occupation: string;
+  role: string;
   unit: string;
   specialty?: string;
   phone: string;
   email: string;
-  userid?: string;
-  username?: string;
-  useremail?: string;
+  customStaffId?: string;
+  dateOfBirth?: string;
 }
 
 export default function StaffInfoPage() {
@@ -53,22 +55,23 @@ export default function StaffInfoPage() {
   const loadStaff = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/ehrbase-doctors');
+      const response = await fetch('/api/staff');
       if (response.ok) {
         const data = await response.json();
-        // Transform the doctors data to match Staff interface
-        const transformedStaff = data.doctors.map((doctor: any) => ({
-          staffid: doctor.staffid || doctor.userid,
-          name: doctor.name,
-          occupation: doctor.role || 'doctor',
-          unit: doctor.unit || doctor.unit,
-          specialty: doctor.specialty || '',
-          phone: doctor.phone || '',
-          email: doctor.email || '',
-          userid: doctor.userid,
-          username: doctor.name,
-          useremail: doctor.email,
-          hasUserAccount: doctor.has_user_account
+        // Transform the staff data to match Staff interface
+        const transformedStaff = data.staff.map((member: any) => ({
+          id: member.id,
+          firstName: member.firstName,
+          middleName: member.middleName,
+          lastName: member.lastName,
+          name: `${member.firstName} ${member.middleName || ''} ${member.lastName}`.replace(/\s+/g, ' ').trim(),
+          role: member.role || 'Staff',
+          unit: member.unit || 'Not assigned',
+          specialty: member.specialty || '',
+          phone: member.phone || '',
+          email: member.email || '',
+          customStaffId: member.customStaffId,
+          dateOfBirth: member.dateOfBirth
         }));
         setStaff(transformedStaff);
         setFilteredStaff(transformedStaff);
@@ -279,7 +282,7 @@ export default function StaffInfoPage() {
               <tbody>
                 {filteredStaff.map((member, index) => (
                   <tr 
-                    key={member.staffid} 
+                    key={member.id} 
                     className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => handleStaffClick(member)}
                   >
@@ -293,14 +296,14 @@ export default function StaffInfoPage() {
                             {member.name}
                           </div>
                           <div className="text-xs text-gray-500">
-                            ID: {member.staffid.slice(0, 8)}...
+                            ID: {member.customStaffId || member.id.slice(0, 8) + '...'}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                        {member.occupation || 'Not specified'}
+                        {member.role || 'Not specified'}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-900">
@@ -336,15 +339,9 @@ export default function StaffInfoPage() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      {member.userid ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                          Has Account
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-                          No Account
-                        </span>
-                      )}
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                        Staff Member
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -368,7 +365,7 @@ export default function StaffInfoPage() {
                   <div>
                     <h2 className="text-2xl font-bold">{selectedStaff.name}</h2>
                     <p className="text-blue-100">
-                      {selectedStaff.occupation || 'Staff Member'}
+                      {selectedStaff.role || 'Staff Member'}
                     </p>
                   </div>
                 </div>
@@ -389,31 +386,21 @@ export default function StaffInfoPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Staff ID</label>
                     <div className="bg-gray-50 px-3 py-2 rounded-lg font-mono text-sm">
-                      {selectedStaff.staffid}
+                      {selectedStaff.customStaffId || selectedStaff.id}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-                    <div className="bg-gray-50 px-3 py-2 rounded-lg font-mono text-sm">
-                      {selectedStaff.userid || 'Not assigned'}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg text-sm">
+                      {selectedStaff.dateOfBirth ? new Date(selectedStaff.dateOfBirth).toLocaleDateString() : 'Not provided'}
                     </div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Account Status</label>
-                    <div className="flex items-center gap-2">
-                      {selectedStaff.userid ? (
-                        <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-700">
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          Has User Account
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-600">
-                          <User className="w-4 h-4 mr-1" />
-                          No User Account
-                        </span>
-                      )}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg text-sm">
+                      {selectedStaff.firstName} {selectedStaff.middleName} {selectedStaff.lastName}
                     </div>
                   </div>
                 </div>
@@ -427,7 +414,7 @@ export default function StaffInfoPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Role/Occupation</label>
                     <div className="bg-purple-50 px-3 py-2 rounded-lg">
                       <span className="text-purple-700 font-medium capitalize">
-                        {selectedStaff.occupation || 'Not specified'}
+                        {selectedStaff.role || 'Not specified'}
                       </span>
                     </div>
                   </div>
@@ -491,18 +478,18 @@ export default function StaffInfoPage() {
 
               {/* Additional Information */}
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">System Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <div className="bg-gray-50 px-3 py-2 rounded-lg text-sm">
-                      {selectedStaff.username || 'Not available'}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Custom Staff ID</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg font-mono text-sm">
+                      {selectedStaff.customStaffId || 'Not assigned'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">User Email</label>
-                    <div className="bg-gray-50 px-3 py-2 rounded-lg text-sm">
-                      {selectedStaff.useremail || 'Not available'}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">System ID</label>
+                    <div className="bg-gray-50 px-3 py-2 rounded-lg font-mono text-sm">
+                      {selectedStaff.id}
                     </div>
                   </div>
                 </div>
