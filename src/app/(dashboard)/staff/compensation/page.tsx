@@ -1,0 +1,407 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { DollarSign, TrendingUp, Award, Calendar, CreditCard, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface Compensation {
+  basic_salary: number;
+  housing_allowance: number;
+  transport_allowance: number;
+  meal_allowance: number;
+  total_package: number;
+  salary_grade: string;
+  currency: string;
+  effective_from: string;
+}
+
+interface Loan {
+  id: string;
+  loan_number: string;
+  loan_type: string;
+  loan_amount: number;
+  monthly_installment: number;
+  paid_installments: number;
+  total_installments: number;
+  remaining_balance: number;
+  status: string;
+}
+
+interface Advance {
+  id: string;
+  advance_number: string;
+  advance_amount: number;
+  deduction_amount: number;
+  deducted_months: number;
+  deduction_months: number;
+  remaining_balance: number;
+  status: string;
+}
+
+export default function EmployeeCompensationPage() {
+  const { user } = useAuth();
+  const [compensation, setCompensation] = useState<Compensation | null>(null);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [advances, setAdvances] = useState<Advance[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadCompensation();
+      loadLoans();
+      loadAdvances();
+    }
+  }, [user]);
+
+  const loadCompensation = async () => {
+    try {
+      const response = await fetch(`/api/hr/employees/${user?.id}/compensation`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setCompensation(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading compensation:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLoans = async () => {
+    try {
+      const response = await fetch(`/api/hr/payroll/loans?employee_id=${user?.id}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setLoans(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading loans:', error);
+    }
+  };
+
+  const loadAdvances = async () => {
+    try {
+      const response = await fetch(`/api/hr/payroll/advances?employee_id=${user?.id}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setAdvances(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading advances:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="page-header-section">
+        <div>
+          <h2 className="page-title">My Compensation</h2>
+          <p className="page-description">View your salary details and benefits</p>
+        </div>
+      </div>
+
+      {/* Compensation Summary */}
+      {compensation && (
+        <>
+          <div className="tibbna-grid-4">
+            <div className="tibbna-card">
+              <div className="tibbna-card-content">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="tibbna-card-title">Basic Salary</p>
+                    <p className="tibbna-card-value">${compensation.basic_salary.toFixed(0)}</p>
+                    <p className="tibbna-card-subtitle">{compensation.currency}/month</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#DBEAFE' }}>
+                    <DollarSign size={20} style={{ color: '#3B82F6' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tibbna-card">
+              <div className="tibbna-card-content">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="tibbna-card-title">Allowances</p>
+                    <p className="tibbna-card-value">
+                      ${(compensation.housing_allowance + compensation.transport_allowance + compensation.meal_allowance).toFixed(0)}
+                    </p>
+                    <p className="tibbna-card-subtitle">{compensation.currency}/month</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#D1FAE5' }}>
+                    <TrendingUp size={20} style={{ color: '#10B981' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tibbna-card">
+              <div className="tibbna-card-content">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="tibbna-card-title">Total Package</p>
+                    <p className="tibbna-card-value" style={{ color: '#10B981' }}>
+                      ${compensation.total_package.toFixed(0)}
+                    </p>
+                    <p className="tibbna-card-subtitle">{compensation.currency}/month</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FEF3C7' }}>
+                    <Award size={20} style={{ color: '#F59E0B' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="tibbna-card">
+              <div className="tibbna-card-content">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="tibbna-card-title">Salary Grade</p>
+                    <p className="tibbna-card-value">{compensation.salary_grade || 'N/A'}</p>
+                    <p className="tibbna-card-subtitle">Current grade</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E0E7FF' }}>
+                    <Award size={20} style={{ color: '#6366F1' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Breakdown */}
+          <div className="tibbna-card">
+            <div className="tibbna-card-header">
+              <h3 className="tibbna-section-title" style={{ margin: 0 }}>Compensation Breakdown</h3>
+            </div>
+            <div className="tibbna-card-content">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Basic Salary */}
+                <div className="p-4 bg-gray-50 rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>Basic Salary</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#3B82F6' }}>
+                      ${compensation.basic_salary.toFixed(2)}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
+                    Base monthly salary
+                  </p>
+                </div>
+
+                {/* Housing Allowance */}
+                <div className="p-4 bg-gray-50 rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>Housing Allowance</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#10B981' }}>
+                      ${compensation.housing_allowance.toFixed(2)}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
+                    {((compensation.housing_allowance / compensation.basic_salary) * 100).toFixed(0)}% of basic salary
+                  </p>
+                </div>
+
+                {/* Transport Allowance */}
+                <div className="p-4 bg-gray-50 rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>Transport Allowance</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#10B981' }}>
+                      ${compensation.transport_allowance.toFixed(2)}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
+                    {((compensation.transport_allowance / compensation.basic_salary) * 100).toFixed(0)}% of basic salary
+                  </p>
+                </div>
+
+                {/* Meal Allowance */}
+                <div className="p-4 bg-gray-50 rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <span style={{ fontSize: '14px', fontWeight: 600 }}>Meal Allowance</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#10B981' }}>
+                      ${compensation.meal_allowance.toFixed(2)}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
+                    {((compensation.meal_allowance / compensation.basic_salary) * 100).toFixed(0)}% of basic salary
+                  </p>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="mt-4 p-4 bg-blue-50 rounded">
+                <div className="flex justify-between items-center">
+                  <span style={{ fontSize: '16px', fontWeight: 700 }}>Total Monthly Package</span>
+                  <span style={{ fontSize: '20px', fontWeight: 700, color: '#3B82F6' }}>
+                    ${compensation.total_package.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Effective Date */}
+              <div className="mt-4 flex items-center gap-2" style={{ fontSize: '13px', color: '#a3a3a3' }}>
+                <Calendar size={14} />
+                <span>Effective from: {new Date(compensation.effective_from).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Active Loans */}
+      {loans.length > 0 && (
+        <div className="tibbna-card">
+          <div className="tibbna-card-header">
+            <h3 className="tibbna-section-title" style={{ margin: 0 }}>Active Loans ({loans.length})</h3>
+          </div>
+          <div className="tibbna-card-content">
+            <div className="space-y-3">
+              {loans.map(loan => (
+                <div key={loan.id} className="p-4 border rounded">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <CreditCard size={18} style={{ color: '#F59E0B' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{loan.loan_number}</span>
+                      <span className="tibbna-badge" style={{
+                        backgroundColor: loan.status === 'ACTIVE' ? '#D1FAE5' : '#FEF3C7',
+                        color: loan.status === 'ACTIVE' ? '#065F46' : '#92400E',
+                        fontSize: '11px'
+                      }}>
+                        {loan.status}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '12px', color: '#a3a3a3' }}>{loan.loan_type}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3" style={{ fontSize: '13px' }}>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Loan Amount</span>
+                      <p style={{ fontWeight: 600 }}>${loan.loan_amount.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Monthly</span>
+                      <p style={{ fontWeight: 600 }}>${loan.monthly_installment.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Progress</span>
+                      <p style={{ fontWeight: 600 }}>{loan.paid_installments}/{loan.total_installments}</p>
+                    </div>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Remaining</span>
+                      <p style={{ fontWeight: 600, color: '#EF4444' }}>${loan.remaining_balance.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="mt-3">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-500 h-2 rounded-full transition-all"
+                        style={{ width: `${(loan.paid_installments / loan.total_installments) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p style={{ fontSize: '11px', color: '#a3a3a3', marginTop: '4px' }}>
+                      {((loan.paid_installments / loan.total_installments) * 100).toFixed(0)}% paid
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Advances */}
+      {advances.length > 0 && (
+        <div className="tibbna-card">
+          <div className="tibbna-card-header">
+            <h3 className="tibbna-section-title" style={{ margin: 0 }}>Salary Advances ({advances.length})</h3>
+          </div>
+          <div className="tibbna-card-content">
+            <div className="space-y-3">
+              {advances.map(advance => (
+                <div key={advance.id} className="p-4 border rounded">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <DollarSign size={18} style={{ color: '#6366F1' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{advance.advance_number}</span>
+                      <span className="tibbna-badge" style={{
+                        backgroundColor: advance.status === 'DEDUCTING' ? '#FEF3C7' : '#D1FAE5',
+                        color: advance.status === 'DEDUCTING' ? '#92400E' : '#065F46',
+                        fontSize: '11px'
+                      }}>
+                        {advance.status}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3" style={{ fontSize: '13px' }}>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Advance Amount</span>
+                      <p style={{ fontWeight: 600 }}>${advance.advance_amount.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Monthly Deduction</span>
+                      <p style={{ fontWeight: 600 }}>${advance.deduction_amount.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Progress</span>
+                      <p style={{ fontWeight: 600 }}>{advance.deducted_months}/{advance.deduction_months}</p>
+                    </div>
+                    <div>
+                      <span style={{ color: '#a3a3a3' }}>Remaining</span>
+                      <p style={{ fontWeight: 600, color: '#EF4444' }}>${advance.remaining_balance.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="mt-3">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-500 h-2 rounded-full transition-all"
+                        style={{ width: `${(advance.deducted_months / advance.deduction_months) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p style={{ fontSize: '11px', color: '#a3a3a3', marginTop: '4px' }}>
+                      {((advance.deducted_months / advance.deduction_months) * 100).toFixed(0)}% deducted
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Box */}
+      <div className="tibbna-card" style={{ backgroundColor: '#EFF6FF' }}>
+        <div className="tibbna-card-content">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={20} style={{ color: '#3B82F6', marginTop: '2px' }} />
+            <div style={{ fontSize: '13px' }}>
+              <p style={{ fontWeight: 600, marginBottom: '4px' }}>Compensation Information</p>
+              <p style={{ color: '#525252' }}>
+                Your compensation is reviewed annually. For questions about your salary or benefits, 
+                please contact the HR department. Loan and advance requests can be submitted through 
+                the HR portal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

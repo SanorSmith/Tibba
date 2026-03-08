@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const databaseUrl = process.env.OPENEHR_DATABASE_URL;
+  const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
     return NextResponse.json(
@@ -44,13 +44,11 @@ export async function GET(request: NextRequest) {
         lb.opening_balance,
         lb.accrued,
         lb.used,
-        lb.pending,
-        lb.carried_forward,
+        lb.carry_forwarded,
         lb.encashed,
-        lb.closing_balance,
-        lb.last_accrual_date,
-        (lb.closing_balance - lb.pending) as available_balance
-      FROM leave_balances lb
+        lb.forfeited,
+        lb.available_balance
+      FROM leave_balance lb
       JOIN leave_types lt ON lb.leave_type_id = lt.id
       WHERE lb.employee_id = $1 AND lb.year = $2
       ORDER BY lt.name ASC
@@ -79,7 +77,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const databaseUrl = process.env.OPENEHR_DATABASE_URL;
+  const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
     return NextResponse.json(
@@ -118,7 +116,7 @@ export async function POST(request: NextRequest) {
         for (const leaveType of leaveTypes.rows) {
           // Check if balance already exists
           const existing = await pool.query(`
-            SELECT id FROM leave_balances 
+            SELECT id FROM leave_balance 
             WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3
           `, [employee.staffid, leaveType.id, currentYear]);
 
@@ -133,10 +131,10 @@ export async function POST(request: NextRequest) {
             }
 
             await pool.query(`
-              INSERT INTO leave_balances (
+              INSERT INTO leave_balance (
                 employee_id, leave_type_id, year, opening_balance, accrued,
-                closing_balance, last_accrual_date
-              ) VALUES ($1, $2, $3, 0, $4, $4, CURRENT_DATE)
+                carry_forwarded, encashed, forfeited
+              ) VALUES ($1, $2, $3, 0, $4, 0, 0, 0)
             `, [employee.staffid, leaveType.id, currentYear, initialAccrual]);
 
             initialized++;

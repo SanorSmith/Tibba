@@ -1,136 +1,291 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import leavesData from '@/data/hr/leaves.json';
-
-const statusColors: Record<string, { bg: string; text: string }> = {
-  APPROVED: { bg: '#D1FAE5', text: '#065F46' },
-  PENDING_APPROVAL: { bg: '#FEF3C7', text: '#92400E' },
-  REJECTED: { bg: '#FEE2E2', text: '#991B1B' },
-  DRAFT: { bg: '#F3F4F6', text: '#374151' },
-  CANCELLED: { bg: '#F3F4F6', text: '#6B7280' },
-};
+import {
+  Users,
+  Activity,
+  Calendar,
+  Clock,
+  TriangleAlert,
+  FileText,
+  ChartColumn,
+  Settings
+} from 'lucide-react';
 
 export default function LeavesPage() {
-  const [statusFilter, setStatusFilter] = useState('all');
-  const requests = leavesData.leave_requests;
-  const filtered = statusFilter === 'all' ? requests : requests.filter(r => r.status === statusFilter);
-
-  const approved = requests.filter(r => r.status === 'APPROVED').length;
-  const pending = requests.filter(r => r.status === 'PENDING_APPROVAL').length;
-  const rejected = requests.filter(r => r.status === 'REJECTED').length;
+  const [stats, setStats] = useState({
+    totalEmployees: 10,
+    activeToday: 0,
+    onLeaveToday: 0,
+    pendingApprovals: 1,
+    upcomingShifts: 0,
+    systemAlerts: 0
+  });
 
   return (
-    <>
-      <div className="page-header-section">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="page-title">Leave Management</h2>
-          <p className="page-description">{requests.length} leave requests this year</p>
+          <h1 className="text-3xl font-bold text-gray-900">Boss Dashboard</h1>
+          <p className="text-gray-600 mt-1">Overview of all hospital operations</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/hr/leaves/calendar">
-            <button className="btn-secondary flex items-center gap-2">
-              <Clock size={16} />
-              <span className="hidden sm:inline">Calendar</span>
-            </button>
-          </Link>
-          <Link href="/hr/leaves/requests/new">
-            <button className="btn-primary flex items-center gap-2">
-              <Calendar size={16} />
-              <span className="hidden sm:inline">New Request</span>
-            </button>
-          </Link>
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"></div>
         </div>
       </div>
 
-      <div className="tibbna-grid-4 tibbna-section">
-        <div className="tibbna-card"><div className="tibbna-card-content"><div className="flex items-center justify-between"><div><p className="tibbna-card-title">Total Requests</p><p className="tibbna-card-value">{requests.length}</p></div><div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#DBEAFE' }}><Calendar size={20} style={{ color: '#3B82F6' }} /></div></div></div></div>
-        <div className="tibbna-card"><div className="tibbna-card-content"><div className="flex items-center justify-between"><div><p className="tibbna-card-title">Approved</p><p className="tibbna-card-value" style={{ color: '#10B981' }}>{approved}</p></div><div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#D1FAE5' }}><CheckCircle size={20} style={{ color: '#10B981' }} /></div></div></div></div>
-        <div className="tibbna-card"><div className="tibbna-card-content"><div className="flex items-center justify-between"><div><p className="tibbna-card-title">Pending</p><p className="tibbna-card-value" style={{ color: '#F59E0B' }}>{pending}</p></div><div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FEF3C7' }}><AlertCircle size={20} style={{ color: '#F59E0B' }} /></div></div></div></div>
-        <div className="tibbna-card"><div className="tibbna-card-content"><div className="flex items-center justify-between"><div><p className="tibbna-card-title">Rejected</p><p className="tibbna-card-value" style={{ color: '#EF4444' }}>{rejected}</p></div><div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FEE2E2' }}><XCircle size={20} style={{ color: '#EF4444' }} /></div></div></div></div>
-      </div>
-
-      <div className="flex gap-2 tibbna-section flex-wrap" style={{ borderBottom: '1px solid #e4e4e4', paddingBottom: '12px' }}>
-        {[{ v: 'all', l: 'All' }, { v: 'PENDING_APPROVAL', l: 'Pending' }, { v: 'APPROVED', l: 'Approved' }, { v: 'REJECTED', l: 'Rejected' }, { v: 'DRAFT', l: 'Draft' }].map(f => (
-          <button key={f.v} onClick={() => setStatusFilter(f.v)} className={`tibbna-tab ${statusFilter === f.v ? 'tibbna-tab-active' : ''}`}>{f.l}</button>
-        ))}
-      </div>
-
-      {/* Desktop Table */}
-      <div className="tibbna-card hidden md:block">
-        <div className="tibbna-table-container">
-          <table className="tibbna-table">
-            <thead><tr><th>Request #</th><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Approver</th></tr></thead>
-            <tbody>
-              {filtered.map(lr => {
-                const sc = statusColors[lr.status] || { bg: '#F3F4F6', text: '#374151' };
-                return (
-                  <tr key={lr.id} onClick={() => window.location.href = `/hr/leaves/requests/${lr.id}`} className="cursor-pointer hover:bg-gray-50">
-                    <td style={{ fontSize: '13px', fontWeight: 500 }}>{lr.request_number}</td>
-                    <td style={{ fontSize: '13px' }}>{lr.employee_name}</td>
-                    <td><span className="tibbna-badge badge-info">{lr.leave_type}</span></td>
-                    <td style={{ fontSize: '13px' }}>{lr.start_date}</td>
-                    <td style={{ fontSize: '13px' }}>{lr.end_date}</td>
-                    <td style={{ fontSize: '13px', fontWeight: 600 }}>{lr.total_days}</td>
-                    <td><span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text }}>{lr.status.replace('_', ' ')}</span></td>
-                    <td style={{ fontSize: '13px', color: '#525252' }}>{lr.approver_name || '-'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Employees</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalEmployees}</p>
+            </div>
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-2">
-        {filtered.map(lr => {
-          const sc = statusColors[lr.status] || { bg: '#F3F4F6', text: '#374151' };
-          return (
-            <Link key={lr.id} href={`/hr/leaves/requests/${lr.id}`}>
-              <div className="tibbna-card cursor-pointer active:bg-gray-50">
-                <div className="tibbna-card-content">
-                  <div className="flex items-center justify-between mb-2">
-                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{lr.employee_name}</span>
-                    <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{lr.status.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="tibbna-badge badge-info" style={{ fontSize: '10px' }}>{lr.leave_type}</span>
-                    <span style={{ fontSize: '12px', color: '#525252' }}>{lr.total_days} days</span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#a3a3a3' }}>{lr.start_date} → {lr.end_date}</p>
-                  {lr.reason && <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}>{lr.reason}</p>}
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Leave Types */}
-      <div className="tibbna-card">
-        <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Leave Types & Policies</h3></div>
-        <div className="tibbna-card-content">
-          <div className="tibbna-grid-3">
-            {leavesData.leave_types.map(lt => (
-              <div key={lt.id} style={{ padding: '12px', border: '1px solid #e4e4e4' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lt.color }} />
-                  <span style={{ fontSize: '14px', fontWeight: 600 }}>{lt.name}</span>
-                </div>
-                <div style={{ fontSize: '12px', color: '#525252', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <span>Max: {lt.max_days} days/year</span>
-                  <span>Category: {lt.category}</span>
-                  {lt.carry_forward && <span>Carry forward: up to {lt.max_carry} days</span>}
-                  {lt.requires_doc && <span style={{ color: '#F59E0B' }}>Requires documentation</span>}
-                </div>
-              </div>
-            ))}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Active Today</p>
+              <p className="text-2xl font-bold text-green-600">{stats.activeToday}</p>
+            </div>
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <Activity className="w-5 h-5 text-green-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">On Leave Today</p>
+              <p className="text-2xl font-bold text-yellow-600">{stats.onLeaveToday}</p>
+            </div>
+            <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-yellow-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Pending Approvals</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.pendingApprovals}</p>
+            </div>
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <Clock className="w-5 h-5 text-purple-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Upcoming Shifts</p>
+              <p className="text-2xl font-bold text-indigo-600">{stats.upcomingShifts}</p>
+            </div>
+            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+              <Clock className="w-5 h-5 text-indigo-600" />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">System Alerts</p>
+              <p className="text-2xl font-bold text-red-600">{stats.systemAlerts}</p>
+            </div>
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <TriangleAlert className="w-5 h-5 text-red-600" />
+            </div>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Employee Management</h3>
+              </div>
+              <Link href="/staff">
+                <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">All Employees</span>
+                    <Users className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              </Link>
+              <Link href="/hr/leaves">
+                <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Leave Management</span>
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              </Link>
+              <Link href="/hr/leaves/approvals">
+                <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Pending Approvals</span>
+                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">{stats.pendingApprovals}</span>
+                  </div>
+                </button>
+              </Link>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-5 h-5 text-green-600" />
+                <h3 className="font-semibold text-gray-900">Operations</h3>
+              </div>
+              <Link href="/hr/attendance">
+                <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Attendance</span>
+                    <Activity className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              </Link>
+              <Link href="/hr/schedules">
+                <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Schedules</span>
+                    <Clock className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              </Link>
+              <Link href="/hr/leaves/analytics">
+                <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Analytics</span>
+                    <ChartColumn className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              </Link>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-semibold text-gray-900">Reports</h3>
+              </div>
+              <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Daily Report</span>
+                  <FileText className="w-4 h-4 text-gray-400" />
+                </div>
+              </button>
+              <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Weekly Report</span>
+                  <FileText className="w-4 h-4 text-gray-400" />
+                </div>
+              </button>
+              <button className="w-full text-left px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Monthly Report</span>
+                  <FileText className="w-4 h-4 text-gray-400" />
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Today's Staff Status</h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium">Active</span>
+                </div>
+                <span className="text-lg font-bold text-green-600">{stats.activeToday}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span className="text-sm font-medium">On Leave</span>
+                </div>
+                <span className="text-lg font-bold text-yellow-600">{stats.onLeaveToday}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                  <span className="text-sm font-medium">Inactive</span>
+                </div>
+                <span className="text-lg font-bold text-gray-600">{stats.totalEmployees - stats.activeToday - stats.onLeaveToday}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Pending Items</h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-yellow-600" />
+                    <div>
+                      <p className="font-medium text-yellow-800">Leave Approvals</p>
+                      <p className="text-sm text-yellow-600">Need your review</p>
+                    </div>
+                  </div>
+                  <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">{stats.pendingApprovals}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Links</h2>
+        <div className="flex gap-3 flex-wrap">
+          <Link href="/hr/leaves/approvals">
+            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Review Approvals
+            </button>
+          </Link>
+          <Link href="/hr/attendance">
+            <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Attendance
+            </button>
+          </Link>
+          <Link href="/hr/leaves/analytics">
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+              <ChartColumn className="w-4 h-4" />
+              Analytics
+            </button>
+          </Link>
+          <Link href="/hr/leaves/admin">
+            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Admin Panel
+            </button>
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

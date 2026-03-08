@@ -1,12 +1,20 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Save, DollarSign, Calculator } from 'lucide-react';
 import type { LoanFormData } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
 import { ApprovalWorkflow } from '@/components/modules/hr/shared/approval-workflow';
-import employeesData from '@/data/hr/employees.json';
+
+interface Employee {
+  staffid: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  unit: string;
+  basic_salary?: number;
+}
 
 export default function NewLoanPage() {
   const [form, setForm] = useState<LoanFormData>({
@@ -19,9 +27,29 @@ export default function NewLoanPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [loanNumber, setLoanNumber] = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeEmployees = employeesData.employees.filter(e => e.employment_status === 'ACTIVE');
-  const selectedEmployee = activeEmployees.find(e => e.id === form.employee_id);
+  useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
+    try {
+      const res = await fetch('/api/hr/staff');
+      const data = await res.json();
+      if (data.success) {
+        setEmployees(data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load employees:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activeEmployees = employees; // All staff are considered active
+  const selectedEmployee = activeEmployees.find((e: Employee) => e.staffid === form.employee_id);
 
   const installmentAmount = useMemo(() => {
     if (!form.amount || !form.number_of_installments) return 0;
@@ -50,12 +78,44 @@ export default function NewLoanPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
-    const num = `LN-2026-${String(Math.floor(Math.random() * 9000) + 1000)}`;
-    setLoanNumber(num);
-    setSubmitted(true);
+    
+    try {
+      const res = await fetch('/api/hr/payroll/loans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: form.employee_id,
+          loan_type: form.loan_type,
+          loan_amount: form.amount / 1450, // Convert IQD to USD for storage
+          monthly_installment: (form.amount / 1450) / form.number_of_installments,
+          total_installments: form.number_of_installments,
+          reason: form.reason
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setLoanNumber(data.data.loan_number);
+        setSubmitted(true);
+      } else {
+        alert(data.error || 'Failed to create loan');
+      }
+    } catch (err) {
+      alert('Failed to create loan');
+      console.error(err);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -100,8 +160,8 @@ export default function NewLoanPage() {
                   <FormGroup label="Employee" required error={errors.employee_id}>
                     <select className="tibbna-input" value={form.employee_id} onChange={e => update('employee_id', e.target.value)}>
                       <option value="">Select Employee</option>
-                      {activeEmployees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.employee_number})</option>
+                      {activeEmployees.map((emp: Employee) => (
+                        <option key={emp.staffid} value={emp.staffid}>{emp.first_name} {emp.last_name} ({emp.staffid.substring(0, 8)}...)</option>
                       ))}
                     </select>
                   </FormGroup>
@@ -179,7 +239,7 @@ export default function NewLoanPage() {
                   <div style={{ borderTop: '1px solid #e4e4e4', paddingTop: '12px' }}>
                     <p style={{ fontSize: '12px', color: '#a3a3a3', marginBottom: '4px' }}>Employee Info</p>
                     <p style={{ fontSize: '13px', fontWeight: 500 }}>{selectedEmployee.first_name} {selectedEmployee.last_name}</p>
-                    <p style={{ fontSize: '12px', color: '#525252' }}>{selectedEmployee.department_name}</p>
+                    <p style={{ fontSize: '12px', color: '#525252' }}>{selectedEmployee.role} - {selectedEmployee.unit}</p>
                     <p style={{ fontSize: '12px', color: '#525252' }}>Basic Salary: {((selectedEmployee.basic_salary || 0) / 1000).toFixed(0)}K IQD</p>
                   </div>
                   {installmentAmount > 0 && selectedEmployee.basic_salary && (

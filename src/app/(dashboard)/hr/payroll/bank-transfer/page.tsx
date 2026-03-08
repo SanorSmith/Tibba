@@ -1,40 +1,104 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Download, FileText, CheckCircle, Building2 } from 'lucide-react';
-import employeesData from '@/data/hr/employees.json';
-import payrollData from '@/data/hr/payroll.json';
+
+interface PayrollTransaction {
+  id: string;
+  employee_name: string;
+  employee_number: string;
+  department: string;
+  basic_salary: number | string;
+  housing_allowance: number | string;
+  transport_allowance: number | string;
+  meal_allowance: number | string;
+  overtime_pay: number | string;
+  gross_salary: number | string;
+  total_deductions: number | string;
+  net_salary: number | string;
+  status: string;
+  warnings: string[];
+}
+
+interface PayrollPeriod {
+  id: string;
+  period_name: string;
+  period_code: string;
+  start_date: string;
+  end_date: string;
+  payment_date: string;
+  status: string;
+  total_employees: number;
+  total_gross: number;
+  total_deductions: number;
+  total_net: number;
+}
 
 export default function BankTransferPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState(payrollData.payroll_periods[payrollData.payroll_periods.length - 1].id);
+  const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
+  const [transactions, setTransactions] = useState<PayrollTransaction[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('');
   const [format, setFormat] = useState<'csv' | 'txt'>('csv');
   const [generated, setGenerated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const period = payrollData.payroll_periods.find(p => p.id === selectedPeriod)!;
-  const activeEmployees = employeesData.employees.filter(e => e.employment_status === 'ACTIVE');
+  useEffect(() => {
+    loadPeriods();
+  }, []);
+
+  useEffect(() => {
+    if (selectedPeriod) {
+      loadTransactions(selectedPeriod);
+    }
+  }, [selectedPeriod]);
+
+  const loadPeriods = async () => {
+    try {
+      const response = await fetch('/api/hr/payroll/periods');
+      const result = await response.json();
+      
+      if (result.success) {
+        setPeriods(result.data);
+        if (result.data.length > 0) {
+          setSelectedPeriod(result.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading periods:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTransactions = async (periodId: string) => {
+    try {
+      const response = await fetch(`/api/hr/payroll/transactions?period_id=${periodId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setTransactions(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  };
+
+  const currentPeriod = periods.find(p => p.id === selectedPeriod);
 
   const transferData = useMemo(() => {
-    return activeEmployees.map(emp => {
-      const basic = emp.basic_salary || 1000000;
-      const housing = Math.round(basic * 0.20);
-      const transport = 150000;
-      const meal = 100000;
-      const gross = basic + housing + transport + meal;
-      const deductions = Math.round(basic * 0.08);
-      const net = gross - deductions;
-      const bankNames = ['Rasheed Bank', 'Rafidain Bank', 'Trade Bank of Iraq', 'Al-Mansour Bank', 'Baghdad Bank'];
-      return {
-        employee_name: `${emp.first_name} ${emp.last_name}`,
-        employee_number: emp.employee_number,
-        bank_name: bankNames[Math.floor(Math.random() * bankNames.length)],
-        account_number: `IQ${String(Math.floor(Math.random() * 9000000000) + 1000000000)}`,
-        iban: `IQ${String(Math.floor(Math.random() * 90) + 10)}RSHD${String(Math.floor(Math.random() * 900000000000) + 100000000000)}`,
-        net_salary: net,
+    return transactions
+      .filter(t => t.status === 'CALCULATED' || t.status === 'APPROVED')
+      .map(t => ({
+        employee_name: t.employee_name,
+        employee_number: t.employee_number || '',
+        bank_name: 'Default Bank', // TODO: Add bank details to employee records
+        account_number: t.employee_number || '', // TODO: Add account number to employee records
+        iban: 'IQ000000000000000000', // TODO: Add IBAN to employee records
+        net_salary: parseFloat(String(t.net_salary || 0)) * 1450,
         currency: 'IQD',
-      };
-    });
-  }, [activeEmployees]);
+      }));
+  }, [transactions]);
 
   const totalAmount = transferData.reduce((s, t) => s + t.net_salary, 0);
 
@@ -44,18 +108,26 @@ export default function BankTransferPage() {
       : 'Employee Name\tEmployee Number\tBank Name\tAccount Number\tIBAN\tAmount\tCurrency';
     const sep = format === 'csv' ? ',' : '\t';
     const rows = transferData.map(t =>
-      [t.employee_name, t.employee_number, t.bank_name, t.account_number, t.iban, t.net_salary, t.currency].join(sep)
+      [t.employee_name, t.employee_number, t.bank_name, t.account_number, t.iban, t.net_salary.toFixed(2), t.currency].join(sep)
     );
     const content = [header, ...rows].join('\n');
     const blob = new Blob([content], { type: format === 'csv' ? 'text/csv' : 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bank-transfer-${period.name.replace(/\s/g, '-')}.${format}`;
+    a.download = `bank-transfer-${currentPeriod?.period_name?.replace(/\s/g, '-') || 'period'}.${format}`;
     a.click();
     URL.revokeObjectURL(url);
     setGenerated(true);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -76,8 +148,8 @@ export default function BankTransferPage() {
             <div>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '4px' }}>Payroll Period</label>
               <select className="tibbna-input" value={selectedPeriod} onChange={e => { setSelectedPeriod(e.target.value); setGenerated(false); }}>
-                {payrollData.payroll_periods.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                {periods.map((p: PayrollPeriod) => (
+                  <option key={p.id} value={p.id}>{p.period_name}</option>
                 ))}
               </select>
             </div>
@@ -110,7 +182,7 @@ export default function BankTransferPage() {
       <div className="tibbna-grid-4 tibbna-section">
         <div className="tibbna-card"><div className="tibbna-card-content"><p className="tibbna-card-title">Total Employees</p><p className="tibbna-card-value">{transferData.length}</p></div></div>
         <div className="tibbna-card"><div className="tibbna-card-content"><p className="tibbna-card-title">Total Amount</p><p className="tibbna-card-value" style={{ color: '#10B981' }}>{(totalAmount / 1000000).toFixed(1)}M</p><p className="tibbna-card-subtitle">IQD</p></div></div>
-        <div className="tibbna-card"><div className="tibbna-card-content"><p className="tibbna-card-title">Period</p><p className="tibbna-card-value" style={{ fontSize: '16px' }}>{period.name}</p></div></div>
+        <div className="tibbna-card"><div className="tibbna-card-content"><p className="tibbna-card-title">Period</p><p className="tibbna-card-value" style={{ fontSize: '16px' }}>{currentPeriod?.period_name || 'N/A'}</p></div></div>
         <div className="tibbna-card"><div className="tibbna-card-content"><p className="tibbna-card-title">Format</p><p className="tibbna-card-value" style={{ fontSize: '16px' }}>{format.toUpperCase()}</p></div></div>
       </div>
 

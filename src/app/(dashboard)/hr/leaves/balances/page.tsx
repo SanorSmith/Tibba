@@ -6,7 +6,6 @@ import {
   ArrowLeft, Download, Plus, Users, Calendar, TrendingUp, CheckCircle,
   RotateCcw, X, AlertTriangle
 } from 'lucide-react';
-import { dataStore } from '@/lib/dataStore';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { Employee } from '@/types/hr';
@@ -14,17 +13,22 @@ import type { Employee } from '@/types/hr';
 // ============================================================================
 // TYPES
 // ============================================================================
-interface BalanceBucket {
-  total: number;
-  used: number;
-  pending?: number;
-  available: number;
-}
-
-interface RawBalance {
+interface LeaveBalance {
+  id: string;
   employee_id: string;
-  employee_name?: string;
-  [key: string]: BalanceBucket | string | undefined;
+  leave_type_id: string;
+  leave_type_name: string;
+  leave_type_code: string;
+  leave_type_color: string;
+  year: number;
+  opening_balance: number;
+  accrued: number;
+  used: number;
+  pending: number;
+  carried_forward: number;
+  encashed: number;
+  closing_balance: number;
+  available_balance: number;
 }
 
 interface BalanceRow {
@@ -32,7 +36,8 @@ interface BalanceRow {
   employeeName: string;
   department: string;
   leaveType: string;
-  typeKey: string;
+  leaveTypeId: string;
+  color: string;
   total: number;
   used: number;
   pending: number;
@@ -82,7 +87,7 @@ export default function LeaveBalancesPage() {
   // STATE
   // =========================================================================
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [rawBalances, setRawBalances] = useState<RawBalance[]>([]);
+  const [balances, setBalances] = useState<LeaveBalance[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -101,11 +106,37 @@ export default function LeaveBalancesPage() {
   // =========================================================================
   // LOAD DATA
   // =========================================================================
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
-      setEmployees(dataStore.getEmployees());
-      const bals = dataStore.getLeaveBalances() as unknown as RawBalance[];
-      setRawBalances(bals);
+      setLoading(true);
+      
+      // Load employees from database
+      const empResponse = await fetch('/api/hr/employees');
+      const empData = await empResponse.json();
+      
+      if (!empData.success) {
+        throw new Error('Failed to load employees');
+      }
+      
+      setEmployees(empData.data || []);
+
+      // Load all balances for current year
+      const year = new Date().getFullYear();
+      const allBalances: LeaveBalance[] = [];
+      
+      for (const emp of empData.data || []) {
+        try {
+          const balResponse = await fetch(`/api/hr/leaves/balances?employeeId=${emp.id}&year=${year}`);
+          const balData = await balResponse.json();
+          if (balData.success && balData.data) {
+            allBalances.push(...balData.data);
+          }
+        } catch (err) {
+          console.error(`Error loading balances for employee ${emp.id}:`, err);
+        }
+      }
+      
+      setBalances(allBalances);
     } catch (err) {
       console.error('Error loading balances:', err);
       toast.error('Failed to load leave balances');
@@ -131,15 +162,11 @@ export default function LeaveBalancesPage() {
 
   const discoveredTypes = useMemo(() => {
     const types = new Set<string>();
-    rawBalances.forEach(bal => {
-      Object.keys(bal).forEach(k => {
-        if (k !== 'employee_id' && k !== 'employee_name' && LEAVE_TYPE_MAP[k]) {
-          types.add(LEAVE_TYPE_MAP[k]);
-        }
-      });
+    balances.forEach(bal => {
+      types.add(bal.leave_type_name);
     });
     return [...types].sort();
-  }, [rawBalances]);
+  }, [balances]);
 
   // =========================================================================
   // BALANCE ROWS
@@ -147,32 +174,27 @@ export default function LeaveBalancesPage() {
   const balanceRows = useMemo((): BalanceRow[] => {
     const rows: BalanceRow[] = [];
 
-    rawBalances.forEach(bal => {
+    balances.forEach(bal => {
       const emp = getEmp(bal.employee_id);
       if (!emp) return;
       if (employeeFilter !== 'all' && bal.employee_id !== employeeFilter) return;
       if (departmentFilter !== 'all' && emp.department_name !== departmentFilter) return;
+      if (typeFilter !== 'all' && bal.leave_type_name !== typeFilter) return;
 
-      Object.entries(LEAVE_TYPE_MAP).forEach(([typeKey, typeName]) => {
-        if (typeFilter !== 'all' && typeName !== typeFilter) return;
+      const total = bal.opening_balance + bal.accrued;
+      const used = bal.used || 0;
+      const pending = bal.pending || 0;
+      const available = bal.available_balance || 0;
+      const percentage = total > 0 ? ((used + pending) / total) * 100 : 0;
 
-        const bucket = bal[typeKey] as BalanceBucket | undefined;
-        if (!bucket || typeof bucket !== 'object') return;
-
-        const total = bucket.total || 0;
-        const used = bucket.used || 0;
-        const pending = bucket.pending || 0;
-        const available = bucket.available || 0;
-        const percentage = total > 0 ? ((used + pending) / total) * 100 : 0;
-
-        rows.push({
-          employeeId: bal.employee_id,
-          employeeName: `${emp.first_name} ${emp.last_name}`,
-          department: emp.department_name,
-          leaveType: typeName,
-          typeKey,
-          total, used, pending, available, percentage,
-        });
+      rows.push({
+        employeeId: bal.employee_id,
+        employeeName: `${emp.first_name} ${emp.last_name}`,
+        department: emp.department_name,
+        leaveType: bal.leave_type_name,
+        leaveTypeId: bal.leave_type_id,
+        color: bal.leave_type_color || TYPE_COLORS[bal.leave_type_name] || '#6B7280',
+        total, used, pending, available, percentage,
       });
     });
 
@@ -180,7 +202,7 @@ export default function LeaveBalancesPage() {
       const n = a.employeeName.localeCompare(b.employeeName);
       return n !== 0 ? n : a.leaveType.localeCompare(b.leaveType);
     });
-  }, [rawBalances, employees, departmentFilter, employeeFilter, typeFilter, getEmp]);
+  }, [balances, employees, departmentFilter, employeeFilter, typeFilter, getEmp]);
 
   const hasActiveFilters = departmentFilter !== 'all' || employeeFilter !== 'all' || typeFilter !== 'all';
   const clearFilters = () => { setDepartmentFilter('all'); setEmployeeFilter('all'); setTypeFilter('all'); };
@@ -242,27 +264,37 @@ export default function LeaveBalancesPage() {
 
     setProcessing(true);
     try {
-      const typeKey = REVERSE_MAP[adjType];
-      if (!typeKey) { toast.error('Invalid leave type'); setProcessing(false); return; }
+      // Find the balance record for this employee and leave type
+      const balance = balances.find(b => b.employee_id === adjEmpId && b.leave_type_name === adjType);
+      if (!balance) { 
+        toast.error('Employee balance not found'); 
+        setProcessing(false); 
+        return; 
+      }
 
-      const balance = dataStore.getRawLeaveBalance(adjEmpId);
-      if (!balance) { toast.error('Employee balance not found'); setProcessing(false); return; }
+      // Call API to adjust balance
+      const response = await fetch('/api/hr/leaves/balances/adjust', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: adjEmpId,
+          leave_type_id: balance.leave_type_id,
+          adjustment_days: adjAmount,
+          reason: adjReason.trim(),
+          year: new Date().getFullYear()
+        })
+      });
 
-      const bucket = (balance as Record<string, BalanceBucket>)[typeKey];
-      if (!bucket) { toast.error(`No ${adjType} balance found for this employee`); setProcessing(false); return; }
-
-      const newTotal = Math.max(0, (bucket.total || 0) + adjAmount);
-      const newAvailable = Math.max(0, (bucket.available || 0) + adjAmount);
-
-      const ok = dataStore.updateLeaveBalanceByType(adjEmpId, typeKey, { total: newTotal, available: newAvailable });
-      if (ok) {
+      const data = await response.json();
+      
+      if (data.success) {
         toast.success('Balance adjusted', {
           description: `${adjAmount > 0 ? '+' : ''}${adjAmount} day(s) ${adjType} for ${getEmp(adjEmpId)?.first_name || adjEmpId}`,
         });
         resetAdjustForm();
         loadData();
       } else {
-        toast.error('Failed to update balance');
+        toast.error(data.error || 'Failed to update balance');
       }
     } catch (err) {
       console.error('Adjustment error:', err);
@@ -270,7 +302,7 @@ export default function LeaveBalancesPage() {
     } finally {
       setProcessing(false);
     }
-  }, [isHR, adjEmpId, adjType, adjAmount, adjReason, getEmp, loadData]);
+  }, [isHR, adjEmpId, adjType, adjAmount, adjReason, getEmp, loadData, balances]);
 
   // =========================================================================
   // HELPERS
@@ -411,7 +443,7 @@ export default function LeaveBalancesPage() {
                     </td>
                   </tr>
                 ) : balanceRows.map((row, i) => (
-                  <tr key={`${row.employeeId}-${row.typeKey}-${i}`}>
+                  <tr key={`${row.employeeId}-${row.leaveTypeId}-${i}`}>
                     <td>
                       <div className="flex items-center gap-2">
                         <div style={{
@@ -459,7 +491,7 @@ export default function LeaveBalancesPage() {
             {balanceRows.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#a3a3a3', padding: '24px' }}>No records found</p>
             ) : balanceRows.map((row, i) => (
-              <div key={`m-${row.employeeId}-${row.typeKey}-${i}`} style={{ border: '1px solid #e4e4e4', borderRadius: '8px', padding: '12px' }}>
+              <div key={`m-${row.employeeId}-${row.leaveTypeId}-${i}`} style={{ border: '1px solid #e4e4e4', borderRadius: '8px', padding: '12px' }}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div style={{
@@ -535,18 +567,17 @@ export default function LeaveBalancesPage() {
 
               {/* Current balance preview */}
               {adjEmpId && adjType && (() => {
-                const bal = dataStore.getRawLeaveBalance(adjEmpId);
-                const key = REVERSE_MAP[adjType];
-                const bucket = bal && key ? (bal as Record<string, BalanceBucket>)[key] : null;
-                if (!bucket) return null;
+                const balance = balances.find(b => b.employee_id === adjEmpId && b.leave_type_name === adjType);
+                if (!balance) return null;
+                const total = balance.opening_balance + balance.accrued;
                 return (
                   <div style={{ padding: '10px', backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', fontSize: '12px' }}>
                     <p style={{ fontWeight: 600, color: '#0369A1', marginBottom: '4px' }}>Current Balance</p>
                     <div className="grid grid-cols-4 gap-2" style={{ textAlign: 'center' }}>
-                      <div><p style={{ color: '#6B7280' }}>Total</p><p style={{ fontWeight: 700 }}>{bucket.total || 0}</p></div>
-                      <div><p style={{ color: '#6B7280' }}>Used</p><p style={{ fontWeight: 700, color: '#DC2626' }}>{bucket.used || 0}</p></div>
-                      <div><p style={{ color: '#6B7280' }}>Pending</p><p style={{ fontWeight: 700, color: '#F59E0B' }}>{bucket.pending || 0}</p></div>
-                      <div><p style={{ color: '#6B7280' }}>Avail</p><p style={{ fontWeight: 700, color: '#059669' }}>{bucket.available || 0}</p></div>
+                      <div><p style={{ color: '#6B7280' }}>Total</p><p style={{ fontWeight: 700 }}>{total}</p></div>
+                      <div><p style={{ color: '#6B7280' }}>Used</p><p style={{ fontWeight: 700, color: '#DC2626' }}>{balance.used || 0}</p></div>
+                      <div><p style={{ color: '#6B7280' }}>Pending</p><p style={{ fontWeight: 700, color: '#F59E0B' }}>{balance.pending || 0}</p></div>
+                      <div><p style={{ color: '#6B7280' }}>Avail</p><p style={{ fontWeight: 700, color: '#059669' }}>{balance.available_balance || 0}</p></div>
                     </div>
                   </div>
                 );

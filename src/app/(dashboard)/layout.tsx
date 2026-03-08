@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Toaster } from 'sonner';
 import { Navbar } from '@/components/layout/navbar';
 import { Sidebar } from '@/components/layout/sidebar';
 
@@ -30,6 +31,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

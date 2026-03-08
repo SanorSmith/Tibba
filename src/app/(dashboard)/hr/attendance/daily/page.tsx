@@ -6,14 +6,13 @@ import {
   ArrowLeft, Download, Users, UserCheck, UserX, Clock,
   CalendarDays, AlertTriangle, Filter, LogIn, LogOut,
 } from 'lucide-react';
-import type { Employee, AttendanceTransaction, LeaveRequest } from '@/types/hr';
+import type { AttendanceTransaction, LeaveRequest } from '@/types/hr';
 import { EmployeeAvatar } from '@/components/modules/hr/shared/employee-avatar';
-import { dataStore } from '@/lib/dataStore';
 import { toast } from 'sonner';
 
 // Helper type for daily attendance record
 interface DailyAttendanceRecord {
-  employee: Employee;
+  employee: any;
   status: 'PRESENT' | 'ABSENT' | 'ON_LEAVE';
   checkIn?: string;   // HH:MM:SS
   checkOut?: string;   // HH:MM:SS
@@ -30,7 +29,8 @@ const WORK_END   = '16:30:00';
 const STANDARD_HOURS = 8;
 
 export default function DailySummaryPage() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<AttendanceTransaction[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,27 +39,37 @@ export default function DailySummaryPage() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   // =========================================================================
-  // LOAD DATA
+  // LOAD DATA FROM DATABASE API
   // =========================================================================
 
   useEffect(() => {
-    try {
-      const emps = dataStore.getEmployees().filter(
-        (e) => (e as any).employment_status === 'ACTIVE'
-      );
-      const txns = dataStore.getAttendanceTransactions();
-      const leaves = dataStore.getLeaveRequests();
+    loadData();
+  }, [selectedDate]);
 
-      setEmployees(emps);
-      setTransactions(txns);
-      setLeaveRequests(leaves);
-    } catch (error) {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load employees
+      const empResponse = await fetch('/api/hr/employees?status=ACTIVE');
+      const empResult = await empResponse.json();
+      if (empResult.success) {
+        setEmployees(empResult.data);
+      }
+      
+      // Load attendance for selected date
+      const attResponse = await fetch(`/api/hr/attendance?date=${selectedDate}`);
+      const attResult = await attResponse.json();
+      if (attResult.success) {
+        setAttendanceRecords(attResult.data);
+      }
+    } catch (error: any) {
       console.error('Error loading daily summary data:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   // =========================================================================
   // HELPERS

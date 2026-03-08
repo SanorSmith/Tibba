@@ -53,15 +53,29 @@ export default function LeaveRequestsListPage() {
   // =========================================================================
   // LOAD DATA
   // =========================================================================
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     try {
+      setLoading(true);
+      console.log('🔍 Loading leave requests from API...');
+      
+      // Load real leave requests from API
+      const response = await fetch('/api/hr/leaves');
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Loaded ${result.data.length} leave requests`);
+        setAllRequests(result.data);
+      } else {
+        throw new Error(result.error || 'Failed to load leave requests');
+      }
+      
+      // Load employees from dataStore for now (could also be from API)
       const emps = dataStore.getEmployees();
-      const reqs = dataStore.getLeaveRequests();
       setEmployees(emps);
-      setAllRequests(reqs);
+      
     } catch (err) {
-      console.error('Error loading data:', err);
-      toast.error('Failed to load leave requests');
+      console.error('Failed to load data:', err);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -337,7 +351,7 @@ export default function LeaveRequestsListPage() {
           <button className="btn-secondary flex items-center gap-2" onClick={exportCSV} disabled={filteredRequests.length === 0}>
             <Download size={14} /> CSV
           </button>
-          <Link href="/hr/leaves/requests/new">
+          <Link href="/staff/requests/new">
             <button className="btn-primary flex items-center gap-2"><Plus size={16} /> New Request</button>
           </Link>
         </div>

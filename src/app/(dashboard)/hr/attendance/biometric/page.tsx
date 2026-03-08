@@ -3,9 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Fingerprint, CheckCircle, Clock, User, Search, LogIn, LogOut } from 'lucide-react';
-import type { AttendanceTransaction, Employee } from '@/types/hr';
+import type { AttendanceTransaction } from '@/types/hr';
 import { EmployeeAvatar } from '@/components/modules/hr/shared/employee-avatar';
-import { dataStore } from '@/lib/dataStore';
 import { toast } from 'sonner';
 
 type ScanState = 'READY' | 'SCANNING' | 'SUCCESS' | 'ERROR';
@@ -17,48 +16,102 @@ export default function BiometricPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [lastScan, setLastScan] = useState<{ name: string; type: 'CHECK_IN' | 'CHECK_OUT'; time: string } | null>(null);
   const [transactions, setTransactions] = useState<AttendanceTransaction[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [manualMode, setManualMode] = useState(false);
   const [manualId, setManualId] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // =========================================================================
-  // LOAD DATA
-  // =========================================================================
-
   useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  const loadEmployees = async () => {
     try {
-      const emps = dataStore.getEmployees();
-      const txns = dataStore.getAttendanceTransactions();
-      setEmployees(emps);
-      setTransactions(txns);
-    } catch (error) {
-      console.error('Error loading biometric data:', error);
+      setLoading(true);
+      const response = await fetch('/api/hr/staff');
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`Loaded ${result.data.length} staff members`);
+        
+        // Map staff data to expected format - using correct field names from API
+        const mappedStaff = result.data.map((s: any) => ({
+          id: s.staffid,
+          staffid: s.staffid,
+          staff_id: s.staff_id,
+          employee_number: s.staff_id,
+          custom_staff_id: s.staff_id,
+          first_name: s.first_name,
+          last_name: s.last_name,
+          full_name: s.full_name,
+          role: s.role,
+          unit: s.unit,
+          email: s.email,
+          phone: s.phone
+        }));
+        
+        setEmployees(mappedStaff);
+      } else {
+        throw new Error(result.error || 'Failed to load staff');
+      }
+    } catch (error: any) {
+      console.error('❌ Error loading staff:', error);
+      toast.error('Failed to load staff');
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // =========================================================================
-  // DERIVED DATA
-  // =========================================================================
-
-  const activeEmployees = useMemo(() =>
-    employees.filter(e => (e as any).employment_status === 'ACTIVE'),
-    [employees]
-  );
+  const activeEmployees = useMemo(() => employees, [employees]);
 
   const filteredEmployees = useMemo(() => {
     if (!searchTerm) return [];
-    return activeEmployees.filter(e =>
-      `${e.first_name} ${e.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      e.employee_number.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    
+    console.log(`Searching for "${searchTerm}" in ${activeEmployees.length} employees`);
+    
+    // Debug: Show first employee data
+    if (activeEmployees.length > 0) {
+      console.log('First employee data:', activeEmployees[0]);
+    }
+    
+    const filtered = activeEmployees.filter(e => {
+      const search = searchTerm.toLowerCase();
+      const firstNameMatch = e.first_name?.toLowerCase().includes(search);
+      const lastNameMatch = e.last_name?.toLowerCase().includes(search);
+      const fullNameMatch = e.full_name?.toLowerCase().includes(search);
+      const staffIdMatch = e.staffid?.toLowerCase().includes(search);
+      const customStaffIdMatch = e.custom_staff_id?.toLowerCase().includes(search);
+      const employeeNumberMatch = e.employee_number?.toLowerCase().includes(search);
+      
+      // Debug: Check Jessica specifically
+      if (e.first_name === 'Jessica' && e.last_name === 'Miller') {
+        console.log('Jessica Miller found in data:', {
+          search,
+          firstNameMatch,
+          lastNameMatch,
+          fullNameMatch,
+          staffIdMatch,
+          customStaffIdMatch,
+          employeeNumberMatch
+        });
+      }
+      
+      const matches = firstNameMatch || lastNameMatch || fullNameMatch || staffIdMatch || customStaffIdMatch || employeeNumberMatch;
+      
+      if (matches) {
+        console.log(`Found match: ${e.full_name} (${e.employee_number})`);
+      }
+      
+      return matches;
+    });
+    
+    console.log(`Search results: ${filtered.length} matches`);
+    return filtered;
   }, [activeEmployees, searchTerm]);
 
   const today = new Date().toISOString().split('T')[0];
@@ -72,10 +125,6 @@ export default function BiometricPage() {
 
   const todayCheckIns = todayTransactions.filter(t => t.transaction_type === 'CHECK_IN').length;
   const todayCheckOuts = todayTransactions.filter(t => t.transaction_type === 'CHECK_OUT').length;
-
-  // =========================================================================
-  // TRANSACTION HELPERS
-  // =========================================================================
 
   const getLastTransaction = (employeeId: string): AttendanceTransaction | null => {
     const empTxns = transactions
@@ -99,10 +148,6 @@ export default function BiometricPage() {
     return emp ? `${emp.first_name} ${emp.last_name}` : id;
   };
 
-  // =========================================================================
-  // SCAN HANDLER
-  // =========================================================================
-
   const handleScan = (employeeId?: string) => {
     const empId = employeeId || selectedEmployee || manualId;
     const emp = activeEmployees.find(e => e.id === empId || e.employee_number === empId);
@@ -113,11 +158,9 @@ export default function BiometricPage() {
       return;
     }
 
-    // Determine transaction type based on last transaction
     const isCheckIn = canCheckIn(emp.id);
     const type: 'CHECK_IN' | 'CHECK_OUT' = isCheckIn ? 'CHECK_IN' : 'CHECK_OUT';
 
-    // Validate: if trying to check out but hasn't checked in
     if (!isCheckIn && !canCheckOut(emp.id)) {
       setScanState('ERROR');
       toast.error(`${emp.first_name} ${emp.last_name} must check in first`);
@@ -127,45 +170,62 @@ export default function BiometricPage() {
 
     setScanState('SCANNING');
 
-    setTimeout(() => {
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const recordAttendance = async () => {
+      try {
+        const response = await fetch('/api/hr/attendance/staff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            staff_id: emp.id,
+            transaction_type: isCheckIn ? 'IN' : 'OUT',
+            device_type: manualMode ? 'MANUAL' : 'BIOMETRIC',
+            source: manualMode ? 'MANUAL' : 'DEVICE'
+          })
+        });
 
-      const txn: AttendanceTransaction = {
-        transaction_id: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-        employee_id: emp.id,
-        employee_name: `${emp.first_name} ${emp.last_name}`,
-        transaction_date: today,
-        transaction_time: `${timeStr}:${String(now.getSeconds()).padStart(2, '0')}`,
-        transaction_type: type,
-        device_id: 'BIO-001',
-        entry_method: 'BIOMETRIC',
-        is_manual_entry: false,
-      };
+        const result = await response.json();
 
-      const success = dataStore.addAttendanceTransaction(txn);
+        if (result.success) {
+          setScanState('SUCCESS');
+          setLastScan({
+            name: emp.full_name,
+            type: type,
+            time: new Date().toLocaleTimeString()
+          });
+          toast.success(`${emp.full_name} ${isCheckIn ? 'checked in' : 'checked out'} successfully`);
+          
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          const txn: AttendanceTransaction = {
+            transaction_id: result.data.transaction_id,
+            employee_id: emp.staffid,
+            employee_name: emp.full_name,
+            transaction_date: today,
+            transaction_time: `${timeStr}:${String(now.getSeconds()).padStart(2, '0')}`,
+            transaction_type: type,
+            device_id: 'BIO-001',
+            entry_method: manualMode ? 'MANUAL' : 'BIOMETRIC',
+            is_manual_entry: manualMode,
+          };
 
-      if (success) {
-        setTransactions(prev => [...prev, txn]);
-        setLastScan({ name: `${emp.first_name} ${emp.last_name}`, type, time: timeStr });
-        setScanState('SUCCESS');
-        toast.success(`${emp.first_name} ${emp.last_name} ${type === 'CHECK_IN' ? 'checked in' : 'checked out'} at ${timeStr}`);
-      } else {
+          setTransactions([txn, ...transactions]);
+          setSelectedEmployee('');
+          setSearchTerm('');
+          setManualId('');
+          setTimeout(() => setScanState('READY'), 2000);
+        } else {
+          throw new Error(result.error || 'Failed to record attendance');
+        }
+      } catch (error: any) {
+        console.error('Error recording attendance:', error);
         setScanState('ERROR');
-        toast.error('Failed to save transaction');
+        toast.error(error.message || 'Failed to record attendance');
+        setTimeout(() => setScanState('READY'), 2000);
       }
+    };
 
-      setSelectedEmployee('');
-      setManualId('');
-      setSearchTerm('');
-
-      setTimeout(() => setScanState('READY'), 3000);
-    }, 1500);
+    setTimeout(recordAttendance, 1500);
   };
-
-  // =========================================================================
-  // RENDER
-  // =========================================================================
 
   const timeStr = currentTime.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const dateStr = currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -193,17 +253,14 @@ export default function BiometricPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Scanner Panel */}
         <div className="lg:col-span-2">
           <div className="tibbna-card">
             <div className="tibbna-card-content">
-              {/* Live Clock */}
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <p style={{ fontSize: '48px', fontWeight: 700, fontFamily: 'monospace', color: '#111827' }}>{timeStr}</p>
                 <p style={{ fontSize: '14px', color: '#525252' }}>{dateStr}</p>
               </div>
 
-              {/* Scanner Area */}
               <div className="flex flex-col items-center gap-6">
                 <button
                   onClick={() => handleScan()}
@@ -254,7 +311,6 @@ export default function BiometricPage() {
                 </div>
               </div>
 
-              {/* Employee Selection */}
               <div style={{ marginTop: '24px', borderTop: '1px solid #e4e4e4', paddingTop: '16px' }}>
                 <div className="flex gap-2 mb-3">
                   <button
@@ -289,14 +345,14 @@ export default function BiometricPage() {
                         {filteredEmployees.slice(0, 8).map(emp => (
                           <button
                             key={emp.id}
-                            onClick={() => { setSelectedEmployee(emp.id); setSearchTerm(`${emp.first_name} ${emp.last_name}`); handleScan(emp.id); }}
-                            className="flex items-center gap-3 w-full px-3 py-2 hover:bg-[#f5f5f5] transition-colors"
+                            onClick={() => { setSelectedEmployee(emp.id); setSearchTerm(emp.full_name); handleScan(emp.id); }}
+                            className="flex items-center gap-3 w-full px-4 py-2 hover:bg-[#f5f5f5] transition-colors"
                             style={{ borderBottom: '1px solid #f0f0f0' }}
                           >
-                            <EmployeeAvatar name={`${emp.first_name} ${emp.last_name}`} size="sm" />
+                            <EmployeeAvatar name={emp.full_name} size="sm" />
                             <div style={{ textAlign: 'left' }}>
-                              <p style={{ fontSize: '13px', fontWeight: 500 }}>{emp.first_name} {emp.last_name}</p>
-                              <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{emp.employee_number} | {emp.department_name}</p>
+                              <p style={{ fontSize: '13px', fontWeight: 500 }}>{emp.full_name}</p>
+                              <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{emp.employee_number || emp.custom_staff_id || 'No ID'} | {emp.unit || 'No Unit'}</p>
                             </div>
                           </button>
                         ))}
@@ -324,7 +380,6 @@ export default function BiometricPage() {
           </div>
         </div>
 
-        {/* Right Column: Recent Scans + Stats */}
         <div>
           <div className="tibbna-card">
             <div className="tibbna-card-header">
@@ -365,7 +420,6 @@ export default function BiometricPage() {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="tibbna-card" style={{ marginTop: '16px' }}>
             <div className="tibbna-card-header">
               <h3 className="tibbna-section-title" style={{ margin: 0 }}>Today&apos;s Stats</h3>
