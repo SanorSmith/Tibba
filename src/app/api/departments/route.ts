@@ -8,14 +8,14 @@ export async function GET(request: NextRequest) {
     const { Pool } = await import('pg');
     console.log('PG imported successfully');
     
-    const databaseUrl = process.env.OPENEHR_DATABASE_URL;
+    const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
     console.log('Database URL exists:', !!databaseUrl);
     
     if (!databaseUrl) {
       return NextResponse.json(
         { 
           error: 'Database not configured',
-          details: 'OPENEHR_DATABASE_URL environment variable is missing'
+          details: 'DATABASE_URL environment variable is missing'
         },
         { status: 500 }
       );
@@ -125,13 +125,13 @@ export async function POST(request: NextRequest) {
     // Import pg dynamically
     const { Pool } = await import('pg');
     
-    const databaseUrl = process.env.OPENEHR_DATABASE_URL;
+    const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
     
     if (!databaseUrl) {
       return NextResponse.json(
         { 
           error: 'Database not configured',
-          details: 'OPENEHR_DATABASE_URL environment variable is missing'
+          details: 'DATABASE_URL environment variable is missing'
         },
         { status: 500 }
       );

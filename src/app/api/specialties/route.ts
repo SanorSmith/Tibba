@@ -4,10 +4,10 @@ import { Pool } from 'pg';
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-const databaseUrl = process.env.OPENEHR_DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 
 if (!databaseUrl) {
-  console.error('OPENEHR_DATABASE_URL is not configured in environment variables');
+  console.error('DATABASE_URL is not configured in environment variables');
 }
 
 const pool = databaseUrl ? new Pool({
