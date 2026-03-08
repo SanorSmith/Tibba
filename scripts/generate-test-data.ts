@@ -138,7 +138,7 @@ class TestDataGenerator {
         phone: `+96650${Math.floor(Math.random() * 90000000) + 10000000}`,
         position,
         department_id: department.id,
-        base_salary,
+        base_salary: baseSalary,
         hire_date: hireDate,
         status: 'active',
         metadata: {

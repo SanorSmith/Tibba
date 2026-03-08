@@ -4,10 +4,11 @@ import attendanceIntegration from '@/lib/services/attendance-leave-integration';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
+    const { id } = await params;
     const { approver_id, approver_name, comments } = body;
     
     if (!approver_id || !approver_name) {
@@ -18,7 +19,7 @@ export async function POST(
     }
     
     const result = await approvalWorkflow.approveLeaveRequest(
-      params.id,
+      id,
       approver_id,
       approver_name,
       comments
@@ -42,7 +43,7 @@ export async function POST(
           status
          FROM leave_requests
          WHERE id = $1`,
-        [params.id]
+        [id]
       );
       
       if (leaveResult.rows.length > 0) {

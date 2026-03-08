@@ -5,8 +5,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -22,8 +23,7 @@ export async function POST(
   });
 
   try {
-    const { id } = params;
-    const body = await request.json();
+      const body = await request.json();
     const { approver_id, comments, action } = body;
 
     if (!approver_id || !action) {

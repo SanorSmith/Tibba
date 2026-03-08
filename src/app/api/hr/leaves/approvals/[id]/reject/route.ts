@@ -3,10 +3,11 @@ import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
+    const { id } = await params;
     const { approver_id, approver_name, rejection_reason } = body;
     
     if (!approver_id || !approver_name || !rejection_reason) {
@@ -17,7 +18,7 @@ export async function POST(
     }
     
     const result = await approvalWorkflow.rejectLeaveRequest(
-      params.id,
+      id,
       approver_id,
       approver_name,
       rejection_reason
