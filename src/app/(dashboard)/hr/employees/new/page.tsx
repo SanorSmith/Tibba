@@ -27,6 +27,7 @@ const initialForm: EmployeeFormData = {
   address: '',
   employment_type: 'FULL_TIME',
   employee_category: 'ADMINISTRATIVE',
+  job_title: '',
   job_category_id: '',
   department_id: '',
   grade_id: '',

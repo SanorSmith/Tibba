@@ -32,8 +32,8 @@ export default function JobCategoriesPage() {
       if (filters.department_id) params.append('department_id', filters.department_id);
       if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
       if (filters.search) params.append('search', filters.search);
-      params.append('page', filters.page.toString());
-      params.append('limit', filters.limit.toString());
+      params.append('page', (filters.page ?? 1).toString());
+      params.append('limit', (filters.limit ?? 20).toString());
 
       const response = await fetch(`/api/hr/job-categories?${params}`);
       const data = await response.json();
@@ -241,7 +241,7 @@ export default function JobCategoriesPage() {
                       {getLevelLabel(category.level)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {category.departments?.name || '-'}
+                      {(category as any).departments?.name || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

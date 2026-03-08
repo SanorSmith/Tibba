@@ -714,6 +714,7 @@ export interface EmployeeFormData {
   address?: string;
   employment_type: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'TEMPORARY';
   employee_category: 'MEDICAL_STAFF' | 'NURSING' | 'ADMINISTRATIVE' | 'SUPPORT' | 'TECHNICAL';
+  job_title: string;
   job_category_id?: string;
   department_id: string;
   grade_id?: string;
