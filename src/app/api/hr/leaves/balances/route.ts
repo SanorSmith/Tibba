@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
         lt.name as leave_type_name,
         lt.code as leave_type_code,
         lt.color as leave_type_color,
-        lt.category,
         lb.year,
         lb.opening_balance,
         lb.accrued,
@@ -107,7 +106,7 @@ export async function POST(request: NextRequest) {
       // Get all leave types with accrual
       const leaveTypes = await pool.query(`
         SELECT * FROM leave_types 
-        WHERE is_active = true AND accrual_method IS NOT NULL
+        WHERE is_active = true AND accrual_frequency IS NOT NULL
       `);
 
       let initialized = 0;
@@ -123,9 +122,9 @@ export async function POST(request: NextRequest) {
           if (existing.rows.length === 0) {
             // Calculate initial accrual
             let initialAccrual = 0;
-            if (leaveType.accrual_method === 'ANNUAL') {
+            if (leaveType.accrual_frequency === 'YEARLY') {
               initialAccrual = leaveType.accrual_rate || 0;
-            } else if (leaveType.accrual_method === 'MONTHLY') {
+            } else if (leaveType.accrual_frequency === 'MONTHLY') {
               const currentMonth = new Date().getMonth() + 1;
               initialAccrual = (leaveType.accrual_rate || 0) * currentMonth;
             }
@@ -159,7 +158,7 @@ export async function POST(request: NextRequest) {
       // Get leave types with monthly accrual
       const leaveTypes = await pool.query(`
         SELECT * FROM leave_types 
-        WHERE is_active = true AND accrual_method = 'MONTHLY'
+        WHERE is_active = true AND accrual_frequency = 'MONTHLY'
       `);
 
       let accrued = 0;
@@ -169,10 +168,10 @@ export async function POST(request: NextRequest) {
 
         // Update all balances for this leave type
         const result = await pool.query(`
-          UPDATE leave_balances 
+          UPDATE leave_balance 
           SET 
             accrued = accrued + $1,
-            closing_balance = closing_balance + $1,
+            available_balance = available_balance + $1,
             last_accrual_date = CURRENT_DATE,
             updated_at = NOW()
           WHERE leave_type_id = $2 AND year = $3
