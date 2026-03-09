@@ -24,7 +24,7 @@ export async function POST(
 
   try {
     const body = await request.json();
-    const { approver_id, approver_name, action } = body;
+    const { approver_id, approver_name, action, comments } = body;
 
     if (!approver_id || !action) {
       await pool.end();
@@ -57,21 +57,42 @@ export async function POST(
 
     const request_data = leaveRequest.rows[0];
 
-    if (request_data.status !== 'PENDING') {
+    // Get pending approval for this approver
+    const approval = await pool.query(`
+      SELECT * FROM leave_request_approvals 
+      WHERE leave_request_id = $1 AND approver_id = $2 AND status = 'PENDING'
+      ORDER BY approval_level ASC
+      LIMIT 1
+    `, [id, approver_id]);
+
+    if (approval.rows.length === 0) {
       await pool.end();
       return NextResponse.json(
-        { error: `Leave request is already ${request_data.status}` },
+        { error: 'No pending approval found for this approver' },
         { status: 400 }
       );
     }
+
+    const approval_data = approval.rows[0];
+
+    // Update approval record
+    await pool.query(`
+      UPDATE leave_request_approvals 
+      SET status = $1, 
+          decision_date = NOW(),
+          comments = $2
+      WHERE id = $3
+    `, [action === 'APPROVE' ? 'APPROVED' : 'REJECTED', comments || null, approval_data.id]);
 
     if (action === 'REJECT') {
       // Reject the leave request
       await pool.query(`
         UPDATE leave_requests 
-        SET status = 'REJECTED', updated_at = NOW()
-        WHERE id = $1
-      `, [id]);
+        SET status = 'REJECTED', 
+            rejection_reason = $1,
+            updated_at = NOW()
+        WHERE id = $2
+      `, [comments || 'Rejected by ' + approver_name, id]);
 
       await pool.end();
 
@@ -82,7 +103,26 @@ export async function POST(
       });
     }
 
-    // Approve the leave request
+    // Check if there are more approval levels
+    const nextApproval = await pool.query(`
+      SELECT * FROM leave_request_approvals 
+      WHERE leave_request_id = $1 AND approval_level > $2 AND status = 'PENDING'
+      ORDER BY approval_level ASC
+      LIMIT 1
+    `, [id, approval_data.approval_level]);
+
+    if (nextApproval.rows.length > 0) {
+      // More approvals needed
+      await pool.end();
+      return NextResponse.json({
+        success: true,
+        message: 'Approval recorded. Waiting for next level approval',
+        status: 'PENDING',
+        next_approver: nextApproval.rows[0].approver_name
+      });
+    }
+
+    // All approvals complete - approve the request
     await pool.query(`
       UPDATE leave_requests 
       SET status = 'APPROVED', 

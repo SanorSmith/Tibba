@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, User, Briefcase, Building2, CreditCard } from 'lucide-react';
+import { ArrowLeft, Save, User, Briefcase, Building2, CreditCard, FileText } from 'lucide-react';
 import type { EmployeeFormData, Employee } from '@/types/hr';
 import { FormGroup, FormRow, FormActions, FormSection } from '@/components/modules/hr/shared/form-components';
 import { dataStore } from '@/lib/dataStore';
@@ -39,6 +39,12 @@ const initialForm: EmployeeFormData = {
   emergency_contact_name: '',
   emergency_contact_phone: '',
   emergency_contact_relationship: '',
+  cv_summary: '',
+  education: [],
+  work_history: [],
+  certifications: [],
+  languages: [],
+  skills: [],
 };
 
 export default function NewEmployeePage() {
@@ -82,9 +88,15 @@ export default function NewEmployeePage() {
     return Object.keys(e).length === 0;
   };
 
+  const validateStep3 = () => {
+    // Profile step is optional, always valid
+    return true;
+  };
+
   const handleNext = () => {
     if (step === 1 && validateStep1()) setStep(2);
     else if (step === 2 && validateStep2()) setStep(3);
+    else if (step === 3 && validateStep3()) setStep(4);
   };
 
   const handleBack = () => {
@@ -180,7 +192,7 @@ export default function NewEmployeePage() {
           </Link>
           <div>
             <h2 className="page-title">Add New Employee</h2>
-            <p className="page-description">Step {step} of 3</p>
+            <p className="page-description">Step {step} of 4</p>
           </div>
         </div>
       </div>
@@ -192,7 +204,8 @@ export default function NewEmployeePage() {
             {[
               { n: 1, label: 'Personal Info', icon: User },
               { n: 2, label: 'Employment', icon: Briefcase },
-              { n: 3, label: 'Review & Submit', icon: Save },
+              { n: 3, label: 'Profile', icon: FileText },
+              { n: 4, label: 'Review & Submit', icon: Save },
             ].map((s, i) => {
               const Icon = s.icon;
               const isActive = step === s.n;
@@ -213,7 +226,7 @@ export default function NewEmployeePage() {
                       {s.label}
                     </span>
                   </div>
-                  {i < 2 && (
+                  {i < 3 && (
                     <div className="h-0.5 flex-1 mx-2" style={{ backgroundColor: isDone ? '#6EE7B7' : '#E5E7EB', marginBottom: '20px' }} />
                   )}
                 </div>
@@ -410,14 +423,159 @@ export default function NewEmployeePage() {
 
             <FormActions>
               <button className="btn-secondary" onClick={handleBack}>Back</button>
-              <button className="btn-primary" onClick={handleNext}>Next: Review</button>
+              <button className="btn-primary" onClick={handleNext}>Next: Profile</button>
             </FormActions>
           </div>
         </div>
       )}
 
-      {/* Step 3: Review & Submit */}
+      {/* Step 3: Profile Management */}
       {step === 3 && (
+        <div className="tibbna-card">
+          <div className="tibbna-card-header">
+            <h3 className="tibbna-section-title" style={{ margin: 0 }}>Employee Profile</h3>
+            <p style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>CV, education, work history, and professional information (Optional)</p>
+          </div>
+          <div className="tibbna-card-content space-y-5">
+            <FormSection title="Professional Summary">
+              <FormRow columns={1}>
+                <FormGroup label="CV Summary" helper="Brief professional summary or career objective">
+                  <textarea 
+                    className="tibbna-input" 
+                    rows={4}
+                    value={form.cv_summary || ''} 
+                    onChange={e => update('cv_summary', e.target.value)}
+                    placeholder="e.g. Experienced healthcare professional with 10+ years in emergency medicine..."
+                  />
+                </FormGroup>
+              </FormRow>
+            </FormSection>
+
+            <FormSection title="Education">
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                Add educational qualifications (degrees, diplomas, certificates)
+              </div>
+              <div className="space-y-3">
+                {(form.education || []).length === 0 && (
+                  <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
+                    No education records added yet
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const newEdu = [...(form.education || []), { degree: '', institution: '', field: '', year: '' }];
+                    setForm(prev => ({ ...prev, education: newEdu }));
+                  }}
+                >
+                  + Add Education
+                </button>
+              </div>
+            </FormSection>
+
+            <FormSection title="Work History">
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                Previous employment and work experience
+              </div>
+              <div className="space-y-3">
+                {(form.work_history || []).length === 0 && (
+                  <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
+                    No work history added yet
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const newWork = [...(form.work_history || []), { company: '', position: '', start_date: '', end_date: '' }];
+                    setForm(prev => ({ ...prev, work_history: newWork }));
+                  }}
+                >
+                  + Add Work Experience
+                </button>
+              </div>
+            </FormSection>
+
+            <FormSection title="Certifications & Licenses">
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                Professional certifications, licenses, and credentials
+              </div>
+              <div className="space-y-3">
+                {(form.certifications || []).length === 0 && (
+                  <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
+                    No certifications added yet
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const newCert = [...(form.certifications || []), { name: '', issuer: '', issue_date: '' }];
+                    setForm(prev => ({ ...prev, certifications: newCert }));
+                  }}
+                >
+                  + Add Certification
+                </button>
+              </div>
+            </FormSection>
+
+            <FormSection title="Languages">
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                Languages spoken and proficiency levels
+              </div>
+              <div className="space-y-3">
+                {(form.languages || []).length === 0 && (
+                  <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
+                    No languages added yet
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const newLang = [...(form.languages || []), { language: '', proficiency: 'INTERMEDIATE' }];
+                    setForm(prev => ({ ...prev, languages: newLang }));
+                  }}
+                >
+                  + Add Language
+                </button>
+              </div>
+            </FormSection>
+
+            <FormSection title="Skills">
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                Professional skills and competencies
+              </div>
+              <div className="space-y-3">
+                {(form.skills || []).length === 0 && (
+                  <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
+                    No skills added yet
+                  </div>
+                )}
+                <button 
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const newSkill = [...(form.skills || []), { skill: '', level: 'INTERMEDIATE' }];
+                    setForm(prev => ({ ...prev, skills: newSkill }));
+                  }}
+                >
+                  + Add Skill
+                </button>
+              </div>
+            </FormSection>
+
+            <FormActions>
+              <button className="btn-secondary" onClick={handleBack}>Back</button>
+              <button className="btn-primary" onClick={handleNext}>Next: Review & Submit</button>
+            </FormActions>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Review & Submit */}
+      {step === 4 && (
         <div className="tibbna-card">
           <div className="tibbna-card-header">
             <h3 className="tibbna-section-title" style={{ margin: 0 }}>Review & Submit</h3>

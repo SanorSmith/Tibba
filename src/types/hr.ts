@@ -726,6 +726,12 @@ export interface EmployeeFormData {
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
+  cv_summary?: string;
+  education?: any[];
+  work_history?: any[];
+  certifications?: any[];
+  languages?: any[];
+  skills?: any[];
 }
 
 export interface LeaveRequestFormData {

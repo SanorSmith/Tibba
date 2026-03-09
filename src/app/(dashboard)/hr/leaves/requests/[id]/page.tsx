@@ -54,7 +54,8 @@ export default function LeaveRequestDetailPage() {
         body: JSON.stringify({
           approver_id: '00000000-0000-0000-0000-000000000001', // Current user ID
           approver_name: 'Current User',
-          action: 'APPROVE'
+          action: 'APPROVE',
+          comments: comment || null
         }),
       });
 
@@ -84,7 +85,8 @@ export default function LeaveRequestDetailPage() {
         body: JSON.stringify({
           approver_id: '00000000-0000-0000-0000-000000000001', // Current user ID
           approver_name: 'Current User',
-          action: 'REJECT'
+          action: 'REJECT',
+          comments: comment || null
         }),
       });
 
