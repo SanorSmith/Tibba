@@ -45,6 +45,19 @@ const initialForm: EmployeeFormData = {
   certifications: [],
   languages: [],
   skills: [],
+  pension_eligible: true,
+  pension_scheme: 'STANDARD',
+  pension_contribution_rate: 5.0,
+  employer_pension_rate: 5.0,
+  pension_start_date: new Date().toISOString().split('T')[0],
+  social_security_number: '',
+  social_security_rate: 5.0,
+  tax_id_number: '',
+  tax_exemption_amount: 0,
+  settlement_eligible: true,
+  settlement_calculation_method: 'IRAQI_LABOR_LAW',
+  gratuity_eligible: true,
+  notice_period_days: 30,
 };
 
 export default function NewEmployeePage() {
@@ -55,7 +68,7 @@ export default function NewEmployeePage() {
   const [submitted, setSubmitted] = useState(false);
   const [generatedId, setGeneratedId] = useState('');
 
-  const update = (field: keyof EmployeeFormData, value: string | number | undefined) => {
+  const update = (field: keyof EmployeeFormData, value: string | number | boolean | undefined) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
@@ -408,6 +421,95 @@ export default function NewEmployeePage() {
                   </select>
                 </FormGroup>
               </FormRow>
+            </FormSection>
+
+            <FormSection title="Settlement Rules & Deductions">
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '16px' }}>
+                Configure pension, social security, tax, and end-of-service settlement rules
+              </div>
+              
+              {/* Pension Configuration */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' }}>Pension Scheme</h4>
+                <FormRow columns={3}>
+                  <FormGroup label="Pension Eligible">
+                    <select className="tibbna-input" value={form.pension_eligible ? 'true' : 'false'} onChange={e => update('pension_eligible', e.target.value === 'true')}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </FormGroup>
+                  <FormGroup label="Pension Scheme">
+                    <select className="tibbna-input" value={form.pension_scheme} onChange={e => update('pension_scheme', e.target.value)}>
+                      <option value="STANDARD">Standard</option>
+                      <option value="GOVERNMENT">Government</option>
+                      <option value="PRIVATE">Private</option>
+                      <option value="NONE">None</option>
+                    </select>
+                  </FormGroup>
+                  <FormGroup label="Pension Start Date">
+                    <input className="tibbna-input" type="date" value={form.pension_start_date} onChange={e => update('pension_start_date', e.target.value)} />
+                  </FormGroup>
+                </FormRow>
+                <FormRow columns={2}>
+                  <FormGroup label="Employee Contribution (%)" helper="Employee pension contribution rate">
+                    <input className="tibbna-input" type="number" step="0.01" min="0" max="100" value={form.pension_contribution_rate || ''} onChange={e => update('pension_contribution_rate', e.target.value ? Number(e.target.value) : undefined)} placeholder="5.00" />
+                  </FormGroup>
+                  <FormGroup label="Employer Contribution (%)" helper="Employer pension contribution rate">
+                    <input className="tibbna-input" type="number" step="0.01" min="0" max="100" value={form.employer_pension_rate || ''} onChange={e => update('employer_pension_rate', e.target.value ? Number(e.target.value) : undefined)} placeholder="5.00" />
+                  </FormGroup>
+                </FormRow>
+              </div>
+
+              {/* Deductions Configuration */}
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' }}>Deductions</h4>
+                <FormRow columns={2}>
+                  <FormGroup label="Social Security Number">
+                    <input className="tibbna-input" value={form.social_security_number} onChange={e => update('social_security_number', e.target.value)} placeholder="e.g. SS-123456789" />
+                  </FormGroup>
+                  <FormGroup label="Social Security Rate (%)" helper="Default 5% as per Iraqi law">
+                    <input className="tibbna-input" type="number" step="0.01" min="0" max="100" value={form.social_security_rate || ''} onChange={e => update('social_security_rate', e.target.value ? Number(e.target.value) : undefined)} placeholder="5.00" />
+                  </FormGroup>
+                </FormRow>
+                <FormRow columns={2}>
+                  <FormGroup label="Tax ID Number">
+                    <input className="tibbna-input" value={form.tax_id_number} onChange={e => update('tax_id_number', e.target.value)} placeholder="e.g. TAX-123456789" />
+                  </FormGroup>
+                  <FormGroup label="Tax Exemption Amount (IQD)" helper="Monthly tax exemption amount">
+                    <input className="tibbna-input" type="number" value={form.tax_exemption_amount || ''} onChange={e => update('tax_exemption_amount', e.target.value ? Number(e.target.value) : undefined)} placeholder="0" />
+                  </FormGroup>
+                </FormRow>
+              </div>
+
+              {/* End-of-Service Settlement */}
+              <div>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#374151' }}>End-of-Service Settlement</h4>
+                <FormRow columns={3}>
+                  <FormGroup label="Settlement Eligible">
+                    <select className="tibbna-input" value={form.settlement_eligible ? 'true' : 'false'} onChange={e => update('settlement_eligible', e.target.value === 'true')}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </FormGroup>
+                  <FormGroup label="Calculation Method">
+                    <select className="tibbna-input" value={form.settlement_calculation_method} onChange={e => update('settlement_calculation_method', e.target.value)}>
+                      <option value="IRAQI_LABOR_LAW">Iraqi Labor Law</option>
+                      <option value="CUSTOM">Custom</option>
+                    </select>
+                  </FormGroup>
+                  <FormGroup label="Notice Period (Days)">
+                    <input className="tibbna-input" type="number" min="0" value={form.notice_period_days || ''} onChange={e => update('notice_period_days', e.target.value ? Number(e.target.value) : undefined)} placeholder="30" />
+                  </FormGroup>
+                </FormRow>
+                <FormRow columns={1}>
+                  <FormGroup label="Gratuity Eligible" helper="End-of-service gratuity/bonus eligibility">
+                    <select className="tibbna-input" value={form.gratuity_eligible ? 'true' : 'false'} onChange={e => update('gratuity_eligible', e.target.value === 'true')}>
+                      <option value="true">Yes - Eligible for gratuity</option>
+                      <option value="false">No - Not eligible</option>
+                    </select>
+                  </FormGroup>
+                </FormRow>
+              </div>
             </FormSection>
 
             <FormSection title="Bank Details">
