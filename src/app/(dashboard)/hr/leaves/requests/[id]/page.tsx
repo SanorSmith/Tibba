@@ -44,15 +44,63 @@ export default function LeaveRequestDetailPage() {
     },
   ];
 
-  const handleApprove = () => {
-    setStatus('APPROVED');
-    setShowAction(false);
-    setComment('');
+  const handleApprove = async () => {
+    try {
+      const response = await fetch(`/api/hr/leaves/requests/${params.id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          approver_id: '00000000-0000-0000-0000-000000000001', // Current user ID
+          approver_name: 'Current User',
+          action: 'APPROVE'
+        }),
+      });
+
+      if (response.ok) {
+        setStatus('APPROVED');
+        setShowAction(false);
+        setComment('');
+        // Optionally refresh data or show success message
+      } else {
+        const error = await response.json();
+        console.error('Approval failed:', error);
+        alert('Failed to approve request: ' + (error.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error approving request:', error);
+      alert('Error approving request');
+    }
   };
 
-  const handleReject = () => {
-    setStatus('REJECTED');
-    setShowAction(false);
+  const handleReject = async () => {
+    try {
+      const response = await fetch(`/api/hr/leaves/requests/${params.id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          approver_id: '00000000-0000-0000-0000-000000000001', // Current user ID
+          approver_name: 'Current User',
+          action: 'REJECT'
+        }),
+      });
+
+      if (response.ok) {
+        setStatus('REJECTED');
+        setShowAction(false);
+        // Optionally refresh data or show success message
+      } else {
+        const error = await response.json();
+        console.error('Rejection failed:', error);
+        alert('Failed to reject request: ' + (error.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      alert('Error rejecting request');
+    }
   };
 
   return (
