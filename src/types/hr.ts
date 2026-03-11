@@ -745,6 +745,7 @@ export interface EmployeeFormData {
   settlement_calculation_method?: string;
   gratuity_eligible?: boolean;
   notice_period_days?: number;
+  specialty?: string;
 }
 
 export interface LeaveRequestFormData {

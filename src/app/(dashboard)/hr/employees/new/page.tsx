@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, User, Briefcase, Building2, CreditCard, FileText } from 'lucide-react';
@@ -58,6 +58,7 @@ const initialForm: EmployeeFormData = {
   settlement_calculation_method: 'IRAQI_LABOR_LAW',
   gratuity_eligible: true,
   notice_period_days: 30,
+  specialty: '',
 };
 
 export default function NewEmployeePage() {
@@ -67,6 +68,8 @@ export default function NewEmployeePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [generatedId, setGeneratedId] = useState('');
+  const [specialties, setSpecialties] = useState<any[]>([]);
+  const [loadingSpecialties, setLoadingSpecialties] = useState(false);
 
   const update = (field: keyof EmployeeFormData, value: string | number | boolean | undefined) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -105,6 +108,28 @@ export default function NewEmployeePage() {
     // Profile step is optional, always valid
     return true;
   };
+
+  const loadSpecialties = async () => {
+    try {
+      setLoadingSpecialties(true);
+      const response = await fetch('/api/specialties');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setSpecialties(data.data || []);
+      } else {
+        console.error('Failed to load specialties:', data.error);
+      }
+    } catch (error) {
+      console.error('Error loading specialties:', error);
+    } finally {
+      setLoadingSpecialties(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSpecialties();
+  }, []);
 
   const handleNext = () => {
     if (step === 1 && validateStep1()) setStep(2);
@@ -152,6 +177,7 @@ export default function NewEmployeePage() {
       bank_name: form.bank_name || '',
       education: [],
       licenses: [],
+      specialty: form.specialty || '',
     };
 
     try {
@@ -367,22 +393,47 @@ export default function NewEmployeePage() {
                   <input className="tibbna-input" value={form.job_title} onChange={e => update('job_title', e.target.value)} placeholder="e.g. Senior Physician" />
                 </FormGroup>
                 <FormGroup label="Department" required error={errors.department_id}>
-                  <select className="tibbna-input" value={form.department_id} onChange={e => update('department_id', e.target.value)}>
-                    <option value="">Select Department</option>
-                    {departmentsData.departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={form.department_id} onChange={e => update('department_id', e.target.value)}>
+                    <option value="">Select a department</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Emergency">Emergency</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Radiology">Radiology</option>
+                    <option value="Surgery">Surgery</option>
+                  </select>
+                </FormGroup>
+              </FormRow>
+              <FormRow columns={1}>
+                <FormGroup label="Specialty">
+                  <select 
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                    value={form.specialty} 
+                    onChange={e => update('specialty', e.target.value)}
+                    disabled={!form.department_id || loadingSpecialties}
+                  >
+                    <option value="">
+                      {form.department_id ? 'Select a specialty' : 'Select a department first'}
+                    </option>
+                    {specialties
+                      .filter(s => !form.department_id || s.department_id === form.department_id)
+                      .map(s => (
+                        <option key={s.id} value={s.name}>
+                          {s.name} ({s.code})
+                        </option>
+                      ))}
                   </select>
                 </FormGroup>
               </FormRow>
               <FormRow columns={3}>
                 <FormGroup label="Employee Category" required>
-                  <select className="tibbna-input" value={form.employee_category} onChange={e => update('employee_category', e.target.value)}>
-                    <option value="MEDICAL_STAFF">Medical Staff</option>
-                    <option value="NURSING">Nursing</option>
-                    <option value="ADMINISTRATIVE">Administrative</option>
-                    <option value="TECHNICAL">Technical</option>
-                    <option value="SUPPORT">Support</option>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={form.employee_category} onChange={e => update('employee_category', e.target.value)}>
+                    <option value="Staff">Staff</option>
+                    <option value="Doctor">Doctor</option>
+                    <option value="Nurse">Nurse</option>
+                    <option value="Administrator">Administrator</option>
+                    <option value="Technician">Technician</option>
+                    <option value="Support">Support</option>
                   </select>
                 </FormGroup>
                 <FormGroup label="Employment Type">
