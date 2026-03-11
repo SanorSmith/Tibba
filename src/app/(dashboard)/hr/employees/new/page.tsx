@@ -68,6 +68,7 @@ export default function NewEmployeePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [generatedId, setGeneratedId] = useState('');
+  const [departments, setDepartments] = useState<any[]>([]);
   const [specialties, setSpecialties] = useState<any[]>([]);
   const [loadingSpecialties, setLoadingSpecialties] = useState(false);
 
@@ -109,6 +110,21 @@ export default function NewEmployeePage() {
     return true;
   };
 
+  const loadDepartments = async () => {
+    try {
+      const response = await fetch('/api/departments');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setDepartments(data.data || []);
+      } else {
+        console.error('Failed to load departments:', data.error);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
   const loadSpecialties = async () => {
     try {
       setLoadingSpecialties(true);
@@ -128,6 +144,7 @@ export default function NewEmployeePage() {
   };
 
   useEffect(() => {
+    loadDepartments();
     loadSpecialties();
   }, []);
 
@@ -395,12 +412,9 @@ export default function NewEmployeePage() {
                 <FormGroup label="Department" required error={errors.department_id}>
                   <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={form.department_id} onChange={e => update('department_id', e.target.value)}>
                     <option value="">Select a department</option>
-                    <option value="Cardiology">Cardiology</option>
-                    <option value="Emergency">Emergency</option>
-                    <option value="Neurology">Neurology</option>
-                    <option value="Pediatrics">Pediatrics</option>
-                    <option value="Radiology">Radiology</option>
-                    <option value="Surgery">Surgery</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
                   </select>
                 </FormGroup>
               </FormRow>
