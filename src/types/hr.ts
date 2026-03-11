@@ -732,20 +732,25 @@ export interface EmployeeFormData {
   certifications?: any[];
   languages?: any[];
   skills?: any[];
-  pension_eligible?: boolean;
-  pension_scheme?: string;
-  pension_contribution_rate?: number;
-  employer_pension_rate?: number;
-  pension_start_date?: string;
-  social_security_number?: string;
-  social_security_rate?: number;
-  tax_id_number?: string;
-  tax_exemption_amount?: number;
-  settlement_eligible?: boolean;
-  settlement_calculation_method?: string;
-  gratuity_eligible?: boolean;
-  notice_period_days?: number;
+  pension_eligible: boolean;
+  pension_scheme: string;
+  pension_start_date: string;
+  pension_contribution_rate: number;
+  employer_pension_rate: number;
+  social_security_number: string;
+  social_security_rate: number;
+  tax_id_number: string;
+  tax_exemption_amount: number;
+  settlement_eligible: boolean;
+  settlement_calculation_method: string;
+  notice_period_days: number;
+  gratuity_eligible: boolean;
   specialty?: string;
+  settlement_rules?: {
+    rule_type: string;
+    rule_value: number;
+    rule_description: string;
+  }[];
 }
 
 export interface LeaveRequestFormData {

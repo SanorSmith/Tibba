@@ -82,16 +82,9 @@ export default function NewEmployeePage() {
     if (!form.first_name.trim()) e.first_name = 'First name is required';
     if (!form.last_name.trim()) e.last_name = 'Last name is required';
     if (!form.date_of_birth) e.date_of_birth = 'Date of birth is required';
-    
-    // National ID validation - exactly 12 digits
-    if (!form.national_id.trim()) {
-      e.national_id = 'National ID is required';
-    } else if (!/^\d{12}$/.test(form.national_id.trim())) {
-      e.national_id = 'National ID must be exactly 12 digits';
-    }
-    
-    if (!form.email.trim()) e.email = 'Work email is required';
-    if (!form.phone.trim()) e.phone = 'Phone number is required';
+    if (!form.gender) e.gender = 'Gender is required';
+    if (!form.email.trim()) e.email = 'Email is required';
+    if (!form.phone.trim()) e.phone = 'Phone is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -158,53 +151,79 @@ export default function NewEmployeePage() {
     if (step > 1) setStep(step - 1);
   };
 
-  const handleSubmit = () => {
-    const empNum = `EMP-2024-${String(Math.floor(Math.random() * 900) + 100)}`;
-    const dept = departmentsData.departments.find(d => d.id === form.department_id);
+  const handleSubmit = async () => {
+    const dept = departments.find(d => d.id === form.department_id);
 
-    const newEmployee: Record<string, any> = {
-      id: empNum,
-      employee_number: empNum,
-      first_name: form.first_name,
-      last_name: form.last_name,
-      date_of_birth: form.date_of_birth,
-      gender: form.gender,
-      marital_status: form.marital_status,
-      nationality: form.nationality,
-      national_id: form.national_id,
-      email: form.email,
-      email_work: form.email,
-      phone: form.phone,
-      phone_mobile: form.phone,
-      address: form.address || '',
-      blood_type: '',
-      employment_type: form.employment_type,
-      employee_category: form.employee_category,
-      job_title: form.job_title,
-      department_id: form.department_id,
-      department_name: dept?.name || '',
-      reporting_to: null,
-      grade_id: form.grade_id || '',
-      date_of_hire: form.date_of_hire,
-      employment_status: 'ACTIVE' as const,
-      basic_salary: form.basic_salary || 0,
-      photo_url: '',
-      shift_id: form.shift_id || '',
-      bank_account_number: form.bank_account_number || '',
-      bank_name: form.bank_name || '',
-      education: [],
-      licenses: [],
+    const newEmployee = {
+      firstName: form.first_name,
+      middleName: form.middle_name || '',
+      lastName: form.last_name,
+      role: form.employee_category || 'Staff',
+      unit: dept?.name || 'General',
       specialty: form.specialty || '',
+      phone: form.phone,
+      email: form.email,
+      dateOfBirth: form.date_of_birth,
+      gender: form.gender,
+      maritalStatus: form.marital_status || null,
+      nationality: form.nationality || 'Iraqi',
+      nationalId: form.national_id,
+      address: form.address || null,
+      emergencyContactName: form.emergency_contact_name || null,
+      emergencyContactPhone: form.emergency_contact_phone || null,
+      emergencyContactRelationship: form.emergency_contact_relationship || null,
+      // Employment Details
+      jobTitle: form.job_title || null,
+      departmentId: form.department_id || null,
+      employeeCategory: form.employee_category || null,
+      employmentType: form.employment_type || null,
+      dateOfHire: form.date_of_hire || null,
+      gradeId: form.grade_id || null,
+      basicSalary: form.basic_salary || null,
+      shiftId: form.shift_id || null,
+      bankName: form.bank_name || null,
+      bankAccountNumber: form.bank_account_number || null,
+      // Employee Profile
+      cvSummary: form.cv_summary || null,
+      education: form.education || [],
+      workHistory: form.work_history || [],
+      certifications: form.certifications || [],
+      languages: form.languages || [],
+      skills: form.skills || [],
+      // Settlement Rules
+      pensionEligible: form.pension_eligible || true,
+      pensionScheme: form.pension_scheme || 'STANDARD',
+      pensionStartDate: form.pension_start_date || null,
+      pensionContributionRate: form.pension_contribution_rate || 5.0,
+      employerPensionRate: form.employer_pension_rate || 5.0,
+      socialSecurityNumber: form.social_security_number || null,
+      socialSecurityRate: form.social_security_rate || 5.0,
+      taxIdNumber: form.tax_id_number || null,
+      taxExemptionAmount: form.tax_exemption_amount || 0,
+      settlementEligible: form.settlement_eligible || true,
+      settlementCalculationMethod: form.settlement_calculation_method || 'IRAQI_LABOR_LAW',
+      noticePeriodDays: form.notice_period_days || 30,
+      gratuityEligible: form.gratuity_eligible || true,
     };
 
     try {
-      const success = dataStore.addEmployee(newEmployee as unknown as Employee);
-      if (success) {
-        setGeneratedId(empNum);
+      const response = await fetch('/api/staff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newEmployee),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setGeneratedId(result.data.custom_staff_id);
         setSubmitted(true);
         toast.success(`${form.first_name} ${form.last_name} added successfully`);
       } else {
-        toast.error('Failed to save employee');
+        console.error('API Error:', result);
+        toast.error(result.error || 'Failed to save employee');
       }
     } catch (error) {
       console.error('Create employee error:', error);
@@ -341,7 +360,7 @@ export default function NewEmployeePage() {
                     ))}
                   </select>
                 </FormGroup>
-                <FormGroup label="National ID" required error={errors.national_id}>
+                <FormGroup label="National ID" error={errors.national_id}>
                   <input 
                     className="tibbna-input" 
                     type="text"
@@ -353,7 +372,7 @@ export default function NewEmployeePage() {
                     onChange={e => update('national_id', e.target.value.replace(/\D/g, ''))} 
                   />
                   <span style={{ fontSize: '11px', color: 'rgb(163, 163, 163)' }}>
-                    Must be exactly 12 digits
+                    Optional: Must be exactly 12 digits
                   </span>
                 </FormGroup>
               </FormRow>
@@ -623,6 +642,86 @@ export default function NewEmployeePage() {
                 Add educational qualifications (degrees, diplomas, certificates)
               </div>
               <div className="space-y-3">
+                {(form.education || []).map((edu: any, index: number) => (
+                  <div key={index} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormGroup label="Degree/Certificate">
+                        <input 
+                          className="tibbna-input" 
+                          value={edu.degree || ''} 
+                          onChange={e => {
+                            const updated = [...(form.education || [])];
+                            updated[index] = { ...updated[index], degree: e.target.value };
+                            setForm(prev => ({ ...prev, education: updated }));
+                          }}
+                          placeholder="e.g. Bachelor of Medicine"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Institution">
+                        <input 
+                          className="tibbna-input" 
+                          value={edu.institution || ''} 
+                          onChange={e => {
+                            const updated = [...(form.education || [])];
+                            updated[index] = { ...updated[index], institution: e.target.value };
+                            setForm(prev => ({ ...prev, education: updated }));
+                          }}
+                          placeholder="e.g. University of Baghdad"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Field of Study">
+                        <input 
+                          className="tibbna-input" 
+                          value={edu.field_of_study || ''} 
+                          onChange={e => {
+                            const updated = [...(form.education || [])];
+                            updated[index] = { ...updated[index], field_of_study: e.target.value };
+                            setForm(prev => ({ ...prev, education: updated }));
+                          }}
+                          placeholder="e.g. Medicine"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Graduation Year">
+                        <input 
+                          className="tibbna-input" 
+                          type="number"
+                          value={edu.graduation_year || ''} 
+                          onChange={e => {
+                            const updated = [...(form.education || [])];
+                            updated[index] = { ...updated[index], graduation_year: e.target.value };
+                            setForm(prev => ({ ...prev, education: updated }));
+                          }}
+                          placeholder="e.g. 2015"
+                        />
+                      </FormGroup>
+                      <FormGroup label="GPA (Optional)">
+                        <input 
+                          className="tibbna-input" 
+                          value={edu.gpa || ''} 
+                          onChange={e => {
+                            const updated = [...(form.education || [])];
+                            updated[index] = { ...updated[index], gpa: e.target.value };
+                            setForm(prev => ({ ...prev, education: updated }));
+                          }}
+                          placeholder="e.g. 3.8"
+                        />
+                      </FormGroup>
+                      <div className="flex items-end">
+                        <button 
+                          type="button"
+                          className="btn-secondary"
+                          style={{ width: '100%', backgroundColor: '#FEE2E2', color: '#DC2626', border: 'none' }}
+                          onClick={() => {
+                            const updated = (form.education || []).filter((_: any, i: number) => i !== index);
+                            setForm(prev => ({ ...prev, education: updated }));
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {(form.education || []).length === 0 && (
                   <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
                     No education records added yet
@@ -632,7 +731,7 @@ export default function NewEmployeePage() {
                   type="button"
                   className="btn-secondary"
                   onClick={() => {
-                    const newEdu = [...(form.education || []), { degree: '', institution: '', field: '', year: '' }];
+                    const newEdu = [...(form.education || []), { degree: '', institution: '', field_of_study: '', graduation_year: '', gpa: '' }];
                     setForm(prev => ({ ...prev, education: newEdu }));
                   }}
                 >
@@ -646,6 +745,88 @@ export default function NewEmployeePage() {
                 Previous employment and work experience
               </div>
               <div className="space-y-3">
+                {(form.work_history || []).map((work: any, index: number) => (
+                  <div key={index} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormGroup label="Company/Organization">
+                        <input 
+                          className="tibbna-input" 
+                          value={work.company || ''} 
+                          onChange={e => {
+                            const updated = [...(form.work_history || [])];
+                            updated[index] = { ...updated[index], company: e.target.value };
+                            setForm(prev => ({ ...prev, work_history: updated }));
+                          }}
+                          placeholder="e.g. Al-Yarmouk Hospital"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Position/Title">
+                        <input 
+                          className="tibbna-input" 
+                          value={work.position || ''} 
+                          onChange={e => {
+                            const updated = [...(form.work_history || [])];
+                            updated[index] = { ...updated[index], position: e.target.value };
+                            setForm(prev => ({ ...prev, work_history: updated }));
+                          }}
+                          placeholder="e.g. Emergency Physician"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Start Date">
+                        <input 
+                          className="tibbna-input" 
+                          type="date"
+                          value={work.start_date || ''} 
+                          onChange={e => {
+                            const updated = [...(form.work_history || [])];
+                            updated[index] = { ...updated[index], start_date: e.target.value };
+                            setForm(prev => ({ ...prev, work_history: updated }));
+                          }}
+                        />
+                      </FormGroup>
+                      <FormGroup label="End Date">
+                        <input 
+                          className="tibbna-input" 
+                          type="date"
+                          value={work.end_date || ''} 
+                          onChange={e => {
+                            const updated = [...(form.work_history || [])];
+                            updated[index] = { ...updated[index], end_date: e.target.value };
+                            setForm(prev => ({ ...prev, work_history: updated }));
+                          }}
+                        />
+                      </FormGroup>
+                      <div className="md:col-span-2">
+                        <FormGroup label="Responsibilities (Optional)">
+                          <textarea 
+                            className="tibbna-input" 
+                            rows={2}
+                            value={work.responsibilities || ''} 
+                            onChange={e => {
+                              const updated = [...(form.work_history || [])];
+                              updated[index] = { ...updated[index], responsibilities: e.target.value };
+                              setForm(prev => ({ ...prev, work_history: updated }));
+                            }}
+                            placeholder="Brief description of key responsibilities"
+                          />
+                        </FormGroup>
+                      </div>
+                      <div className="md:col-span-2">
+                        <button 
+                          type="button"
+                          className="btn-secondary"
+                          style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: 'none' }}
+                          onClick={() => {
+                            const updated = (form.work_history || []).filter((_: any, i: number) => i !== index);
+                            setForm(prev => ({ ...prev, work_history: updated }));
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {(form.work_history || []).length === 0 && (
                   <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
                     No work history added yet
@@ -655,7 +836,7 @@ export default function NewEmployeePage() {
                   type="button"
                   className="btn-secondary"
                   onClick={() => {
-                    const newWork = [...(form.work_history || []), { company: '', position: '', start_date: '', end_date: '' }];
+                    const newWork = [...(form.work_history || []), { company: '', position: '', start_date: '', end_date: '', responsibilities: '' }];
                     setForm(prev => ({ ...prev, work_history: newWork }));
                   }}
                 >
@@ -669,6 +850,85 @@ export default function NewEmployeePage() {
                 Professional certifications, licenses, and credentials
               </div>
               <div className="space-y-3">
+                {(form.certifications || []).map((cert: any, index: number) => (
+                  <div key={index} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormGroup label="Certification/License Name">
+                        <input 
+                          className="tibbna-input" 
+                          value={cert.name || ''} 
+                          onChange={e => {
+                            const updated = [...(form.certifications || [])];
+                            updated[index] = { ...updated[index], name: e.target.value };
+                            setForm(prev => ({ ...prev, certifications: updated }));
+                          }}
+                          placeholder="e.g. Board Certified Emergency Medicine"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Issuing Organization">
+                        <input 
+                          className="tibbna-input" 
+                          value={cert.issuer || ''} 
+                          onChange={e => {
+                            const updated = [...(form.certifications || [])];
+                            updated[index] = { ...updated[index], issuer: e.target.value };
+                            setForm(prev => ({ ...prev, certifications: updated }));
+                          }}
+                          placeholder="e.g. Iraqi Medical Board"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Issue Date">
+                        <input 
+                          className="tibbna-input" 
+                          type="date"
+                          value={cert.issue_date || ''} 
+                          onChange={e => {
+                            const updated = [...(form.certifications || [])];
+                            updated[index] = { ...updated[index], issue_date: e.target.value };
+                            setForm(prev => ({ ...prev, certifications: updated }));
+                          }}
+                        />
+                      </FormGroup>
+                      <FormGroup label="Expiry Date (Optional)">
+                        <input 
+                          className="tibbna-input" 
+                          type="date"
+                          value={cert.expiry_date || ''} 
+                          onChange={e => {
+                            const updated = [...(form.certifications || [])];
+                            updated[index] = { ...updated[index], expiry_date: e.target.value };
+                            setForm(prev => ({ ...prev, certifications: updated }));
+                          }}
+                        />
+                      </FormGroup>
+                      <FormGroup label="Credential ID (Optional)">
+                        <input 
+                          className="tibbna-input" 
+                          value={cert.credential_id || ''} 
+                          onChange={e => {
+                            const updated = [...(form.certifications || [])];
+                            updated[index] = { ...updated[index], credential_id: e.target.value };
+                            setForm(prev => ({ ...prev, certifications: updated }));
+                          }}
+                          placeholder="e.g. CERT-123456"
+                        />
+                      </FormGroup>
+                      <div className="flex items-end">
+                        <button 
+                          type="button"
+                          className="btn-secondary"
+                          style={{ width: '100%', backgroundColor: '#FEE2E2', color: '#DC2626', border: 'none' }}
+                          onClick={() => {
+                            const updated = (form.certifications || []).filter((_: any, i: number) => i !== index);
+                            setForm(prev => ({ ...prev, certifications: updated }));
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {(form.certifications || []).length === 0 && (
                   <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
                     No certifications added yet
@@ -678,7 +938,7 @@ export default function NewEmployeePage() {
                   type="button"
                   className="btn-secondary"
                   onClick={() => {
-                    const newCert = [...(form.certifications || []), { name: '', issuer: '', issue_date: '' }];
+                    const newCert = [...(form.certifications || []), { name: '', issuer: '', issue_date: '', expiry_date: '', credential_id: '' }];
                     setForm(prev => ({ ...prev, certifications: newCert }));
                   }}
                 >
@@ -692,6 +952,54 @@ export default function NewEmployeePage() {
                 Languages spoken and proficiency levels
               </div>
               <div className="space-y-3">
+                {(form.languages || []).map((lang: any, index: number) => (
+                  <div key={index} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormGroup label="Language">
+                        <input 
+                          className="tibbna-input" 
+                          value={lang.language || ''} 
+                          onChange={e => {
+                            const updated = [...(form.languages || [])];
+                            updated[index] = { ...updated[index], language: e.target.value };
+                            setForm(prev => ({ ...prev, languages: updated }));
+                          }}
+                          placeholder="e.g. Arabic, English"
+                        />
+                      </FormGroup>
+                      <FormGroup label="Proficiency Level">
+                        <select 
+                          className="tibbna-input" 
+                          value={lang.proficiency || 'INTERMEDIATE'} 
+                          onChange={e => {
+                            const updated = [...(form.languages || [])];
+                            updated[index] = { ...updated[index], proficiency: e.target.value };
+                            setForm(prev => ({ ...prev, languages: updated }));
+                          }}
+                        >
+                          <option value="BASIC">Basic</option>
+                          <option value="INTERMEDIATE">Intermediate</option>
+                          <option value="ADVANCED">Advanced</option>
+                          <option value="FLUENT">Fluent</option>
+                          <option value="NATIVE">Native</option>
+                        </select>
+                      </FormGroup>
+                      <div className="flex items-end">
+                        <button 
+                          type="button"
+                          className="btn-secondary"
+                          style={{ width: '100%', backgroundColor: '#FEE2E2', color: '#DC2626', border: 'none' }}
+                          onClick={() => {
+                            const updated = (form.languages || []).filter((_: any, i: number) => i !== index);
+                            setForm(prev => ({ ...prev, languages: updated }));
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {(form.languages || []).length === 0 && (
                   <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
                     No languages added yet
@@ -715,6 +1023,55 @@ export default function NewEmployeePage() {
                 Professional skills and competencies
               </div>
               <div className="space-y-3">
+                {(form.skills || []).map((skill: any, index: number) => (
+                  <div key={index} style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #E5E7EB' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="md:col-span-2">
+                        <FormGroup label="Skill Name">
+                          <input 
+                            className="tibbna-input" 
+                            value={skill.skill || ''} 
+                            onChange={e => {
+                              const updated = [...(form.skills || [])];
+                              updated[index] = { ...updated[index], skill: e.target.value };
+                              setForm(prev => ({ ...prev, skills: updated }));
+                            }}
+                            placeholder="e.g. Patient Assessment, CPR"
+                          />
+                        </FormGroup>
+                      </div>
+                      <FormGroup label="Proficiency Level">
+                        <select 
+                          className="tibbna-input" 
+                          value={skill.level || 'INTERMEDIATE'} 
+                          onChange={e => {
+                            const updated = [...(form.skills || [])];
+                            updated[index] = { ...updated[index], level: e.target.value };
+                            setForm(prev => ({ ...prev, skills: updated }));
+                          }}
+                        >
+                          <option value="BEGINNER">Beginner</option>
+                          <option value="INTERMEDIATE">Intermediate</option>
+                          <option value="ADVANCED">Advanced</option>
+                          <option value="EXPERT">Expert</option>
+                        </select>
+                      </FormGroup>
+                      <div className="flex items-end">
+                        <button 
+                          type="button"
+                          className="btn-secondary"
+                          style={{ width: '100%', backgroundColor: '#FEE2E2', color: '#DC2626', border: 'none' }}
+                          onClick={() => {
+                            const updated = (form.skills || []).filter((_: any, i: number) => i !== index);
+                            setForm(prev => ({ ...prev, skills: updated }));
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 {(form.skills || []).length === 0 && (
                   <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '8px', textAlign: 'center', color: '#9CA3AF' }}>
                     No skills added yet

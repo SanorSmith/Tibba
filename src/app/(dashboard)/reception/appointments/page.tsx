@@ -51,10 +51,24 @@ type Doctor = {
 
 type Patient = {
   id: string;
+  patientNumber?: string;
   firstNameAr: string;
+  firstNameEn: string;
   middleName?: string;
   lastNameAr: string;
+  lastNameEn: string;
+  fullNameAr: string;
+  fullNameEn: string;
+  dateOfBirth?: string;
+  age?: number;
+  gender: string;
+  bloodGroup?: string;
   nationalId?: string;
+  phone?: string;
+  mobile?: string;
+  email?: string;
+  address?: string;
+  createdAt?: string;
 };
 
 const statusConfig = {
@@ -224,29 +238,53 @@ export default function AppointmentsPage() {
   const handlePatientSearch = async (searchTerm: string) => {
     setPatientSearchTerm(searchTerm);
     
-    // Debounce search to avoid too many API calls
-    setTimeout(async () => {
-      if (searchTerm.length >= 2) {
-        try {
-          const response = await fetch(`/api/tibbna-openehr-patients?search=${encodeURIComponent(searchTerm)}`);
-          if (response.ok) {
-            const data = await response.json();
-            setPatients(data.data || []);
-          }
-        } catch (error) {
-          console.error('Error searching patients:', error);
+    if (searchTerm.length >= 2) {
+      setShowPatientDropdown(true);
+      try {
+        console.log('Searching patients with term:', searchTerm);
+        const response = await fetch(`/api/tibbna-openehr-patients?search=${encodeURIComponent(searchTerm)}`);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Patients found:', data.data?.length || 0);
+          setPatients(data.data || []);
+        } else {
+          console.error('Search failed:', response.status);
+          setPatients([]);
         }
-      } else if (searchTerm.length === 0) {
-        // Load all patients when search is cleared
-        loadPatients();
+      } catch (error) {
+        console.error('Error searching patients:', error);
+        setPatients([]);
       }
-    }, 300); // 300ms debounce
+    } else if (searchTerm.length === 0) {
+      // Load all patients when search is cleared
+      setShowPatientDropdown(false);
+      loadPatients();
+    } else {
+      // Hide dropdown for single character searches
+      setShowPatientDropdown(false);
+      setPatients([]);
+    }
   };
 
   const selectPatient = (patient: Patient) => {
-    setFormData({ ...formData, patientid: patient.id });
-    setPatientSearchTerm(`${patient.firstNameAr} ${patient.lastNameAr} - ${patient.nationalId || 'No ID'}`);
+    console.log('selectPatient called with:', patient);
+    
+    // Update form with patient ID
+    setFormData(prev => ({ 
+      ...prev, 
+      patientid: patient.id 
+    }));
+    
+    // Update search term with patient info
+    const displayName = `${patient.firstNameAr} ${patient.lastNameAr} - ${patient.nationalId || 'No ID'}`;
+    setPatientSearchTerm(displayName);
+    
+    // Hide dropdown
     setShowPatientDropdown(false);
+    
+    console.log('Form updated with patient ID:', patient.id);
+    console.log('Search term updated to:', displayName);
+    console.log('Current form data:', { ...formData, patientid: patient.id });
   };
 
   // Patients are now filtered on the server side, so we can use them directly
@@ -598,14 +636,31 @@ export default function AppointmentsPage() {
                       placeholder="Search patients..."
                       value={patientSearchTerm}
                       onChange={(e) => handlePatientSearch(e.target.value)}
-                      onFocus={() => setShowPatientDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
+                      onFocus={() => {
+                        setShowPatientDropdown(true);
+                        console.log('Input focused - showing dropdown');
+                      }}
+                      onBlur={() => {
+                        // Give click event time to fire before hiding dropdown
+                        setTimeout(() => {
+                          setShowPatientDropdown(false);
+                          console.log('Input blurred - hiding dropdown');
+                        }, 150);
+                      }}
                       className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <User size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     
+                    {/* Debug Info - Remove in production */}
+                    <div className="absolute top-full mt-1 text-xs text-gray-500 bg-yellow-50 p-1 rounded z-20">
+                      Search: "{patientSearchTerm}" | Dropdown: {showPatientDropdown ? 'visible' : 'hidden'} | Patients: {filteredPatients.length}
+                    </div>
+                    <div className="absolute top-full mt-8 text-xs text-blue-500 bg-blue-50 p-1 rounded z-20">
+                      Form Patient ID: {formData.patientid || 'Not set'}
+                    </div>
+                    
                     {/* Patient Search Results Dropdown */}
-                    {showPatientDropdown && patientSearchTerm && (
+                    {showPatientDropdown && patientSearchTerm && patientSearchTerm.length >= 2 && (
                       <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
                         {filteredPatients.length === 0 ? (
                           <div className="p-3 text-sm text-gray-500">No patients found</div>
@@ -613,14 +668,18 @@ export default function AppointmentsPage() {
                           filteredPatients.map((patient) => (
                             <div
                               key={patient.id}
-                              onClick={() => selectPatient(patient)}
+                              onMouseDown={(e) => {
+                                e.preventDefault(); // Prevent blur event
+                                console.log('Patient mouse down:', patient);
+                                selectPatient(patient);
+                              }}
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                             >
                               <div className="font-medium text-sm">
                                 {patient.firstNameAr} {patient.middleName || ''} {patient.lastNameAr}
                               </div>
                               <div className="text-xs text-gray-500">
-                                ID: {patient.nationalId || 'No ID'}
+                                ID: {patient.nationalId || 'No ID'} | Phone: {patient.phone || 'No phone'}
                               </div>
                             </div>
                           ))

@@ -189,15 +189,55 @@ export async function POST(request: NextRequest) {
       phone,
       email,
       dateOfBirth,
+      gender,
+      maritalStatus,
+      nationality,
+      nationalId,
+      address,
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelationship,
+      // Employment Details
+      jobTitle,
+      departmentId,
+      employeeCategory,
+      employmentType,
+      dateOfHire,
+      gradeId,
+      basicSalary,
+      shiftId,
+      bankName,
+      bankAccountNumber,
+      // Employee Profile
+      cvSummary,
+      education,
+      workHistory,
+      certifications,
+      languages,
+      skills,
+      // Settlement Rules
+      pensionEligible,
+      pensionScheme,
+      pensionStartDate,
+      pensionContributionRate,
+      employerPensionRate,
+      socialSecurityNumber,
+      socialSecurityRate,
+      taxIdNumber,
+      taxExemptionAmount,
+      settlementEligible,
+      settlementCalculationMethod,
+      noticePeriodDays,
+      gratuityEligible,
       workspaceId
     } = body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !phone || !unit || !specialty || !dateOfBirth) {
+    if (!firstName || !lastName || !email || !phone || !unit || !specialty || !dateOfBirth || !gender) {
       return NextResponse.json(
         { 
           error: 'Missing required fields',
-          required: ['firstName', 'lastName', 'email', 'phone', 'unit', 'specialty', 'dateOfBirth']
+          required: ['firstName', 'lastName', 'email', 'phone', 'unit', 'specialty', 'dateOfBirth', 'gender']
         },
         { status: 400 }
       );
@@ -236,47 +276,209 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Insert new staff member
-    const newStaff = await pool.query(`
-      INSERT INTO staff (
-        staffid,
-        workspaceid,
-        firstname,
-        middlename,
-        lastname,
-        role,
-        unit,
-        specialty,
+    // Start transaction
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Insert new staff member (personal info only)
+      const newStaff = await client.query(`
+        INSERT INTO staff (
+          staffid,
+          workspaceid,
+          firstname,
+          middlename,
+          lastname,
+          role,
+          unit,
+          specialty,
+          phone,
+          email,
+          custom_staff_id,
+          gender,
+          marital_status,
+          nationality,
+          address,
+          emergency_contact_name,
+          emergency_contact_phone,
+          emergency_contact_relationship,
+          dateofbirth,
+          createdat,
+          updatedat
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()
+        )
+        RETURNING *
+      `, [
+        staffId,
+        defaultWorkspaceId,
+        firstName,
+        middleName || null,
+        lastName,
+        role || 'Staff',
+        unit || 'General',
+        specialty || null,
         phone,
         email,
-        custom_staff_id,
-        createdat,
-        updatedat
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()
-      )
-      RETURNING *
-    `, [
-      staffId,
-      defaultWorkspaceId,
-      firstName,
-      middleName || null,
-      lastName,
-      role || 'Staff',
-      unit || 'General',
-      specialty || null,
-      phone,
-      email,
-      customStaffId
-    ]);
-
-    console.log('Staff member created successfully:', newStaff.rows[0]);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Staff member created successfully',
-      data: newStaff.rows[0]
-    });
+        customStaffId,
+        gender,
+        maritalStatus || null,
+        nationality || 'Iraqi',
+        address || null,
+        emergencyContactName || null,
+        emergencyContactPhone || null,
+        emergencyContactRelationship || null,
+        dateOfBirth
+      ]);
+      
+      // Insert employment details if any provided
+      if (jobTitle || departmentId || employeeCategory || employmentType || dateOfHire || gradeId || basicSalary || shiftId) {
+        await client.query(`
+          INSERT INTO employment_details (
+            staff_id,
+            job_title,
+            department_id,
+            employee_category,
+            employment_type,
+            date_of_hire,
+            grade_id,
+            basic_salary,
+            shift_id
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9
+          )
+        `, [
+          staffId,
+          jobTitle || null,
+          departmentId || null,
+          employeeCategory || null,
+          employmentType || null,
+          dateOfHire || null,
+          gradeId || null,
+          basicSalary || null,
+          shiftId || null
+        ]);
+      }
+      
+      // Insert bank details if any provided
+      if (bankName || bankAccountNumber) {
+        await client.query(`
+          INSERT INTO bank_details (
+            staff_id,
+            bank_name,
+            bank_account_number
+          ) VALUES (
+            $1, $2, $3
+          )
+        `, [
+          staffId,
+          bankName || null,
+          bankAccountNumber || null
+        ]);
+      }
+      
+      // Insert employee profile if any provided
+      if (cvSummary || education || workHistory || certifications || languages || skills) {
+        await client.query(`
+          INSERT INTO employee_profile (
+            staff_id,
+            cv_summary,
+            education,
+            work_history,
+            certifications,
+            languages,
+            skills,
+            profile_completed
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+          )
+        `, [
+          staffId,
+          cvSummary || null,
+          JSON.stringify(education || []),
+          JSON.stringify(workHistory || []),
+          JSON.stringify(certifications || []),
+          JSON.stringify(languages || []),
+          JSON.stringify(skills || []),
+          (cvSummary && education && workHistory && certifications && languages && skills) ? true : false
+        ]);
+      }
+      
+      // Insert settlement rules
+      await client.query(`
+        INSERT INTO settlement_rules (
+          staff_id,
+          pension_eligible,
+          pension_scheme,
+          pension_start_date,
+          pension_contribution_rate,
+          employer_pension_rate,
+          social_security_number,
+          social_security_rate,
+          tax_id_number,
+          tax_exemption_amount,
+          settlement_eligible,
+          settlement_calculation_method,
+          notice_period_days,
+          gratuity_eligible
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+        )
+      `, [
+        staffId,
+        pensionEligible !== undefined ? pensionEligible : true,
+        pensionScheme || 'STANDARD',
+        pensionStartDate || null,
+        pensionContributionRate || 5.0,
+        employerPensionRate || 5.0,
+        socialSecurityNumber || null,
+        socialSecurityRate || 5.0,
+        taxIdNumber || null,
+        taxExemptionAmount || 0,
+        settlementEligible !== undefined ? settlementEligible : true,
+        settlementCalculationMethod || 'IRAQI_LABOR_LAW',
+        noticePeriodDays || 30,
+        gratuityEligible !== undefined ? gratuityEligible : true
+      ]);
+      
+      // Insert national ID if provided
+      if (nationalId) {
+        await client.query(`
+          INSERT INTO national_id (
+            staff_id,
+            national_id
+          ) VALUES (
+            $1, $2
+          )
+        `, [
+          staffId,
+          nationalId
+        ]);
+      }
+      
+      await client.query('COMMIT');
+      
+      // Get the complete staff record from the comprehensive view
+      const completeStaff = await pool.query(`
+        SELECT * FROM staff_complete
+        WHERE staffid = $1
+      `, [staffId]);
+      
+      console.log('Staff member created successfully:', completeStaff.rows[0]);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Staff member created successfully',
+        data: completeStaff.rows[0]
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
   } catch (error) {
     console.error('Error creating staff member:', error);
@@ -352,14 +554,94 @@ export async function PUT(request: NextRequest) {
       unit: 'unit',
       specialty: 'specialty',
       phone: 'phone',
-      email: 'email'
+      email: 'email',
+      gender: 'gender',
+      maritalStatus: 'marital_status',
+      nationality: 'nationality',
+      address: 'address',
+      emergencyContactName: 'emergency_contact_name',
+      emergencyContactPhone: 'emergency_contact_phone',
+      emergencyContactRelationship: 'emergency_contact_relationship',
+      dateOfBirth: 'dateofbirth',
+      // Employment Details
+      jobTitle: 'job_title',
+      departmentId: 'department_id',
+      employeeCategory: 'employee_category',
+      employmentType: 'employment_type',
+      dateOfHire: 'date_of_hire',
+      gradeId: 'grade_id',
+      basicSalary: 'basic_salary',
+      shiftId: 'shift_id',
+      bankName: 'bank_name',
+      bankAccountNumber: 'bank_account_number'
     };
-
+    
+    // Settlement rules field mapping
+    const settlementFieldMapping = {
+      pensionEligible: 'pension_eligible',
+      pensionScheme: 'pension_scheme',
+      pensionStartDate: 'pension_start_date',
+      pensionContributionRate: 'pension_contribution_rate',
+      employerPensionRate: 'employer_pension_rate',
+      socialSecurityNumber: 'social_security_number',
+      socialSecurityRate: 'social_security_rate',
+      taxIdNumber: 'tax_id_number',
+      taxExemptionAmount: 'tax_exemption_amount',
+      settlementEligible: 'settlement_eligible',
+      settlementCalculationMethod: 'settlement_calculation_method',
+      noticePeriodDays: 'notice_period_days',
+      gratuityEligible: 'gratuity_eligible'
+    };
+    
+    // Employee profile field mapping
+    const profileFieldMapping = {
+      cvSummary: 'cv_summary',
+      education: 'education',
+      workHistory: 'work_history',
+      certifications: 'certifications',
+      languages: 'languages',
+      skills: 'skills'
+    };
+    
+    // Handle different tables separately
+    const { nationalId, ...updateDataWithoutNationalId } = updateData;
+    
+    // Staff table updates
     for (const [frontendField, dbField] of Object.entries(fieldMapping)) {
       if (updateData[frontendField] !== undefined) {
         updateFields.push(`${dbField} = $${paramIndex}`);
         updateValues.push(updateData[frontendField]);
         paramIndex++;
+      }
+    }
+    
+    // Settlement rules updates
+    const settlementUpdateFields = [];
+    const settlementUpdateValues = [];
+    let settlementParamIndex = 1;
+    
+    for (const [frontendField, dbField] of Object.entries(settlementFieldMapping)) {
+      if (updateData[frontendField] !== undefined) {
+        settlementUpdateFields.push(`${dbField} = $${settlementParamIndex}`);
+        settlementUpdateValues.push(updateData[frontendField]);
+        settlementParamIndex++;
+      }
+    }
+    
+    // Employee profile updates
+    const profileUpdateFields = [];
+    const profileUpdateValues = [];
+    let profileParamIndex = 1;
+    
+    for (const [frontendField, dbField] of Object.entries(profileFieldMapping)) {
+      if (updateData[frontendField] !== undefined) {
+        profileUpdateFields.push(`${dbField} = $${profileParamIndex}`);
+        // Convert arrays to JSON strings for JSONB columns
+        const value = ['education', 'workHistory', 'certifications', 'languages', 'skills'].includes(frontendField)
+          ? JSON.stringify(updateData[frontendField])
+          : updateData[frontendField];
+        profileUpdateValues.push(value);
+        profileParamIndex++;
       }
     }
 
@@ -373,35 +655,106 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    updateFields.push(`updatedat = NOW()`);
-    updateValues.push(staffId);
-
-    const query = `
-      UPDATE staff 
-      SET ${updateFields.join(', ')}
-      WHERE staffid = $${paramIndex}
-      RETURNING *
-    `;
-
-    const result = await pool.query(query, updateValues);
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { 
-          error: 'Staff member not found',
-          details: `No staff member found with ID: ${staffId}`
-        },
-        { status: 404 }
-      );
+    // Start transaction for multi-table updates
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Update staff table if needed
+      if (updateFields.length > 0) {
+        updateFields.push(`updatedat = NOW()`);
+        updateValues.push(staffId);
+        
+        const staffQuery = `
+          UPDATE staff 
+          SET ${updateFields.join(', ')}
+          WHERE staffid = $${paramIndex}
+          RETURNING *
+        `;
+        
+        const staffResult = await client.query(staffQuery, updateValues);
+        
+        if (staffResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return NextResponse.json(
+            { 
+              error: 'Staff member not found',
+              details: `No staff member found with ID: ${staffId}`
+            },
+            { status: 404 }
+          );
+        }
+      }
+      
+      // Update settlement rules if needed
+      if (settlementUpdateFields.length > 0) {
+        settlementUpdateFields.push(`updated_at = NOW()`);
+        settlementUpdateValues.push(staffId);
+        
+        const settlementQuery = `
+          UPDATE settlement_rules 
+          SET ${settlementUpdateFields.join(', ')}
+          WHERE staff_id = $${settlementParamIndex}
+        `;
+        
+        await client.query(settlementQuery, settlementUpdateValues);
+      }
+      
+      // Update employee profile if needed
+      if (profileUpdateFields.length > 0) {
+        profileUpdateFields.push(`updated_at = NOW()`);
+        profileUpdateValues.push(staffId);
+        
+        const profileQuery = `
+          UPDATE employee_profile 
+          SET ${profileUpdateFields.join(', ')}
+          WHERE staff_id = $${profileParamIndex}
+        `;
+        
+        await client.query(profileQuery, profileUpdateValues);
+      }
+      
+      // Update national ID if provided
+      if (nationalId !== undefined) {
+        if (nationalId) {
+          await client.query(`
+            INSERT INTO national_id (staff_id, national_id)
+            VALUES ($1, $2)
+            ON CONFLICT (staff_id) 
+            DO UPDATE SET 
+              national_id = EXCLUDED.national_id,
+              updated_at = NOW()
+          `, [staffId, nationalId]);
+        } else {
+          await client.query(`
+            DELETE FROM national_id WHERE staff_id = $1
+          `, [staffId]);
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      // Get the complete updated record from the comprehensive view
+      const completeStaff = await pool.query(`
+        SELECT * FROM staff_complete
+        WHERE staffid = $1
+      `, [staffId]);
+      
+      console.log('Staff member updated successfully:', completeStaff.rows[0]);
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Staff member updated successfully',
+        data: completeStaff.rows[0]
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-
-    console.log('Staff member updated successfully:', result.rows[0]);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Staff member updated successfully',
-      data: result.rows[0]
-    });
 
   } catch (error) {
     console.error('Error updating staff member:', error);
