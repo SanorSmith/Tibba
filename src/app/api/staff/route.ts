@@ -85,7 +85,106 @@ export async function GET(request: NextRequest) {
     const searchTerm = searchParams.get('q') || '';
     const specialty = searchParams.get('occupation');
     const department = searchParams.get('department');
+    const staffId = searchParams.get('id');
 
+    // If staffId is provided, return individual staff member
+    if (staffId) {
+      console.log('Fetching individual staff member:', staffId);
+
+      const query = `
+        SELECT 
+          -- Staff table (basic info)
+          s.staffid as id,
+          s.firstname as "firstName",
+          s.middlename as "middleName", 
+          s.lastname as "lastName",
+          s.email,
+          s.phone,
+          s.role,
+          s.unit,
+          s.specialty,
+          s.dateofbirth as "dateOfBirth",
+          s.custom_staff_id as "customStaffId",
+          s.gender,
+          s.marital_status as "maritalStatus",
+          s.nationality,
+          s.address,
+          s.emergency_contact_name as "emergencyContactName",
+          s.emergency_contact_phone as "emergencyContactPhone",
+          s.emergency_contact_relationship as "emergencyContactRelationship",
+          s.createdat as "createdAt",
+          s.updatedat as "updatedAt",
+          
+          -- Employment details
+          ed.job_title as "jobTitle",
+          ed.department_id as "departmentId",
+          ed.employee_category as "employeeCategory",
+          ed.employment_type as "employmentType",
+          ed.date_of_hire as "dateOfHire",
+          ed.grade_id as "gradeId",
+          ed.basic_salary as "basicSalary",
+          ed.shift_id as "shiftId",
+          
+          -- Bank details
+          bd.bank_name as "bankName",
+          bd.bank_account_number as "bankAccountNumber",
+          
+          -- Employee profile
+          ep.cv_summary as "cvSummary",
+          ep.education,
+          ep.work_history,
+          ep.certifications,
+          ep.languages,
+          ep.skills,
+          
+          -- Settlement rules
+          sr.pension_eligible as "pensionEligible",
+          sr.pension_scheme as "pensionScheme",
+          sr.pension_start_date as "pensionStartDate",
+          sr.pension_contribution_rate as "pensionContributionRate",
+          sr.employer_pension_rate as "employerPensionRate",
+          sr.social_security_number as "socialSecurityNumber",
+          sr.social_security_rate as "socialSecurityRate",
+          sr.tax_id_number as "taxIdNumber",
+          sr.tax_exemption_amount as "taxExemptionAmount",
+          sr.settlement_eligible as "settlementEligible",
+          sr.settlement_calculation_method as "settlementCalculationMethod",
+          sr.notice_period_days as "noticePeriodDays",
+          sr.gratuity_eligible as "gratuityEligible",
+          
+          -- National ID
+          nid.national_id as "nationalId"
+          
+        FROM staff s
+        LEFT JOIN employment_details ed ON s.staffid = ed.staff_id
+        LEFT JOIN bank_details bd ON s.staffid = bd.staff_id  
+        LEFT JOIN employee_profile ep ON s.staffid = ep.staff_id
+        LEFT JOIN settlement_rules sr ON s.staffid = sr.staff_id
+        LEFT JOIN national_id nid ON s.staffid = nid.staff_id
+        WHERE s.staffid = $1
+      `;
+
+      const result = await pool.query(query, [staffId]);
+
+      if (result.rows.length === 0) {
+        return NextResponse.json(
+          { 
+            error: 'Staff member not found',
+            details: `No staff member found with ID: ${staffId}`
+          },
+          { status: 404 }
+        );
+      }
+
+      console.log('Staff member fetched successfully:', result.rows[0]);
+
+      return NextResponse.json({
+        success: true,
+        staff: result.rows[0]
+      });
+    }
+
+    // Otherwise, return all staff with filters
     console.log('Fetching staff from database...');
     console.log('Search term:', searchTerm);
     console.log('Specialty filter:', specialty);
