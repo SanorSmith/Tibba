@@ -1,34 +1,118 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, MapPin, DollarSign, Users, Clock, Briefcase } from 'lucide-react';
 import { SmartStatusBadge } from '@/components/modules/hr/shared/status-badge';
 import { EmployeeAvatar } from '@/components/modules/hr/shared/employee-avatar';
-import candidatesData from '@/data/hr/candidates.json';
 
 export default function VacancyDetailPage() {
   const params = useParams();
-  const vacancy = (candidatesData.vacancies as any[]).find(v => v.id === params.id);
+  const [vacancy, setVacancy] = useState<any>(null);
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchVacancyData();
+  }, [params.id]);
+
+  const fetchVacancyData = async () => {
+    try {
+      console.log('🔍 Starting fetchVacancyData...');
+      console.log('📋 params.id:', params.id);
+      
+      setLoading(true);
+      
+      // Fetch vacancy details
+      console.log('📡 Fetching vacancies...');
+      const vacancyResponse = await fetch('/api/hr/recruitment?type=vacancies');
+      const vacancyData = await vacancyResponse.json();
+      
+      console.log('📊 Vacancy response:', vacancyData);
+      
+      if (vacancyData.success) {
+        console.log('🔍 Looking for vacancy with ID:', params.id);
+        console.log('📋 Available vacancy IDs:', vacancyData.data.map((v: any) => v.id));
+        console.log('📋 Available vacancy numbers:', vacancyData.data.map((v: any) => v.vacancy_number));
+        console.log('📋 Full vacancy data structure:', vacancyData.data[0]);
+        
+        const foundVacancy = vacancyData.data.find((v: any) => v.id === params.id);
+        console.log('✅ Found vacancy by UUID:', foundVacancy);
+        
+        // If not found by UUID, try by vacancy_number
+        if (!foundVacancy) {
+          const foundByNumber = vacancyData.data.find((v: any) => v.vacancy_number === params.id);
+          console.log('🔍 Trying to find by vacancy_number:', params.id);
+          console.log('✅ Found vacancy by number:', foundByNumber);
+          setVacancy(foundByNumber);
+        } else {
+          console.log('✅ Found vacancy by UUID:', foundVacancy);
+          setVacancy(foundVacancy);
+        }
+      }
+      
+      // Fetch candidates for this vacancy
+      console.log('📡 Fetching candidates...');
+      const candidatesResponse = await fetch('/api/hr/recruitment?type=candidates');
+      const candidatesData = await candidatesResponse.json();
+      
+      console.log('📊 Candidates response:', candidatesData);
+      
+      if (candidatesData.success) {
+        const vacancyCandidates = candidatesData.data.filter((c: any) => c.vacancy_id === params.id);
+        console.log('👥 Vacancy candidates:', vacancyCandidates);
+        setCandidates(vacancyCandidates);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error fetching vacancy data:', error);
+    } finally {
+      setLoading(false);
+      console.log('✅ fetchVacancyData completed');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <p>Loading vacancy details...</p>
+      </div>
+    );
+  }
+
+  console.log('🔍 Render state check:');
+  console.log('📋 loading:', loading);
+  console.log('📋 vacancy:', vacancy);
+  console.log('📋 params.id:', params.id);
 
   if (!vacancy) {
+    console.log('❌ Vacancy not found - showing error page');
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Vacancy Not Found</h2>
+        <p style={{ fontSize: '14px', color: '#666' }}>ID: {params.id}</p>
+        <p style={{ fontSize: '12px', color: '#999' }}>This vacancy may have been closed or does not exist.</p>
+        <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', maxWidth: '400px' }}>
+          <p>Available vacancies:</p>
+          <p>VAC-2026-001 (Emergency Physician)</p>
+          <p>VAC-2026-002 (Staff Nurse - ICU)</p>
+          <p>VAC-2026-003 (Lab Technician)</p>
+        </div>
         <Link href="/hr/recruitment/vacancies"><button className="btn-primary">Back to Vacancies</button></Link>
       </div>
     );
   }
 
-  const applicants = (candidatesData.candidates as any[]).filter(c => c.vacancy_id === vacancy.id);
+  console.log('✅ Rendering vacancy details for:', vacancy.position);
+
   const pipeline = {
-    NEW: applicants.filter(c => c.status === 'NEW').length,
-    SCREENING: applicants.filter(c => c.status === 'SCREENING').length,
-    INTERVIEWING: applicants.filter(c => c.status === 'INTERVIEWING').length,
-    OFFERED: applicants.filter(c => c.status === 'OFFERED').length,
-    HIRED: applicants.filter(c => c.status === 'HIRED').length,
-    REJECTED: applicants.filter(c => c.status === 'REJECTED').length,
+    NEW: candidates.filter(c => c.status === 'NEW').length,
+    SCREENING: candidates.filter(c => c.status === 'SCREENING').length,
+    INTERVIEWING: candidates.filter(c => c.status === 'INTERVIEWING').length,
+    OFFERED: candidates.filter(c => c.status === 'OFFERED').length,
+    HIRED: candidates.filter(c => c.status === 'HIRED').length,
+    REJECTED: candidates.filter(c => c.status === 'REJECTED').length,
   };
 
   const pipelineColors: Record<string, string> = {
@@ -67,11 +151,11 @@ export default function VacancyDetailPage() {
         <div className="lg:col-span-2 space-y-4">
           {/* Applicants */}
           <div className="tibbna-card">
-            <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Applicants ({applicants.length})</h3></div>
+            <div className="tibbna-card-header"><h3 className="tibbna-section-title" style={{ margin: 0 }}>Applicants ({candidates.length})</h3></div>
             <div className="tibbna-card-content">
-              {applicants.length > 0 ? (
+              {candidates.length > 0 ? (
                 <div className="space-y-2">
-                  {applicants.map(c => (
+                  {candidates.map((c: any) => (
                     <Link key={c.id} href={`/hr/recruitment/candidates/${c.id}`}>
                       <div className="flex items-center gap-3 p-2 hover:bg-[#f9fafb] cursor-pointer" style={{ border: '1px solid #e4e4e4' }}>
                         <EmployeeAvatar name={`${c.first_name} ${c.last_name}`} size="sm" />
@@ -102,7 +186,7 @@ export default function VacancyDetailPage() {
               <div className="flex justify-between"><span style={{ color: '#a3a3a3' }}>Salary Range</span><span style={{ fontWeight: 500 }}>{(vacancy.salary_min / 1000000).toFixed(1)}-{(vacancy.salary_max / 1000000).toFixed(1)}M IQD</span></div>
               <div className="flex justify-between"><span style={{ color: '#a3a3a3' }}>Deadline</span><span style={{ fontWeight: 500 }}>{vacancy.deadline}</span></div>
               <div className="flex justify-between"><span style={{ color: '#a3a3a3' }}>Status</span><SmartStatusBadge status={vacancy.status} /></div>
-              <div className="flex justify-between"><span style={{ color: '#a3a3a3' }}>Total Applicants</span><span style={{ fontWeight: 600 }}>{applicants.length}</span></div>
+              <div className="flex justify-between"><span style={{ color: '#a3a3a3' }}>Total Applicants</span><span style={{ fontWeight: 600 }}>{candidates.length}</span></div>
             </div>
           </div>
 

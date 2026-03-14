@@ -1,18 +1,58 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Mail, Phone, Briefcase, GraduationCap, Star, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Briefcase, GraduationCap, Star, CheckCircle, XCircle, Send, FileText } from 'lucide-react';
 import { SmartStatusBadge } from '@/components/modules/hr/shared/status-badge';
 import { EmployeeAvatar } from '@/components/modules/hr/shared/employee-avatar';
 import { ApprovalWorkflow } from '@/components/modules/hr/shared/approval-workflow';
-import candidatesData from '@/data/hr/candidates.json';
 
 export default function CandidateDetailPage() {
   const params = useParams();
-  const candidate = candidatesData.candidates.find(c => c.id === params.id) as any;
-  const [status, setStatus] = useState(candidate?.status || 'NEW');
+  const [candidate, setCandidate] = useState<any>(null);
+  const [vacancy, setVacancy] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [notes, setNotes] = useState('');
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+
+  useEffect(() => {
+    fetchCandidateData();
+  }, [params.id]);
+
+  const fetchCandidateData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch candidate
+      const candidatesResponse = await fetch('/api/hr/recruitment?type=candidates');
+      const candidatesData = await candidatesResponse.json();
+      
+      if (candidatesData.success) {
+        const foundCandidate = candidatesData.data.find((c: any) => c.id === params.id);
+        setCandidate(foundCandidate);
+        setStatus(foundCandidate?.status || '');
+        setNotes(foundCandidate?.notes || '');
+        
+        // Fetch vacancy details
+        if (foundCandidate?.vacancy_id) {
+          const vacanciesResponse = await fetch('/api/hr/recruitment?type=vacancies');
+          const vacanciesData = await vacanciesResponse.json();
+          
+          if (vacanciesData.success) {
+            const foundVacancy = vacanciesData.data.find((v: any) => v.id === foundCandidate.vacancy_id);
+            setVacancy(foundVacancy);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching candidate data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!candidate) {
     return (
@@ -23,8 +63,6 @@ export default function CandidateDetailPage() {
     );
   }
 
-  const vacancy = candidatesData.vacancies.find(v => v.id === candidate.vacancy_id);
-
   const pipelineSteps = [
     { label: 'Applied', status: ['NEW', 'SCREENING', 'INTERVIEWING', 'OFFERED', 'HIRED'].includes(status) ? 'APPROVED' as const : 'NOT_STARTED' as const },
     { label: 'Screening', status: ['SCREENING', 'INTERVIEWING', 'OFFERED', 'HIRED'].includes(status) ? 'APPROVED' as const : status === 'REJECTED' ? 'REJECTED' as const : 'NOT_STARTED' as const },
@@ -33,10 +71,52 @@ export default function CandidateDetailPage() {
     { label: 'Hired', status: status === 'HIRED' ? 'APPROVED' as const : 'NOT_STARTED' as const },
   ];
 
+  const updateCandidateStatus = async (newStatus: string, rejectionReason?: string) => {
+    try {
+      const response = await fetch(`/api/hr/recruitment/candidates/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          rejection_reason: rejectionReason,
+          notes: notes
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setStatus(newStatus);
+        setCandidate(prev => ({ ...prev, ...result.data }));
+        if (newStatus === 'HIRED') {
+          alert('Candidate has been hired! 🎉');
+        }
+      } else {
+        alert('Error updating status: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error updating status');
+    }
+  };
+
   const advanceStatus = () => {
     const order = ['NEW', 'SCREENING', 'INTERVIEWING', 'OFFERED', 'HIRED'];
     const idx = order.indexOf(status);
-    if (idx < order.length - 1) setStatus(order[idx + 1]);
+    if (idx < order.length - 1) {
+      updateCandidateStatus(order[idx + 1]);
+    }
+  };
+
+  const rejectCandidate = () => {
+    if (rejectionReason.trim()) {
+      updateCandidateStatus('REJECTED', rejectionReason);
+      setShowRejectionDialog(false);
+    } else {
+      alert('Please provide a rejection reason');
+    }
   };
 
   return (
