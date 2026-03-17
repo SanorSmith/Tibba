@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { FileText, Download, Eye, Calendar, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Payslip {
   id: string;
@@ -30,22 +29,20 @@ interface Payslip {
 }
 
 export default function EmployeePayslipsPage() {
-  const { user } = useAuth();
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    if (user?.id) {
-      loadPayslips();
-    }
-  }, [user, year]);
+    loadPayslips();
+  }, [year]);
 
   const loadPayslips = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/hr/payroll/transactions?employee_id=${user?.id}`);
+      // TODO: Replace with actual logged-in employee ID when auth is implemented
+      const response = await fetch(`/api/hr/payroll/transactions`);
       const result = await response.json();
       
       if (result.success) {

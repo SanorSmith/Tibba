@@ -120,12 +120,6 @@ export async function POST(request: NextRequest) {
     );
 
     // Insert new compensation record
-    const total_package = 
-      parseFloat(basic_salary) +
-      parseFloat(housing_allowance) +
-      parseFloat(transport_allowance) +
-      parseFloat(meal_allowance);
-
     const insertQuery = `
       INSERT INTO employee_compensation (
         employee_id,
@@ -136,10 +130,9 @@ export async function POST(request: NextRequest) {
         payment_frequency,
         currency,
         salary_grade_id,
-        total_package,
         effective_from,
         is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
       RETURNING *
     `;
 
@@ -152,7 +145,6 @@ export async function POST(request: NextRequest) {
       payment_frequency,
       currency,
       salary_grade_id,
-      total_package,
       effective_from || new Date().toISOString().split('T')[0]
     ]);
 
