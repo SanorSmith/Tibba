@@ -144,6 +144,13 @@ export default function NewPatientPage() {
       };
 
       console.log('Sending patient data:', patientData);
+      console.log('Medical history being sent:', current.medical_history);
+      console.log('All medical fields:', {
+        allergies: current.allergies,
+        chronic_diseases: current.chronic_diseases,
+        current_medications: current.current_medications,
+        medical_history: current.medical_history
+      });
       
       const res = await fetch('/api/tibbna-openehr-patients', {
         method: 'POST',

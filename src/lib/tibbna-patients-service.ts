@@ -80,7 +80,7 @@ class TibbnaPatientService {
         id: p.patientid || p.id,
         ehrid: p.ehrid,
         workspaceid: p.workspaceid,
-        medicalhistory: p.medicalhistory,
+        medicalhistory: p.medical_history,
         source: 'Tibbna Non-Medical DB'
       }));
       

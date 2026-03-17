@@ -651,14 +651,7 @@ export default function AppointmentsPage() {
                     />
                     <User size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     
-                    {/* Debug Info - Remove in production */}
-                    <div className="absolute top-full mt-1 text-xs text-gray-500 bg-yellow-50 p-1 rounded z-20">
-                      Search: "{patientSearchTerm}" | Dropdown: {showPatientDropdown ? 'visible' : 'hidden'} | Patients: {filteredPatients.length}
-                    </div>
-                    <div className="absolute top-full mt-8 text-xs text-blue-500 bg-blue-50 p-1 rounded z-20">
-                      Form Patient ID: {formData.patientid || 'Not set'}
-                    </div>
-                    
+                                                            
                     {/* Patient Search Results Dropdown */}
                     {showPatientDropdown && patientSearchTerm && patientSearchTerm.length >= 2 && (
                       <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">

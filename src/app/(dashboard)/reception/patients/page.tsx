@@ -645,7 +645,7 @@ export default function PatientsPage() {
                         <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Medical History</label>
                         {editMode ? (
                           <textarea 
-                            value={typeof editablePatient?.medical_history === 'string' ? editablePatient.medical_history : ''} 
+                            value={editablePatient?.medical_history || ''} 
                             onChange={(e) => setEditablePatient(prev => prev ? {...prev, medical_history: e.target.value} : null)} 
                             placeholder="—" 
                             className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none border-blue-300 bg-white focus:ring-2 focus:ring-blue-500`} 
@@ -653,7 +653,7 @@ export default function PatientsPage() {
                           />
                         ) : (
                           <div className="w-full px-3 py-2 border rounded-md text-sm border-gray-200 bg-gray-50 min-h-[80px]">
-                            {typeof searchedPatient?.medical_history === 'string' ? searchedPatient.medical_history : (searchedPatient?.medical_history ? JSON.stringify(searchedPatient.medical_history) : '—')}
+                            {searchedPatient?.medical_history || '—'}
                           </div>
                         )}
                       </div>

@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
         ec.contactname as emergency_contact,
         ec.contactphone as emergency_phone,
         NULL as emergency_contact_relationship_ar,
-        p.medicalhistory as medical_history,
+        med.medicalhistory as medical_history,
         0 as total_balance,
         true as is_active,
         p.createdat as created_at,
@@ -504,7 +504,22 @@ export async function POST(request: NextRequest) {
       }
 
       // 4. Insert medical information if provided
-      if (body.allergies || body.chronic_diseases || body.current_medications || body.medical_history) {
+      console.log('Checking medical fields:');
+      console.log('- allergies:', body.allergies);
+      console.log('- chronic_diseases:', body.chronic_diseases);
+      console.log('- current_medications:', body.current_medications);
+      console.log('- medical_history:', body.medical_history);
+      
+      const shouldInsertMedical = body.allergies || body.chronic_diseases || body.current_medications || body.medical_history;
+      console.log('Should insert medical info:', shouldInsertMedical);
+      
+      if (shouldInsertMedical) {
+        const medicalHistoryValue = (body.medical_history && body.medical_history.trim() !== '') ? body.medical_history : null;
+        
+        console.log('Medical history value type:', typeof body.medical_history);
+        console.log('Medical history raw value:', body.medical_history);
+        console.log('Medical history final value:', medicalHistoryValue);
+        
         const medicalQuery = `
           INSERT INTO patient_medical_information (
             patientid,
@@ -517,15 +532,22 @@ export async function POST(request: NextRequest) {
           ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
         `;
         
-        await client.query(medicalQuery, [
-          patientId,
-          body.allergies || null,
-          body.chronic_diseases || null,
-          body.current_medications || null,
-          body.medical_history || null
-        ]);
-        
-        console.log('Medical information saved');
+        try {
+          await client.query(medicalQuery, [
+            patientId,
+            body.allergies || null,
+            body.chronic_diseases || null,
+            body.current_medications || null,
+            medicalHistoryValue
+          ]);
+          
+          console.log('✅ Medical information saved successfully with history:', medicalHistoryValue);
+        } catch (medicalError) {
+          console.error('❌ Error inserting medical information:', medicalError);
+          throw medicalError;
+        }
+      } else {
+        console.log('⚠️ No medical information to insert');
       }
 
       // Commit the transaction
@@ -685,42 +707,6 @@ export async function PUT(request: NextRequest) {
 
     const updatedPatient = result.rows[0];
 
-    // Handle insurance fields separately (store in medical_history as JSON for now)
-    if (Object.keys(insuranceFields).length > 0) {
-      try {
-        // Get current medical_history
-        const currentMedicalHistory = updatedPatient.medical_history || '{}';
-        let medicalHistoryData: Record<string, any> = {};
-        
-        try {
-          medicalHistoryData = typeof currentMedicalHistory === 'string' 
-            ? JSON.parse(currentMedicalHistory) 
-            : currentMedicalHistory;
-        } catch {
-          medicalHistoryData = {};
-        }
-        
-        // Add insurance data to medical_history
-        medicalHistoryData.insurance = insuranceFields;
-        
-        // Update medical_history with insurance data
-        const insuranceUpdateQuery = `
-          UPDATE patients 
-          SET medicalhistory = $1, updatedat = NOW()
-          WHERE patientid = $2
-          RETURNING medicalhistory
-        `;
-        
-        await pool.query(insuranceUpdateQuery, [JSON.stringify(medicalHistoryData), id]);
-        
-        console.log('Insurance data saved to medical_history:', insuranceFields);
-        
-      } catch (insuranceError) {
-        console.error('Error saving insurance data:', insuranceError);
-        // Don't fail the whole operation if insurance save fails
-      }
-    }
-
     // Handle emergency contact fields
     if (Object.keys(emergencyFields).length > 0) {
       try {
@@ -787,7 +773,7 @@ export async function PUT(request: NextRequest) {
             medicalFields.allergies || null,
             medicalFields.chronic_diseases || null,
             medicalFields.current_medications || null,
-            medicalFields.medical_history || null,
+            (medicalFields.medical_history && medicalFields.medical_history.trim() !== '') ? medicalFields.medical_history : null,
             id
           ]);
         } else {
@@ -801,7 +787,7 @@ export async function PUT(request: NextRequest) {
             medicalFields.allergies || null,
             medicalFields.chronic_diseases || null,
             medicalFields.current_medications || null,
-            medicalFields.medical_history || null
+            (medicalFields.medical_history && medicalFields.medical_history.trim() !== '') ? medicalFields.medical_history : null
           ]);
         }
         
