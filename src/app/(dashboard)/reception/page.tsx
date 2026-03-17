@@ -103,7 +103,7 @@ export default function ReceptionPage() {
           <h2 className="text-lg font-semibold text-[#151515] mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
             <Link 
-              href="/reception/patients"
+              href="/reception/new"
               className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">

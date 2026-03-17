@@ -89,7 +89,7 @@ export default function CandidateDetailPage() {
 
       if (result.success) {
         setStatus(newStatus);
-        setCandidate(prev => ({ ...prev, ...result.data }));
+        setCandidate((prev: any) => ({ ...prev, ...result.data }));
         if (newStatus === 'HIRED') {
           alert('Candidate has been hired! 🎉');
         }

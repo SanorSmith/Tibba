@@ -95,3 +95,147 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// =====================================================
+// POST - Create new employee with compensation
+// =====================================================
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Debug: Log what we're receiving
+    console.log('🔍 API Received Data:', {
+      body_keys: Object.keys(body),
+      first_name: body.first_name,
+      last_name: body.last_name,
+      email: body.email,
+      date_of_hire: body.date_of_hire,
+      basic_salary: body.basic_salary,
+      payment_frequency: body.payment_frequency
+    });
+    
+    const {
+      // Employee details
+      first_name,
+      middle_name,
+      last_name,
+      date_of_birth,
+      gender,
+      marital_status,
+      nationality,
+      national_id,
+      email,
+      phone,
+      address,
+      employment_type,
+      employee_category,
+      job_title,
+      department_id,
+      date_of_hire,
+      // Compensation details
+      basic_salary,
+      payment_frequency = 'MONTHLY',
+      housing_allowance,
+      transport_allowance,
+      meal_allowance,
+      currency = 'USD'
+    } = body;
+
+    // Validate required fields
+    if (!first_name || !last_name || !email || !date_of_hire) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Start transaction
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // 1. Create employee record
+      const employeeQuery = `
+        INSERT INTO staff (
+          workspaceid,
+          firstname, 
+          middlename, 
+          lastname, 
+          email,
+          role,
+          unit,
+          createdat,
+          updatedat
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        RETURNING staffid, custom_staff_id
+      `;
+      
+      const employeeResult = await client.query(employeeQuery, [
+        'b227528d-ca34-4850-9b72-94a220365d7f', // Baghdad health center workspace ID
+        first_name,
+        middle_name || null,
+        last_name,
+        email,
+        job_title || 'Staff',
+        department_id || 'General'
+      ]);
+
+      const newEmployee = employeeResult.rows[0];
+      const employeeId = newEmployee.staffid;
+
+      // 2. Create compensation record
+      if (basic_salary) {
+        const compensationQuery = `
+          INSERT INTO employee_compensation (
+            employee_id,
+            basic_salary,
+            housing_allowance,
+            transport_allowance,
+            meal_allowance,
+            payment_frequency,
+            currency,
+            effective_from,
+            is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+          RETURNING *
+        `;
+        
+        await client.query(compensationQuery, [
+          employeeId,
+          basic_salary,
+          housing_allowance,
+          transport_allowance,
+          meal_allowance,
+          payment_frequency,
+          currency,
+          date_of_hire
+        ]);
+      }
+
+      await client.query('COMMIT');
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          employee_id: employeeId,
+          custom_staff_id: newEmployee.custom_staff_id,
+          message: 'Employee and compensation created successfully'
+        }
+      }, { status: 201 });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+  } catch (error: any) {
+    console.error('Error creating employee:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}

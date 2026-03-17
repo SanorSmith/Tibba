@@ -48,24 +48,111 @@ export default function AttendanceExceptionsPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  const loadData = () => {
+  // Re-scan for exceptions
+  const handleRescan = async () => {
     try {
-      const emps = dataStore.getEmployees();
-      let excs = dataStore.getAttendanceExceptions();
-
-      // Auto-detect from transactions if no exceptions stored yet
-      if (excs.length === 0) {
-        const txns = dataStore.getAttendanceTransactions();
-        excs = autoDetectExceptions(emps, txns);
+      setLoading(true);
+      toast.info('Scanning for attendance exceptions...');
+      
+      const response = await fetch('/api/hr/attendance/exceptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'detect' })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(data.message);
+        await loadData(); // Reload data
+      } else {
+        throw new Error(data.error);
       }
+    } catch (error: any) {
+      console.error('Error scanning exceptions:', error);
+      toast.error('Failed to scan exceptions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setEmployees(emps);
-      setExceptions(excs);
+  // Handle exception actions
+  const handleExceptionAction = async (exceptionId: string, action: string, data: any = {}) => {
+    try {
+      const response = await fetch('/api/hr/attendance/exceptions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exception_id: exceptionId,
+          action,
+          user_id: user?.id,
+          user_name: user?.name,
+          ...data
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(result.message);
+        await loadData(); // Reload data
+        setActionModal(null);
+        setJustification('');
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      console.error('Error updating exception:', error);
+      toast.error('Failed to update exception');
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch exceptions from database API
+      const response = await fetch('/api/hr/attendance/exceptions');
+      const data = await response.json();
+      
+      if (data.success) {
+        setExceptions(data.data || []);
+      } else {
+        throw new Error(data.error || 'Failed to load exceptions');
+      }
     } catch (error) {
       console.error('Error loading exceptions:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // =========================================================================
+  // DELETE EXCEPTION
+  // =========================================================================
+
+  const handleDelete = async (exceptionId: string) => {
+    if (!confirm('Are you sure you want to delete this exception?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/hr/attendance/exceptions?id=${exceptionId}`, {
+        method: 'DELETE'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Exception deleted successfully');
+        await loadData(); // Reload data
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error: any) {
+      console.error('Error deleting exception:', error);
+      toast.error('Failed to delete exception');
     }
   };
 
@@ -163,136 +250,14 @@ export default function AttendanceExceptionsPage() {
   };
 
   // =========================================================================
-  // RE-SCAN: detect new exceptions from recent transactions
+  // REMOVED: Old mock data rescan function - now using database API
   // =========================================================================
 
-  const handleRescan = () => {
-    const emps = dataStore.getEmployees();
-    const txns = dataStore.getAttendanceTransactions();
-    const existingDates = new Set(exceptions.map(e => `${e.employee_id}|${e.exception_date}|${e.exception_type}`));
-    const activeEmps = emps.filter(e => (e as any).employment_status === 'ACTIVE');
-    const today = new Date().toISOString().split('T')[0];
-    const dates = [...new Set(txns.map(t => t.transaction_date))];
-    let newCount = 0;
-
-    activeEmps.forEach(emp => {
-      dates.forEach(date => {
-        const dayTxns = txns
-          .filter(t => t.employee_id === emp.id && t.transaction_date === date)
-          .sort((a, b) => a.transaction_time.localeCompare(b.transaction_time));
-        const checkIns = dayTxns.filter(t => t.transaction_type === 'CHECK_IN');
-        const checkOuts = dayTxns.filter(t => t.transaction_type === 'CHECK_OUT');
-        const empName = `${emp.first_name} ${emp.last_name}`;
-        const dept = (emp as any).department_name || '';
-
-        if (checkIns.length > 0) {
-          const firstIn = checkIns[0].transaction_time;
-          if (firstIn > WORK_START) {
-            const [h, m] = firstIn.split(':').map(Number);
-            const [eh, em] = WORK_START.split(':').map(Number);
-            const lateMins = (h * 60 + m) - (eh * 60 + em);
-            if (lateMins >= LATE_THRESHOLD_MIN) {
-              const key = `${emp.id}|${date}|LATE_ARRIVAL`;
-              if (!existingDates.has(key)) {
-                const severity = lateMins >= 60 ? 'HIGH' : lateMins >= 30 ? 'MEDIUM' : 'LOW';
-                const exc: AttendanceException = {
-                  exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-                  employee_id: emp.id, employee_name: empName, department: dept,
-                  exception_date: date, exception_type: 'LATE_ARRIVAL',
-                  details: `Arrived ${lateMins} min late. Scheduled: ${WORK_START.slice(0, 5)}, Actual: ${firstIn.slice(0, 5)}`,
-                  severity: severity as any, review_status: 'PENDING',
-                };
-                dataStore.addAttendanceException(exc);
-                newCount++;
-              }
-            }
-          }
-        }
-
-        if (checkOuts.length > 0) {
-          const lastOut = checkOuts[checkOuts.length - 1].transaction_time;
-          if (lastOut < WORK_END) {
-            const [h, m] = lastOut.split(':').map(Number);
-            const [eh, em] = WORK_END.split(':').map(Number);
-            const earlyMins = (eh * 60 + em) - (h * 60 + m);
-            if (earlyMins >= LATE_THRESHOLD_MIN) {
-              const key = `${emp.id}|${date}|EARLY_DEPARTURE`;
-              if (!existingDates.has(key)) {
-                const severity = earlyMins >= 60 ? 'HIGH' : earlyMins >= 30 ? 'MEDIUM' : 'LOW';
-                const exc: AttendanceException = {
-                  exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-                  employee_id: emp.id, employee_name: empName, department: dept,
-                  exception_date: date, exception_type: 'EARLY_DEPARTURE',
-                  details: `Left ${earlyMins} min early. End: ${WORK_END.slice(0, 5)}, Actual: ${lastOut.slice(0, 5)}`,
-                  severity: severity as any, review_status: 'PENDING',
-                };
-                dataStore.addAttendanceException(exc);
-                newCount++;
-              }
-            }
-          }
-        }
-
-        if (checkIns.length > 0 && checkOuts.length === 0 && date !== today) {
-          const key = `${emp.id}|${date}|MISSING_CHECKOUT`;
-          if (!existingDates.has(key)) {
-            const exc: AttendanceException = {
-              exception_id: `EXC-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-              employee_id: emp.id, employee_name: empName, department: dept,
-              exception_date: date, exception_type: 'MISSING_CHECKOUT',
-              details: `Checked in at ${checkIns[0].transaction_time.slice(0, 5)} but no check-out recorded`,
-              severity: 'HIGH', review_status: 'PENDING',
-            };
-            dataStore.addAttendanceException(exc);
-            newCount++;
-          }
-        }
-      });
-    });
-
-    if (newCount > 0) {
-      toast.success(`Detected ${newCount} new exception(s)`);
-    } else {
-      toast.info('No new exceptions found');
-    }
-    setExceptions(dataStore.getAttendanceExceptions());
-  };
-
   // =========================================================================
-  // ACTIONS
+  // REMOVED: Old mock data handleAction function - now using database API handleExceptionAction
   // =========================================================================
 
-  const handleAction = (exceptionId: string, action: 'JUSTIFIED' | 'WARNING_ISSUED' | 'DISMISSED') => {
-    const updates: Partial<AttendanceException> = {
-      review_status: action,
-      reviewed_by: user?.name || 'HR Department',
-      review_date: new Date().toISOString().split('T')[0],
-    };
-    if (action === 'JUSTIFIED' && justification.trim()) {
-      updates.justification = justification.trim();
-    }
-
-    const success = dataStore.updateAttendanceException(exceptionId, updates);
-    if (success) {
-      toast.success(`Exception ${action === 'JUSTIFIED' ? 'justified' : action === 'WARNING_ISSUED' ? 'warning issued' : 'dismissed'}`);
-      setExceptions(dataStore.getAttendanceExceptions());
-    } else {
-      toast.error('Failed to update exception');
-    }
-    setActionModal(null);
-    setJustification('');
-  };
-
-  const handleDelete = (exceptionId: string) => {
-    if (!confirm('Delete this exception?')) return;
-    const success = dataStore.deleteAttendanceException(exceptionId);
-    if (success) {
-      toast.success('Exception deleted');
-      setExceptions(dataStore.getAttendanceExceptions());
-    } else {
-      toast.error('Failed to delete');
-    }
-  };
+  // REMOVED: Old mock data handleDelete function - now using database API
 
   // =========================================================================
   // CSV EXPORT
@@ -435,10 +400,10 @@ export default function AttendanceExceptionsPage() {
                         <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px' }} onClick={() => setActionModal(exc.exception_id)}>
                           Justify
                         </button>
-                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#EF4444' }} onClick={() => handleAction(exc.exception_id, 'WARNING_ISSUED')}>
+                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#EF4444' }} onClick={() => handleExceptionAction(exc.exception_id, 'issue_warning')}>
                           Warn
                         </button>
-                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#6B7280' }} onClick={() => handleAction(exc.exception_id, 'DISMISSED')}>
+                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 12px', color: '#6B7280' }} onClick={() => handleExceptionAction(exc.exception_id, 'dismiss')}>
                           Dismiss
                         </button>
                       </>
@@ -500,7 +465,7 @@ export default function AttendanceExceptionsPage() {
               </div>
               <div style={{ padding: '16px', borderTop: '1px solid #e4e4e4', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                 <button className="btn-secondary" onClick={() => { setActionModal(null); setJustification(''); }}>Cancel</button>
-                <button className="btn-primary" onClick={() => handleAction(actionModal, 'JUSTIFIED')} disabled={!justification.trim()}>
+                <button className="btn-primary" onClick={() => handleExceptionAction(actionModal, 'justify', { justification })} disabled={!justification.trim()}>
                   Submit Justification
                 </button>
               </div>

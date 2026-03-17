@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Award, Calendar, CreditCard, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Compensation {
   basic_salary: number;
   housing_allowance: number;
   transport_allowance: number;
   meal_allowance: number;
+  payment_frequency: string;
   total_package: number;
   salary_grade: string;
   currency: string;
@@ -38,28 +38,40 @@ interface Advance {
   status: string;
 }
 
-export default function EmployeeCompensationPage() {
-  const { user } = useAuth();
+function EmployeeCompensationPage() {
+  // Use a staff ID with WEEKLY payment frequency for demo
+  const testUserId = 'eb892974-5624-42e5-a0de-6a1e80cd182a';
   const [compensation, setCompensation] = useState<Compensation | null>(null);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [advances, setAdvances] = useState<Advance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.id) {
-      loadCompensation();
-      loadLoans();
-      loadAdvances();
-    }
-  }, [user]);
+    loadCompensation();
+    loadLoans();
+    loadAdvances();
+  }, []);
 
   const loadCompensation = async () => {
     try {
-      const response = await fetch(`/api/hr/employees/${user?.id}/compensation`);
+      console.log('Loading compensation for:', testUserId);
+      const response = await fetch(`/api/hr/compensation?employee_id=${testUserId}`);
+      
+      console.log('API Response status:', response.status);
       const result = await response.json();
       
+      console.log('Compensation API response:', result);
+      console.log('Response success:', result.success);
+      console.log('Response data:', result.data);
+      
       if (result.success && result.data) {
+        console.log('Setting compensation data:', result.data);
         setCompensation(result.data);
+      } else {
+        console.log('API returned success=false or no data');
+        console.log('Success:', result.success);
+        console.log('Data:', result.data);
+        console.log('Error:', result.error);
       }
     } catch (error) {
       console.error('Error loading compensation:', error);
@@ -70,7 +82,7 @@ export default function EmployeeCompensationPage() {
 
   const loadLoans = async () => {
     try {
-      const response = await fetch(`/api/hr/payroll/loans?employee_id=${user?.id}`);
+      const response = await fetch(`/api/hr/payroll/loans?employee_id=${testUserId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -83,7 +95,7 @@ export default function EmployeeCompensationPage() {
 
   const loadAdvances = async () => {
     try {
-      const response = await fetch(`/api/hr/payroll/advances?employee_id=${user?.id}`);
+      const response = await fetch(`/api/hr/payroll/advances?employee_id=${testUserId}`);
       const result = await response.json();
       
       if (result.success) {
@@ -112,8 +124,16 @@ export default function EmployeeCompensationPage() {
         </div>
       </div>
 
+      {/* Debug Info */}
+      <div style={{ padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px', fontSize: '12px' }}>
+        <strong>Debug Info:</strong><br/>
+        Loading: {loading.toString()}<br/>
+        Compensation: {compensation ? 'Found' : 'Not found'}<br/>
+        Test User ID: {testUserId}
+      </div>
+
       {/* Compensation Summary */}
-      {compensation && (
+      {compensation ? (
         <>
           <div className="tibbna-grid-4">
             <div className="tibbna-card">
@@ -121,7 +141,7 @@ export default function EmployeeCompensationPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="tibbna-card-title">Basic Salary</p>
-                    <p className="tibbna-card-value">${compensation.basic_salary.toFixed(0)}</p>
+                    <p className="tibbna-card-value">${parseFloat(compensation.basic_salary).toFixed(0)}</p>
                     <p className="tibbna-card-subtitle">{compensation.currency}/month</p>
                   </div>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#DBEAFE' }}>
@@ -137,7 +157,7 @@ export default function EmployeeCompensationPage() {
                   <div>
                     <p className="tibbna-card-title">Allowances</p>
                     <p className="tibbna-card-value">
-                      ${(compensation.housing_allowance + compensation.transport_allowance + compensation.meal_allowance).toFixed(0)}
+                      ${(parseFloat(compensation.housing_allowance) + parseFloat(compensation.transport_allowance) + parseFloat(compensation.meal_allowance)).toFixed(0)}
                     </p>
                     <p className="tibbna-card-subtitle">{compensation.currency}/month</p>
                   </div>
@@ -154,7 +174,7 @@ export default function EmployeeCompensationPage() {
                   <div>
                     <p className="tibbna-card-title">Total Package</p>
                     <p className="tibbna-card-value" style={{ color: '#10B981' }}>
-                      ${compensation.total_package.toFixed(0)}
+                      ${parseFloat(compensation.total_package).toFixed(0)}
                     </p>
                     <p className="tibbna-card-subtitle">{compensation.currency}/month</p>
                   </div>
@@ -169,12 +189,16 @@ export default function EmployeeCompensationPage() {
               <div className="tibbna-card-content">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="tibbna-card-title">Salary Grade</p>
-                    <p className="tibbna-card-value">{compensation.salary_grade || 'N/A'}</p>
-                    <p className="tibbna-card-subtitle">Current grade</p>
+                    <p className="tibbna-card-title">Payment Frequency</p>
+                    <p className="tibbna-card-value">
+                      {compensation.payment_frequency === 'WEEKLY' ? 'Weekly' :
+                       compensation.payment_frequency === 'BI-WEEKLY' ? 'Bi-Weekly' :
+                       compensation.payment_frequency === 'QUARTERLY' ? 'Quarterly' : 'Monthly'}
+                    </p>
+                    <p className="tibbna-card-subtitle">Pay schedule</p>
                   </div>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E0E7FF' }}>
-                    <Award size={20} style={{ color: '#6366F1' }} />
+                    <Calendar size={20} style={{ color: '#6366F1' }} />
                   </div>
                 </div>
               </div>
@@ -193,7 +217,7 @@ export default function EmployeeCompensationPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>Basic Salary</span>
                     <span style={{ fontSize: '16px', fontWeight: 700, color: '#3B82F6' }}>
-                      ${compensation.basic_salary.toFixed(2)}
+                      ${parseFloat(compensation.basic_salary).toFixed(2)}
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
@@ -206,11 +230,11 @@ export default function EmployeeCompensationPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>Housing Allowance</span>
                     <span style={{ fontSize: '16px', fontWeight: 700, color: '#10B981' }}>
-                      ${compensation.housing_allowance.toFixed(2)}
+                      ${parseFloat(compensation.housing_allowance).toFixed(2)}
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
-                    {((compensation.housing_allowance / compensation.basic_salary) * 100).toFixed(0)}% of basic salary
+                    {((parseFloat(compensation.housing_allowance) / parseFloat(compensation.basic_salary)) * 100).toFixed(0)}% of basic salary
                   </p>
                 </div>
 
@@ -219,11 +243,11 @@ export default function EmployeeCompensationPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>Transport Allowance</span>
                     <span style={{ fontSize: '16px', fontWeight: 700, color: '#10B981' }}>
-                      ${compensation.transport_allowance.toFixed(2)}
+                      ${parseFloat(compensation.transport_allowance).toFixed(2)}
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
-                    {((compensation.transport_allowance / compensation.basic_salary) * 100).toFixed(0)}% of basic salary
+                    {((parseFloat(compensation.transport_allowance) / parseFloat(compensation.basic_salary)) * 100).toFixed(0)}% of basic salary
                   </p>
                 </div>
 
@@ -232,11 +256,11 @@ export default function EmployeeCompensationPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>Meal Allowance</span>
                     <span style={{ fontSize: '16px', fontWeight: 700, color: '#10B981' }}>
-                      ${compensation.meal_allowance.toFixed(2)}
+                      ${parseFloat(compensation.meal_allowance).toFixed(2)}
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: '#a3a3a3' }}>
-                    {((compensation.meal_allowance / compensation.basic_salary) * 100).toFixed(0)}% of basic salary
+                    {((parseFloat(compensation.meal_allowance) / parseFloat(compensation.basic_salary)) * 100).toFixed(0)}% of basic salary
                   </p>
                 </div>
               </div>
@@ -246,7 +270,7 @@ export default function EmployeeCompensationPage() {
                 <div className="flex justify-between items-center">
                   <span style={{ fontSize: '16px', fontWeight: 700 }}>Total Monthly Package</span>
                   <span style={{ fontSize: '20px', fontWeight: 700, color: '#3B82F6' }}>
-                    ${compensation.total_package.toFixed(2)}
+                    ${parseFloat(compensation.total_package).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -259,6 +283,21 @@ export default function EmployeeCompensationPage() {
             </div>
           </div>
         </>
+      ) : (
+        <div className="tibbna-card">
+          <div className="tibbna-card-content">
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <DollarSign size={48} style={{ color: '#d1d5db', marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>No Compensation Data</h3>
+              <p style={{ color: '#6b7280', marginBottom: '16px' }}>
+                No compensation information found for your profile.
+              </p>
+              <p style={{ fontSize: '14px', color: '#9ca3af' }}>
+                Please contact HR to set up your compensation details.
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Active Loans */}
@@ -386,22 +425,8 @@ export default function EmployeeCompensationPage() {
         </div>
       )}
 
-      {/* Info Box */}
-      <div className="tibbna-card" style={{ backgroundColor: '#EFF6FF' }}>
-        <div className="tibbna-card-content">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={20} style={{ color: '#3B82F6', marginTop: '2px' }} />
-            <div style={{ fontSize: '13px' }}>
-              <p style={{ fontWeight: 600, marginBottom: '4px' }}>Compensation Information</p>
-              <p style={{ color: '#525252' }}>
-                Your compensation is reviewed annually. For questions about your salary or benefits, 
-                please contact the HR department. Loan and advance requests can be submitted through 
-                the HR portal.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
   );
 }
+
+export default EmployeeCompensationPage;

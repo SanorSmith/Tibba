@@ -87,7 +87,8 @@ const moduleLinks = [
       { href: '/hr/attendance', icon: Clock, label: 'Attendance' },
       { href: '/hr/leaves', icon: Calendar, label: 'Leaves' },
       { href: '/hr/payroll', icon: DollarSign, label: 'Payroll' },
-      { href: '/departments', icon: Building2, label: 'Departments' },
+      { href: '/hr/payroll/compensation', icon: CreditCard, label: 'Staff Compensation' },
+      { href: '/hr/departments', icon: Building2, label: 'Departments' },
       { href: '/specialties', icon: Star, label: 'Specialties' },
       { href: '/hr/recruitment', icon: UserPlus, label: 'Recruitment' },
       { href: '/hr/training', icon: GraduationCap, label: 'Training' },
@@ -97,6 +98,13 @@ const moduleLinks = [
     ],
   },
   { href: '/billing', icon: CreditCard, label: 'Billing' },
+  {
+    href: '/staff', icon: UsersRound, label: 'Staff Portal',
+    children: [
+      { href: '/staff/compensation', icon: DollarSign, label: 'My Compensation' },
+      { href: '/staff/payslips', icon: Receipt, label: 'Payslips' },
+    ],
+  },
 ];
 
 const existingLinks = [

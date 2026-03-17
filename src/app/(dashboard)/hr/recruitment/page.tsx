@@ -235,7 +235,7 @@ export default function RecruitmentPage() {
                 return (
                   <div key={status} className="flex items-center gap-2" style={{ padding: '8px 16px', border: '1px solid #e4e4e4' }}>
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: sc.text }} />
-                    <span style={{ fontSize: '13px' }}>{status}: <strong>{count}</strong></span>
+                    <span style={{ fontSize: '13px' }}>{status}: <strong>{count as number}</strong></span>
                   </div>
                 );
               })}

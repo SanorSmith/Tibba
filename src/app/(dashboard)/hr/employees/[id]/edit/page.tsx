@@ -46,23 +46,23 @@ export default function EditEmployeePage() {
   const loadStaff = async (staffId: string) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/staff');
+      const response = await fetch(`/api/staff?id=${staffId}`);
       const data = await response.json();
       
       if (response.ok) {
-        const staffMember = data.staff.find((s: any) => s.staffid === staffId);
+        const staffMember = data.staff;
         if (staffMember) {
           setStaff(staffMember);
           setForm({
-            firstName: staffMember.firstname || '',
-            middleName: staffMember.middlename || '',
-            lastName: staffMember.lastname || '',
+            firstName: staffMember.firstName || '',
+            middleName: staffMember.middleName || '',
+            lastName: staffMember.lastName || '',
             email: staffMember.email || '',
             phone: staffMember.phone || '',
             role: staffMember.role || 'Staff',
             unit: staffMember.unit || '',
             specialty: staffMember.specialty || '',
-            workspaceId: staffMember.workspaceid || 'default-workspace',
+            workspaceId: staffMember.workspaceId || 'default-workspace',
           });
         } else {
           toast.error('Staff member not found');

@@ -1,7 +1,8 @@
 /**
  * Payroll Calculator Service
- * Simplified version for testing
+ * Enhanced with attendance exceptions integration
  */
+import { Pool } from 'pg';
 
 // Types matching test expectations
 interface GrossSalaryBreakdown {
@@ -10,7 +11,24 @@ interface GrossSalaryBreakdown {
   overtime_pay: number;
   night_shift_differential: number;
   hazard_pay: number;
+  attendance_bonus?: number;
+  attendance_bonus_percentage?: number;
   gross_salary: number;
+  attendance_impact?: {
+    total_exceptions: number;
+    warnings: number;
+    bonus_reduction: number;
+    recommendation: string;
+  };
+}
+
+interface AttendanceExceptions {
+  total_exceptions: number;
+  warnings: number;
+  justified: number;
+  high_severity: number;
+  unauthorized_absences: number;
+  late_arrivals: number;
 }
 
 interface DeductionsBreakdown {
@@ -37,10 +55,106 @@ interface AttendanceData {
 }
 
 export class PayrollCalculator {
+  private pool: Pool | null = null;
+
+  constructor() {
+    if (process.env.DATABASE_URL) {
+      this.pool = new Pool({
+        connectionString: process.env.DATABASE_URL
+      });
+    }
+  }
+
+  async getAttendanceExceptions(employeeId: string, startDate: string, endDate: string): Promise<AttendanceExceptions> {
+    if (!this.pool) {
+      return {
+        total_exceptions: 0,
+        warnings: 0,
+        justified: 0,
+        high_severity: 0,
+        unauthorized_absences: 0,
+        late_arrivals: 0
+      };
+    }
+
+    try {
+      const result = await this.pool.query(`
+        SELECT 
+          COUNT(*) as total_exceptions,
+          SUM(CASE WHEN review_status = 'WARNING_ISSUED' THEN 1 ELSE 0 END) as warnings,
+          SUM(CASE WHEN review_status = 'JUSTIFIED' THEN 1 ELSE 0 END) as justified,
+          SUM(CASE WHEN severity = 'HIGH' THEN 1 ELSE 0 END) as high_severity,
+          SUM(CASE WHEN exception_type = 'UNAUTHORIZED_ABSENCE' THEN 1 ELSE 0 END) as unauthorized_absences,
+          SUM(CASE WHEN exception_type = 'LATE_ARRIVAL' THEN 1 ELSE 0 END) as late_arrivals
+        FROM attendance_exceptions 
+        WHERE employee_id = $1 
+          AND exception_date BETWEEN $2 AND $3
+      `, [employeeId, startDate, endDate]);
+      
+      return {
+        total_exceptions: parseInt(result.rows[0].total_exceptions) || 0,
+        warnings: parseInt(result.rows[0].warnings) || 0,
+        justified: parseInt(result.rows[0].justified) || 0,
+        high_severity: parseInt(result.rows[0].high_severity) || 0,
+        unauthorized_absences: parseInt(result.rows[0].unauthorized_absences) || 0,
+        late_arrivals: parseInt(result.rows[0].late_arrivals) || 0
+      };
+    } catch (error) {
+      console.error('Error fetching attendance exceptions:', error);
+      return {
+        total_exceptions: 0,
+        warnings: 0,
+        justified: 0,
+        high_severity: 0,
+        unauthorized_absences: 0,
+        late_arrivals: 0
+      };
+    }
+  }
+
+  calculateAttendanceBonus(exceptions: AttendanceExceptions): number {
+    let bonusPercentage = 100;
+    
+    if (exceptions.warnings > 0) {
+      bonusPercentage -= (exceptions.warnings * 25);
+    }
+    
+    if (exceptions.unauthorized_absences > 0) {
+      bonusPercentage = 0;
+    }
+    
+    if (exceptions.high_severity > 0) {
+      bonusPercentage -= (exceptions.high_severity * 10);
+    }
+    
+    if (exceptions.late_arrivals > 5) {
+      bonusPercentage -= 15;
+    }
+    
+    return Math.max(0, bonusPercentage);
+  }
+
+  generatePayrollRecommendation(exceptions: AttendanceExceptions): string {
+    if (exceptions.unauthorized_absences > 0) {
+      return 'No attendance bonus due to unauthorized absences';
+    }
+    if (exceptions.warnings >= 3) {
+      return 'Attendance improvement plan recommended';
+    }
+    if (exceptions.warnings >= 1) {
+      return 'Partial attendance bonus due to warnings';
+    }
+    return 'Full attendance bonus eligible';
+  }
+
   /**
-   * Calculate gross salary
+   * Calculate gross salary with optional attendance integration
    */
-  async calculateGrossSalary(employee: Employee, attendance: AttendanceData): Promise<GrossSalaryBreakdown> {
+  async calculateGrossSalary(
+    employee: Employee, 
+    attendance: AttendanceData,
+    payrollPeriod?: { start_date: string; end_date: string }
+  ): Promise<GrossSalaryBreakdown> {
     // Validate inputs
     if (!employee) {
       throw new Error('Employee data is required');
@@ -104,10 +218,38 @@ export class PayrollCalculator {
     // Calculate hazard pay
     const hazardPay = attendance.hazard_shifts * 50; // 50 SAR per hazard shift
 
-    // Calculate gross salary
-    const grossSalary = baseSalary + allowances + overtimePay + nightShiftDifferential + hazardPay;
+    // Calculate attendance bonus if payroll period provided
+    let attendanceBonus = 0;
+    let attendanceBonusPercentage = 100;
+    let attendanceImpact = undefined;
 
-    return {
+    if (payrollPeriod && this.pool) {
+      try {
+        const exceptions = await this.getAttendanceExceptions(
+          employee.id,
+          payrollPeriod.start_date,
+          payrollPeriod.end_date
+        );
+        
+        attendanceBonusPercentage = this.calculateAttendanceBonus(exceptions);
+        const baseAttendanceBonus = baseSalary * 0.1;
+        attendanceBonus = baseAttendanceBonus * (attendanceBonusPercentage / 100);
+        
+        attendanceImpact = {
+          total_exceptions: exceptions.total_exceptions,
+          warnings: exceptions.warnings,
+          bonus_reduction: 100 - attendanceBonusPercentage,
+          recommendation: this.generatePayrollRecommendation(exceptions)
+        };
+      } catch (error) {
+        console.error('Error calculating attendance bonus:', error);
+      }
+    }
+
+    // Calculate gross salary with attendance bonus
+    const grossSalary = baseSalary + allowances + overtimePay + nightShiftDifferential + hazardPay + attendanceBonus;
+
+    const result: GrossSalaryBreakdown = {
       base_salary: Math.round(baseSalary * 100) / 100,
       allowances: Math.round(allowances * 100) / 100,
       overtime_pay: Math.round(overtimePay * 100) / 100,
@@ -115,6 +257,14 @@ export class PayrollCalculator {
       hazard_pay: Math.round(hazardPay * 100) / 100,
       gross_salary: Math.round(grossSalary * 100) / 100,
     };
+
+    if (payrollPeriod) {
+      result.attendance_bonus = Math.round(attendanceBonus * 100) / 100;
+      result.attendance_bonus_percentage = attendanceBonusPercentage;
+      result.attendance_impact = attendanceImpact;
+    }
+
+    return result;
   }
 
   /**
@@ -148,5 +298,11 @@ export class PayrollCalculator {
       advance_deduction: Math.round(advanceDeduction * 100) / 100,
       total_deductions: Math.round(totalDeductions * 100) / 100,
     };
+  }
+
+  async close() {
+    if (this.pool) {
+      await this.pool.end();
+    }
   }
 }

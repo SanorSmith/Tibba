@@ -16,6 +16,7 @@ export interface EmployeeCompensation {
   housing_allowance: number;
   transport_allowance: number;
   meal_allowance: number;
+  payment_frequency: 'WEEKLY' | 'BI-WEEKLY' | 'MONTHLY' | 'QUARTERLY';
   salary_grade: string;
   currency: string;
 }
@@ -308,6 +309,7 @@ export class PayrollCalculationEngine {
         ec.housing_allowance,
         ec.transport_allowance,
         ec.meal_allowance,
+        ec.payment_frequency,
         ec.currency,
         sg.grade_code as salary_grade
       FROM employee_compensation ec
@@ -329,6 +331,7 @@ export class PayrollCalculationEngine {
       housing_allowance: parseFloat(row.housing_allowance),
       transport_allowance: parseFloat(row.transport_allowance),
       meal_allowance: parseFloat(row.meal_allowance),
+      payment_frequency: row.payment_frequency || 'MONTHLY',
       salary_grade: row.salary_grade,
       currency: row.currency
     };

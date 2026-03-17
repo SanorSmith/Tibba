@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     console.log('Governorate filter:', governorate);
     console.log('Page:', page, 'Limit:', limit);
 
-    // Build the base query with age calculation
+    // Build the base query with age calculation and joins to related tables
     let query = `
       SELECT 
         p.patientid as id,
@@ -93,11 +93,11 @@ export async function GET(request: NextRequest) {
         p.phone as mobile,
         p.email,
         p.address,
-        NULL as governorate,
+        p.address as governorate,
         NULL as district,
         NULL as neighborhood,
-        NULL as emergency_contact_name_ar,
-        NULL as emergency_contact_phone,
+        ec.contactname as emergency_contact,
+        ec.contactphone as emergency_phone,
         NULL as emergency_contact_relationship_ar,
         p.medicalhistory as medical_history,
         0 as total_balance,
@@ -105,10 +105,16 @@ export async function GET(request: NextRequest) {
         p.createdat as created_at,
         p.updatedat as updated_at,
         NULL as insurance_state,
-        NULL as insurance_number,
-        NULL as insurance_company,
-        NULL as next_appointment
+        ins.insurancenumber as insurance_number,
+        ins.insurancecompany as insurance_company,
+        NULL as next_appointment,
+        med.allergies,
+        med.chronicdiseases as chronic_diseases,
+        med.currentmedications as current_medications
       FROM patients p
+      LEFT JOIN patient_emergency_contacts ec ON p.patientid = ec.patientid
+      LEFT JOIN patient_insurance_information ins ON p.patientid = ins.patientid
+      LEFT JOIN patient_medical_information med ON p.patientid = med.patientid
       WHERE 1=1
     `;
 
@@ -279,19 +285,31 @@ export async function GET(request: NextRequest) {
     // Transform the data to match the expected format
     const patients = result.rows.map(row => ({
       id: row.id,
+      patient_id: row.id,
       patientNumber: row.patient_number,
+      patient_number: row.patient_number,
       firstNameAr: row.first_name_ar,
+      first_name_ar: row.first_name_ar,
       firstNameEn: row.first_name_en,
+      first_name_en: row.first_name_en,
       middleName: row.middle_name,
+      middle_name: row.middle_name,
       lastNameAr: row.last_name_ar,
+      last_name_ar: row.last_name_ar,
       lastNameEn: row.last_name_en,
+      last_name_en: row.last_name_en,
       fullNameAr: row.full_name_ar,
+      full_name_ar: row.full_name_ar,
       fullNameEn: row.full_name_en,
+      full_name_en: row.full_name_en,
       dateOfBirth: row.date_of_birth,
+      date_of_birth: row.date_of_birth,
       age: parseInt(row.age) || 0,
       gender: row.gender,
       bloodGroup: row.blood_group,
+      blood_group: row.blood_group,
       nationalId: row.national_id,
+      national_id: row.national_id,
       phone: row.phone,
       mobile: row.mobile,
       email: row.email,
@@ -299,15 +317,29 @@ export async function GET(request: NextRequest) {
       governorate: row.governorate,
       district: row.district,
       neighborhood: row.neighborhood,
-      emergencyContactNameAr: row.emergency_contact_name_ar,
-      emergencyContactPhone: row.emergency_contact_phone,
+      // Emergency contact fields - both formats
+      emergencyContactNameAr: row.emergency_contact,
+      emergency_contact: row.emergency_contact,
+      emergencyContactPhone: row.emergency_phone,
+      emergency_phone: row.emergency_phone,
       emergencyContactRelationshipAr: row.emergency_contact_relationship_ar,
+      // Medical information fields
+      allergies: row.allergies,
+      chronic_diseases: row.chronic_diseases,
+      chronicDiseases: row.chronic_diseases,
+      current_medications: row.current_medications,
+      currentMedications: row.current_medications,
       medicalHistory: row.medical_history,
+      medical_history: row.medical_history,
+      // Insurance fields
       totalBalance: parseFloat(row.total_balance) || 0,
       isActive: row.is_active,
       insuranceState: row.insurance_state,
+      insurance_state: row.insurance_state,
       insuranceNumber: row.insurance_number,
+      insurance_number: row.insurance_number,
       insuranceCompany: row.insurance_company,
+      insurance_company: row.insurance_company,
       nextAppointment: row.next_appointment,
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -365,143 +397,181 @@ export async function POST(request: NextRequest) {
     // Generate patient number if not provided
     const patientNumber = body.patientNumber || generatePatientNumber();
 
-    // Build the insert query
-    const query = `
-      INSERT INTO patients (
-        id,
-        patient_number,
-        first_name_ar,
-        first_name_en,
-        middle_name,
-        last_name_ar,
-        last_name_en,
-        full_name_ar,
-        full_name_en,
-        date_of_birth,
-        gender,
-        blood_group,
-        national_id,
-        phone,
-        mobile,
-        email,
-        governorate,
-        district,
-        neighborhood,
-        emergency_contact_name_ar,
-        emergency_contact_phone,
-        emergency_contact_relationship_ar,
-        medical_history,
-        total_balance,
-        is_active,
-        created_at,
-        updated_at
-      ) VALUES (
-        gen_random_uuid(),
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12,
-        $13,
-        $14,
-        $15,
-        $16,
-        $17,
-        $18,
-        $19,
-        $20,
-        $21,
-        $22,
-        $23,
-        $24,
-        NOW(),
-        NOW()
-      ) RETURNING *
-    `;
+    // Start a transaction to ensure all inserts succeed or fail together
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
 
-    const params = [
-      patientNumber,
-      body.firstNameAr,
-      body.firstNameEn || null,
-      body.middleName || null,
-      body.lastNameAr,
-      body.lastNameEn || null,
-      body.fullNameAr || `${body.firstNameAr} ${body.middleName || ''} ${body.lastNameAr}`.trim(),
-      body.fullNameEn || `${body.firstNameEn || ''} ${body.middleName || ''} ${body.lastNameEn || ''}`.trim(),
-      body.dateOfBirth,
-      body.gender,
-      body.bloodGroup || null,
-      body.nationalId || null,
-      body.phone,
-      body.mobile || null,
-      body.email || null,
-      body.governorate || null,
-      body.district || null,
-      body.neighborhood || null,
-      body.emergencyContactNameAr || null,
-      body.emergencyContactPhone || null,
-      body.emergencyContactRelationshipAr || null,
-      body.medicalHistory || null,
-      body.totalBalance || 0,
-      body.isActive !== undefined ? body.isActive : true
-    ];
+      // 1. Insert into patients table
+      const patientQuery = `
+        INSERT INTO patients (
+          patientid,
+          ehrid,
+          firstname,
+          middlename,
+          lastname,
+          dateofbirth,
+          gender,
+          bloodgroup,
+          nationalid,
+          phone,
+          email,
+          address,
+          workspaceid,
+          createdat
+        ) VALUES (
+          gen_random_uuid(),
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          $8,
+          $9,
+          $10,
+          $11,
+          'b227528d-ca34-4850-9b72-94a220365d7f',
+          NOW()
+        ) RETURNING *
+      `;
 
-    console.log('Executing insert query:', query);
-    console.log('Parameters:', params);
+      const patientParams = [
+        patientNumber,
+        body.first_name_ar || body.first_name_en,
+        body.middle_name || null,
+        body.last_name_ar || body.last_name_en,
+        body.date_of_birth,
+        body.gender,
+        body.blood_group || null,
+        body.national_id || null,
+        body.phone,
+        body.email || null,
+        body.governorate || body.address
+      ];
 
-    const result = await pool.query(query, params);
-    const newPatient = result.rows[0];
+      console.log('Executing patient insert query:', patientQuery);
+      console.log('Parameters:', patientParams);
 
-    console.log('Patient created successfully:', newPatient);
+      const patientResult = await client.query(patientQuery, patientParams);
+      const newPatient = patientResult.rows[0];
+      const patientId = newPatient.patientid;
 
-    // Transform the response data
-    const responsePatient = {
-      id: newPatient.id,
-      patientNumber: newPatient.patient_number,
-      firstNameAr: newPatient.first_name_ar,
-      firstNameEn: newPatient.first_name_en,
-      middleName: newPatient.middle_name,
-      lastNameAr: newPatient.last_name_ar,
-      lastNameEn: newPatient.last_name_en,
-      fullNameAr: newPatient.full_name_ar,
-      fullNameEn: newPatient.full_name_en,
-      dateOfBirth: newPatient.date_of_birth,
-      gender: newPatient.gender,
-      bloodGroup: newPatient.blood_group,
-      nationalId: newPatient.national_id,
-      phone: newPatient.phone,
-      mobile: newPatient.mobile,
-      email: newPatient.email,
-      governorate: newPatient.governorate,
-      district: newPatient.district,
-      neighborhood: newPatient.neighborhood,
-      emergencyContactNameAr: newPatient.emergency_contact_name_ar,
-      emergencyContactPhone: newPatient.emergency_contact_phone,
-      emergencyContactRelationshipAr: newPatient.emergency_contact_relationship_ar,
-      medicalHistory: newPatient.medical_history,
-      totalBalance: parseFloat(newPatient.total_balance) || 0,
-      isActive: newPatient.is_active,
-      createdAt: newPatient.created_at,
-      updatedAt: newPatient.updated_at
-    };
+      console.log('Patient created successfully with ID:', patientId);
 
-    return NextResponse.json({
-      success: true,
-      data: responsePatient,
-      message: 'Patient created successfully',
-      metadata: {
-        database: 'Neon Non-Medical DB',
-        connection: 'DATABASE_URL',
-        timestamp: new Date().toISOString()
+      // 2. Insert emergency contact if provided
+      if (body.emergency_contact || body.emergency_phone) {
+        const emergencyQuery = `
+          INSERT INTO patient_emergency_contacts (
+            patientid,
+            contactname,
+            contactphone,
+            createdat,
+            updatedat
+          ) VALUES ($1, $2, $3, NOW(), NOW())
+        `;
+        
+        await client.query(emergencyQuery, [
+          patientId,
+          body.emergency_contact || null,
+          body.emergency_phone || null
+        ]);
+        
+        console.log('Emergency contact saved');
       }
-    });
+
+      // 3. Insert insurance information if provided
+      if (body.insurance_company || body.insurance_number) {
+        const insuranceQuery = `
+          INSERT INTO patient_insurance_information (
+            patientid,
+            insurancecompany,
+            insurancenumber,
+            createdat,
+            updatedat
+          ) VALUES ($1, $2, $3, NOW(), NOW())
+        `;
+        
+        await client.query(insuranceQuery, [
+          patientId,
+          body.insurance_company || null,
+          body.insurance_number || null
+        ]);
+        
+        console.log('Insurance information saved');
+      }
+
+      // 4. Insert medical information if provided
+      if (body.allergies || body.chronic_diseases || body.current_medications || body.medical_history) {
+        const medicalQuery = `
+          INSERT INTO patient_medical_information (
+            patientid,
+            allergies,
+            chronicdiseases,
+            currentmedications,
+            medicalhistory,
+            createdat,
+            updatedat
+          ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        `;
+        
+        await client.query(medicalQuery, [
+          patientId,
+          body.allergies || null,
+          body.chronic_diseases || null,
+          body.current_medications || null,
+          body.medical_history || null
+        ]);
+        
+        console.log('Medical information saved');
+      }
+
+      // Commit the transaction
+      await client.query('COMMIT');
+
+      // Transform the response data to match the expected format
+      const responsePatient = {
+        id: newPatient.patientid,
+        patient_number: newPatient.ehrid,
+        first_name_ar: newPatient.firstname,
+        first_name_en: newPatient.firstname,
+        middle_name: newPatient.middlename,
+        last_name_ar: newPatient.lastname,
+        last_name_en: newPatient.lastname,
+        full_name_ar: `${newPatient.firstname} ${newPatient.middlename || ''} ${newPatient.lastname}`.trim(),
+        full_name_en: `${newPatient.firstname} ${newPatient.middlename || ''} ${newPatient.lastname}`.trim(),
+        date_of_birth: newPatient.dateofbirth,
+        gender: newPatient.gender,
+        blood_group: newPatient.bloodgroup,
+        national_id: newPatient.nationalid,
+        phone: newPatient.phone,
+        email: newPatient.email,
+        address: newPatient.address,
+        governorate: newPatient.address,
+        created_at: newPatient.createdat
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: responsePatient,
+        message: 'Patient and all related information created successfully',
+        metadata: {
+          database: 'Neon Non-Medical DB',
+          connection: 'DATABASE_URL',
+          timestamp: new Date().toISOString()
+        }
+      });
+
+    } catch (error) {
+      // Rollback the transaction on error
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      // Release the client back to the pool
+      client.release();
+    }
 
   } catch (error) {
     console.error('Error creating patient:', error);
@@ -548,43 +618,48 @@ export async function PUT(request: NextRequest) {
     const params = [];
     let paramIndex = 1;
 
-    // Map the fields to database columns
+    // Map the fields to database columns (only existing columns, no duplicates)
     const fieldMapping: Record<string, string> = {
-      firstNameAr: 'first_name_ar',
-      firstNameEn: 'first_name_en',
-      middleName: 'middle_name',
-      lastNameAr: 'last_name_ar',
-      lastNameEn: 'last_name_en',
-      fullNameAr: 'full_name_ar',
-      fullNameEn: 'full_name_en',
-      dateOfBirth: 'date_of_birth',
+      first_name_ar: 'firstname',
+      middle_name: 'middlename',
+      last_name_ar: 'lastname',
+      date_of_birth: 'dateofbirth',
       gender: 'gender',
-      bloodGroup: 'blood_group',
-      nationalId: 'national_id',
+      blood_group: 'bloodgroup',
+      national_id: 'nationalid',
       phone: 'phone',
-      mobile: 'mobile',
       email: 'email',
-      governorate: 'governorate',
-      district: 'district',
-      neighborhood: 'neighborhood',
-      emergencyContactNameAr: 'emergency_contact_name_ar',
-      emergencyContactPhone: 'emergency_contact_phone',
-      emergencyContactRelationshipAr: 'emergency_contact_relationship_ar',
-      medicalHistory: 'medical_history',
-      totalBalance: 'total_balance',
-      isActive: 'is_active'
+      governorate: 'address' // Map governorate to address column
     };
 
+    // Separate different types of fields
+    const insuranceFields: Record<string, any> = {};
+    const emergencyFields: Record<string, any> = {};
+    const medicalFields: Record<string, any> = {};
+    const regularFields: Record<string, any> = {};
+    const processedColumns = new Set<string>(); // Track which columns we've already set
+    
     for (const [field, value] of Object.entries(updateData)) {
-      if (fieldMapping[field]) {
-        updateFields.push(`${fieldMapping[field]} = $${paramIndex}`);
-        params.push(value);
-        paramIndex++;
+      if (field.includes('insurance') || field.includes('appointment')) {
+        insuranceFields[field] = value;
+      } else if (field.includes('emergency')) {
+        emergencyFields[field] = value;
+      } else if (['allergies', 'chronic_diseases', 'current_medications', 'medical_history'].includes(field)) {
+        medicalFields[field] = value;
+      } else if (fieldMapping[field]) {
+        const dbColumn = fieldMapping[field];
+        // Only add if we haven't already set this column
+        if (!processedColumns.has(dbColumn)) {
+          updateFields.push(`${dbColumn} = $${paramIndex}`);
+          params.push(value);
+          paramIndex++;
+          processedColumns.add(dbColumn);
+        }
       }
     }
 
-    // Add updated_at timestamp
-    updateFields.push(`updated_at = NOW()`);
+    // Add updatedat timestamp
+    updateFields.push(`updatedat = NOW()`);
     
     // Add the WHERE condition parameter
     params.push(id);
@@ -592,7 +667,7 @@ export async function PUT(request: NextRequest) {
     const query = `
       UPDATE patients 
       SET ${updateFields.join(', ')}
-      WHERE id = $${paramIndex}
+      WHERE patientid = $${paramIndex}
       RETURNING *
     `;
 
@@ -609,6 +684,134 @@ export async function PUT(request: NextRequest) {
     }
 
     const updatedPatient = result.rows[0];
+
+    // Handle insurance fields separately (store in medical_history as JSON for now)
+    if (Object.keys(insuranceFields).length > 0) {
+      try {
+        // Get current medical_history
+        const currentMedicalHistory = updatedPatient.medical_history || '{}';
+        let medicalHistoryData: Record<string, any> = {};
+        
+        try {
+          medicalHistoryData = typeof currentMedicalHistory === 'string' 
+            ? JSON.parse(currentMedicalHistory) 
+            : currentMedicalHistory;
+        } catch {
+          medicalHistoryData = {};
+        }
+        
+        // Add insurance data to medical_history
+        medicalHistoryData.insurance = insuranceFields;
+        
+        // Update medical_history with insurance data
+        const insuranceUpdateQuery = `
+          UPDATE patients 
+          SET medicalhistory = $1, updatedat = NOW()
+          WHERE patientid = $2
+          RETURNING medicalhistory
+        `;
+        
+        await pool.query(insuranceUpdateQuery, [JSON.stringify(medicalHistoryData), id]);
+        
+        console.log('Insurance data saved to medical_history:', insuranceFields);
+        
+      } catch (insuranceError) {
+        console.error('Error saving insurance data:', insuranceError);
+        // Don't fail the whole operation if insurance save fails
+      }
+    }
+
+    // Handle emergency contact fields
+    if (Object.keys(emergencyFields).length > 0) {
+      try {
+        const client = await pool.connect();
+        
+        // Check if emergency contact record exists
+        const existingRecord = await client.query(
+          'SELECT emergencycontactid FROM patient_emergency_contacts WHERE patientid = $1',
+          [id]
+        );
+        
+        if (existingRecord.rows.length > 0) {
+          // Update existing record
+          const updateQuery = `
+            UPDATE patient_emergency_contacts 
+            SET contactname = $1, contactphone = $2, updatedat = NOW()
+            WHERE patientid = $3
+          `;
+          await client.query(updateQuery, [
+            emergencyFields.emergency_contact || null,
+            emergencyFields.emergency_phone || null,
+            id
+          ]);
+        } else {
+          // Insert new record
+          const insertQuery = `
+            INSERT INTO patient_emergency_contacts (patientid, contactname, contactphone, createdat, updatedat)
+            VALUES ($1, $2, $3, NOW(), NOW())
+          `;
+          await client.query(insertQuery, [
+            id,
+            emergencyFields.emergency_contact || null,
+            emergencyFields.emergency_phone || null
+          ]);
+        }
+        
+        client.release();
+        console.log('Emergency contact data updated:', emergencyFields);
+        
+      } catch (emergencyError) {
+        console.error('Error updating emergency contact data:', emergencyError);
+      }
+    }
+
+    // Handle medical information fields
+    if (Object.keys(medicalFields).length > 0) {
+      try {
+        const client = await pool.connect();
+        
+        // Check if medical information record exists
+        const existingRecord = await client.query(
+          'SELECT medicalinfoid FROM patient_medical_information WHERE patientid = $1',
+          [id]
+        );
+        
+        if (existingRecord.rows.length > 0) {
+          // Update existing record
+          const updateQuery = `
+            UPDATE patient_medical_information 
+            SET allergies = $1, chronicdiseases = $2, currentmedications = $3, medicalhistory = $4, updatedat = NOW()
+            WHERE patientid = $5
+          `;
+          await client.query(updateQuery, [
+            medicalFields.allergies || null,
+            medicalFields.chronic_diseases || null,
+            medicalFields.current_medications || null,
+            medicalFields.medical_history || null,
+            id
+          ]);
+        } else {
+          // Insert new record
+          const insertQuery = `
+            INSERT INTO patient_medical_information (patientid, allergies, chronicdiseases, currentmedications, medicalhistory, createdat, updatedat)
+            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          `;
+          await client.query(insertQuery, [
+            id,
+            medicalFields.allergies || null,
+            medicalFields.chronic_diseases || null,
+            medicalFields.current_medications || null,
+            medicalFields.medical_history || null
+          ]);
+        }
+        
+        client.release();
+        console.log('Medical information data updated:', medicalFields);
+        
+      } catch (medicalError) {
+        console.error('Error updating medical information data:', medicalError);
+      }
+    }
 
     // Transform the response data
     const responsePatient = {

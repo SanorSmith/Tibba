@@ -290,8 +290,8 @@ export default function AttendancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((att: any) => (
-                      <tr key={att.id}>
+                    {filtered.map((att: any, index: number) => (
+                      <tr key={`table-${att.id}-${index}`}>
                         <td>
                           <Link href={`/hr/employees/${att.employee_id}`} className="hover:underline">
                             <span style={{ fontSize: '14px', fontWeight: 500 }}>{att.employee_name}</span>
@@ -318,8 +318,8 @@ export default function AttendancePage() {
 
               {/* Mobile */}
               <div className="md:hidden space-y-2">
-                {filtered.map((att: any) => (
-                  <div key={att.id} style={{ padding: '10px', border: '1px solid #e4e4e4', borderRadius: '6px' }}>
+                {filtered.map((att: any, index: number) => (
+                  <div key={`mobile-${att.id}-${index}`} style={{ padding: '10px', border: '1px solid #e4e4e4', borderRadius: '6px' }}>
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <p style={{ fontSize: '14px', fontWeight: 600 }}>{att.employee_name}</p>

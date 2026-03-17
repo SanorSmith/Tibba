@@ -46,6 +46,7 @@ export interface Employee {
   grade_id?: string;
   salary_grade?: string;
   basic_salary?: number;
+  payment_frequency?: 'WEEKLY' | 'BI-WEEKLY' | 'MONTHLY' | 'QUARTERLY';
   date_of_hire: string;
   employment_status: 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'TERMINATED';
   bank_account_number?: string;
@@ -723,6 +724,10 @@ export interface EmployeeFormData {
   bank_account_number?: string;
   bank_name?: string;
   basic_salary?: number;
+  payment_frequency?: 'WEEKLY' | 'BI-WEEKLY' | 'MONTHLY' | 'QUARTERLY';
+  housing_allowance?: number;
+  transport_allowance?: number;
+  meal_allowance?: number;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;

@@ -35,10 +35,15 @@ export interface FinancePatient {
   governorate?: string;
   district?: string;
   neighborhood?: string;
-  emergency_contact_name_ar?: string;
+  emergency_contact?: string;
+  emergency_phone?: string;
   emergency_contact_phone?: string;
+  emergency_contact_name_ar?: string;
   emergency_contact_relationship_ar?: string;
   medical_history?: string;
+  allergies?: string;
+  chronic_diseases?: string;
+  current_medications?: string;
   total_balance: number;
   is_active: boolean;
   insurance_state?: string;

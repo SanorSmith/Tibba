@@ -2,11 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { Star, Award, TrendingUp, AlertTriangle, Plus, Target, Pencil, Trash2, X, Search, Eye } from 'lucide-react';
+import { Star, Award, TrendingUp, AlertTriangle, Plus, Target, Pencil, Trash2, X, Search, Eye, RefreshCw } from 'lucide-react';
 import { dataStore } from '@/lib/dataStore';
 import { toast } from 'sonner';
 import type { PerformanceReview, Recognition, Employee } from '@/types/hr';
 import performanceData from '@/data/hr/performance.json';
+import AttendanceScoreCard from '@/components/performance/AttendanceScoreCard';
+import StaffService from '@/lib/staffService';
+import ReviewFormModal from '@/components/performance/ReviewFormModal';
 
 const ratingColor = (r: number) => r >= 4 ? '#10B981' : r >= 3 ? '#F59E0B' : '#EF4444';
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -36,19 +39,120 @@ export default function PerformancePage() {
   const [recForm, setRecForm] = useState({ employee_id: '', type: 'SPOT_AWARD' as string, title: '', reason: '', recognized_by: '', monetary_reward: 0 });
 
   const [processing, setProcessing] = useState(false);
+  const [showAttendance, setShowAttendance] = useState<{ [key: string]: boolean }>({});
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [editingReviewId, setEditingReviewId] = useState<string>('');
+  const [editingReviewData, setEditingReviewData] = useState<any>(null);
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
+    console.log('🔄 Loading performance data from database...');
     try {
-      setReviews(dataStore.getPerformanceReviews());
-      setRecognitions(dataStore.getRecognitions());
-      setEmployees(dataStore.getEmployees());
-    } catch { toast.error('Failed to load data'); }
-    finally { setLoading(false); }
+      // Load real staff data
+      const realStaff = await StaffService.getAllStaff();
+      const employees = realStaff.map(staff => StaffService.convertToEmployee(staff));
+      setEmployees(employees);
+      console.log(`✅ Loaded ${employees.length} staff members`);
+      
+      // Load real performance reviews from API
+      const reviewsResponse = await fetch('/api/hr/performance/reviews?limit=50');
+      const reviewsData = await reviewsResponse.json();
+      
+      if (reviewsData.success) {
+        setReviews(reviewsData.data);
+        console.log(`✅ Loaded ${reviewsData.data.length} performance reviews from database`);
+      } else {
+        console.warn('No reviews found, creating empty state');
+        setReviews([]);
+      }
+      
+      // Load recognitions from API
+      const recognitionsResponse = await fetch('/api/hr/performance/recognitions?limit=50');
+      const recognitionsData = await recognitionsResponse.json();
+      
+      if (recognitionsData.success) {
+        setRecognitions(recognitionsData.data);
+        console.log(`✅ Loaded ${recognitionsData.data.length} recognitions from database`);
+      } else {
+        setRecognitions([]);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading data:', error);
+      toast.error('Failed to load performance data');
+      setEmployees([]);
+      setReviews([]);
+      setRecognitions([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const dist = performanceData.rating_distribution;
+  // Calculate real distribution from actual database data
+  const dist = useMemo(() => {
+    const totalReviews = reviews.length;
+    const completedReviews = reviews.filter(r => r.status === 'FINALIZED').length;
+    const inProgressReviews = reviews.filter(r => r.status === 'IN_PROGRESS' || r.status === 'SUBMITTED').length;
+    
+    // Calculate average rating from real data using same method as individual cards
+    const allRatings = reviews.map(r => {
+      // Use the same calculation as individual review cards
+      const competencyRatings = [
+        r.clinical_competence,
+        r.patient_care,
+        r.professionalism,
+        r.teamwork,
+        r.quality_safety
+      ].map(val => {
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return (num != null && !isNaN(num) && num > 0) ? num : null;
+      }).filter((val): val is number => val !== null);
+      
+      const avgRating = competencyRatings.length > 0
+        ? (competencyRatings.reduce((a, b) => a + b, 0) / competencyRatings.length).toFixed(1)
+        : '0.0';
+      
+      return parseFloat(avgRating);
+    }).filter(r => !isNaN(r));
+    
+    const avgRating = allRatings.length > 0 
+      ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(2)
+      : '0.00';
+    
+    // Create rating distribution
+    const distribution = [
+      { rating: '5.0 - Outstanding', count: 0, percentage: 0 },
+      { rating: '4.0-4.9 - Exceeds', count: 0, percentage: 0 },
+      { rating: '3.0-3.9 - Meets', count: 0, percentage: 0 },
+      { rating: '2.0-2.9 - Below', count: 0, percentage: 0 },
+      { rating: '1.0-1.9 - Unsatisfactory', count: 0, percentage: 0 }
+    ];
+    
+    // Categorize real ratings
+    allRatings.forEach(rating => {
+      if (rating >= 5.0) distribution[0].count++;
+      else if (rating >= 4.0) distribution[1].count++;
+      else if (rating >= 3.0) distribution[2].count++;
+      else if (rating >= 2.0) distribution[3].count++;
+      else distribution[4].count++;
+    });
+    
+    // Calculate percentages
+    distribution.forEach(d => {
+      d.percentage = totalReviews > 0 ? Math.round((d.count / totalReviews) * 100) : 0;
+    });
+    
+    return {
+      cycle_id: 'PC-2025',
+      total_reviews: totalReviews,
+      completed: completedReviews,
+      in_progress: inProgressReviews,
+      distribution,
+      avg_rating: parseFloat(avgRating)
+    };
+  }, [reviews]);
 
   const filteredReviews = useMemo(() => {
     let r = reviews;
@@ -67,27 +171,62 @@ export default function PerformancePage() {
   }, [recognitions, searchQuery]);
 
   // --- Review Edit ---
-  const handleEditReviewSave = useCallback(() => {
+  const handleEditReviewSave = useCallback(async () => {
     if (!editReview) return;
     setProcessing(true);
-    const ok = dataStore.updatePerformanceReview(editReview.id, {
-      status: editReview.status,
-      recommendation: editReview.recommendation,
-      strengths: editReview.strengths,
-      improvements: editReview.improvements,
-    });
-    if (ok) { toast.success('Review updated'); setEditReview(null); loadData(); }
-    else toast.error('Failed');
-    setProcessing(false);
+    try {
+      const response = await fetch(`/api/hr/performance/reviews/${editReview.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: editReview.status,
+          recommendation: editReview.recommendation,
+          strengths: editReview.strengths,
+          improvements: editReview.improvements,
+          clinical_competence: editReview.clinical_competence,
+          patient_care: editReview.patient_care,
+          professionalism: editReview.professionalism,
+          teamwork: editReview.teamwork,
+          quality_safety: editReview.quality_safety,
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Review updated successfully');
+        setEditReview(null);
+        loadData();
+      } else {
+        toast.error(data.error || 'Failed to update review');
+      }
+    } catch (error) {
+      console.error('Error updating review:', error);
+      toast.error('Failed to update review');
+    } finally {
+      setProcessing(false);
+    }
   }, [editReview, loadData]);
 
-  const handleDeleteReview = useCallback(() => {
+  const handleDeleteReview = useCallback(async () => {
     if (!deleteReview) return;
     setProcessing(true);
-    const ok = dataStore.deletePerformanceReview(deleteReview.id);
-    if (ok) { toast.success('Review deleted'); setDeleteReview(null); loadData(); }
-    else toast.error('Failed');
-    setProcessing(false);
+    try {
+      const response = await fetch(`/api/hr/performance/reviews/${deleteReview.id}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Review deleted successfully');
+        setDeleteReview(null);
+        loadData();
+      } else {
+        toast.error(data.error || 'Failed to delete review');
+      }
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      toast.error('Failed to delete review');
+    } finally {
+      setProcessing(false);
+    }
   }, [deleteReview, loadData]);
 
   // --- Recognition CRUD ---
@@ -102,39 +241,64 @@ export default function PerformancePage() {
     setShowRecForm(true);
   }, []);
 
-  const handleRecSave = useCallback(() => {
-    if (!recForm.employee_id || !recForm.title || !recForm.reason) { toast.error('Fill required fields'); return; }
-    setProcessing(true);
-    const emp = employees.find(e => e.id === recForm.employee_id);
-    if (editRec) {
-      const ok = dataStore.updateRecognition(editRec.id, {
-        ...recForm, employee_name: emp ? `${emp.first_name} ${emp.last_name}` : editRec.employee_name,
-        type: recForm.type as Recognition['type'], monetary_reward: Number(recForm.monetary_reward),
-      });
-      if (ok) { toast.success('Recognition updated'); setShowRecForm(false); setEditRec(null); loadData(); }
-      else toast.error('Failed');
-    } else {
-      const newId = `REC-${String(recognitions.length + 1).padStart(3, '0')}`;
-      const ok = dataStore.addRecognition({
-        id: newId, employee_id: recForm.employee_id,
-        employee_name: emp ? `${emp.first_name} ${emp.last_name}` : '',
-        type: recForm.type as Recognition['type'], title: recForm.title, reason: recForm.reason,
-        recognized_by: recForm.recognized_by, date: new Date().toISOString().split('T')[0],
-        monetary_reward: Number(recForm.monetary_reward),
-      });
-      if (ok) { toast.success('Recognition added'); setShowRecForm(false); loadData(); }
-      else toast.error('Failed');
+  const handleRecSave = useCallback(async () => {
+    if (!recForm.employee_id || !recForm.title || !recForm.reason) { 
+      toast.error('Fill required fields'); 
+      return; 
     }
-    setProcessing(false);
-  }, [recForm, editRec, employees, recognitions.length, loadData]);
+    setProcessing(true);
+    try {
+      const response = await fetch('/api/hr/performance/recognitions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_id: recForm.employee_id,
+          type: recForm.type,
+          title: recForm.title,
+          reason: recForm.reason,
+          recognized_by: recForm.recognized_by || null,
+          monetary_reward: Number(recForm.monetary_reward) || 0,
+          status: 'PENDING'
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Recognition created successfully');
+        setShowRecForm(false);
+        setEditRec(null);
+        loadData();
+      } else {
+        toast.error(data.error || 'Failed to create recognition');
+      }
+    } catch (error) {
+      console.error('Error creating recognition:', error);
+      toast.error('Failed to create recognition');
+    } finally {
+      setProcessing(false);
+    }
+  }, [recForm, loadData]);
 
-  const handleDeleteRec = useCallback(() => {
+  const handleDeleteRec = useCallback(async () => {
     if (!deleteRec) return;
     setProcessing(true);
-    const ok = dataStore.deleteRecognition(deleteRec.id);
-    if (ok) { toast.success('Recognition removed'); setDeleteRec(null); loadData(); }
-    else toast.error('Failed');
-    setProcessing(false);
+    try {
+      const response = await fetch(`/api/hr/performance/recognitions/${deleteRec.id}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Recognition deleted successfully');
+        setDeleteRec(null);
+        loadData();
+      } else {
+        toast.error(data.error || 'Failed to delete recognition');
+      }
+    } catch (error) {
+      console.error('Error deleting recognition:', error);
+      toast.error('Failed to delete recognition');
+    } finally {
+      setProcessing(false);
+    }
   }, [deleteRec, loadData]);
 
   if (loading) return <div className="flex items-center justify-center py-24"><div className="animate-spin rounded-full h-10 w-10 border-2 border-[#618FF5] border-t-transparent mx-auto" /></div>;
@@ -147,9 +311,18 @@ export default function PerformancePage() {
           <p className="page-description">Reviews, goals, and employee recognition</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={loadData} className="btn-secondary flex items-center gap-2" title="Refresh data">
+            <RefreshCw size={16} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
           <Link href="/hr/performance/goals"><button className="btn-secondary flex items-center gap-2"><Target size={16} /><span className="hidden sm:inline">Goals</span></button></Link>
           {tab === 'reviews' ? (
-            <Link href="/hr/performance/reviews/new"><button className="btn-primary flex items-center gap-2"><Plus size={16} /><span className="hidden sm:inline">New Review</span></button></Link>
+            <button onClick={() => {
+              setSelectedEmployeeId('');
+              setEditingReviewId('');
+              setEditingReviewData(null);
+              setShowReviewForm(true);
+            }} className="btn-primary flex items-center gap-2"><Plus size={16} /><span className="hidden sm:inline">New Review</span></button>
           ) : (
             <button onClick={() => openRecForm()} className="btn-primary flex items-center gap-2"><Plus size={16} /><span className="hidden sm:inline">Add Recognition</span></button>
           )}
@@ -207,6 +380,26 @@ export default function PerformancePage() {
         <div className="space-y-3">
           {filteredReviews.map(r => {
             const sc = STATUS_COLORS[r.status] || { bg: '#F3F4F6', text: '#374151' };
+            
+            // Calculate overall rating if null
+            const ratings = [
+              r.clinical_competence,
+              r.patient_care,
+              r.professionalism,
+              r.teamwork,
+              r.quality_safety
+            ]
+            .map(val => {
+              // Convert to number if it's a string
+              const num = typeof val === 'string' ? parseFloat(val) : val;
+              return (num != null && !isNaN(num) && num > 0) ? num : null;
+            })
+            .filter((val): val is number => val !== null);
+            
+            const calculatedRating = ratings.length > 0 
+              ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+              : (r.overall_rating ? r.overall_rating.toString() : '0.0');
+            
             return (
               <div key={r.id} className="tibbna-card">
                 <div className="tibbna-card-content">
@@ -214,20 +407,25 @@ export default function PerformancePage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <Link href={`/hr/employees/${r.employee_id}`} style={{ fontSize: '15px', fontWeight: 600, color: '#618FF5' }} className="hover:underline">{r.employee_name}</Link>
-                        <span className="tibbna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{r.status}</span>
+                        <span className="tibnna-badge" style={{ backgroundColor: sc.bg, color: sc.text, fontSize: '10px' }}>{r.status}</span>
                       </div>
-                      <p style={{ fontSize: '12px', color: '#525252' }}>Reviewer: {r.reviewer}</p>
-                      {r.strengths && <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}><strong>Strengths:</strong> {r.strengths.substring(0, 80)}…</p>}
+                      <p style={{ fontSize: '12px', color: '#525252' }}>Reviewer: {r.reviewer || 'System'}</p>
+                      {r.strengths && <p style={{ fontSize: '12px', color: '#525252', marginTop: '4px' }}><strong>Strengths:</strong> {r.strengths.substring(0, 80)}{r.strengths.length > 80 ? '…' : ''}</p>}
                       {r.recommendation && <p style={{ fontSize: '12px', color: '#6366F1', marginTop: '2px' }}>{r.recommendation}</p>}
                     </div>
                     <div className="flex items-center gap-3">
                       <div style={{ textAlign: 'center', minWidth: '60px' }}>
-                        <p style={{ fontSize: '28px', fontWeight: 700, color: ratingColor(r.overall_rating) }}>{r.overall_rating}</p>
+                        <p style={{ fontSize: '28px', fontWeight: 700, color: ratingColor(parseFloat(calculatedRating)) }}>{calculatedRating}</p>
                         <p style={{ fontSize: '11px', color: '#a3a3a3' }}>out of 5</p>
                       </div>
                       <div className="flex flex-col gap-1">
                         <button onClick={() => setViewReview(r)} className="btn-secondary" style={{ padding: '3px 8px' }}><Eye size={12} /></button>
-                        <button onClick={() => setEditReview({ ...r })} className="btn-secondary" style={{ padding: '3px 8px' }}><Pencil size={12} /></button>
+                        <button onClick={() => {
+  setSelectedEmployeeId(r.employee_id);
+  setEditingReviewId(r.id);
+  setEditingReviewData(r);
+  setShowReviewForm(true);
+}} className="btn-secondary" style={{ padding: '3px 8px' }}><Pencil size={12} /></button>
                         <button onClick={() => setDeleteReview(r)} className="btn-secondary" style={{ padding: '3px 8px', color: '#DC2626' }}><Trash2 size={12} /></button>
                       </div>
                     </div>
@@ -251,6 +449,26 @@ export default function PerformancePage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                  
+                  {/* Collapsible Attendance Score */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => setShowAttendance(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
+                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-3"
+                    >
+                      <Eye size={14} />
+                      {showAttendance[r.id] ? 'Hide' : 'Show'} Attendance Performance
+                    </button>
+                    {showAttendance[r.id] && (
+                      <AttendanceScoreCard 
+                        employeeId={r.employee_id}
+                        reviewPeriod={{
+                          start_date: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+                          end_date: new Date().toISOString().split('T')[0]
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -327,6 +545,18 @@ export default function PerformancePage() {
                     <p style={{ fontSize: '18px', fontWeight: 700, color: ratingColor(c.value!) }}>{c.value}/5</p>
                   </div>
                 ))}
+              </div>
+              
+              {/* Attendance Score in Modal */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px' }}>Attendance Performance</p>
+                <AttendanceScoreCard 
+                  employeeId={viewReview.employee_id}
+                  reviewPeriod={{
+                    start_date: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+                    end_date: new Date().toISOString().split('T')[0]
+                  }}
+                />
               </div>
               {viewReview.strengths && <div><p style={{ fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>Strengths</p><p style={{ fontSize: '13px', color: '#525252' }}>{viewReview.strengths}</p></div>}
               {viewReview.improvements && <div><p style={{ fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>Areas for Improvement</p><p style={{ fontSize: '13px', color: '#525252' }}>{viewReview.improvements}</p></div>}
@@ -440,6 +670,21 @@ export default function PerformancePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Review Form Modal */}
+      {showReviewForm && (
+        <ReviewFormModal
+          employeeId={selectedEmployeeId}
+          employeeName={employees.find(e => e.id === selectedEmployeeId)?.first_name + ' ' + employees.find(e => e.id === selectedEmployeeId)?.last_name || ''}
+          reviewId={editingReviewId || undefined}
+          reviewData={editingReviewData}
+          onClose={() => setShowReviewForm(false)}
+          onSave={() => {
+            setShowReviewForm(false);
+            loadData();
+          }}
+        />
       )}
 
       {/* Delete Recognition Confirmation */}
