@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import OrderDetailsModal from "./components/OrderDetailsModal";
+import CreateOrderModal from "./components/CreateOrderModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,9 @@ import {
   XCircle,
   PauseCircle,
   RefreshCw,
+  Edit,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 type Order = {
@@ -46,6 +51,11 @@ type Order = {
   updatedat: string;
   patientfirst: string | null;
   patientlast: string | null;
+  prescriberid: string | null;
+  prescribername: string | null;
+  items: { drugname: string; quantity: number; unitprice: string | null }[];
+  totalAmount: number;
+  paymentStatus: string;
 };
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Clock }> = {
@@ -65,66 +75,108 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export default function PharmacyOrdersPage({
   workspaceid,
+  userName,
+  userId,
 }: {
   workspaceid: string;
+  userName: string;
+  userId: string;
 }) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Use React Query to cache orders
+  const { data: orders = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ["pharmacy-orders", workspaceid, statusFilter],
+    queryFn: async () => {
       const qs = statusFilter !== "all" ? `?status=${statusFilter}` : "";
       const res = await fetch(`/api/d/${workspaceid}/pharmacy-orders${qs}`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      setOrders(data.orders || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceid, statusFilter]);
+      return data.orders || [];
+    },
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+  });
 
-  const handleSync = async () => {
-    setSyncing(true);
+  const handleSync = () => {
     setSyncMessage(null);
-    try {
+    syncMutation.mutate();
+  };
+
+  // Sync mutation
+  const syncMutation = useMutation({
+    mutationFn: async () => {
       const res = await fetch(`/api/d/${workspaceid}/pharmacy-orders/sync`, {
         method: "POST",
       });
-      const data = await res.json();
-      if (res.ok) {
-        setSyncMessage(`Synced ${data.synced} new, ${data.skipped} existing`);
-        await fetchOrders();
-      } else {
-        setSyncMessage(data.error || "Sync failed");
-      }
-    } catch {
+      if (!res.ok) throw new Error("Sync failed");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSyncMessage(`Synced ${data.synced} new, ${data.skipped} existing`);
+      queryClient.invalidateQueries({ queryKey: ["pharmacy-orders", workspaceid] });
+    },
+    onError: () => {
       setSyncMessage("Network error during sync");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  const filtered = orders.filter((o) => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    const name = `${o.patientfirst || ""} ${o.patientlast || ""}`.toLowerCase();
-    return (
-      name.includes(s) ||
-      o.orderid.toLowerCase().includes(s) ||
-      (o.openehrorderid || "").toLowerCase().includes(s)
-    );
+    },
   });
+
+  // Auto-sync on page load
+  useEffect(() => {
+    syncMutation.mutate();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    return orders.filter((o) => {
+      const matchesStatus = statusFilter === "all" || o.status === statusFilter;
+      const matchesSearch =
+        !search ||
+        `${o.patientfirst} ${o.patientlast}`.toLowerCase().includes(search.toLowerCase()) ||
+        o.orderid.toLowerCase().includes(search.toLowerCase());
+      
+      // Date filtering
+      const orderDate = new Date(o.createdat);
+      let matchesDate = true;
+      if (dateFilter === "day") {
+        matchesDate = orderDate >= today;
+      } else if (dateFilter === "week") {
+        matchesDate = orderDate >= weekAgo;
+      } else if (dateFilter === "month") {
+        matchesDate = orderDate >= monthAgo;
+      }
+      
+      return matchesStatus && matchesSearch && matchesDate;
+    });
+  }, [orders, statusFilter, dateFilter, search]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  }, [filtered, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [statusFilter, dateFilter, search]);
 
   const counts = {
     all: orders.length,
@@ -134,89 +186,102 @@ export default function PharmacyOrdersPage({
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Pill className="h-6 w-6" />
-            Pharmacy Orders
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage medication orders, dispensing, and billing
-          </p>
+    <div className="flex flex-1 flex-col h-full overflow-hidden">
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 p-4 pt-0 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Pill className="h-6 w-6" />
+              Pharmacy Orders
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage medication orders, dispensing, and billing
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {syncMessage && (
+              <span className="text-xs text-muted-foreground">{syncMessage}</span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSync}
+              disabled={syncMutation.isPending}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+              {syncMutation.isPending ? "Syncing..." : "Refresh"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="gap-2 bg-[#618FF5] border-blue-400 text-white hover:bg-[#618FF5] hover:border-blue-900"
+            >
+              Add an Order
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {syncMessage && (
-            <span className="text-xs text-muted-foreground">{syncMessage}</span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSync}
-            disabled={syncing}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing..." : "Sync from OpenEHR"}
-          </Button>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="shadow-sm bg-purple-100 border-purple-200">
+            <CardContent className="py-4 px-4 text-center">
+              <p className="text-sm font-semibold text-purple-900">Total orders {counts.all}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm bg-green-100 border-green-200">
+            <CardContent className="py-4 px-4 text-center">
+              <p className="text-sm font-semibold text-green-900">Complete orders {counts.DISPENSED}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm bg-yellow-100 border-yellow-200">
+            <CardContent className="py-4 px-4 text-center">
+              <p className="text-sm font-semibold text-yellow-900">Pending orders {counts.PENDING}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by patient name or order ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Date filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="day">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+              <SelectItem value="DISPENSED">Dispensed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setStatusFilter("all")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{counts.all}</div>
-            <p className="text-xs text-muted-foreground">Total Orders</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow border-orange-200" onClick={() => setStatusFilter("PENDING")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-orange-600">{counts.PENDING}</div>
-            <p className="text-xs text-muted-foreground">Pending</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow border-blue-200" onClick={() => setStatusFilter("IN_PROGRESS")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">{counts.IN_PROGRESS}</div>
-            <p className="text-xs text-muted-foreground">In Progress</p>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow border-green-200" onClick={() => setStatusFilter("DISPENSED")}>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">{counts.DISPENSED}</div>
-            <p className="text-xs text-muted-foreground">Dispensed</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by patient name or order ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-            <SelectItem value="DISPENSED">Dispensed</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Orders Table */}
-      <Card>
+      {/* Scrollable Table Section */}
+      <div className="flex-1 min-h-0 overflow-auto px-4 pb-4">
+        <Card>
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -230,24 +295,31 @@ export default function PharmacyOrdersPage({
             </div>
           ) : (
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Medication / Notes</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="bg-muted/50">Order ID</TableHead>
+                  <TableHead className="bg-muted/50">Patient</TableHead>
+                  <TableHead className="bg-muted/50">Prescriber</TableHead>
+                  <TableHead className="bg-muted/50">Products</TableHead>
+                  <TableHead className="bg-muted/50">Date</TableHead>
+                  <TableHead className="bg-muted/50">Payment Status</TableHead>
+                  <TableHead className="bg-muted/50">Order Status</TableHead>
+                  <TableHead className="text-right bg-muted/50">Edit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((order) => {
+                {paginatedOrders.map((order) => {
                   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.PENDING;
                   const StatusIcon = cfg.icon;
                   return (
-                    <TableRow key={order.orderid}>
+                    <TableRow 
+                      key={order.orderid}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedOrder(order.orderid);
+                        setIsModalOpen(true);
+                      }}
+                    >
                       <TableCell className="font-mono text-xs">
                         {order.orderid.slice(0, 8)}…
                       </TableCell>
@@ -256,24 +328,46 @@ export default function PharmacyOrdersPage({
                           ? `${order.patientfirst} ${order.patientlast}`
                           : "—"}
                       </TableCell>
-                      <TableCell className="max-w-[220px]">
-                        {order.notes ? (
-                          <span className="text-xs text-muted-foreground line-clamp-2">
-                            {order.notes}
-                          </span>
+                      <TableCell className="text-sm">
+                        {order.prescribername || "—"}
+                      </TableCell>
+                      <TableCell className="max-w-[250px]">
+                        {order.items && order.items.length > 0 ? (
+                          <div className="text-xs space-y-1">
+                            {order.items.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="text-muted-foreground truncate"
+                                title={`${item.drugname} (${item.quantity})`}
+                              >
+                                {item.drugname} ({(item.quantity || 0) - (item.quantitydispensed || 0)})
+                              </div>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {order.source === "openehr" ? "OpenEHR" : "Manual"}
-                        </Badge>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(order.createdat).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-0.5 rounded text-xs ${PRIORITY_COLORS[order.priority] || PRIORITY_COLORS.routine}`}>
-                          {order.priority.toUpperCase()}
-                        </span>
+                        <Badge 
+                          variant={
+                            order.paymentStatus === "PAID" ? "default" : 
+                            order.paymentStatus === "UNPAID" ? "destructive" : 
+                            order.paymentStatus === "PARTIALLY_PAID" ? "secondary" :
+                            "outline"
+                          }
+                          className={
+                            order.paymentStatus === "PAID" ? "bg-green-600" : 
+                            order.paymentStatus === "UNPAID" ? "bg-red-100 text-red-700" : 
+                            order.paymentStatus === "PARTIALLY_PAID" ? "bg-orange-100 text-orange-700" :
+                            "bg-gray-100 text-gray-600"
+                          }
+                        >
+                          {order.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : order.paymentStatus}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={cfg.variant} className="gap-1">
@@ -281,15 +375,19 @@ export default function PharmacyOrdersPage({
                           {cfg.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(order.createdat).toLocaleDateString()}
-                      </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/d/${workspaceid}/pharmacy/orders/${order.orderid}`}>
-                          <Button size="sm" variant="outline">
-                            View
-                          </Button>
-                        </Link>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedOrder(order.orderid);
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -297,8 +395,77 @@ export default function PharmacyOrdersPage({
               </TableBody>
             </Table>
           )}
+          
+          {/* Pagination Controls */}
+          {!loading && filtered.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <div className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} orders
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={currentPage === page ? "w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700" : "w-8 h-8 p-0 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+      </div>
+
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        workspaceid={workspaceid}
+        orderid={selectedOrder || ""}
+        open={isModalOpen && selectedOrder !== null}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedOrder(null);
+        }}
+      />
+
+      {/* Create Order Modal */}
+      <CreateOrderModal
+        workspaceid={workspaceid}
+        userName={userName}
+        userId={userId}
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["pharmacy-orders", workspaceid] });
+          setIsCreateModalOpen(false);
+        }}
+      />
     </div>
   );
 }

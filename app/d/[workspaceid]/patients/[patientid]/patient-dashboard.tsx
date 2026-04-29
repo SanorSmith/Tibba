@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePatientData } from "./hooks/usePatientData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Home } from "lucide-react";
 import Link from "next/link";
 import {
   Tooltip,
@@ -123,6 +122,9 @@ export default function PatientDashboard({
     return false;
   };
 
+  // Debug: log raw lab results
+  console.log('[Dashboard] Raw labResults:', labResults.length, labResults);
+  
   // Transform lab results to dashboard format (LabRecord)
   const transformedLabResults = labResults.map((result: any) => {
     // Build individual test result items with their abnormal status
@@ -173,9 +175,10 @@ export default function PatientDashboard({
     isOrder: true, // Mark as lab order
   }));
 
-  // Combine lab results and orders, sorted by date (newest first)
+  // Combine lab results and orders, sorted by date (newest first), take only the latest
   const allLabItems = [...transformedLabResults, ...transformedLabOrders]
-    .sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime());
+    .sort((a, b) => new Date(b.test_date).getTime() - new Date(a.test_date).getTime())
+    .slice(0, 1); // Show only the latest lab result/order
 
   // const [loadingMoreDiagnoses, setLoadingMoreDiagnoses] = useState(false);
   const [selectedDiagnosis, setSelectedDiagnosis] =
@@ -265,10 +268,13 @@ export default function PatientDashboard({
       )
     : null;
 
-  // Placeholder functions for pagination (will be enhanced later if needed)
-  const loadVitalSigns = async () => {
-    // Data is already loaded via usePatientData hook
-    console.log("Vital signs already loaded from cache");
+  // Proper function to refresh vital signs data
+  const loadVitalSigns = async (reset = false) => {
+    console.log("Refreshing vital signs data...");
+    // Invalidate the vital signs query to force a refetch
+    await queryClient.invalidateQueries({
+      queryKey: ["vital-signs", workspaceid, patient.patientid]
+    });
   };
 
   const loadDiagnoses = async () => {
@@ -287,14 +293,7 @@ export default function PatientDashboard({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Link href={`/d/${workspaceid}/doctor`}>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Back to Doctor Dashboard"
-              className="bg-[#618FF5] border-blue-400 text-white hover:bg-[#618FF5] hover:border-blue-900"
-            >
-              <Home className="h-4 w-4" />
-            </Button>
+            
           </Link>
         </div>
 
@@ -350,26 +349,13 @@ export default function PatientDashboard({
             </div>
 
             {/* Right column: Demographics */}
-            <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-              <span>
-                Age:{" "}
-                <span className="font-medium text-foreground">
-                  {age !== null ? `${age} years` : "N/A"}
-                </span>
-              </span>
-              <span>
-                Gender:{" "}
-                <span className="font-medium text-foreground capitalize">
-                  {patient.gender || "N/A"}
-                </span>
-              </span>
-              <span>
-                Blood Group:{" "}
-                <span className="font-medium text-foreground">
-                  {patient.bloodgroup || "N/A"}
-                </span>
-              </span>
-            </div>
+            <div className="flex flex-row gap-2 text-xs text-muted-foreground whitespace-nowrap">
+  <span>Age: <span className="font-medium text-foreground">{age ?? "N/A"}</span></span>
+  <span>|</span>
+  <span>Gender: <span className="font-medium text-foreground capitalize">{patient.gender || "N/A"}</span></span>
+  <span>|</span>
+  <span>Blood: <span className="font-medium text-foreground">{patient.bloodgroup || "N/A"}</span></span>
+</div>
           </div>
         </div>
       </div>
@@ -571,6 +557,7 @@ export default function PatientDashboard({
                 prescriptions={prescriptions}
                 loadingPrescriptions={loadingPrescriptions}
                 loadPrescriptions={() => queryClient.invalidateQueries({ queryKey: ["prescriptions", workspaceid, patient.patientid] })}
+                patient={patient}
               />
             )}
           </TabsContent>

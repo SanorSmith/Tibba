@@ -5,11 +5,8 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
-import {
-  getOpenEHREHRBySubjectId,
-  createOpenEHRComposition,
-  getOpenEHRPrescriptions,
-} from "@/lib/openehr/openehr";
+import { getOpenEHREHRBySubjectId, createOpenEHRComposition, getOpenEHRPrescriptions } from "@/lib/openehr/openehr";
+import { ensurePatientEHR } from "@/lib/openehr/ensure-ehr";
 
 /**
  * GET /api/d/[workspaceid]/patients/[patientid]/prescriptions
@@ -114,52 +111,34 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { prescription } = body as {
-      // align with MedsTab form shape
-      prescription: {
-        medicationItem: string;
-        medicationItemCode?: string;
-        productName?: string;
-        activeIngredient?: string;
-        usage?: string;
-        validUntil?: string;
-        doseAmount: string;
-        doseUnit: string;
-        route: string;
-        timingDirections: string;
-        directionDuration?: string;
-        asRequired?: boolean;
-        asRequiredCriterion?: string;
-        additionalInstruction?: string;
-        clinicalIndication?: string;
-        maximumDoseAmount?: string;
-        maximumDoseUnit?: string;
-        dispenseInstruction?: string;
-        comment?: string;
-      };
-    };
-
-    if (!prescription) {
+    
+    // Support both single prescription and multiple prescriptions
+    const prescriptions = body.prescriptions || (body.prescription ? [body.prescription] : []);
+    
+    if (prescriptions.length === 0) {
       return NextResponse.json(
-        { error: "Prescription data is required" },
+        { error: "No prescriptions provided" },
         { status: 400 }
       );
     }
 
-    if (
-      !prescription.medicationItem ||
-      !prescription.route ||
-      !prescription.doseAmount ||
-      !prescription.doseUnit ||
-      !prescription.timingDirections
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Medication item, route, dose amount, dose unit and timing directions are required",
-        },
-        { status: 400 }
-      );
+    // Validate all prescriptions
+    for (const prescription of prescriptions) {
+      if (
+        !prescription.medicationItem ||
+        !prescription.route ||
+        !prescription.doseAmount ||
+        !prescription.doseUnit ||
+        !prescription.timingDirections
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "All prescriptions must have: medication item, route, dose amount, dose unit and timing directions",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch patient to get National ID
@@ -173,24 +152,94 @@ export async function POST(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    // Find EHR by National ID or patient UUID
-    let ehrId: string | null = null;
-    if (patient.nationalid) {
-      ehrId = await getOpenEHREHRBySubjectId(patient.nationalid);
-    }
-    if (!ehrId) {
-      ehrId = await getOpenEHREHRBySubjectId(patientid);
-    }
+    // Ensure patient has a valid EHR in OpenEHR
+    // This will create the EHR if it doesn't exist, using the stored ehrid if available
+    const ehrId = await ensurePatientEHR(patientid);
 
-    if (!ehrId) {
-      return NextResponse.json(
-        { error: "No EHR found for this patient" },
-        { status: 404 }
+    // ═══ DRUG INTERACTION CHECK ═══
+    // Check for interactions between new prescriptions and existing medications
+    try {
+      const medicationNames = prescriptions.map((p: any) => ({
+        name: p.medicationItem,
+        genericName: p.activeIngredient || p.medicationItem,
+      }));
+
+      const interactionCheckResponse = await fetch(
+        `${request.nextUrl.origin}/api/pharmacy/drug-interactions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            drugs: medicationNames,
+            patientId: patientid,
+            workspaceId: workspaceid,
+            checkAllergies: true,
+          }),
+        }
       );
+
+      if (interactionCheckResponse.ok) {
+        const interactionData = await interactionCheckResponse.json();
+        
+        // Log interaction check results
+        console.log(`[Prescription] Checked ${medicationNames.length} medications for patient ${patientid}`);
+        console.log(`[Prescription] Found ${interactionData.interactions?.length || 0} potential interactions`);
+        
+        if (interactionData.allergyWarnings > 0) {
+          console.warn(`[Prescription] ⚠️ ALLERGY WARNINGS: ${interactionData.allergyWarnings}`);
+        }
+        
+        if (interactionData.clinicalWarnings > 0) {
+          console.warn(`[Prescription] ⚠️ CLINICAL WARNINGS: ${interactionData.clinicalWarnings}`);
+        }
+
+        // Check for critical interactions
+        const criticalInteractions = interactionData.interactions?.filter(
+          (i: any) => i.severity === "critical"
+        ) || [];
+
+        if (criticalInteractions.length > 0) {
+          console.error(`[Prescription] 🚨 CRITICAL INTERACTIONS DETECTED: ${criticalInteractions.length}`);
+          criticalInteractions.forEach((interaction: any) => {
+            console.error(`  - ${interaction.drugs.join(" + ")}: ${interaction.description}`);
+          });
+          
+          // Return warning but allow doctor to proceed (they can review and decide)
+          return NextResponse.json(
+            {
+              error: "Critical drug interactions detected",
+              interactions: interactionData.interactions,
+              allergyWarnings: interactionData.allergyWarnings,
+              clinicalWarnings: interactionData.clinicalWarnings,
+              alternatives: interactionData.alternatives,
+              message: "Please review the interactions before prescribing. Contact pharmacy if needed.",
+            },
+            { status: 409 } // 409 Conflict
+          );
+        }
+
+        // Log non-critical warnings
+        const warnings = interactionData.interactions?.filter(
+          (i: any) => i.severity === "major" || i.severity === "moderate"
+        ) || [];
+        
+        if (warnings.length > 0) {
+          console.warn(`[Prescription] ⚠️ ${warnings.length} interaction warnings (non-critical)`);
+        }
+      }
+    } catch (interactionError) {
+      console.error("[Prescription] Error checking drug interactions:", interactionError);
+      // Continue with prescription creation even if interaction check fails
     }
 
-    // Build FLAT composition data for medication_order section using v1 template
-    const compositionData: Record<string, unknown> = {
+    // Create OpenEHR composition for each prescription
+    const compositionUids: string[] = [];
+    const errors: string[] = [];
+
+    for (const prescription of prescriptions) {
+      try {
+        // Build FLAT composition data for medication_order section using v1 template
+        const compositionData: Record<string, unknown> = {
       "template_clinical_encounter_v1/language|code": "en",
       "template_clinical_encounter_v1/language|terminology": "ISO_639-1",
       "template_clinical_encounter_v1/territory|code": "US",
@@ -321,16 +370,38 @@ export async function POST(
       overallDirections ||
       "Prescription created from clinical encounter";
 
-    const compositionUid = await createOpenEHRComposition(
-      ehrId,
-      "template_clinical_encounter_v1",
-      compositionData
-    );
+        const compositionUid = await createOpenEHRComposition(
+          ehrId,
+          "template_clinical_encounter_v1",
+          compositionData
+        );
+
+        compositionUids.push(compositionUid);
+      } catch (error) {
+        console.error(`[POST /prescriptions] Error creating composition for ${prescription.medicationItem}:`, error);
+        errors.push(`Failed to create prescription for ${prescription.medicationItem}`);
+      }
+    }
+
+    // Return results
+    if (compositionUids.length === 0) {
+      return NextResponse.json(
+        { 
+          error: "Failed to create any prescriptions in OpenEHR",
+          details: errors 
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(
       {
-        message: "Prescription created successfully in OpenEHR",
-        composition_uid: compositionUid,
+        message: `${compositionUids.length} prescription(s) created successfully in OpenEHR`,
+        composition_uids: compositionUids,
+        total: prescriptions.length,
+        successful: compositionUids.length,
+        failed: errors.length,
+        errors: errors.length > 0 ? errors : undefined,
       },
       { status: 201 }
     );

@@ -24,5 +24,11 @@ export default async function PharmacyDashboardPage({ params }: PageProps) {
     redirect(`/d/${workspaceid}`);
   }
 
-  return <PharmacyDashboard workspaceid={workspaceid} userName={user.name || "Pharmacist"} />;
+  return (
+    <PharmacyDashboard 
+      workspaceid={workspaceid} 
+      userName={user.name || user.email || "User"}
+      userId={user.userid}
+    />
+  );
 }

@@ -6,7 +6,7 @@
 
 import { db } from "@/lib/db";
 import { notifications, workspaceusers } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { NotificationTypeType } from "@/lib/db/tables/notifications";
 import type { WorkspaceUserRole } from "@/lib/db/tables/workspace";
 
@@ -50,16 +50,20 @@ export async function createWorkspaceNotification({
     // Create notification for each user
     const notificationPromises = workspaceUsers.map(async (user) => {
       return await db.insert(notifications).values({
-        workspaceid,
-        userid: user.userid,
-        type,
+        organization_id: workspaceid,
+        recipient_id: user.userid,
+        notification_type: type,
+        category: 'LIMS',
         title,
         message,
-        relatedentityid,
-        relatedentitytype,
+        related_entity_id: relatedentityid,
+        related_entity_type: relatedentitytype,
         metadata: metadata || {},
-        priority,
-        read: false,
+        priority: priority.toUpperCase(),
+        is_read: false,
+        send_in_app: true,
+        send_email: false,
+        send_sms: false,
       });
     });
 
@@ -86,16 +90,20 @@ export async function createUserNotification({
 }: CreateNotificationParams & { userid: string }) {
   try {
     await db.insert(notifications).values({
-      workspaceid,
-      userid,
-      type,
+      organization_id: workspaceid,
+      recipient_id: userid,
+      notification_type: type,
+      category: 'LIMS',
       title,
       message,
-      relatedentityid,
-      relatedentitytype,
+      related_entity_id: relatedentityid,
+      related_entity_type: relatedentitytype,
       metadata: metadata || {},
-      priority,
-      read: false,
+      priority: priority.toUpperCase(),
+      is_read: false,
+      send_in_app: true,
+      send_email: false,
+      send_sms: false,
     });
     return { success: true };
   } catch (error) {
@@ -120,12 +128,13 @@ export async function createRoleNotification({
 }: CreateNotificationParams & { role: WorkspaceUserRole }) {
   try {
     // Get all users in the workspace with the specified role
+    // Use sql cast because workspaceid may be text from lims_orders but uuid in workspaceusers
     const roleUsers = await db
       .select({ userid: workspaceusers.userid })
       .from(workspaceusers)
       .where(
         and(
-          eq(workspaceusers.workspaceid, workspaceid),
+          sql`${workspaceusers.workspaceid}::text = ${workspaceid}`,
           eq(workspaceusers.role, role)
         )
       );
@@ -136,16 +145,20 @@ export async function createRoleNotification({
 
     const notificationPromises = roleUsers.map(async (user) => {
       return await db.insert(notifications).values({
-        workspaceid,
-        userid: user.userid,
-        type,
+        organization_id: workspaceid,
+        recipient_id: user.userid,
+        notification_type: type,
+        category: 'LIMS',
         title,
         message,
-        relatedentityid,
-        relatedentitytype,
+        related_entity_id: relatedentityid,
+        related_entity_type: relatedentitytype,
         metadata: metadata || {},
-        priority,
-        read: false,
+        priority: priority.toUpperCase(),
+        is_read: false,
+        send_in_app: true,
+        send_email: false,
+        send_sms: false,
       });
     });
 
@@ -165,104 +178,66 @@ export async function notifyDoctorOnResultRelease({
   workspaceid,
   sampleid,
   testname,
-  testcode,
-  resultvalue,
-  resultid,
-  patientName,
+  patientname,
 }: {
   workspaceid: string;
   sampleid: string;
   testname: string;
-  testcode: string;
-  resultvalue: string;
-  resultid: string;
-  patientName?: string;
+  patientname: string;
 }) {
   try {
-    // Dynamic imports to avoid circular dependency issues
-    const { accessionSamples, limsOrders, patients } = await import("@/lib/db/schema");
+    const { accessionSamples } = await import("@/lib/db/schema");
 
-    // Trace: sample → order → ordering doctor
+    // Get sample number
     const [sample] = await db
-      .select({
-        orderid: accessionSamples.orderid,
-        patientid: accessionSamples.patientid,
-        samplenumber: accessionSamples.samplenumber,
-      })
+      .select({ samplenumber: accessionSamples.samplenumber })
       .from(accessionSamples)
       .where(eq(accessionSamples.sampleid, sampleid))
       .limit(1);
 
-    let orderingDoctorId: string | null = null;
-    let resolvedPatientName = patientName || "Unknown Patient";
-
-    if (sample?.orderid) {
-      const [order] = await db
-        .select({ orderingproviderid: limsOrders.orderingproviderid })
-        .from(limsOrders)
-        .where(eq(limsOrders.orderid, sample.orderid))
-        .limit(1);
-
-      if (order?.orderingproviderid) {
-        orderingDoctorId = order.orderingproviderid;
-      }
-    }
-
-    // Resolve patient name if not provided
-    if (!patientName && sample?.patientid) {
-      const [patient] = await db
-        .select({ firstname: patients.firstname, lastname: patients.lastname })
-        .from(patients)
-        .where(eq(patients.patientid, sample.patientid))
-        .limit(1);
-
-      if (patient) {
-        resolvedPatientName = `${patient.firstname} ${patient.lastname}`;
-      }
-    }
-
+    const sampleNumber = sample?.samplenumber || "N/A";
     const notificationTitle = "Lab Results Released";
-    const notificationMessage = `Results for ${testname} (${testcode}) are now available for patient ${resolvedPatientName}. Sample: ${sample?.samplenumber || "N/A"}.`;
+    const notificationMessage = `Results for ${testname} are now available for patient ${patientname}. Sample: ${sampleNumber}.`;
     const notificationMeta = {
-      testCode: testcode,
       testName: testname,
-      resultValue: resultvalue,
       sampleId: sampleid,
-      sampleNumber: sample?.samplenumber,
-      patientName: resolvedPatientName,
+      sampleNumber: sampleNumber,
+      patientName: patientname,
     };
 
-    if (orderingDoctorId) {
-      // Notify the specific ordering doctor
-      await createUserNotification({
-        workspaceid,
-        userid: orderingDoctorId,
-        type: "RESULTS_RELEASED" as any,
-        title: notificationTitle,
-        message: notificationMessage,
-        relatedentityid: resultid,
-        relatedentitytype: "test_result",
-        metadata: notificationMeta,
-        priority: "high",
-      });
-      return { success: true, notifiedDoctor: orderingDoctorId };
-    } else {
-      // Fallback: notify all doctors in the workspace
-      const result = await createRoleNotification({
-        workspaceid,
-        role: "doctor",
-        type: "RESULTS_RELEASED" as any,
-        title: notificationTitle,
-        message: notificationMessage,
-        relatedentityid: resultid,
-        relatedentitytype: "test_result",
-        metadata: notificationMeta,
-        priority: "high",
-      });
-      return { success: true, notifiedDoctorCount: result.count };
-    }
+    console.log(`[Notifications] Creating RESULTS_RELEASED notification for workspace ${workspaceid}, tests: ${testname}, patient: ${patientname}`);
+
+    // Notify all doctors in the workspace
+    const doctorResult = await createRoleNotification({
+      workspaceid,
+      role: "doctor",
+      type: "RESULTS_RELEASED" as any,
+      title: notificationTitle,
+      message: notificationMessage,
+      relatedentityid: sampleid,
+      relatedentitytype: "test_result",
+      metadata: notificationMeta,
+      priority: "high",
+    });
+
+    // Also notify lab technicians so they see released results in LIMS
+    const labTechResult = await createRoleNotification({
+      workspaceid,
+      role: "lab_technician",
+      type: "RESULTS_RELEASED" as any,
+      title: notificationTitle,
+      message: notificationMessage,
+      relatedentityid: sampleid,
+      relatedentitytype: "test_result",
+      metadata: notificationMeta,
+      priority: "high",
+    });
+    
+    const totalCount = (doctorResult.count || 0) + (labTechResult.count || 0);
+    console.log(`[Notifications] RESULTS_RELEASED notification created for ${doctorResult.count} doctors and ${labTechResult.count} lab technicians`);
+    return { success: true, notifiedDoctorCount: totalCount };
   } catch (error) {
-    console.error("Error notifying doctor on result release:", error);
+    console.error("[Notifications] Error notifying doctor on result release:", error);
     return { success: false, error };
   }
 }
@@ -381,12 +356,12 @@ export async function getUserNotifications(
   try {
     
     const conditions = [
-      eq(notifications.userid, userid ),
-      eq(notifications.workspaceid, workspaceid ),
+      eq(notifications.recipient_id, userid),
+      eq(notifications.organization_id, workspaceid),
     ];
 
     if (unreadOnly) {
-      conditions.push(eq(notifications.read, false));
+      conditions.push(eq(notifications.is_read, false));
     }
 
 
@@ -394,7 +369,7 @@ export async function getUserNotifications(
       .select()
       .from(notifications)
       .where(and(...conditions))
-      .orderBy(desc(notifications.createdat))
+      .orderBy(desc(notifications.created_at))
       .limit(limit);
 
     return { success: true, notifications: userNotifications };
@@ -410,10 +385,10 @@ export async function markNotificationAsRead(notificationid: string, userid: str
   try {
     await db
       .update(notifications)
-      .set({ read: true, updatedat: new Date() })
+      .set({ is_read: true, read_at: new Date() })
       .where(and(
         eq(notifications.notificationid, notificationid),
-        eq(notifications.userid, userid)
+        eq(notifications.recipient_id, userid)
       ));
     return { success: true };
   } catch (error) {
@@ -428,11 +403,11 @@ export async function markAllNotificationsAsRead(userid: string, workspaceid: st
   try {
     await db
       .update(notifications)
-      .set({ read: true, updatedat: new Date() })
+      .set({ is_read: true, read_at: new Date() })
       .where(and(
-        eq(notifications.userid, userid ),
-        eq(notifications.workspaceid, workspaceid ),
-        eq(notifications.read, false)
+        eq(notifications.recipient_id, userid),
+        eq(notifications.organization_id, workspaceid),
+        eq(notifications.is_read, false)
       ));
     return { success: true };
   } catch (error) {
@@ -449,7 +424,7 @@ export async function deleteNotification(notificationid: string, userid: string)
       .delete(notifications)
       .where(and(
         eq(notifications.notificationid, notificationid),
-        eq(notifications.userid, userid )
+        eq(notifications.recipient_id, userid)
       ));
     return { success: true };
   } catch (error) {
@@ -466,9 +441,9 @@ export async function getUnreadNotificationCount(userid: string, workspaceid: st
       .select({ count: notifications })
       .from(notifications)
       .where(and(
-        eq(notifications.userid, userid),
-        eq(notifications.workspaceid, workspaceid),
-        eq(notifications.read, false)
+        eq(notifications.recipient_id, userid),
+        eq(notifications.organization_id, workspaceid),
+        eq(notifications.is_read, false)
       ));
     
     return { success: true, count: result.length };

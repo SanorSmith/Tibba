@@ -52,7 +52,7 @@ interface LocationStock {
 }
 
 interface InventoryItem {
-  drugid: string;
+  itemid: string;
   name: string;
   genericname: string | null;
   form: string;
@@ -60,6 +60,9 @@ interface InventoryItem {
   unit: string;
   barcode: string | null;
   manufacturer: string | null;
+  packagingtype: string | null;
+  packagesize: string | null;
+  tabletsperpack: number | null;
   isactive: boolean;
   totalStock: number;
   batches: BatchInfo[];
@@ -111,21 +114,24 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
     queryKey: ["pharmacy-inventory", workspaceid, search, filter],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (filter !== "all") params.set("filter", filter);
-      const res = await fetch(`/api/d/${workspaceid}/pharmacy-inventory?${params}`);
+      if (search) params.append("search", search);
+      if (filter !== "all") params.append("filter", filter);
+      const res = await fetch(`/api/d/${workspaceid}/pharmacy-inventory?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
+    staleTime: 30000,
     refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const reorderMutation = useMutation({
-    mutationFn: async (drugids: string[]) => {
+    mutationFn: async (itemids: string[]) => {
       const res = await fetch(`/api/d/${workspaceid}/pharmacy-inventory`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drugids }),
+        body: JSON.stringify({ itemids }),
       });
       if (!res.ok) throw new Error("Reorder failed");
       return res.json();
@@ -136,18 +142,18 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
     },
   });
 
-  const toggleReorder = (drugid: string) => {
+  const toggleReorder = (itemid: string) => {
     setSelectedForReorder((prev) => {
       const next = new Set(prev);
-      if (next.has(drugid)) next.delete(drugid);
-      else next.add(drugid);
+      if (next.has(itemid)) next.delete(itemid);
+      else next.add(itemid);
       return next;
     });
   };
 
   const selectAllLowStock = () => {
     if (!data) return;
-    const lowIds = data.inventory.filter((d) => d.reorderSuggested).map((d) => d.drugid);
+    const lowIds = data.inventory.filter((d) => d.reorderSuggested).map((d) => d.itemid);
     setSelectedForReorder(new Set(lowIds));
   };
 
@@ -177,7 +183,7 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#618FF5]" />
       </div>
     );
   }
@@ -186,11 +192,11 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
     <div className="space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <SummaryCard label="Total Drugs" value={summary?.totalDrugs ?? 0} icon={<Package className="h-4 w-4 text-teal-500" />} />
+        <SummaryCard label="Total Drugs" value={summary?.totalDrugs ?? 0} icon={<Package className="h-4 w-4 text-[#618FF5]" />} />
         <SummaryCard label="Low Stock" value={summary?.lowStock ?? 0} icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} alert={!!summary?.lowStock} />
         <SummaryCard label="Out of Stock" value={summary?.outOfStock ?? 0} icon={<PackageX className="h-4 w-4 text-red-500" />} alert={!!summary?.outOfStock} />
         <SummaryCard label="Expiring Soon" value={summary?.expiringSoon ?? 0} icon={<CalendarClock className="h-4 w-4 text-orange-500" />} alert={!!summary?.expiringSoon} />
-        <SummaryCard label="Reorder Needed" value={summary?.reorderNeeded ?? 0} icon={<ShoppingCart className="h-4 w-4 text-blue-500" />} alert={!!summary?.reorderNeeded} />
+        <SummaryCard label="Reorder Needed" value={summary?.reorderNeeded ?? 0} icon={<ShoppingCart className="h-4 w-4 text-[#618FF5]" />} alert={!!summary?.reorderNeeded} />
       </div>
 
       {/* Filters + Auto-reorder */}
@@ -221,7 +227,7 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
           </Button>
           <Button
             size="sm"
-            className="h-9 text-xs bg-teal-600 hover:bg-teal-700"
+            className="h-9 text-xs bg-[#618FF5] border-blue-400 text-white hover:bg-[#618FF5] hover:border-blue-900"
             onClick={handleAutoReorder}
             disabled={selectedForReorder.size === 0 || reorderMutation.isPending}
           >
@@ -254,6 +260,8 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
                   <TableHead className="text-xs">Drug Name</TableHead>
                   <TableHead className="text-xs">Form / Strength</TableHead>
                   <TableHead className="text-xs">Manufacturer</TableHead>
+                  <TableHead className="text-xs">Packaging</TableHead>
+                  <TableHead className="text-xs">Location</TableHead>
                   <TableHead className="text-xs text-center">Stock</TableHead>
                   <TableHead className="text-xs">Batches</TableHead>
                   <TableHead className="text-xs">Nearest Expiry</TableHead>
@@ -284,15 +292,15 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
 
                     return (
                       <TableRow
-                        key={item.drugid}
+                        key={item.itemid}
                         className={`${item.isOutOfStock ? "bg-red-50/50" : item.isLowStock ? "bg-amber-50/50" : ""}`}
                       >
                         <TableCell className="text-center">
                           {item.reorderSuggested && (
                             <input
                               type="checkbox"
-                              checked={selectedForReorder.has(item.drugid)}
-                              onChange={() => toggleReorder(item.drugid)}
+                              checked={selectedForReorder.has(item.itemid)}
+                              onChange={() => toggleReorder(item.itemid)}
                               className="h-4 w-4 rounded border-gray-300"
                             />
                           )}
@@ -307,6 +315,34 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
                         </TableCell>
                         <TableCell className="text-sm">{item.form} / {item.strength}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{item.manufacturer || "—"}</TableCell>
+                        <TableCell>
+                          {item.packagingtype || item.packagesize || item.tabletsperpack ? (
+                            <div>
+                              {item.packagingtype && <p className="text-[11px] font-medium">{item.packagingtype}</p>}
+                              {item.packagesize && <p className="text-[11px] text-muted-foreground">{item.packagesize}</p>}
+                              {item.tabletsperpack && <p className="text-[10px] text-muted-foreground">{item.tabletsperpack} units/pack</p>}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.locations && item.locations.length > 0 ? (
+                            <div className="space-y-1">
+                              {item.locations.slice(0, 2).map((loc: any, idx: number) => (
+                                <div key={idx} className="text-[11px]">
+                                  <p className="font-medium text-gray-700">{loc.locationname}</p>
+                                  <p className="text-[10px] text-muted-foreground">{loc.quantity} units</p>
+                                </div>
+                              ))}
+                              {item.locations.length > 2 && (
+                                <p className="text-[10px] text-muted-foreground">+{item.locations.length - 2} more</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-center">
                           <span className={`text-sm font-bold ${
                             item.isOutOfStock ? "text-red-600" :
@@ -337,7 +373,7 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
                         <TableCell>{statusBadge(item)}</TableCell>
                         <TableCell className="text-center">
                           {item.reorderSuggested ? (
-                            <span className="text-sm font-medium text-blue-600">{item.suggestedReorderQty}</span>
+                            <span className="text-sm font-medium text-[#618FF5]">{item.suggestedReorderQty}</span>
                           ) : (
                             <span className="text-sm text-muted-foreground">—</span>
                           )}
@@ -386,7 +422,7 @@ export default function InventoryManagement({ workspaceid }: { workspaceid: stri
 
       {/* Low stock threshold info */}
       <p className="text-[11px] text-muted-foreground text-center">
-        Low stock threshold: {summary?.threshold ?? DEFAULT_LOW_STOCK_THRESHOLD} units. Items below this level are flagged for reorder.
+        Low stock threshold: {summary?.threshold ?? 10} units. Items below this level are flagged for reorder.
       </p>
     </div>
   );

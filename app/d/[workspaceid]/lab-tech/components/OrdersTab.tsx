@@ -614,7 +614,7 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
     }
 
     // Check if session is loaded
-    if (!sessionData?.user) {
+    if (!session?.user) {
       setAlertDialog({
         show: true,
         title: "Session Error",
@@ -670,9 +670,9 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
       encounterId: `ENC-${Date.now()}`,
       requestedTests: testCodes,
       priority: priority,
-      orderingProviderId: sessionData.user.id,
+      orderingProviderId: session.user.id,
       orderingProviderName:
-        sessionData.user.name || sessionData.user.email || "Unknown Provider",
+        session.user.name || session.user.email || "Unknown Provider",
       clinicalIndication: formData.clinical_indication || "",
       clinicalNotes: formData.narrative || "",
       sourceSystem: "LIMS_UI",
@@ -824,38 +824,7 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  // Group orders by test and keep only the latest one for each test
-  const latestOrdersByTest = new Map<string, LimsOrder>();
-  
-  baseFilteredOrders.forEach((order: LimsOrder) => {
-    // Create a unique key for each test (test name + patient)
-    const testInfo = order.source === "openEHR" 
-      ? order.service_name 
-      : order.tests?.map((t: any) => t.testName).join(", ") || "N/A";
-    
-    const patientId = order.subjectidentifier || order.patientId || "";
-    const testKey = `${testInfo}_${patientId}`;
-    
-    const orderDate = order.source === "openEHR" 
-      ? new Date(order.recorded_time || "")
-      : new Date(order.createdat || "");
-    
-    // If this test doesn't exist yet, or if this order is newer, keep it
-    const existingOrder = latestOrdersByTest.get(testKey);
-    if (!existingOrder) {
-      latestOrdersByTest.set(testKey, order);
-    } else {
-      const existingDate = existingOrder.source === "openEHR" 
-        ? new Date(existingOrder.recorded_time || "")
-        : new Date(existingOrder.createdat || "");
-      
-      if (orderDate > existingDate) {
-        latestOrdersByTest.set(testKey, order);
-      }
-    }
-  });
-
-  const filteredOrders = Array.from(latestOrdersByTest.values()).sort((a, b) => {
+  const filteredOrders = [...baseFilteredOrders].sort((a, b) => {
     const dateA = a.source === "openEHR" 
       ? new Date(a.recorded_time || "").getTime()
       : new Date(a.createdat || "").getTime();
@@ -1934,7 +1903,28 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                             return acc;
                           }, {} as Record<string, boolean>);
                           const totalGroups = Object.keys(specimenGroupsForProgress).length;
-                          const collectedCount = Object.keys(collectedSpecimenTypes).filter(s => specimenGroupsForProgress[s]).length;
+                          
+                          // Count specimens collected in current session
+                          const sessionCollectedCount = Object.keys(collectedSpecimenTypes).filter(s => specimenGroupsForProgress[s]).length;
+                          
+                          // Count specimens already collected from database
+                          const dbCollectedSpecimens = new Set<string>();
+                          if (orderSamples && orderSamples.length > 0) {
+                            orderSamples.forEach((sample: any) => {
+                              const sampleType = sample.sampletype || sample.specimenType;
+                              if (sampleType && specimenGroupsForProgress[sampleType]) {
+                                dbCollectedSpecimens.add(sampleType);
+                              }
+                            });
+                          }
+                          
+                          // Combine both counts (use Set to avoid double-counting)
+                          const allCollectedSpecimens = new Set([
+                            ...Object.keys(collectedSpecimenTypes).filter(s => specimenGroupsForProgress[s]),
+                            ...Array.from(dbCollectedSpecimens)
+                          ]);
+                          const collectedCount = allCollectedSpecimens.size;
+                          
                           if (totalGroups > 1) {
                             return (
                               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${collectedCount === totalGroups ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>

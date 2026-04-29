@@ -13,9 +13,11 @@ import {
   drugs,
   invoices,
   invoiceLines,
+  users,
 } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { Pool } from "pg";
 
 type RouteParams = { params: Promise<{ workspaceid: string; orderid: string }> };
 
@@ -25,16 +27,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Fetch order
-    const [order] = await db
-      .select()
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+    // Fetch order with prescriber name
+    const [orderData] = await db
+      .select({
+        order: pharmacyOrders,
+        prescribername: users.name,
+      })
       .from(pharmacyOrders)
+      .leftJoin(users, eq(pharmacyOrders.prescriberid, users.userid))
       .where(eq(pharmacyOrders.orderid, orderid))
       .limit(1);
 
-    if (!order || order.workspaceid !== workspaceid) {
+    if (!orderData || orderData.order.workspaceid !== workspaceid) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+
+    const order = { ...orderData.order, prescribername: orderData.prescribername };
 
     // Patient
     let patient = null;
@@ -47,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       patient = p || null;
     }
 
-    // Items with drug info
+    // Items with drug info + inventory price
     const items = await db
       .select({
         itemid: pharmacyOrderItems.itemid,
@@ -66,10 +76,60 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         drugbarcode: drugs.barcode,
         drugform: drugs.form,
         drugstrength: drugs.strength,
+        // Best available batch selling price (in-stock + non-expired via pharmacy_stock_levels)
+        bestBatchPrice: sql<string>`(
+          SELECT db.sellingprice
+          FROM drug_batches db
+          WHERE db.drugid = ${pharmacyOrderItems.drugid}
+            AND db.expirydate > CURRENT_DATE
+            AND db.batchid IN (
+              SELECT psl.batchid FROM pharmacy_stock_levels psl
+              WHERE psl.drugid = ${pharmacyOrderItems.drugid} AND psl.quantity > 0
+            )
+          ORDER BY db.expirydate ASC
+          LIMIT 1
+        )`.as("bestBatchPrice"),
+        // Fallback: find price by drug NAME (handles duplicate drug records across workspaces)
+        nameBasedPrice: sql<string>`(
+          SELECT db.sellingprice
+          FROM drugs d2
+          JOIN drug_batches db ON db.drugid = d2.drugid
+          JOIN pharmacy_stock_levels psl ON psl.batchid = db.batchid AND psl.drugid = d2.drugid
+          WHERE d2.name = ${pharmacyOrderItems.drugname}
+            AND db.expirydate > CURRENT_DATE
+            AND psl.quantity > 0
+            AND db.sellingprice IS NOT NULL
+          ORDER BY db.expirydate ASC
+          LIMIT 1
+        )`.as("nameBasedPrice"),
       })
       .from(pharmacyOrderItems)
       .leftJoin(drugs, eq(pharmacyOrderItems.drugid, drugs.drugid))
       .where(eq(pharmacyOrderItems.orderid, orderid));
+
+    // Fetch prices from inventory for items that don't have unitprice
+    const itemsWithPrices = await Promise.all(
+      items.map(async (item: any) => {
+        if (item.unitprice) return item;
+        
+        // Fetch selling price from inventory
+        const priceResult = await pool.query(`
+          SELECT ib.selling_price
+          FROM items i
+          LEFT JOIN item_batches ib ON ib.item_id = i.id
+          WHERE i.name ILIKE $1
+            AND i.is_active = true
+            AND ib.quantity > 0
+          ORDER BY ib.expiry_date ASC
+          LIMIT 1
+        `, [item.drugname]);
+        
+        return {
+          ...item,
+          unitprice: priceResult.rows[0]?.selling_price || null
+        };
+      })
+    );
 
     // Invoice (if exists)
     const [invoice] = await db
@@ -89,7 +149,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       order,
       patient,
-      items,
+      items: itemsWithPrices,
       invoice: invoice ? { ...invoice, lines: invLines } : null,
     });
   } catch (error) {

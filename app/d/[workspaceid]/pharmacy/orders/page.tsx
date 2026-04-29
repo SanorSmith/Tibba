@@ -25,8 +25,10 @@ export default async function PharmacyOrdersServerPage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <PharmacyOrdersPage workspaceid={workspaceid} />
-    </div>
+    <PharmacyOrdersPage 
+      workspaceid={workspaceid}
+      userName={user.name || user.email || "User"}
+      userId={user.userid}
+    />
   );
 }

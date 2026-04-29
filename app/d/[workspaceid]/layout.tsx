@@ -43,7 +43,7 @@ export default async function HomeLayout({
           {/*  <AppSidebar user={user} /> */}
           <SidebarInset>
             <Header
-              middleSlot={workspace.role !== 'lab_technician' ? <PatientSearch workspaceid={workspaceid} /> : null}
+              middleSlot={workspace.role !== 'lab_technician' && workspace.role !== 'pharmacist' ? <PatientSearch workspaceid={workspaceid} /> : null}
               rightSlot={
                 <>
                   <HeaderActions />
@@ -51,8 +51,11 @@ export default async function HomeLayout({
                 </>
               }
               userRole={workspace.role}
+              workspaceid={workspaceid}
             />
-            {children}
+            <div className="px-4">
+              {children}
+            </div>
           </SidebarInset>
         </SidebarProvider>
       </DashboardProviders>

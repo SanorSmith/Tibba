@@ -1157,6 +1157,27 @@ export async function getOpenEHRTemplates(): Promise<
   return response.data as OpenEHRTemplateResponse[];
 }
 
+export async function uploadOpenEHRTemplate(optContent: string): Promise<void> {
+  const url = `${process.env.EHRBASE_URL}/ehrbase/rest/openehr/v1/definition/template/adl1.4`;
+  try {
+    const response = await axios.post(url, optContent, {
+      headers: {
+        "Content-Type": "application/xml",
+        "X-API-Key": process.env.EHRBASE_API_KEY!,
+        Authorization: `Basic ${basicAuth}`,
+      },
+    });
+    console.log("✅ Template uploaded successfully:", response.status);
+  } catch (error) {
+    console.error("❌ Template upload failed:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Response data:", error.response?.data);
+      console.error("Response status:", error.response?.status);
+    }
+    throw error;
+  }
+}
+
 export async function createOpenEHREHR(subjectId: string): Promise<string> {
   const newEHRRequest: OpenEHREHRNewRequest = {
     archetype_node_id: "openEHR-EHR-EHR_STATUS.generic.v1",
@@ -1311,6 +1332,28 @@ export async function getOpenEHREHRBySubjectId(
   const query = `SELECT e/ehr_id/value AS ehr_id FROM EHR e WHERE e/ehr_status/subject/external_ref/id/value = '${subjectId}'`;
   const results = await queryOpenEHR<{ ehr_id: string }>(query);
   return results.length > 0 ? results[0].ehr_id : null;
+}
+
+/**
+ * Check if an EHR exists by making a direct request to the EHR endpoint
+ * This is more reliable than searching by subject ID
+ */
+export async function checkEHRExists(ehrId: string): Promise<boolean> {
+  try {
+    const url = `${process.env.EHRBASE_URL}/ehrbase/rest/openehr/v1/ehr/${ehrId}`;
+    const response = await axios.get(url, {
+      headers: {
+        "X-API-Key": process.env.EHRBASE_API_KEY!,
+        Authorization: `Basic ${basicAuth}`,
+      },
+    });
+    return response.status === 200;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return false; // EHR doesn't exist
+    }
+    throw error; // Re-throw other errors
+  }
 }
 
 export async function getOpenEHRCompositions(
