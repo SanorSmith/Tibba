@@ -27,12 +27,12 @@ const icons = {
 };
 
 const s: Record<string, any> = {
-  page:    { fontFamily: "Inter,sans-serif", minHeight: "100vh", background: "#f8f9fa", color: "#111827" },
+  page:    { fontFamily: "Inter,sans-serif", minHeight: "100vh", background: "#ffffff", color: "#111827" },
   header:  { background: "#fff", borderBottom: "1px solid #e5e7eb", padding: "0 24px", height: 56, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 },
   content: { padding: 24, maxWidth: 1400, margin: "0 auto" },
   tabs:    { display: "flex", gap: 4, marginBottom: 16, background: "#f3f4f6", flexWrap: "wrap" as const, borderRadius: 10, padding: "4px", position: "sticky" as const, top: 56, zIndex: 9 },
-  tab:     (a: boolean) => ({ padding: "10px 18px", fontSize: 13, fontWeight: a?700:500, border: "none", background: a?"#6366f1":"transparent", cursor: "pointer", borderBottom: "none", color: a?"#fff":"#6b7280", borderRadius: 8, margin: "4px 2px" }),
-  card:    { background: "#fff", borderRadius: 10, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 16 },
+  tab:     (a: boolean) => ({ padding: "10px 18px", fontSize: 13, fontWeight: 700, border: "1px solid #d1d5db", background: a?"#6366f1":"#f3f4f6", cursor: "pointer", color: a?"#fff":"#6b7280", borderRadius: 8, margin: "4px 2px", boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)" }),
+  card:    { background: "#f3f4f6", borderRadius: 10, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 16 },
   th:      { padding: "10px 12px", textAlign: "left" as const, fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase" as const, background: "#f9fafb", borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" as const },
   td:      { padding: "10px 12px", borderBottom: "1px solid #f9fafb", fontSize: 13, color: "#111827" },
   btn:     (c: string) => ({ padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none", background: c === "purple" ? "#6366f1" : c === "green" ? "#16a34a" : c === "blue" ? "#2563eb" : c === "red" ? "#dc2626" : "#f3f4f6", color: c === "ghost" ? "#374151" : "#fff" }),
@@ -166,6 +166,11 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
     unit_cost:    String(item?.unitCost     ?? ""),
     selling_price:String(item?.sellingPrice ?? ""),
     storage_location_id: item?.storageLocationId ?? "",
+    // Batch info
+    lotnumber:    "",
+    expirydate:   "",
+    warehouseid:  "",
+    initial_quantity: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
@@ -192,6 +197,11 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
         max_level: parseInt(form.max_level)||null,
         unitcost: form.unit_cost,
         sellingprice: form.selling_price,
+        // Batch info
+        lotnumber: form.lotnumber,
+        expirydate: form.expirydate,
+        warehouseid: form.warehouseid,
+        initial_quantity: parseInt(form.initial_quantity)||0,
       };
       const res = await fetch(isEdit ? `/api/pharmacy/items/${item.id}` : "/api/pharmacy/items", {
         method: isEdit?"PATCH":"POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload)
@@ -274,10 +284,32 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
             </div>
             {form.selling_price && parseFloat(form.selling_price) > 0 && form.unit_cost && parseFloat(form.unit_cost) > 0 && (
               <div style={{gridColumn:"1/-1",padding:"8px 12px",background:"#f0fdf4",borderRadius:6,fontSize:12,color:"#16a34a"}}>
-                Margin: <strong>${(parseFloat(form.selling_price)-parseFloat(form.unit_cost)).toFixed(2)}</strong>
+                Margin: <strong>{(parseFloat(form.selling_price)-parseFloat(form.unit_cost)).toFixed(2)} IQD</strong>
                 {" "}({(((parseFloat(form.selling_price)-parseFloat(form.unit_cost))/parseFloat(form.unit_cost))*100).toFixed(1)}%)
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Batch Information */}
+        <div style={{gridColumn:"1/-1",borderTop:"1px solid #f3f4f6",paddingTop:12,marginTop:4}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:10}}>📦 Batch Information</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={s.fgroup}><label style={s.label}>Lot Number</label>
+              <input type="text" style={s.input} value={form.lotnumber} onChange={e=>set("lotnumber",e.target.value)} placeholder="e.g. LOT-2024-001"/>
+            </div>
+            <div style={s.fgroup}><label style={s.label}>Expiry Date</label>
+              <input type="date" style={s.input} value={form.expirydate} onChange={e=>set("expirydate",e.target.value)}/>
+            </div>
+            <div style={s.fgroup}><label style={s.label}>Warehouse</label>
+              <select style={s.input} value={form.warehouseid} onChange={e=>set("warehouseid",e.target.value)}>
+                <option value="">Select warehouse</option>
+                {warehouses?.map((w:any)=><option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </div>
+            <div style={s.fgroup}><label style={s.label}>Initial Quantity</label>
+              <input type="number" style={s.input} value={form.initial_quantity} onChange={e=>set("initial_quantity",e.target.value)} placeholder="0"/>
+            </div>
           </div>
         </div>
 
@@ -422,7 +454,7 @@ function ViewItemModal({ item, onClose, addToShopList, showToast }: { item: any;
         <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer"}}><Icon d={icons.x} size={18} color="#6b7280"/></button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-        {[["Name",item.name],["Generic",item.genericName??"—"],["Code",item.itemcode],["Type",item.itemType],["UOM",item.uom],["Stock",item.totalStock],["Purchase Price",item.unitCost?`$${parseFloat(item.unitCost).toFixed(2)}`:"—"],["Selling Price",item.sellingPrice?`$${parseFloat(item.sellingPrice).toFixed(2)}`:"—"],["Supplier",item.supplierName??"—"],["Manufacturer",item.manufacturer??"—"]].map(([label,value])=>(
+        {[["Name",item.name],["Generic",item.genericName??"—"],["Code",item.itemcode],["Type",item.itemType],["UOM",item.uom],["Stock",item.totalStock],["Purchase Price",item.unitCost?`${parseFloat(item.unitCost).toFixed(2)} IQD`:"—"],["Selling Price",item.sellingPrice?`${parseFloat(item.sellingPrice).toFixed(2)} IQD`:"—"],["Supplier",item.supplierName??"—"],["Manufacturer",item.manufacturer??"—"]].map(([label,value])=>(
           <div key={label as string} style={{background:"#f9fafb",borderRadius:8,padding:"8px 12px"}}>
             <div style={{fontSize:11,color:"#6b7280",marginBottom:2}}>{label}</div>
             <div style={{fontSize:13,fontWeight:600,color:"#111827"}}>{value}</div>
@@ -508,8 +540,8 @@ function BatchModal({ item, onClose }: { item: any; onClose: ()=>void }) {
               <tr key={b.id}>
                 <td style={{...s.td,fontFamily:"monospace",fontWeight:600}}>{b.batchNumber??"—"}</td>
                 <td style={{...s.td,fontWeight:700,fontSize:15}}>{b.quantity}</td>
-                <td style={s.td}>{b.unitCost?`$${parseFloat(b.unitCost).toFixed(2)}`:"—"}</td>
-                <td style={{...s.td,color:"#16a34a",fontWeight:600}}>{b.sellingPrice?`$${parseFloat(b.sellingPrice).toFixed(2)}`:"—"}</td>
+                <td style={s.td}>{b.unitCost?`${parseFloat(b.unitCost).toFixed(2)} IQD`:"—"}</td>
+                <td style={{...s.td,color:"#16a34a",fontWeight:600}}>{b.sellingPrice?`${parseFloat(b.sellingPrice).toFixed(2)} IQD`:"—"}</td>
                 <td style={s.td}>{b.expiryDate?new Date(b.expiryDate).toLocaleDateString():"—"}</td>
                 <td style={{...s.td,fontSize:12}}>{b.warehouseName??"—"}</td>
                 <td style={s.td}><span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:st.bg,color:st.color}}>{st.label}</span></td>
@@ -664,10 +696,12 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
         fetch("/api/pharmacy/dispense"),
         fetch("/api/pharmacy/controlled"),
         fetch("/api/stores"),
-        fetch("/api/warehouses"),
+        fetch("/api/warehouses")
       ]);
       const [iData,dData,cData,sData,wData] = await Promise.all([iRes.json(),dRes.json(),cRes.json(),sRes.json(),wRes.json()]);
-      setItems(Array.isArray(iData.items)?iData.items:[]);
+      const itemsArray = iData?.items ?? (Array.isArray(iData)?iData:[]);
+      console.log('[PharmacyInventoryPage] First 3 items:', itemsArray.slice(0, 3).map((i:any) => ({ name: i.name, itemType: i.itemType, uom: i.uom })));
+      setItems(itemsArray);
       setDispenses(Array.isArray(dData)?dData:[]);
       setControlled(Array.isArray(cData)?cData:[]);
       setStores(Array.isArray(sData)?sData:[]);
@@ -736,11 +770,11 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
 
   const fetchPharmReport = useCallback(async () => {
     setReportLoading(true);
-    const res = await fetch(`/api/reports?type=${reportType}&category=pharmacy`);
+    const res = await fetch(`/api/reports?type=${reportType}&category=pharmacy&workspaceId=${workspaceid}`);
     const data = await res.json();
     setPharmReports(Array.isArray(data)?data:(data.rows??[]));
     setReportLoading(false);
-  }, [reportType]);
+  }, [reportType, workspaceid]);
 
   const fetchOrders = useCallback(async () => {
     setOrdersLoading(true);
@@ -844,10 +878,10 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
         <table>
           <thead><tr><th>#</th><th>Item</th><th>Code</th><th>UOM</th><th>Current Stock</th><th>Order Qty</th><th>Unit Cost</th><th>Total</th></tr></thead>
           <tbody>
-            ${rows.map((i,idx)=>`<tr><td>${idx+1}</td><td><b>${i.name}</b>${i.genericName?`<br/><small>${i.genericName}</small>`:""}</td><td>${i.itemcode}</td><td>${i.uom}</td><td>${i.currentStock}</td><td><b>${shopQtys[i.id]??0}</b></td><td>$${parseFloat(i.lastUnitCost??0).toFixed(2)}</td><td>$${((shopQtys[i.id]??0)*parseFloat(i.lastUnitCost??0)).toFixed(2)}</td></tr>`).join("")}
+            ${rows.map((i,idx)=>`<tr><td>${idx+1}</td><td><b>${i.name}</b>${i.genericName?`<br/><small>${i.genericName}</small>`:""}</td><td>${i.itemcode}</td><td>${i.uom}</td><td>${i.currentStock}</td><td><b>${shopQtys[i.id]??0}</b></td><td>${parseFloat(i.lastUnitCost??0).toFixed(2)} IQD</td><td>${((shopQtys[i.id]??0)*parseFloat(i.lastUnitCost??0)).toFixed(2)} IQD</td></tr>`).join("")}
           </tbody>
         </table>
-        <div class="total">Total Estimated Cost: $${total.toFixed(2)}</div>
+        <div class="total">Total Estimated Cost: ${total.toFixed(2)} IQD</div>
         <br/><p style="color:#9ca3af;font-size:10px">PharmaDash Inventory System · ${window.location.origin}</p>
       </body></html>`;
     const w = window.open("","_blank","width=900,height=700");
@@ -958,21 +992,21 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
 
       <div style={{...s.content, marginTop:8}}>
         {/* Summary cards */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
           {[
-            {label:"Total Items",value:totalItems,color:"#16a34a",bg:"#dcfce7",filter:"all" as const},
-            {label:"Low Stock",value:lowStock,color:"#f59e0b",bg:"#fef3c7",filter:"lowstock" as const},
-            {label:"Out of Stock",value:outOfStock,color:"#ef4444",bg:"#fee2e2",filter:"outofstock" as const}
+            {label:"Total Items",value:totalItems,color:"#16a34a",bg:"#f3f4f6",filter:"all" as const},
+            {label:"Low Stock",value:lowStock,color:"#f59e0b",bg:"#f3f4f6",filter:"lowstock" as const},
+            {label:"Out of Stock",value:outOfStock,color:"#ef4444",bg:"#f3f4f6",filter:"outofstock" as const}
           ].map(m=>(
-            <div 
-              key={m.label} 
-              style={{background:m.bg,borderRadius:10,padding:"14px 18px",cursor:"pointer",border:stockFilter===m.filter?`2px solid ${m.color}`:"2px solid transparent",transition:"all 0.2s"}}
+            <div
+              key={m.label}
+              style={{background:m.bg,borderRadius:6,padding:"2px",cursor:"pointer",border:stockFilter===m.filter?`2px solid ${m.color}`:"2px solid transparent",transition:"all 0.2s",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}
               onClick={()=>setStockFilter(m.filter)}
-              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-1px)"}
               onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}
             >
-              <div style={{fontSize:11,fontWeight:600,color:m.color,marginBottom:4}}>{m.label}</div>
-              <div style={{fontSize:28,fontWeight:700,color:"#111827"}}>{m.value}</div>
+              <div style={{fontSize:10,fontWeight:700,color:m.color,marginBottom:0}}>{m.label}</div>
+              <div style={{fontSize:18,fontWeight:800,color:"#111827"}}>{m.value}</div>
             </div>
           ))}
         </div>
@@ -1105,8 +1139,8 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                               </div>
                             ) : "—"}
                           </td>
-                          <td style={s.td}>{item.unitCost?`$${parseFloat(item.unitCost).toFixed(2)}`:"—"}</td>
-                          <td style={s.td}>{item.sellingPrice?<span style={{color:"#16a34a",fontWeight:600}}>${parseFloat(item.sellingPrice).toFixed(2)}</span>:"—"}</td>
+                          <td style={s.td}>{item.unitCost?`${parseFloat(item.unitCost).toFixed(2)} IQD`:"—"}</td>
+                          <td style={s.td}>{item.sellingPrice?<span style={{color:"#16a34a",fontWeight:600}}>{parseFloat(item.sellingPrice).toFixed(2)} IQD</span>:"—"}</td>
                           <td style={s.td}>
                             <div style={{display:"flex",gap:5}}>
                               <button onClick={()=>setBatchItem(item)} title="View batches" style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}><Icon d={icons.layers} size={12} color="#16a34a"/></button>
@@ -1149,8 +1183,8 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                           <td style={{...s.td,color:"#d97706"}}>{item.reservedStock??0}</td>
                           <td style={{...s.td,fontWeight:700,color:sc.color,fontSize:15}}>{avail}</td>
                           <td style={s.td}>{item.batchCount}</td>
-                          <td style={s.td}>{item.unitCost?`$${parseFloat(item.unitCost).toFixed(2)}`:"—"}</td>
-                          <td style={{...s.td,color:"#16a34a",fontWeight:600}}>{item.sellingPrice?`$${parseFloat(item.sellingPrice).toFixed(2)}`:"—"}</td>
+                          <td style={s.td}>{item.unitCost?`${parseFloat(item.unitCost).toFixed(2)} IQD`:"—"}</td>
+                          <td style={{...s.td,color:"#16a34a",fontWeight:600}}>{item.sellingPrice?`${parseFloat(item.sellingPrice).toFixed(2)} IQD`:"—"}</td>
                           <td style={{...s.td,color:"#6b7280"}}>{item.reorderLevel??0}</td>
                           <td style={s.td}><span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:sc.bg,color:sc.color}}>{sc.label}</span></td>
                           <td style={s.td}><button onClick={()=>setEditItem(item)} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}><Icon d={icons.edit} size={12} color="#2563eb"/></button></td>
@@ -1306,8 +1340,8 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                                 </select>
                               </td>
                               <td style={s.td}><input type="datetime-local" value={shopDeliveryTimes[item.id]??""} onChange={e=>setShopDeliveryTimes(d=>({...d,[item.id]:e.target.value}))} style={{...s.input,width:160,fontSize:10}}/></td>
-                              <td style={s.td}>{item.lastUnitCost?`$${parseFloat(item.lastUnitCost).toFixed(2)}`:"—"}</td>
-                              <td style={{...s.td,fontWeight:600,color:"#6366f1"}}>${total.toFixed(2)}</td>
+                              <td style={s.td}>{item.lastUnitCost?`${parseFloat(item.lastUnitCost).toFixed(2)} IQD`:"—"}</td>
+                              <td style={{...s.td,fontWeight:600,color:"#6366f1"}}>{total.toFixed(2)} IQD</td>
                               <td style={s.td}><button onClick={()=>setCartItems((c:any[])=>c.filter(i=>i.id!==item.id))} style={{background:"#fee2e2",border:"none",borderRadius:4,padding:"3px 8px",cursor:"pointer",fontSize:11,color:"#dc2626"}}>✕</button></td>
                             </tr>
                           );
@@ -1319,7 +1353,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                     {/* Total Amount - Outside table */}
                     <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",padding:"12px 16px",background:"#f9fafb",borderRadius:8,marginBottom:12,flexShrink:0}}>
                       <span style={{fontSize:15,fontWeight:700,color:"#374151",marginRight:12}}>Total:</span>
-                      <span style={{fontSize:18,fontWeight:700,color:"#6366f1"}}>${cartItems.reduce((sum:number,i:any)=>sum+(shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0),0).toFixed(2)}</span>
+                      <span style={{fontSize:18,fontWeight:700,color:"#6366f1"}}>{cartItems.reduce((sum:number,i:any)=>sum+(shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0),0).toFixed(2)} IQD</span>
                     </div>
 
                     {/* Action buttons */}
@@ -1333,8 +1367,8 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                           `Created by: ${shopCreatedBy}`,
                           `Date: ${new Date().toLocaleDateString()}`,
                           "",
-                          ...cartItems.map((i:any,idx:number)=>`${idx+1}. ${i.name} (${i.itemcode}) — Qty: ${shopQtys[i.id]??1} ${i.uom} — $${((shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0)).toFixed(2)}`),
-                          "",`Total: $${total.toFixed(2)}`
+                          ...cartItems.map((i:any,idx:number)=>`${idx+1}. ${i.name} (${i.itemcode}) — Qty: ${shopQtys[i.id]??1} ${i.uom} — ${((shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0)).toFixed(2)} IQD`),
+                          "",`Total: ${total.toFixed(2)} IQD`
                         ];
                         const emailTo = supplierObj?.email??"";
                         window.location.href = `mailto:${emailTo}?subject=${encodeURIComponent(`Order — ${cartSupplier} — ${new Date().toLocaleDateString()}`)}&body=${encodeURIComponent(lines.join(NL))}`;
@@ -1343,9 +1377,9 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                       <button onClick={()=>{
                         const total = cartItems.reduce((sum:number,i:any)=>sum+(shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0),0);
                         const creatorName = shopCreatedBy.trim() || "Unknown User";
-                        const rowsHtml = cartItems.map((i:any,idx:number)=>`<tr><td>${idx+1}</td><td><b>${i.name}</b></td><td>${i.itemcode}</td><td>${i.uom}</td><td>${i.currentStock}</td><td><b>${shopQtys[i.id]??1}</b></td><td>$${parseFloat(i.lastUnitCost??0).toFixed(2)}</td><td>$${((shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0)).toFixed(2)}</td></tr>`).join("");
+                        const rowsHtml = cartItems.map((i:any,idx:number)=>`<tr><td>${idx+1}</td><td><b>${i.name}</b></td><td>${i.itemcode}</td><td>${i.uom}</td><td>${i.currentStock}</td><td><b>${shopQtys[i.id]??1}</b></td><td>${parseFloat(i.lastUnitCost??0).toFixed(2)} IQD</td><td>${((shopQtys[i.id]??1)*parseFloat(i.lastUnitCost??0)).toFixed(2)} IQD</td></tr>`).join("");
                         const w = window.open("","_blank","width=900,height=700");
-                        if(w){w.document.write(`<html><head><title>Order</title><style>body{font-family:Arial;padding:20px;font-size:12px}h2{color:#6366f1}table{width:100%;border-collapse:collapse}th{background:#6366f1;color:#fff;padding:8px;text-align:left}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}.total{font-weight:bold;font-size:14px;text-align:right;margin-top:16px}</style></head><body><h2>Order — ${cartSupplier||"No Supplier"}</h2><p><strong>Created by:</strong> ${creatorName} | <strong>Date:</strong> ${new Date().toLocaleDateString()}</p><table><thead><tr><th>#</th><th>Item</th><th>Code</th><th>UOM</th><th>Stock</th><th>Order Qty</th><th>Unit Cost</th><th>Total</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="total">Total: $${total.toFixed(2)}</div></body></html>`);w.document.close();w.print();}
+                        if(w){w.document.write(`<html><head><title>Order</title><style>body{font-family:Arial;padding:20px;font-size:12px}h2{color:#6366f1}table{width:100%;border-collapse:collapse}th{background:#6366f1;color:#fff;padding:8px;text-align:left}td{padding:7px 8px;border-bottom:1px solid #e5e7eb}.total{font-weight:bold;font-size:14px;text-align:right;margin-top:16px}</style></head><body><h2>Order — ${cartSupplier||"No Supplier"}</h2><p><strong>Created by:</strong> ${creatorName} | <strong>Date:</strong> ${new Date().toLocaleDateString()}</p><table><thead><tr><th>#</th><th>Item</th><th>Code</th><th>UOM</th><th>Stock</th><th>Order Qty</th><th>Unit Cost</th><th>Total</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="total">Total: ${total.toFixed(2)} IQD</div></body></html>`);w.document.close();w.print();}
                       }} style={{...s.btn("ghost"),border:"1px solid #e5e7eb",fontSize:12}}>🖨️ Print</button>
                       <button disabled={shopSaving||!shopCreatedBy.trim()} onClick={async()=>{
                         if (!shopCreatedBy.trim()) { showToast("Please enter your name"); return; }
@@ -1990,25 +2024,25 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
               </div>
               {reportLoading?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Loading report...</div>
               :pharmReports.length===0?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No data. <button onClick={fetchPharmReport} style={{color:"#6366f1",background:"none",border:"none",cursor:"pointer"}}>Refresh →</button></div>
-              :<div style={{overflowX:"auto"}}>
+              :<div style={{overflowX:"auto",maxHeight:300,overflowY:"auto"}}>
                 {reportType==="stock" && (
-                  <table style={{width:"100%",borderCollapse:"collapse"}}>
-                    <thead><tr>{["Item","Code","UOM","Total Stock","Reserved","Available","Reorder","Unit Cost","Selling Price","Total Value","Status"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                    <thead><tr>{["Item","Code","UOM","Total Stock","Reserved","Available","Reorder","Unit Cost","Selling Price","Total Value","Status"].map(h=><th key={h} style={{...s.th,padding:"4px 6px",fontSize:10}}>{h}</th>)}</tr></thead>
                     <tbody>
                       {pharmReports.map((r:any,i:number)=>{
                         const avail=parseInt(r.totalStock||0)-parseInt(r.reservedStock||0);
                         const val=avail*(parseFloat(r.unitCost||0));
                         const sc=avail===0?{bg:"#fee2e2",color:"#991b1b",label:"Out"}:avail<=parseInt(r.reorderLevel||0)?{bg:"#fef3c7",color:"#92400e",label:"Low"}:{bg:"#d1fae5",color:"#065f46",label:"OK"};
-                        return (<tr key={i}><td style={{...s.td,fontWeight:600}}>{r.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6b7280"}}>{r.itemcode}</td><td style={s.td}>{r.uom}</td><td style={{...s.td,fontWeight:700}}>{r.totalStock||0}</td><td style={{...s.td,color:"#d97706"}}>{r.reservedStock||0}</td><td style={{...s.td,fontWeight:700,color:sc.color}}>{avail}</td><td style={{...s.td,color:"#6b7280"}}>{r.reorderLevel||0}</td><td style={s.td}>{r.unitCost?`$${parseFloat(r.unitCost).toFixed(2)}`:"—"}</td><td style={{...s.td,color:"#16a34a",fontWeight:600}}>{r.sellingPrice?`$${parseFloat(r.sellingPrice).toFixed(2)}`:"—"}</td><td style={{...s.td,fontWeight:600,color:"#6366f1"}}>${val.toFixed(2)}</td><td style={s.td}><span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:sc.bg,color:sc.color}}>{sc.label}</span></td></tr>);
+                        return (<tr key={i}><td style={{...s.td,fontWeight:600,padding:"2px 6px",fontSize:11}}>{r.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:9,color:"#6b7280",padding:"2px 6px"}}>{r.itemcode}</td><td style={{...s.td,padding:"2px 6px",fontSize:11}}>{r.uom}</td><td style={{...s.td,fontWeight:700,padding:"2px 6px",fontSize:11}}>{r.totalStock||0}</td><td style={{...s.td,color:"#d97706",padding:"2px 6px",fontSize:11}}>{r.reservedStock||0}</td><td style={{...s.td,fontWeight:700,color:sc.color,padding:"2px 6px",fontSize:11}}>{avail}</td><td style={{...s.td,color:"#6b7280",padding:"2px 6px",fontSize:11}}>{r.reorderLevel||0}</td><td style={{...s.td,padding:"2px 6px",fontSize:11}}>{r.unitCost?`$${parseFloat(r.unitCost).toFixed(2)}`:"—"}</td><td style={{...s.td,color:"#16a34a",fontWeight:600,padding:"2px 6px",fontSize:11}}>{r.sellingPrice?`$${parseFloat(r.sellingPrice).toFixed(2)}`:"—"}</td><td style={{...s.td,fontWeight:600,color:"#6366f1",padding:"2px 6px",fontSize:11}}>${val.toFixed(2)}</td><td style={{...s.td,padding:"2px 6px",fontSize:11}}><span style={{fontSize:9,fontWeight:600,padding:"0px 4px",borderRadius:10,background:sc.bg,color:sc.color}}>{sc.label}</span></td></tr>);
                       })}
                     </tbody>
-                    <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={9} style={{...s.td,fontWeight:700,textAlign:"right" as const}}>Total Value:</td><td style={{...s.td,fontWeight:700,color:"#6366f1",fontSize:15}}>${pharmReports.reduce((sum:number,r:any)=>{const a=parseInt(r.totalStock||0)-parseInt(r.reservedStock||0);return sum+a*(parseFloat(r.unitCost||0));},0).toFixed(2)}</td><td style={s.td}></td></tr></tfoot>
+                    <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={9} style={{...s.td,fontWeight:700,textAlign:"right",padding:"2px 6px",fontSize:11}}>Total Value:</td><td style={{...s.td,fontWeight:700,color:"#6366f1",fontSize:12,padding:"2px 6px"}}>${pharmReports.reduce((sum:number,r:any)=>{const a=parseInt(r.totalStock||0)-parseInt(r.reservedStock||0);return sum+a*(parseFloat(r.unitCost||0));},0).toFixed(2)}</td><td style={{...s.td,padding:"2px 6px",fontSize:11}}></td></tr></tfoot>
                   </table>
                 )}
                 {reportType==="consumption" && (
-                  <table style={{width:"100%",borderCollapse:"collapse"}}>
-                    <thead><tr>{["Item","Code","Type","Total Qty","Transactions","Last Movement"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
-                    <tbody>{pharmReports.map((r:any,i:number)=>(<tr key={i}><td style={{...s.td,fontWeight:600}}>{r.itemname||r.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6b7280"}}>{r.itemcode}</td><td style={s.td}><span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:"#dbeafe",color:"#1d4ed8"}}>{r.transactiontype||r.type}</span></td><td style={{...s.td,fontWeight:700}}>{r.totalqty||r.quantity}</td><td style={s.td}>{r.txcount||"—"}</td><td style={{...s.td,fontSize:12,color:"#6b7280"}}>{r.lastmoved?new Date(r.lastmoved).toLocaleDateString():"—"}</td></tr>))}</tbody>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                    <thead><tr>{["Item","Code","Type","Total Qty","Transactions","Last Movement"].map(h=><th key={h} style={{...s.th,padding:"4px 6px",fontSize:10}}>{h}</th>)}</tr></thead>
+                    <tbody>{pharmReports.map((r:any,i:number)=>(<tr key={i}><td style={{...s.td,fontWeight:600,padding:"2px 6px",fontSize:11}}>{r.itemname||r.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:9,color:"#6b7280",padding:"2px 6px"}}>{r.itemcode}</td><td style={{...s.td,padding:"2px 6px",fontSize:11}}><span style={{fontSize:9,fontWeight:600,padding:"0px 4px",borderRadius:10,background:"#dbeafe",color:"#1d4ed8"}}>{r.transactiontype||r.type}</span></td><td style={{...s.td,fontWeight:700,padding:"2px 6px",fontSize:11}}>{r.totalqty||r.quantity}</td><td style={{...s.td,padding:"2px 6px",fontSize:11}}>{r.txcount||"—"}</td><td style={{...s.td,fontSize:10,color:"#6b7280",padding:"2px 6px"}}>{r.lastmoved?new Date(r.lastmoved).toLocaleDateString():"—"}</td></tr>))}</tbody>
                   </table>
                 )}
               </div>}

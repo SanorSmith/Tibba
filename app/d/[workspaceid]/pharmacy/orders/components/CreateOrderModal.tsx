@@ -102,9 +102,12 @@ export default function CreateOrderModal({
     current_medications: '',
   });
 
+  // Only load insurance companies when modal is opened
   useEffect(() => {
-    loadInsuranceCompanies();
-  }, []);
+    if (open) {
+      loadInsuranceCompanies();
+    }
+  }, [open]);
 
   const loadInsuranceCompanies = async () => {
     try {
@@ -122,6 +125,8 @@ export default function CreateOrderModal({
   const [currentItem, setCurrentItem] = useState({
     drugid: "",
     drugname: "",
+    form: "",
+    strength: "",
     quantity: 1,
     doseAmount: "",
     doseUnit: "mg",
@@ -194,6 +199,8 @@ export default function CreateOrderModal({
     setCurrentItem({
       drugid: "",
       drugname: "",
+      form: "",
+      strength: "",
       quantity: 1,
       doseAmount: "",
       doseUnit: "mg",
@@ -410,6 +417,8 @@ export default function CreateOrderModal({
     setCurrentItem({
       drugid: "",
       drugname: "",
+      form: "",
+      strength: "",
       quantity: 1,
       doseAmount: "",
       doseUnit: "mg",
@@ -991,6 +1000,8 @@ export default function CreateOrderModal({
                         ...currentItem,
                         drugid: drug.drugid,
                         drugname: drug.name,
+                        form: drug.form || "",
+                        strength: drug.strength || "",
                         route: formattedRoute,
                         doseAmount: strengthMatch ? strengthMatch[1] : "",
                         doseUnit: doseUnit,

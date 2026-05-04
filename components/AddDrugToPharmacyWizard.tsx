@@ -41,8 +41,8 @@ function DualSearch({ onSelect, onSelectExisting, workspaceid }: { onSelect:(dru
     const t = setTimeout(async () => {
       setLoading(true);
       const [lr, gr] = await Promise.all([
-        fetch(`/api/pharmacy/items?search=${encodeURIComponent(query)}&workspaceId=${workspaceid}&source=inventory`).then(r=>r.json()),
-        fetch(`/api/drugs/global?search=${encodeURIComponent(query)}`).then(r=>r.json()),
+        fetch(`/api/pharmacy/items?search=${encodeURIComponent(query)}&workspaceId=${workspaceid}&source=inventory&_t=${Date.now()}`, {cache: 'no-store'}).then(r=>r.json()),
+        fetch(`/api/drugs/global?search=${encodeURIComponent(query)}&_t=${Date.now()}`, {cache: 'no-store'}).then(r=>r.json()),
       ]);
       const items = lr.items || [];
       setLocalResults(Array.isArray(items)?items.slice(0,5):[]);
@@ -230,6 +230,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
     storage_location: "",
     storage_type: "",
     expiry_date:  "",
+    lot_number:   "",
     price_type:             "fixed",
     insurance_coverage_pct: "0",
     selling_price:          "",
@@ -259,9 +260,10 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
     if (!form.name.trim() || isUpdate || entryType !== "medicine") return;
     const t = setTimeout(async () => {
       setCheckingExisting(true);
-      const res = await fetch(`/api/pharmacy/items?search=${encodeURIComponent(form.name)}`);
+      const res = await fetch(`/api/pharmacy/items?search=${encodeURIComponent(form.name)}&workspaceId=${workspaceid}&source=inventory&_t=${Date.now()}`, {cache: 'no-store'});
       const data = await res.json();
-      const exact = Array.isArray(data) ? data.find((i:any) => i.name.toLowerCase() === form.name.toLowerCase()) : null;
+      const items = data.items || [];
+      const exact = Array.isArray(items) ? items.find((i:any) => i.name.toLowerCase() === form.name.toLowerCase()) : null;
       if (exact) {
         setExistingItem(exact);
         setIsUpdate(true);
@@ -272,7 +274,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
       setCheckingExisting(false);
     }, 600);
     return () => clearTimeout(t);
-  }, [form.name, entryType]);
+  }, [form.name, entryType, workspaceid]);
 
   const fillFromGlobal = (drug:any) => {
     setForm(f=>({...f,
@@ -323,10 +325,12 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
           atccode: form.atccode || undefined,
           storage_location: form.storage_location || undefined,
           storage_type: form.storage_type || undefined,
+          minlevel: form.min_level ? parseInt(form.min_level) : undefined,
+          maxlevel: form.max_level ? parseInt(form.max_level) : undefined,
           // Add stock if warehouse and quantity provided
           addStock: !!form.warehouseid && !!form.initial_quantity && parseFloat(form.initial_quantity) > 0,
           warehouseid: form.warehouseid,
-          batchnumber: `B${Date.now()}`,
+          batchnumber: form.lot_number || `B${Date.now()}`,
           quantity: form.initial_quantity ? parseFloat(form.initial_quantity) : 0,
           unitcost: form.unit_cost ? parseFloat(form.unit_cost) : undefined,
           sellingprice: form.selling_price ? parseFloat(form.selling_price) : undefined,
@@ -393,8 +397,24 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
             </div>
           )}
 
-          {/* Dual Search - shown before entry type selector */}
-          {!isUpdate && (
+          {/* Entry type selector - shown first */}
+          {!entryType && !isUpdate && (
+            <div style={{marginBottom:20}}>
+              <label style={{...s.label,marginBottom:8}}>What are you adding?</label>
+              <select 
+                style={{...s.input,fontSize:14,fontWeight:600,padding:"12px 10px"}}
+                value={entryType || ""}
+                onChange={(e) => setEntryType(e.target.value as "medicine"|"item")}
+              >
+                <option value="" disabled>Select type...</option>
+                <option value="medicine">💊 Medicine / Drug - Prescription or OTC drug</option>
+                <option value="item">📦 Item / Supply - Device, cosmetic, supply</option>
+              </select>
+            </div>
+          )}
+
+          {/* Dual Search - shown after entry type selection */}
+          {!isUpdate && entryType && (
             <DualSearch
               workspaceid={workspaceid}
               onSelect={(drug)=>{
@@ -416,35 +436,18 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
               }}
             />
           )}
-
-          {/* Entry type selector */}
-          {!entryType && !isUpdate && (
-            <div style={{marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#374151",marginBottom:12}}>What are you adding?</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <button onClick={()=>setEntryType("medicine")} style={{padding:"16px",borderRadius:10,border:"2px solid #6366f1",background:"#eef2ff",cursor:"pointer",textAlign:"left" as const}}>
-                  <div style={{fontSize:18,marginBottom:4}}>💊</div>
-                  <div style={{fontWeight:700,fontSize:14,color:"#6366f1"}}>Medicine / Drug</div>
-                  <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>Prescription or OTC drug</div>
-                </button>
-                <button onClick={()=>setEntryType("item")} style={{padding:"16px",borderRadius:10,border:"2px solid #16a34a",background:"#f0fdf4",cursor:"pointer",textAlign:"left" as const}}>
-                  <div style={{fontSize:18,marginBottom:4}}>📦</div>
-                  <div style={{fontWeight:700,fontSize:14,color:"#16a34a"}}>Item / Supply</div>
-                  <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>Device, cosmetic, supply</div>
-                </button>
-              </div>
-            </div>
-          )}
           {checkingExisting && <div style={{fontSize:12,color:"#6b7280",marginBottom:8}}>🔍 Checking pharmacy inventory...</div>}
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            {/* Item/Medicine name */}
-            <div style={{gridColumn:"1/-1",...s.fgroup}}>
-              <label style={s.label}>{entryType === "item" ? "Item Name" : "Medicine Name"} *</label>
-              <input style={s.input} value={form.name} onChange={e=>set("name",e.target.value)} placeholder={entryType === "item" ? "e.g. Syringe 10ml" : "e.g. Amoxicillin"}/>
-            </div>
+          {/* Only show form after entry type is selected */}
+          {(entryType || isUpdate) && (
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {/* Item/Medicine name */}
+              <div style={{gridColumn:"1/-1",...s.fgroup}}>
+                <label style={s.label}>{entryType === "item" ? "Item Name" : "Medicine Name"} *</label>
+                <input style={s.input} value={form.name} onChange={e=>set("name",e.target.value)} placeholder={entryType === "item" ? "e.g. Syringe 10ml" : "e.g. Amoxicillin"}/>
+              </div>
 
-            {!isUpdate && entryType === "medicine" && <>
+              {!isUpdate && entryType === "medicine" && <>
               <div style={s.fgroup}><label style={s.label}>Generic Name</label><input style={s.input} value={form.genericname} onChange={e=>set("genericname",e.target.value)}/></div>
               <div style={s.fgroup}><label style={s.label}>ATC Code</label><input style={s.input} value={form.atccode} onChange={e=>set("atccode",e.target.value)} placeholder="e.g. J01CA04"/></div>
               <div style={s.fgroup}><label style={s.label}>Form</label>
@@ -548,7 +551,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
                     {form.price_type==="insurance" && parseFloat(form.insurance_coverage_pct)>0 ? (
                       <span>🏥 Insurance pays: <strong style={{color:"#6366f1"}}>${insurancePays.toFixed(2)}</strong> · 👤 Patient pays: <strong style={{color:"#16a34a"}}>${patientPays.toFixed(2)}</strong></span>
                     ) : (
-                      <span style={{color:"#16a34a"}}>👤 Patient pays full price: <strong>${sellingPrice.toFixed(2)}</strong></span>
+                      <span style={{color:"#16a34a"}}>👤 Patient pays full price: <strong>{sellingPrice.toFixed(2)} IQD</strong></span>
                     )}
                   </div>
                 )}
@@ -573,6 +576,8 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
                   <input type="number" style={isUpdate?s.inputHL:s.input} value={form.initial_quantity} onChange={e=>set("initial_quantity",e.target.value)}/>
                   {isUpdate&&<div style={{fontSize:11,color:"#6366f1",marginTop:4}}>New total: {(parseInt(existingItem?.totalStock)||0)+(parseInt(form.initial_quantity)||0)}</div>}
                 </div>
+                <div style={s.fgroup}><label style={s.label}>Lot Number</label><input style={s.input} value={form.lot_number} onChange={e=>set("lot_number",e.target.value)} placeholder="B123456789"/></div>
+                <div style={s.fgroup}><label style={s.label}>Expiry Date</label><input type="date" style={s.input} value={form.expiry_date} onChange={e=>set("expiry_date",e.target.value)}/></div>
                 {!isUpdate && <>
                   <div style={s.fgroup}><label style={s.label}>Item Code</label><input style={s.input} value={form.itemcode} onChange={e=>set("itemcode",e.target.value)} placeholder="Auto if blank"/></div>
                   <div style={s.fgroup}><label style={s.label}>Unit of Measure</label>
@@ -585,13 +590,14 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
                 </>}
               </div>
             </div>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div style={{padding:"16px 24px",borderTop:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <button onClick={onClose} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Cancel</button>
-          <button onClick={handleSubmit} disabled={loading} style={{...s.btn(isUpdate?"green":"purple"),display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={handleSubmit} disabled={loading || (!entryType && !isUpdate)} style={{...s.btn(isUpdate?"green":"purple"),display:"flex",alignItems:"center",gap:6,opacity:(!entryType && !isUpdate)?0.5:1,cursor:(!entryType && !isUpdate)?"not-allowed":"pointer"}}>
             {loading?"Saving...":isUpdate?<><Icon d={icons.check} size={13} color="#fff"/> Update Stock</>:<><Icon d={icons.check} size={13} color="#fff"/> Add {entryType === "item" ? "Item" : "Medicine"}</>}
           </button>
         </div>

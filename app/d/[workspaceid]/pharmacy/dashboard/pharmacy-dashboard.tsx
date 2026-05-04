@@ -156,13 +156,6 @@ export default function PharmacyDashboard({
             Drug registration
           </TabsTrigger>
           <TabsTrigger
-            value="drug-interactions"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <AlertCircle className="h-4 w-4" />
-            Drug Interactions
-          </TabsTrigger>
-          <TabsTrigger
             value="inventory"
             className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
           >
@@ -282,7 +275,7 @@ export default function PharmacyDashboard({
                       {/* Pharmacy Inventory Summary */}
                       <div className="grid grid-cols-3 gap-2 mb-4">
                         <div 
-                          className="text-center p-2 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                          className="text-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
                           onClick={() => {
                             setInventoryStockFilter("all");
                             setActiveTab("inventory");
@@ -293,7 +286,7 @@ export default function PharmacyDashboard({
                           <p className="text-xs text-muted-foreground">Total Items</p>
                         </div>
                         <div 
-                          className="text-center p-2 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
+                          className="text-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
                           onClick={() => {
                             setInventoryStockFilter("lowstock");
                             setActiveTab("inventory");
@@ -466,17 +459,6 @@ export default function PharmacyDashboard({
                     </CardContent>
                   </Card>
                 </div>
-
-                {/* Drug Interaction card */}
-                <Card
-                  className="shadow-sm hover:shadow-md transition-shadow cursor-pointer text-white"
-                  style={{ backgroundColor: PRIMARY }}
-                >
-                  <CardContent className="flex items-center justify-center py-6">
-                    <FlaskConical className="h-6 w-6 text-white/80 mr-3" />
-                    <span className="text-white font-semibold text-base">Check drug interaction</span>
-                  </CardContent>
-                </Card>
               </div>
             )}
       </TabsContent>
@@ -546,12 +528,6 @@ export default function PharmacyDashboard({
         )}
       </TabsContent>
 
-      {/* Drug Interactions Tab */}
-      <TabsContent value="drug-interactions" className="mt-4 px-4">
-        {loadedTabs.has("drug-interactions") && (
-          <DrugInteractions workspaceid={workspaceid} />
-        )}
-      </TabsContent>
 
       {/* Inventory Tab */}
       <TabsContent value="inventory" className="mt-4 px-4">
