@@ -41,7 +41,7 @@ export const drugs = pgTable(
     manufacturer: text("manufacturer"),
     nationalcode: text("nationalcode"),
     category: text("category"),
-    description: text("description"),
+    route: text("route"), // Administration route (e.g., oral, IV, topical)
     interaction: text("interaction"),
     warning: text("warning"),
     pregnancy: text("pregnancy"),

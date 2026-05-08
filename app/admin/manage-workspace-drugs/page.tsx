@@ -79,6 +79,8 @@ export default function ManageWorkspaceDrugsPage() {
           name: editingDrug.name,
           strength: editingDrug.strength,
           form: editingDrug.form,
+          unit: editingDrug.unit,
+          route: editingDrug.route,
         }),
       });
       const data = await res.json();
@@ -360,7 +362,7 @@ export default function ManageWorkspaceDrugsPage() {
               />
             </div>
 
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
                 Form
               </label>
@@ -368,6 +370,30 @@ export default function ManageWorkspaceDrugsPage() {
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13 }}
                 value={editingDrug.form || ""}
                 onChange={(e) => setEditingDrug({ ...editingDrug, form: e.target.value })}
+              />
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
+                Unit
+              </label>
+              <input
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13 }}
+                value={editingDrug.unit || ""}
+                onChange={(e) => setEditingDrug({ ...editingDrug, unit: e.target.value })}
+                placeholder="e.g., tablet, ml, vial"
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
+                Route
+              </label>
+              <input
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #d1d5db", fontSize: 13 }}
+                value={editingDrug.route || ""}
+                onChange={(e) => setEditingDrug({ ...editingDrug, route: e.target.value })}
+                placeholder="e.g., oral, IV, topical"
               />
             </div>
 

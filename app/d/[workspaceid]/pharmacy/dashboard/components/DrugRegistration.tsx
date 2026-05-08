@@ -68,7 +68,7 @@ interface DrugRecord {
   manufacturer: string | null;
   nationalcode: string | null;
   category: string | null;
-  description: string | null;
+  route: string | null;
   interaction: string | null;
   warning: string | null;
   pregnancy: string | null;
@@ -99,7 +99,7 @@ interface FormData {
   pregnancy: string | undefined;
   sideeffect: string;
   storagetype: string | undefined;
-  description: string;
+  route: string;
   indication: string;
   traffic: string | undefined;
   notes: string;
@@ -123,7 +123,7 @@ const emptyForm: FormData = {
   pregnancy: undefined,
   sideeffect: "",
   storagetype: undefined,
-  description: "",
+  route: "",
   indication: "",
   traffic: undefined,
   notes: "",
@@ -217,7 +217,7 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
       pregnancy: drug.pregnancy || undefined,
       sideeffect: drug.sideeffect || "",
       storagetype: drug.storagetype || undefined,
-      description: drug.description || "",
+      route: drug.route || "",
       indication: drug.indication || "",
       traffic: drug.traffic || undefined,
       notes: drug.notes || "",
@@ -647,8 +647,8 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
             {/* Textarea Fields Row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[11px]">Description</Label>
-                <Textarea className="text-sm overflow-y-auto resize-none h-[72px]" value={formData.description} onChange={(e) => updateField("description", e.target.value)} rows={3} placeholder="Enter drug description" />
+                <Label className="text-[11px]">Route</Label>
+                <Input className="text-sm h-8" value={formData.route} onChange={(e) => updateField("route", e.target.value)} placeholder="e.g., oral, IV, topical" />
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px]">Interaction</Label>
