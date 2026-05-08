@@ -425,10 +425,6 @@ export default function EnhancedLabOrderFormMultiple({
   }, [addedTests, resolveTest]);
 
   const handleSubmit = async () => {
-    if (!formState.clinical_indication) {
-      alert("Please fill in clinical indication");
-      return;
-    }
 
     if (editMode && !formState.edit_notes) {
       alert("Please provide a reason for editing this order");
@@ -549,7 +545,7 @@ export default function EnhancedLabOrderFormMultiple({
         urgency: formState.urgency,
         requesting_provider: formState.requesting_provider,
         receiving_provider: selectedLab?.name || labCategory,
-        narrative: formState.narrative || `${allPackageNames || "Laboratory tests"} ordered for ${formState.clinical_indication}`,
+        narrative: formState.narrative || (formState.clinical_indication ? `${allPackageNames || "Laboratory tests"} ordered for ${formState.clinical_indication}` : `${allPackageNames || "Laboratory tests"} ordered`),
         service_name: allPackageNames || "Laboratory Tests",
         service_type_code: selectedPackageObjects.map(pkg => pkg.snomedCode).filter(Boolean).join(","),
         service_type_value: "Test Group",
@@ -1072,7 +1068,6 @@ export default function EnhancedLabOrderFormMultiple({
               onClick={handleSubmit}
               disabled={
                 isSubmitting ||
-                !formState.clinical_indication ||
                 addedTests.length === 0
               }
               className="bg-blue-600 hover:bg-blue-700 text-white"

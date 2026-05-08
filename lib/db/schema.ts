@@ -856,8 +856,9 @@ export * from "./tables/pharmacy-drugs";
 export * from "./tables/pharmacy-stock";
 export * from "./tables/pharmacy-orders";
 export * from "./tables/pharmacy-insurance";
-export * from "./tables/pharmacy-invoices";
+export * from "./tables/pos-schema";
 export * from "./tables/pharmacy-substitutions";
+export * from "./tables/insurance-reports";
 export * from "./schema/test-reference-ranges";
 export * from "./schema/test-reference-audit-log";
 

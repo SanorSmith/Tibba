@@ -315,10 +315,6 @@ export default function EnhancedLabOrderForm({
   }, [allAvailableTests, testSearchTerm]);
 
   const handleSubmit = async () => {
-    if (!formState.clinical_indication) {
-      alert("Please fill in clinical indication");
-      return;
-    }
 
     if (formState.selectedTests.length === 0) {
       alert("Please select at least one test");
@@ -352,7 +348,7 @@ export default function EnhancedLabOrderForm({
         clinical_indication: formState.clinical_indication,
         urgency: formState.urgency,
         requesting_provider: formState.requesting_provider,
-        narrative: formState.narrative || `${selectedPackages.map(p => p.name).join(', ')} ordered for ${formState.clinical_indication}`,
+        narrative: formState.narrative || (formState.clinical_indication ? `${selectedPackages.map(p => p.name).join(', ')} ordered for ${formState.clinical_indication}` : `${selectedPackages.map(p => p.name).join(', ')} ordered`),
         service_name: selectedPackages.map(p => p.name).join(', ') || "Laboratory Tests",
         service_type_code: primaryPackage?.snomedCode || "",
         service_type_value: selectedPackages.map(p => p.name).join(', ') || "",
@@ -778,7 +774,6 @@ export default function EnhancedLabOrderForm({
               onClick={handleSubmit}
               disabled={
                 isSubmitting ||
-                !formState.clinical_indication ||
                 formState.selectedTests.length === 0
               }
               className="bg-blue-600 hover:bg-blue-700 text-white"

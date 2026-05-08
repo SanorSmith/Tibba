@@ -13,7 +13,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Search, Plus, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { FileText, Search, Plus, Loader2, Sparkles, RefreshCw, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+
+type LabOrder = {
+  testName: string;
+  reason: string;
+  requestId: string;
+  orderTime: string;
+  serviceType?: string; // To identify if it's lab, x-ray, surgery, etc.
+};
+
+type Medication = {
+  name: string;
+  dose: string;
+  price: number;
+};
 
 export default function InsuranceReportsPage() {
   const [patients, setPatients] = useState<any[]>([]);
@@ -23,6 +38,10 @@ export default function InsuranceReportsPage() {
   const [loadingPatientData, setLoadingPatientData] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
+  const [selectedLabOrders, setSelectedLabOrders] = useState<Set<number>>(new Set());
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [selectedMedications, setSelectedMedications] = useState<Set<number>>(new Set());
 
   const [formData, setFormData] = useState({
     reportType: "",
@@ -62,12 +81,18 @@ export default function InsuranceReportsPage() {
       
       const data = await res.json();
       
+      // Set medications and lab orders
+      setMedications(data.medications || []);
+      setSelectedMedications(new Set());
+      setLabOrders(data.labOrders || []);
+      setSelectedLabOrders(new Set());
+      
       // Pre-populate form with existing data
       setFormData(prev => ({
         ...prev,
         diagnosis: data.diagnoses?.join(", ") || "",
         clinicalFindings: data.clinicalFindings || "",
-        medications: data.medications?.join(", ") || "",
+        medications: "",
         investigations: data.investigations || "",
         treatmentPlan: data.treatmentPlan || "",
       }));
@@ -76,6 +101,46 @@ export default function InsuranceReportsPage() {
       // Don't show error to user, just log it
     } finally {
       setLoadingPatientData(false);
+    }
+  };
+
+  // Toggle lab order selection
+  const toggleLabOrder = (index: number) => {
+    const newSelected = new Set(selectedLabOrders);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedLabOrders(newSelected);
+  };
+
+  // Select all lab orders
+  const selectAllLabOrders = () => {
+    if (selectedLabOrders.size === labOrders.length) {
+      setSelectedLabOrders(new Set());
+    } else {
+      setSelectedLabOrders(new Set(labOrders.map((_, i) => i)));
+    }
+  };
+
+  // Toggle medication selection
+  const toggleMedication = (index: number) => {
+    const newSelected = new Set(selectedMedications);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedMedications(newSelected);
+  };
+
+  // Select all medications
+  const selectAllMedications = () => {
+    if (selectedMedications.size === medications.length) {
+      setSelectedMedications(new Set());
+    } else {
+      setSelectedMedications(new Set(medications.map((_, i) => i)));
     }
   };
 
@@ -90,12 +155,42 @@ export default function InsuranceReportsPage() {
     setMessage(null);
 
     try {
+      // Build selected lab orders text
+      const selectedLabOrdersText = Array.from(selectedLabOrders)
+        .map(index => {
+          const order = labOrders[index];
+          return `${order.testName}${order.reason ? ` (${order.reason})` : ""}${
+            order.orderTime ? ` - ${new Date(order.orderTime).toLocaleDateString()}` : ""
+          }`;
+        })
+        .join("\n");
+
+      // Build selected medications text
+      const selectedMedicationsText = Array.from(selectedMedications)
+        .map(index => {
+          const med = medications[index];
+          return `${med.name} - ${med.dose} (${med.price.toFixed(2)} IQD)`;
+        })
+        .join("\n");
+
+      // Combine selected lab orders with additional investigations
+      const combinedInvestigations = [selectedLabOrdersText, formData.investigations]
+        .filter(Boolean)
+        .join("\n\n");
+
+      // Combine selected medications with additional medications
+      const combinedMedications = [selectedMedicationsText, formData.medications]
+        .filter(Boolean)
+        .join("\n\n");
+
       const res = await fetch("/api/admin/insurance-reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId: selectedPatient.patientid,
           ...formData,
+          investigations: combinedInvestigations,
+          medications: combinedMedications,
         }),
       });
 
@@ -118,6 +213,10 @@ export default function InsuranceReportsPage() {
       setSelectedPatient(null);
       setSearchQuery("");
       setPatients([]);
+      setLabOrders([]);
+      setSelectedLabOrders(new Set());
+      setMedications([]);
+      setSelectedMedications(new Set());
     } catch (error) {
       console.error("Error creating report:", error);
       setMessage({ type: "error", text: "Failed to create insurance report" });
@@ -296,24 +395,160 @@ export default function InsuranceReportsPage() {
               />
             </div>
 
+            {/* Services Table (Lab Orders, X-rays, Procedures, etc.) */}
+            {labOrders.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Clinical Services from EHR ({labOrders.length})</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllLabOrders}
+                    className="h-7 text-xs"
+                  >
+                    {selectedLabOrders.size === labOrders.length ? "Deselect All" : "Select All"}
+                  </Button>
+                </div>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="w-12 px-3 py-2 text-left">
+                          <input
+                            type="checkbox"
+                            checked={selectedLabOrders.size === labOrders.length && labOrders.length > 0}
+                            onChange={selectAllLabOrders}
+                            className="rounded border-gray-300"
+                          />
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium">Service Name</th>
+                        <th className="px-3 py-2 text-left font-medium">Details / Reason</th>
+                        <th className="px-3 py-2 text-left font-medium">Order Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {labOrders.map((order, index) => (
+                        <tr
+                          key={index}
+                          className={`hover:bg-gray-50 cursor-pointer ${
+                            selectedLabOrders.has(index) ? "bg-blue-50" : ""
+                          }`}
+                          onClick={() => toggleLabOrder(index)}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedLabOrders.has(index)}
+                              onChange={() => toggleLabOrder(index)}
+                              className="rounded border-gray-300"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                          <td className="px-3 py-2 font-medium">{order.testName}</td>
+                          <td className="px-3 py-2 text-gray-600">{order.reason || "-"}</td>
+                          <td className="px-3 py-2 text-gray-600">
+                            {order.orderTime ? new Date(order.orderTime).toLocaleDateString() : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {selectedLabOrders.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedLabOrders.size} lab order{selectedLabOrders.size !== 1 ? "s" : ""} selected to include in report
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="investigations">Investigations & Lab Results</Label>
+              <Label htmlFor="investigations">Additional Investigations & Lab Results</Label>
               <Textarea
                 id="investigations"
                 value={formData.investigations}
                 onChange={(e) => setFormData({ ...formData, investigations: e.target.value })}
-                placeholder="Lab tests, imaging, procedures performed..."
+                placeholder="Add any additional lab tests, imaging, or procedures not listed above..."
                 rows={3}
               />
             </div>
 
+            {/* Medications Table */}
+            {medications.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Medications from Pharmacy Orders ({medications.length})</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllMedications}
+                    className="h-7 text-xs"
+                  >
+                    {selectedMedications.size === medications.length ? "Deselect All" : "Select All"}
+                  </Button>
+                </div>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="w-12 px-3 py-2 text-left">
+                          <input
+                            type="checkbox"
+                            checked={selectedMedications.size === medications.length && medications.length > 0}
+                            onChange={selectAllMedications}
+                            className="rounded border-gray-300"
+                          />
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium">Medicine Name</th>
+                        <th className="px-3 py-2 text-left font-medium">Dose</th>
+                        <th className="px-3 py-2 text-right font-medium">Price (IQD)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {medications.map((med, index) => (
+                        <tr
+                          key={index}
+                          className={`hover:bg-gray-50 cursor-pointer ${
+                            selectedMedications.has(index) ? "bg-blue-50" : ""
+                          }`}
+                          onClick={() => toggleMedication(index)}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedMedications.has(index)}
+                              onChange={() => toggleMedication(index)}
+                              className="rounded border-gray-300"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                          <td className="px-3 py-2 font-medium">{med.name}</td>
+                          <td className="px-3 py-2 text-gray-600">{med.dose}</td>
+                          <td className="px-3 py-2 text-right text-gray-600">
+                            {med.price.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {selectedMedications.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedMedications.size} medication{selectedMedications.size !== 1 ? "s" : ""} selected to include in report
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="medications">Medications Prescribed</Label>
+              <Label htmlFor="medications">Additional Medications</Label>
               <Textarea
                 id="medications"
                 value={formData.medications}
                 onChange={(e) => setFormData({ ...formData, medications: e.target.value })}
-                placeholder="Current medications and dosages..."
+                placeholder="Add any additional medications not listed above..."
                 rows={3}
               />
             </div>
