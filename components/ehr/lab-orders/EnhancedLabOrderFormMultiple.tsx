@@ -1072,7 +1072,6 @@ export default function EnhancedLabOrderFormMultiple({
               onClick={handleSubmit}
               disabled={
                 isSubmitting ||
-                !formState.clinical_indication ||
                 addedTests.length === 0
               }
               className="bg-blue-600 hover:bg-blue-700 text-white"

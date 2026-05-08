@@ -124,13 +124,6 @@ export function DrugAutocomplete({
     setSuggestions([]);
   };
 
-  // Extract route from description field
-  const extractRoute = (description: string | null): string => {
-    if (!description) return "";
-    const match = description.match(/Route:\s*([^,]+)/i);
-    return match ? match[1].trim() : "";
-  };
-
   return (
     <div ref={wrapperRef} className="relative">
       <div className="relative">

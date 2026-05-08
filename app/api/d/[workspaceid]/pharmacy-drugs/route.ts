@@ -76,7 +76,7 @@ export async function POST(
         barcode: body.barcode || null,
         manufacturer: body.manufacturer || null,
         nationalcode: body.nationalcode || null,
-        description: body.description || null,
+        route: body.route || null,
         interaction: body.interaction || null,
         warning: body.warning || null,
         pregnancy: body.pregnancy || null,

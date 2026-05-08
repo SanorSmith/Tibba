@@ -28,7 +28,7 @@ export const globalDrugs = pgTable(
     unit: text("unit").notNull().default("tablet"), // tablet, ml, vial …
     nationalcode: text("nationalcode"), // NDL code
     category: text("category"), // Therapeutic category
-    description: text("description"), // Full description
+    route: text("route"), // Administration route (e.g., oral, IV, topical)
     interaction: text("interaction"), // Drug interaction groups
     warning: text("warning"), // General warnings
     pregnancy: text("pregnancy"), // Pregnancy category

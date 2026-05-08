@@ -277,9 +277,12 @@ export default function PatientDashboard({
     });
   };
 
-  const loadDiagnoses = async () => {
-    // Data is already loaded via usePatientData hook
-    console.log("Diagnoses already loaded from cache");
+  const loadDiagnoses = async (reset = false) => {
+    console.log("Refreshing diagnoses data...");
+    // Invalidate the diagnoses query to force a refetch
+    await queryClient.invalidateQueries({
+      queryKey: ["diagnoses", workspaceid, patient.patientid]
+    });
   };
 
   const loadImaging = async () => {
