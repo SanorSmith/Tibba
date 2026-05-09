@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { pharmacyOrders, pharmacyOrderItems, drugs } from "@/lib/db/schema";
+import { pharmacyOrders, pharmacyOrderItems, drugs, patients } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getOpenEHREHRBySubjectId, createOpenEHREHR } from "@/lib/openehr";
 
@@ -36,18 +36,30 @@ export async function GET(
       price: parseFloat(med.unitPrice || "0"),
     }));
 
-    // Get patient's EHR from OpenEHR for diagnoses
-    let ehrId = await getOpenEHREHRBySubjectId(patientid);
+    // Get patient's EHR ID from database
+    const [patient] = await db
+      .select()
+      .from(patients)
+      .where(eq(patients.patientid, patientid))
+      .limit(1);
+    
+    let ehrId = patient?.ehrid;
     
     console.log("Patient ID:", patientid);
-    console.log("EHR ID found:", ehrId);
+    console.log("EHR ID from database:", ehrId);
     
     // If no EHR exists, create one automatically
     if (!ehrId) {
-      console.log("No EHR found, creating new EHR for patient...");
+      console.log("No EHR found in database, creating new EHR for patient...");
       try {
         ehrId = await createOpenEHREHR(patientid);
         console.log("Created new EHR:", ehrId);
+        
+        // Update patient record with new EHR ID
+        await db
+          .update(patients)
+          .set({ ehrid: ehrId })
+          .where(eq(patients.patientid, patientid));
       } catch (error) {
         console.error("Failed to create EHR:", error);
         // Return medications only if EHR creation fails
@@ -67,46 +79,25 @@ export async function GET(
       }
     }
 
-    // Fetch clinical encounters and problem diagnoses
-    const diagnosesQuery = `
-      SELECT
-        e/data[at0001]/items[at0002]/value/value as diagnosis_name,
-        e/data[at0001]/items[at0009]/value/value as clinical_description
-      FROM EHR e[ehr_id/value='${ehrId}']
-      CONTAINS EVALUATION e[openEHR-EHR-EVALUATION.problem_diagnosis.v1]
-      ORDER BY e/context/start_time/value DESC
-      LIMIT 10
+    // Try a very broad query to find ANY data in the EHR
+    const broadQuery = `
+      SELECT e/ehr_id/value as ehr_id, e/time_created/value as time_created
+      FROM EHR e
+      WHERE e/ehr_id/value = '${ehrId}'
     `;
 
-    // Fetch clinical findings from encounters
-    const findingsQuery = `
-      SELECT
-        o/data[at0001]/events[at0002]/data[at0003]/items[at0004]/value/value as story
-      FROM EHR e[ehr_id/value='${ehrId}']
-      CONTAINS OBSERVATION o[openEHR-EHR-OBSERVATION.story.v1]
-      ORDER BY o/context/start_time/value DESC
-      LIMIT 5
-    `;
-
-    // Fetch all instructions (lab orders, medications, procedures, etc.)
-    const labOrdersQuery = `
-      SELECT
-        i/name/value as instruction_name,
-        i/narrative/value as narrative,
-        c/context/start_time/value as order_time,
-        c/name/value as composition_name
+    // Try to list all compositions - use simpler query without ORDER BY on potentially missing field
+    const compositionsQuery = `
+      SELECT c/uid/value
       FROM EHR e[ehr_id/value='${ehrId}']
       CONTAINS COMPOSITION c
-      CONTAINS INSTRUCTION i
-      ORDER BY c/context/start_time/value DESC
-      LIMIT 50
     `;
 
-    // Execute queries in parallel
+    // Execute queries
     const ehrbaseUrl = `${process.env.EHRBASE_URL}/ehrbase`;
     const basicAuth = Buffer.from(`${process.env.EHRBASE_USER}:${process.env.EHRBASE_PASSWORD}`).toString("base64");
-    
-    const [diagnosesRes, findingsRes, labOrdersRes] = await Promise.all([
+
+    const [broadRes, compositionsRes] = await Promise.all([
       fetch(`${ehrbaseUrl}/rest/openehr/v1/query/aql`, {
         method: "POST",
         headers: {
@@ -114,7 +105,7 @@ export async function GET(
           "X-API-Key": process.env.EHRBASE_API_KEY || "",
           "Authorization": `Basic ${basicAuth}`,
         },
-        body: JSON.stringify({ q: diagnosesQuery }),
+        body: JSON.stringify({ q: broadQuery }),
       }),
       fetch(`${ehrbaseUrl}/rest/openehr/v1/query/aql`, {
         method: "POST",
@@ -123,78 +114,153 @@ export async function GET(
           "X-API-Key": process.env.EHRBASE_API_KEY || "",
           "Authorization": `Basic ${basicAuth}`,
         },
-        body: JSON.stringify({ q: findingsQuery }),
-      }),
-      fetch(`${ehrbaseUrl}/rest/openehr/v1/query/aql`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": process.env.EHRBASE_API_KEY || "",
-          "Authorization": `Basic ${basicAuth}`,
-        },
-        body: JSON.stringify({ q: labOrdersQuery }),
+        body: JSON.stringify({ q: compositionsQuery }),
       }),
     ]);
 
-    const diagnosesData = diagnosesRes.ok ? await diagnosesRes.json() : { rows: [] };
-    const findingsData = findingsRes.ok ? await findingsRes.json() : { rows: [] };
+    const broadData = broadRes.ok ? await broadRes.json() : { rows: [] };
     
-    // Check lab orders response
-    if (!labOrdersRes.ok) {
-      console.error("Lab Orders Query Failed:", labOrdersRes.status, labOrdersRes.statusText);
-      const errorText = await labOrdersRes.text();
-      console.error("Lab Orders Error:", errorText);
+    let compositionsData = { rows: [] };
+    if (compositionsRes.ok) {
+      compositionsData = await compositionsRes.json();
+    } else {
+      const errorText = await compositionsRes.text();
+      console.error("Compositions Query Failed:", compositionsRes.status, compositionsRes.statusText);
+      console.error("Error Response:", errorText);
     }
-    const labOrdersData = labOrdersRes.ok ? await labOrdersRes.json() : { rows: [] };
 
-    // Debug: Log the lab orders response
-    console.log("=== LAB ORDERS DEBUG ===");
-    console.log("Lab Orders Response OK:", labOrdersRes.ok);
-    console.log("Lab Orders Data:", JSON.stringify(labOrdersData, null, 2));
-    console.log("Lab Orders Rows Count:", labOrdersData.rows?.length || 0);
+    // Debug: Log the responses
+    console.log("=== BROAD QUERY DEBUG ===");
+    console.log("Broad Query Response OK:", broadRes.ok);
+    console.log("Broad Query Data:", JSON.stringify(broadData, null, 2));
+    console.log("=== COMPOSITIONS DEBUG ===");
+    console.log("Compositions Response OK:", compositionsRes.ok);
+    console.log("Compositions Data:", JSON.stringify(compositionsData, null, 2));
+    console.log("Compositions Rows Count:", compositionsData.rows?.length || 0);
 
-    // Extract and format data
-    const diagnoses = diagnosesData.rows?.map((row: any) => row[0]) || [];
-    const clinicalFindings = findingsData.rows?.map((row: any) => row[0]).join("\n\n") || "";
-    
-    // Format lab orders/service requests
-    const allServices = labOrdersData.rows || [];
-    console.log("All Service Requests Count:", allServices.length);
-    
-    // Map instructions (lab orders, medications, x-rays, procedures, etc.)
-    const labOrders = allServices
-      .map((row: any) => ({
-        testName: row[1] || row[0] || "Unknown Service", // narrative or instruction_name
-        reason: row[0] || "", // instruction_name
-        requestId: "",
-        orderTime: row[2] || "",
-        serviceType: row[3] || "", // composition name to identify type
-      }))
-      .slice(0, 50); // Limit to 50 results
-    
-    console.log("Service Requests to display:", labOrders.length);
-    console.log("Sample services:", labOrders.slice(0, 3));
+    // Extract and format data from compositions
+    const compositions = compositionsData.rows || [];
+    const diagnoses: string[] = [];
+    const clinicalFindings: string[] = [];
+    const labOrders: any[] = [];
+
+    // If we have composition UIDs, fetch full composition details
+    if (compositions.length > 0) {
+      // Fetch full composition data for each UID
+      const compositionDetails = await Promise.all(
+        compositions.map(async (row: any) => {
+          const compositionUid = row[0];
+          try {
+            const compRes = await fetch(
+              `${ehrbaseUrl}/rest/openehr/v1/ehr/${ehrId}/composition/${compositionUid}?format=FLAT`,
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-API-Key": process.env.EHRBASE_API_KEY || "",
+                  "Authorization": `Basic ${basicAuth}`,
+                },
+              }
+            );
+            if (compRes.ok) {
+              return await compRes.json();
+            }
+            return null;
+          } catch (error) {
+            console.error(`Error fetching composition ${compositionUid}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // Process each composition detail
+      console.log("=== PROCESSING COMPOSITIONS ===");
+      console.log("Total compositions fetched:", compositionDetails.length);
+      console.log("Null compositions:", compositionDetails.filter(c => !c).length);
+      
+      compositionDetails.forEach((comp: any, index: number) => {
+        if (!comp) return;
+
+        // Determine template type from keys
+        const keys = Object.keys(comp);
+        const templateKey = keys.find(k => k.startsWith('template_'));
+        const templateName = templateKey?.split('/')[0] || 'unknown';
+        
+        // Extract data based on template type
+        if (templateName.includes('clinical_encounter')) {
+          const startTime = comp[`${templateName}/context/start_time`] || '';
+          
+          // Extract diagnosis
+          const diagnosisName = comp[`${templateName}/problem_diagnosis/problem_diagnosis_name`];
+          const clinicalDesc = comp[`${templateName}/problem_diagnosis/clinical_description`];
+          if (diagnosisName) {
+            diagnoses.push(diagnosisName);
+            if (clinicalDesc) {
+              clinicalFindings.push(`${diagnosisName}: ${clinicalDesc}`);
+            }
+          }
+          
+          // Extract service requests (lab orders)
+          const serviceName = comp[`${templateName}/service_request/request/service_name|other`];
+          const serviceDesc = comp[`${templateName}/service_request/request/description`];
+          if (serviceName) {
+            labOrders.push({
+              testName: serviceName,
+              reason: serviceDesc || '',
+              requestId: '',
+              orderTime: startTime,
+              serviceType: 'service_request',
+            });
+          }
+          
+          // Extract medications
+          const medicationItem = comp[`${templateName}/medication_order/order:0/medication_item`];
+          const route = comp[`${templateName}/medication_order/order:0/route:0`];
+          const directions = comp[`${templateName}/medication_order/order:0/overall_directions_description`];
+          if (medicationItem) {
+            labOrders.push({
+              testName: `Medication: ${medicationItem}`,
+              reason: directions || route || '',
+              requestId: '',
+              orderTime: startTime,
+              serviceType: 'medication',
+            });
+          }
+        } else if (templateName.includes('care_plan')) {
+          const diagnosisName = comp[`${templateName}/problem_diagnosis/problem_diagnosis_name`];
+          const clinicalDesc = comp[`${templateName}/problem_diagnosis/clinical_description`];
+          
+          if (diagnosisName) {
+            diagnoses.push(diagnosisName);
+            if (clinicalDesc) {
+              clinicalFindings.push(`Care Plan - ${diagnosisName}: ${clinicalDesc}`);
+            }
+          }
+        }
+      });
+    }
+
+    console.log("Processed Diagnoses:", diagnoses.length);
+    console.log("Processed Findings:", clinicalFindings.length);
+    console.log("Processed Lab Orders:", labOrders.length);
 
     return NextResponse.json({
       diagnoses,
-      clinicalFindings,
+      clinicalFindings: clinicalFindings.join("\n\n"),
       medications,
       labOrders,
-      investigations: "", // Can be populated from lab results if available
-      treatmentPlan: "", // Can be populated from care plans if available
+      investigations: "",
+      treatmentPlan: "",
       // Debug info
       _debug: {
-        labOrdersQueryOk: labOrdersRes.ok,
-        labOrdersRowCount: labOrdersData.rows?.length || 0,
-        allServicesCount: allServices.length,
+        ehrId,
+        broadQueryResult: broadData,
+        compositionsCount: compositions.length,
+        diagnosesCount: diagnoses.length,
+        findingsCount: clinicalFindings.length,
         labOrdersCount: labOrders.length,
-        sampleServices: allServices.slice(0, 3).map((row: any) => ({
-          serviceName: row[0],
-          reason: row[1],
-          description: row[2],
-          orderTime: row[3],
-          compositionName: row[4]
-        }))
+        sampleCompositions: compositions.slice(0, 5).map((row: any) => ({
+          uid: row[0],
+        })),
       }
     });
 

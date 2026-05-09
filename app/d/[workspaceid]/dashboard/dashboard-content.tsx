@@ -31,6 +31,7 @@ import {
   CreditCard,
   CheckSquare,
   BookOpen,
+  FileText,
 } from "lucide-react";
 import {
   Table,
@@ -628,6 +629,21 @@ export default function DashboardContent({
                 <Button className="w-full bg-blue-500 hover:bg-blue-600 ">
                   <Shield className="h-4 w-4 mr-2" />
                   Manage Insurance
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="text-base">Insurance Reports</CardTitle>
+              <CardDescription>Create and manage insurance pre-approval reports</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href={`/d/${workspaceid}/insurance-reports`}>
+                <Button className="w-full bg-green-500 hover:bg-green-600">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create Report
                 </Button>
               </Link>
             </CardContent>
