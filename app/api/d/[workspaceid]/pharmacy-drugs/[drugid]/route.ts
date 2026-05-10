@@ -54,7 +54,7 @@ export async function PATCH(
         manufacturer: body.manufacturer ?? undefined,
         nationalcode: body.nationalcode ?? undefined,
         category: body.category ?? undefined,
-        description: body.description ?? undefined,
+        route: body.route ?? undefined,
         interaction: body.interaction ?? undefined,
         warning: body.warning ?? undefined,
         pregnancy: body.pregnancy ?? undefined,

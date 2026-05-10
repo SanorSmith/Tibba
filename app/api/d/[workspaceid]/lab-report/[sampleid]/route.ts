@@ -37,8 +37,6 @@ export async function GET(
     const [workspace] = await db
       .select({
         name: workspaces.name,
-        type: workspaces.type,
-        description: workspaces.description,
       })
       .from(workspaces)
       .where(eq(workspaces.workspaceid, workspaceid))
@@ -180,14 +178,20 @@ export async function GET(
         : null,
     }));
 
-    return NextResponse.json({
-      report: {
-        facility: workspace || { name: "Laboratory", type: "laboratory", description: null },
-        patient: patientData,
-        sample: sampleData,
-        results: enrichedResults,
-        generatedAt: new Date().toISOString(),
+    // Ensure all required fields have safe defaults
+    const safeReport = {
+      facility: workspace || { name: "Laboratory" },
+      patient: patientData || null,
+      sample: {
+        ...sampleData,
+        tests: sampleData.tests || {},
       },
+      results: enrichedResults || [],
+      generatedAt: new Date().toISOString(),
+    };
+
+    return NextResponse.json({
+      report: safeReport,
     });
   } catch (error) {
     console.error("Error generating lab report:", error);

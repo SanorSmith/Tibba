@@ -290,8 +290,14 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
   };
 
   const handleSubmit = async () => {
+    console.log('[AddDrug] Submitting:', { isUpdate, name: form.name, warehouse: form.warehouseid, quantity: form.initial_quantity });
     if (!form.name.trim()) { setError("Drug name is required"); return; }
     if (!form.manufacturer.trim()) { setError("Manufacturer is required"); return; }
+    if (!form.warehouseid) { setError("Warehouse is required"); return; }
+    if (!form.initial_quantity || parseFloat(form.initial_quantity) <= 0) { 
+      setError("Quantity is required and must be greater than 0"); 
+      return; 
+    }
     setLoading(true);
     try {
       if (isUpdate && existingItem) {
@@ -342,6 +348,18 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error??"Failed");
+        
+        // Show message if item already existed
+        if (data.existing) {
+          console.log('[AddDrug] Item already exists:', data.message);
+          if (!data.stockAdded) {
+            setError(`"${form.name}" already exists in inventory but has no stock. Please search for it in the list above and click "Update Stock →" to add inventory.`);
+            setLoading(false);
+            return;
+          }
+          // If stock was added successfully, show success message
+          alert(`Stock added successfully to existing item "${form.name}"!`);
+        }
       }
       onSuccess(); onClose();
     } catch(e:any) { setError(e.message); }
@@ -426,12 +444,18 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
                 setExistingItem(item);
                 setForm(f=>({
                   ...f,
-                  name: item.name,
-                  genericname: item.genericName ?? f.genericname,
-                  form: item.itemType ?? f.form,
-                  unit_cost: String(item.unitCost ?? ""),
-                  selling_price: String(item.sellingPrice ?? ""),
-                  uom: item.uom ?? f.uom,
+                  name: item.name || "",
+                  genericname: item.generic_Name || item.genericName || "",
+                  form: item.itemType || f.form,
+                  unit_cost: String(item.unitCost || ""),
+                  selling_price: String(item.sellingPrice || ""),
+                  uom: item.uom || f.uom,
+                  manufacturer: item.manufacturer || "",
+                  supplier: item.supplierName || "",
+                  storage_location: item.storageLocationName || item.storageLocation || "",
+                  storage_type: item.storageType || "",
+                  barcode: item.barcode || "",
+                  itemcode: item.itemcode || "",
                 }));
               }}
             />

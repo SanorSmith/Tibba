@@ -7,7 +7,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,10 +30,12 @@ import {
   AlertCircle,
   ShoppingCart,
 } from "lucide-react";
+import { PharmacyNav } from "@/components/pharmacy/PharmacyNav";
 import PharmacyOrdersPage from "../orders/orders-list";
 import DrugRegistration from "./components/DrugRegistration";
 import DrugInteractions from "./components/DrugInteractions";
 import PharmacyInventoryPage from "../../pharmacy-inventory/page";
+import PharmacyTodos from "./components/PharmacyTodos";
 
 const PRIMARY = "#618FF5";
 
@@ -82,9 +83,7 @@ export default function PharmacyDashboard({
     const fetchPharmacyStats = async () => {
       try {
         console.log('[PharmacyDashboard] Fetching stats for workspace:', workspaceid);
-        // Add cache-busting to force fresh data
-        const cacheBuster = Date.now();
-        const res = await fetch(`/api/pharmacy/summary?workspaceId=${workspaceid}&_cb=${cacheBuster}`);
+        const res = await fetch(`/api/pharmacy/summary?workspaceId=${workspaceid}`);
         if (res.ok) {
           const data = await res.json();
           if (!data.error) {
@@ -106,9 +105,9 @@ export default function PharmacyDashboard({
       if (!res.ok) throw new Error("Failed to fetch stats");
       return res.json();
     },
-    staleTime: 0, // Always fetch fresh data (disable cache)
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
-    refetchOnMount: true, // Only fetch on initial mount
+    refetchOnMount: false, // Use cached data if available
     enabled: !!workspaceid, // Only run query when workspaceid is available
   });
 
@@ -117,70 +116,24 @@ export default function PharmacyDashboard({
   };
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => {
-        setActiveTab(value);
-        handleTabChange(value);
-      }}
-      className="flex flex-col flex-1 overflow-hidden"
-    >
-      <div className="flex-shrink-0 px-4 pt-2 pb-1">
-        <TabsList className="flex w-full flex-wrap gap-1 h-auto bg-transparent p-0">
-          <TabsTrigger
-            value="dashboard"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger
-            value="orders"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <ClipboardList className="h-4 w-4" />
-            Orders
-          </TabsTrigger>
-          <TabsTrigger
-            value="pos"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            Point of Sale
-          </TabsTrigger>
-          <TabsTrigger
-            value="drug-registration"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <Pill className="h-4 w-4" />
-            Drug registration
-          </TabsTrigger>
-          <TabsTrigger
-            value="inventory"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <Warehouse className="h-4 w-4" />
-            Inventory
-          </TabsTrigger>
-          <TabsTrigger
-            value="insurance"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <Shield className="h-4 w-4" />
-            Insurance
-          </TabsTrigger>
-          <TabsTrigger
-            value="todo"
-            className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
-          >
-            <ListTodo className="h-4 w-4" />
-            To Do
-          </TabsTrigger>
-        </TabsList>
+    <div className="flex flex-col flex-1 overflow-hidden">
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
+        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>
+          {activeTab === "dashboard" ? "Pharmacy Dashboard" :
+           activeTab === "orders" ? "Pharmacy Orders" :
+           activeTab === "pos" ? "Point of Sale" :
+           activeTab === "drug-registration" ? "Drug Registration" :
+           activeTab === "inventory" ? "Pharmacy Inventory" :
+           activeTab === "todo" ? "To Do" : "Pharmacy Dashboard"}
+        </span>
       </div>
 
+      <PharmacyNav workspaceid={workspaceid} activeTab={activeTab} />
+
       {/* Dashboard Tab */}
-      <TabsContent value="dashboard" className="mt-3 px-4">
+      {activeTab === "dashboard" && (
+        <div className="mt-3 px-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-8 w-8 animate-spin text-[#618FF5]" />
@@ -461,23 +414,27 @@ export default function PharmacyDashboard({
                 </div>
               </div>
             )}
-      </TabsContent>
+        </div>
+      )}
 
       {/* Orders Tab */}
-      <TabsContent value="orders" className="mt-0 flex-1 flex flex-col overflow-hidden px-4">
-        {loadedTabs.has("orders") && (
-          <div className="flex-1 overflow-hidden">
-            <PharmacyOrdersPage 
-              workspaceid={workspaceid}
-              userName={userName}
-              userId={userId}
-            />
-          </div>
-        )}
-      </TabsContent>
+      {activeTab === "orders" && (
+        <div className="mt-0 flex-1 flex flex-col overflow-hidden px-4">
+          {loadedTabs.has("orders") && (
+            <div className="flex-1 overflow-hidden">
+              <PharmacyOrdersPage
+                workspaceid={workspaceid}
+                userName={userName}
+                userId={userId}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Point of Sale Tab */}
-      <TabsContent value="pos" className="mt-4 px-4">
+      {activeTab === "pos" && (
+        <div className="mt-4 px-4">
         {loadedTabs.has("pos") && (
           <div className="text-center py-8">
             <div className="mb-6">
@@ -519,37 +476,36 @@ export default function PharmacyDashboard({
             </div>
           </div>
         )}
-      </TabsContent>
+        </div>
+      )}
 
       {/* Drug Registration Tab */}
-      <TabsContent value="drug-registration" className="mt-4 px-4">
-        {loadedTabs.has("drug-registration") && (
-          <DrugRegistration workspaceid={workspaceid} />
-        )}
-      </TabsContent>
-
+      {activeTab === "drug-registration" && (
+        <div className="mt-4 px-4">
+          {loadedTabs.has("drug-registration") && (
+            <DrugRegistration workspaceid={workspaceid} />
+          )}
+        </div>
+      )}
 
       {/* Inventory Tab */}
-      <TabsContent value="inventory" className="mt-4 px-4">
-        {loadedTabs.has("inventory") && (
-          <PharmacyInventoryPage initialStockFilter={inventoryStockFilter} />
-        )}
-      </TabsContent>
-
-      {/* Insurance Tab */}
-      <TabsContent value="insurance" className="mt-4 px-4">
-        {loadedTabs.has("insurance") && (
-          <PlaceholderTab title="Insurance" description="Insurance management — coming soon" icon={<Shield className="h-12 w-12 text-gray-300" />} />
-        )}
-      </TabsContent>
+      {activeTab === "inventory" && (
+        <div className="mt-4 px-4">
+          {loadedTabs.has("inventory") && (
+            <PharmacyInventoryPage initialStockFilter={inventoryStockFilter} />
+          )}
+        </div>
+      )}
 
       {/* To Do Tab */}
-      <TabsContent value="todo" className="mt-4 px-4">
-        {loadedTabs.has("todo") && (
-          <PlaceholderTab title="To Do" description="Task management and reminders" icon={<ListTodo className="h-12 w-12 text-gray-300" />} />
-        )}
-      </TabsContent>
-    </Tabs>
+      {activeTab === "todo" && (
+        <div className="mt-4 px-4">
+          {loadedTabs.has("todo") && (
+            <PharmacyTodos workspaceid={workspaceid} />
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

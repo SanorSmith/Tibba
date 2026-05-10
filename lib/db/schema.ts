@@ -52,9 +52,12 @@ export const requisitionStatusEnum = pgEnum("requisition_status", [
 export const workspaces = pgTable("workspaces", {
   workspaceid: uuid("workspaceid").primaryKey().defaultRandom(),
   name:        text("name").notNull(),
-  isactive:    boolean("isactive").default(true),
-  createdat:   timestamp("createdat", { withTimezone: true }).defaultNow(),
-  updatedat:   timestamp("updatedat", { withTimezone: true }).defaultNow(),
+  type:        text("type").notNull(),
+  description: text("description"),
+  isactive:    boolean("isactive").notNull().default(true),
+  settings:    jsonb("settings").default("{}"),
+  createdat:   timestamp("createdat", { withTimezone: true }).defaultNow().notNull(),
+  updatedat:   timestamp("updatedat", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -65,6 +68,7 @@ export const users = pgTable("users", {
   email:       text("email").notNull().unique(),
   image:       text("image"),
   password:    text("password"),
+  isactive:    boolean("isactive").notNull().default(true),
   theme:       text("theme").default("system"),
   language:    text("language").default("en"),
   permissions: jsonb("permissions").default("[]"),
@@ -126,7 +130,7 @@ export const drugs = pgTable("drugs", {
   strength:             text("strength"),
   unit:                 text("unit"),
   manufacturer:         text("manufacturer"),
-  description:          text("description"),
+  route:                text("route"),
   indication:           text("indication"),
   interaction:          text("interaction"),
   warning:              text("warning"),
@@ -551,11 +555,11 @@ export const prStatusEnum = pgEnum("pr_status", [
 ]);
 
 export const poStatusEnum = pgEnum("po_status", [
-  "draft", "approved", "sent", "partial", "complete", "cancelled",
+  "pending", "partial", "delivered", "canceled",
 ]);
 
 export const grnStatusEnum = pgEnum("grn_status", [
-  "draft", "confirmed", "posted",
+  "draft", "pending", "approved", "posted", "cancelled",
 ]);
 
 export const vendors = pgTable("vendors", {
@@ -570,6 +574,18 @@ export const vendors = pgTable("vendors", {
   paymentterms: integer("paymentterms").default(30),
   currency:     text("currency").default("USD"),
   taxnumber:    text("taxnumber"),
+  bankname:     text("bankname"),
+  bankaccountnumber: text("bankaccountnumber"),
+  bankroutingnumber: text("bankroutingnumber"),
+  bankiban:     text("bankiban"),
+  bankswiftcode: text("bankswiftcode"),
+  website:      text("website"),
+  ratingquality: integer("ratingquality").default(0),
+  ratingdelivery: integer("ratingdelivery").default(0),
+  ratingpricing: integer("ratingpricing").default(0),
+  totalorders:  integer("totalorders").default(0),
+  totalpurchases: text("totalpurchases").default('0'),
+  lastorderdate: timestamp("lastorderdate", { withTimezone: true }),
   rating:       integer("rating").default(0),
   isactive:     boolean("isactive").default(true),
   notes:        text("notes"),
@@ -622,7 +638,7 @@ export const purchaseOrders = pgTable("purchase_orders", {
   vendorid:        uuid("vendorid").references(() => vendors.id),
   prid:            uuid("prid").references(() => purchaseRequisitions.id),
   warehouseid:     uuid("warehouseid").references(() => warehouses.id),
-  status:          poStatusEnum("status").default("draft"),
+  status:          poStatusEnum("status").default("pending"),
   orderdate:       timestamp("orderdate", { withTimezone: true }).defaultNow(),
   expecteddate:    timestamp("expecteddate", { withTimezone: true }),
   totalamount:     decimal("totalamount", { precision: 12, scale: 4 }).default("0"),
@@ -640,11 +656,15 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   id:          uuid("id").primaryKey().defaultRandom(),
   poid:        uuid("poid").references(() => purchaseOrders.id),
   itemid:      uuid("itemid").references(() => items.id),
+  itemcode:    text("itemcode"),
+  itemname:    text("itemname"),
   orderedqty:  integer("orderedqty").notNull(),
   receivedqty: integer("receivedqty").default(0),
-  unitprice:   decimal("unitprice", { precision: 10, scale: 4 }).notNull(),
-  totalamount: decimal("totalamount", { precision: 12, scale: 4 }),
+  unitprice:   text("unitprice"),
+  totalprice:  text("totalprice"),
+  notes:       text("notes"),
   createdat:   timestamp("createdat", { withTimezone: true }).defaultNow(),
+  updatedat:   timestamp("updatedat", { withTimezone: true }).defaultNow(),
 });
 
 export const goodsReceiptNotes = pgTable("goods_receipt_notes", {
@@ -678,6 +698,63 @@ export const grnItems = pgTable("grn_items", {
   notes:           text("notes"),
   createdat:       timestamp("createdat", { withTimezone: true }).defaultNow(),
 });
+
+// ─── Supplier Claims ─────────────────────────────────────────────────────────────
+
+export const supplierClaims = pgTable("supplier_claims", {
+  id:              uuid("id").primaryKey().defaultRandom(),
+  workspaceid:     uuid("workspace_id").references(() => workspaces.workspaceid).notNull(),
+  claimnumber:     text("claim_number").notNull(),
+  grnid:           uuid("grnid").references(() => goodsReceiptNotes.id),
+  grnitemid:       uuid("grnitemid").references(() => grnItems.id),
+  vendorid:        uuid("vendorid").references(() => vendors.id),
+  claimtype:       text("claim_type").notNull(), // DAMAGED, INCORRECT, SHORTAGE, EXPIRED
+  status:          text("status").default("submitted"), // submitted, approved, rejected, resolved
+  claimdate:       timestamp("claim_date", { withTimezone: true }).defaultNow(),
+  description:     text("description").notNull(),
+  quantityclaimed: integer("quantity_claimed").notNull(),
+  amountclaimed:   decimal("amount_claimed", { precision: 12, scale: 4 }),
+  resolveddate:    timestamp("resolved_date", { withTimezone: true }),
+  resolutionnotes: text("resolution_notes"),
+  createdby:       text("created_by"),
+  createdat:       timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedat:       timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ─── Supplier Returns ─────────────────────────────────────────────────────────────
+
+export const supplierReturns = pgTable("supplier_returns", {
+  id:            uuid("id").primaryKey().defaultRandom(),
+  workspaceid:   uuid("workspace_id").references(() => workspaces.workspaceid).notNull(),
+  returnnumber:  text("return_number").notNull(),
+  claimid:       uuid("claimid").references(() => supplierClaims.id),
+  vendorid:      uuid("vendorid").references(() => vendors.id),
+  status:        text("status").default("pending"), // pending, authorized, shipped, received, credited
+  returndate:    timestamp("return_date", { withTimezone: true }).defaultNow(),
+  expecteddate:  timestamp("expected_date", { withTimezone: true }),
+  description:   text("description").notNull(),
+  totalamount:   decimal("total_amount", { precision: 12, scale: 4 }),
+  creditnote:    text("credit_note"),
+  receiveddate:  timestamp("received_date", { withTimezone: true }),
+  receivedby:    text("received_by"),
+  createdby:     text("created_by"),
+  createdat:     timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedat:     timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ─── Supplier Return Items ─────────────────────────────────────────────────────────
+
+export const supplierReturnItems = pgTable("supplier_return_items", {
+  id:        uuid("id").primaryKey().defaultRandom(),
+  returnid:  uuid("returnid").references(() => supplierReturns.id).notNull(),
+  itemid:    uuid("itemid").references(() => items.id).notNull(),
+  batchid:   uuid("batchid").references(() => itemBatches.id),
+  quantity:  integer("quantity").notNull(),
+  unitprice: decimal("unit_price", { precision: 10, scale: 4 }),
+  reason:    text("reason").notNull(),
+  createdat: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 
 export const drugsRelations = relations(drugs, ({ one, many }) => ({
@@ -856,8 +933,9 @@ export * from "./tables/pharmacy-drugs";
 export * from "./tables/pharmacy-stock";
 export * from "./tables/pharmacy-orders";
 export * from "./tables/pharmacy-insurance";
-export * from "./tables/pharmacy-invoices";
+export * from "./tables/pos-schema";
 export * from "./tables/pharmacy-substitutions";
+export * from "./tables/insurance-reports";
 export * from "./schema/test-reference-ranges";
 export * from "./schema/test-reference-audit-log";
 
@@ -875,3 +953,7 @@ export * from "./tables/finance-audit";
 
 // ─── POS Module ─────────────────────────────────────────────────────────────
 export * from "./tables/pos-schema";
+export * from "./tables/pos-returns-schema";
+
+// ─── Pharmacy Procurement Module ────────────────────────────────────────────
+export * from "./tables/pharmacy-procurement";

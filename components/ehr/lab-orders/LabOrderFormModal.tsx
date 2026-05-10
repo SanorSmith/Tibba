@@ -151,10 +151,6 @@ export default function LabOrderFormModal({
   };
 
   const handleSubmit = async () => {
-    if (!formState.clinical_indication) {
-      alert("Please fill in clinical indication");
-      return;
-    }
 
     try {
       // Set the first selected test as the main test type BEFORE submitting
