@@ -130,7 +130,7 @@ export const drugs = pgTable("drugs", {
   strength:             text("strength"),
   unit:                 text("unit"),
   manufacturer:         text("manufacturer"),
-  description:          text("description"),
+  route:                text("route"),
   indication:           text("indication"),
   interaction:          text("interaction"),
   warning:              text("warning"),
