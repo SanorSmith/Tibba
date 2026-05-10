@@ -31,41 +31,34 @@ export async function GET(req: NextRequest) {
 
     const whIds = whRes.rows.map((r: any) => r.id);
 
-    // Get pharmacy inventory summary - only count items that have inventory records
+    // Get pharmacy inventory summary - only count items with batches that have pricing
     const summary = await pool.query(`
       WITH item_stock AS (
-        SELECT 
+        SELECT DISTINCT ON (i.id)
           i.id,
           i.reorder_level,
-          COALESCE(SUM(ist.quantity), 0) as total_stock,
-          (SELECT ib.unit_cost FROM item_batches ib
-            WHERE ib.item_id = i.id
+          COALESCE((
+            SELECT SUM(ist.quantity) 
+            FROM inventory_stock ist 
+            WHERE ist.item_id = i.id AND ist.warehouse_id = ANY($1::uuid[])
+          ), 0) as total_stock,
+          (
+            SELECT MAX(ib.unit_cost) 
+            FROM item_batches ib 
+            WHERE ib.item_id = i.id 
               AND ib.warehouse_id = ANY($1::uuid[])
               AND ib.unit_cost IS NOT NULL
-            ORDER BY ib.created_at DESC LIMIT 1) as unit_cost
+          ) as unit_cost
         FROM items i
-        LEFT JOIN inventory_stock ist ON ist.item_id = i.id AND ist.warehouse_id = ANY($1::uuid[])
         WHERE i.is_active = true 
           AND i.workspace_id = $2
-          AND (
-            i.inventory_category = 'pharmacy'
-            OR i.inventorycategory = 'pharmacy'
-            OR ist.warehouse_id IS NOT NULL
+          AND (i.inventory_category = 'pharmacy' OR i.inventorycategory = 'pharmacy')
+          AND EXISTS (
+            SELECT 1 FROM item_batches ib
+            WHERE ib.item_id = i.id
+              AND ib.warehouse_id = ANY($1::uuid[])
+              AND (ib.unit_cost IS NOT NULL OR ib.selling_price IS NOT NULL)
           )
-          AND (
-            -- Only count items that have inventory records (batches or stock)
-            EXISTS (
-              SELECT 1 FROM item_batches ib_check
-              WHERE ib_check.item_id = i.id
-                AND ib_check.warehouse_id = ANY($1::uuid[])
-            )
-            OR EXISTS (
-              SELECT 1 FROM inventory_stock ist_check
-              WHERE ist_check.item_id = i.id
-                AND ist_check.warehouse_id = ANY($1::uuid[])
-            )
-          )
-        GROUP BY i.id, i.reorder_level
       )
       SELECT 
         COUNT(*) as total_items,
@@ -88,6 +81,10 @@ export async function GET(req: NextRequest) {
 
     const result = summary.rows[0];
     const expiringResult = expiring.rows[0];
+
+    console.log('[Pharmacy Summary API] Workspace ID:', workspaceId);
+    console.log('[Pharmacy Summary API] Warehouse IDs:', whIds);
+    console.log('[Pharmacy Summary API] Raw result:', result);
 
     const response = {
       totalItems: parseInt(result.total_items) || 0,
