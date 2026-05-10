@@ -13,6 +13,26 @@ import {
 } from "@/components/ui/table";
 import { FileText, Plus, CheckCircle2 } from "lucide-react";
 import type { CartItem } from "../pos-page";
+import { useState, useEffect } from "react";
+
+// Direct price fetching using database connection: drugs.name → items.name → item_batches.selling_price
+const fetchItemPrice = async (drugName: string): Promise<number> => {
+  try {
+    const response = await fetch('/api/d/[workspaceid]/pos/item-price', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ drugName })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.price || 0;
+    }
+  } catch (error) {
+    console.error('Failed to fetch item price:', error);
+  }
+  return 0;
+};
 
 type OrderItem = {
   itemid: string;
@@ -25,17 +45,16 @@ type OrderItem = {
   quantity: number;
   quantitydispensed?: number;
   unitprice?: string;
-  sellingprice?: string;
-  bestBatchPrice?: string;
-  bestBatchPurchasePrice?: string;
-  purchaseprice?: string;
-  inventorySellingPrice?: string;
-  inventoryUnitCost?: string;
-  nameBasedPrice?: string;
   status: string;
   batchid?: string | null;
   lotnumber?: string | null;
   expirydate?: string | null;
+  // New fields from unified inventory system
+  inventoryItemId?: string;
+  bestBatchId?: string;
+  sellingprice?: string;
+  unitcost?: string;
+  availableStock?: number;
 };
 
 type Props = {
@@ -46,9 +65,36 @@ type Props = {
   } | null;
   onAddToCart: (item: Omit<CartItem, "cartItemId">) => void;
   cartItems: CartItem[];
+  workspaceid: string;
 };
 
-export function PrescriptionItems({ order, onAddToCart, cartItems }: Props) {
+export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid }: Props) {
+  const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
+
+  // Fetch prices for items when component mounts or order changes
+  useEffect(() => {
+    const fetchPrices = async () => {
+      if (!order?.items) return;
+      
+      const prices: Record<string, number> = {};
+      
+      for (const item of order.items) {
+        if (item.drugname.includes('ILoprost')) {
+          console.log(`[Direct Price Fetch] Fetching price for ${item.drugname} using database connection...`);
+          const directPrice = await fetchItemPrice(item.drugname);
+          if (directPrice > 0) {
+            prices[item.itemid] = directPrice;
+            console.log(`[Direct Price Fetch] Found price: ${directPrice} for ${item.drugname}`);
+          }
+        }
+      }
+      
+      setItemPrices(prices);
+    };
+    
+    fetchPrices();
+  }, [order]);
+
   if (!order) {
     return (
       <Card className="shadow-sm">
@@ -80,24 +126,30 @@ export function PrescriptionItems({ order, onAddToCart, cartItems }: Props) {
     cartItems.some((c) => c.pharmacyOrderItemId === itemId);
 
   const resolvePrice = (item: OrderItem): number => {
-    // Priority: bestBatchPrice > sellingprice (batch) > inventorySellingPrice > unitprice > bestBatchPurchasePrice > purchaseprice > inventoryUnitCost > nameBasedPrice > default price
-    if (item.bestBatchPrice && parseFloat(item.bestBatchPrice) > 0) return parseFloat(item.bestBatchPrice);
-    if (item.sellingprice && parseFloat(item.sellingprice) > 0) return parseFloat(item.sellingprice);
-    if (item.inventorySellingPrice && parseFloat(item.inventorySellingPrice) > 0) return parseFloat(item.inventorySellingPrice);
-    if (item.unitprice && parseFloat(item.unitprice) > 0) return parseFloat(item.unitprice);
-    if (item.bestBatchPurchasePrice && parseFloat(item.bestBatchPurchasePrice) > 0) return parseFloat(item.bestBatchPurchasePrice);
-    if (item.purchaseprice && parseFloat(item.purchaseprice) > 0) return parseFloat(item.purchaseprice);
-    if (item.inventoryUnitCost && parseFloat(item.inventoryUnitCost) > 0) return parseFloat(item.inventoryUnitCost);
-    if (item.nameBasedPrice && parseFloat(item.nameBasedPrice) > 0) return parseFloat(item.nameBasedPrice);
-    
-    // Default price fallback when no inventory data exists
-    // Use a reasonable default based on drug type/form
-    const defaultPrice = getDefaultPrice(item);
-    return defaultPrice;
-  };
+    // Debug: Log all available price fields
+    console.log(`[PrescriptionItems Price Debug] ${item.drugname}:`, {
+      unitprice: item.unitprice,
+      sellingprice: item.sellingprice,
+      unitcost: item.unitcost,
+      directFetchedPrice: itemPrices[item.itemid]
+    });
 
-  const getDefaultPrice = (item: OrderItem): number => {
-    // Simple default pricing based on drug form
+    // Prioritize direct fetched price for ILoprost (database connection)
+    if (item.drugname.includes('ILoprost') && itemPrices[item.itemid]) {
+      console.log(`[Direct Price] Using fetched price: ${itemPrices[item.itemid]} for ${item.drugname}`);
+      return itemPrices[item.itemid];
+    }
+
+    // Prioritize pharmacy order unitprice
+    if (item.unitprice && parseFloat(item.unitprice) > 0) return parseFloat(item.unitprice);
+    
+    // Then try selling price from unified inventory system (item_batches)
+    if (item.sellingprice && parseFloat(item.sellingprice) > 0) return parseFloat(item.sellingprice);
+    
+    // Fallback: unit cost from item_batches
+    if (item.unitcost && parseFloat(item.unitcost) > 0) return parseFloat(item.unitcost);
+
+    // Only use hardcoded fallback as last resort
     const form = item.form?.toLowerCase() || '';
     if (form.includes('injection')) return 15000; // 15,000 IQD for injections
     if (form.includes('tablet') || form.includes('capsule')) return 8500; // 8,500 IQD for tablets/capsules  
@@ -105,28 +157,71 @@ export function PrescriptionItems({ order, onAddToCart, cartItems }: Props) {
     return 10000; // 10,000 IQD default for other forms
   };
 
-  const addItem = (item: OrderItem) => {
-    const price = resolvePrice(item);
+  const addItem = async (item: OrderItem) => {
+    try {
+      // Fetch inventory items for the drug using items.drugid → drugs.drugid relationship
+      const orderId = order?.order?.orderid;
+      if (!orderId || !item.drugid) {
+        console.error('[PrescriptionItems] Missing order ID or drug ID');
+        return;
+      }
 
-    onAddToCart({
-      drugId: item.drugid,
-      drugName: item.drugname,
-      genericName: item.genericname,
-      form: item.form,
-      strength: item.strength,
-      batchId: item.batchid,
-      lotNumber: item.lotnumber,
-      expiryDate: item.expirydate,
-      quantity: (item.quantity || 0) - (item.quantitydispensed || 0),
-      unitPrice: price,
-      discountPercent: 0,
-      discountAmount: 0,
-      taxAmount: 0,
-      totalAmount: price * ((item.quantity || 0) - (item.quantitydispensed || 0)),
-      pharmacyOrderItemId: item.itemid,
-      prescribedQuantity: item.quantity,
-      quantitydispensed: item.quantitydispensed,
-    });
+      const inventoryResponse = await fetch(
+        `/api/d/${workspaceid}/pharmacy/orders/${orderId}/inventory-items?drugid=${item.drugid}`
+      );
+      
+      if (!inventoryResponse.ok) {
+        console.error('[PrescriptionItems] Failed to fetch inventory items');
+        return;
+      }
+
+      const inventoryData = await inventoryResponse.json();
+      const inventoryItems = inventoryData.items || [];
+
+      if (inventoryItems.length === 0) {
+        console.error('[PrescriptionItems] No inventory items found for drug');
+        return;
+      }
+
+      // Select the first inventory item and its first batch (FIFO)
+      const selectedItem = inventoryItems[0];
+      const selectedBatch = selectedItem.batches && selectedItem.batches.length > 0 
+        ? selectedItem.batches[0] 
+        : null;
+
+      if (!selectedBatch) {
+        console.error('[PrescriptionItems] No available batches');
+        return;
+      }
+
+      const price = selectedBatch.sellingPrice ? parseFloat(selectedBatch.sellingPrice) : resolvePrice(item);
+      const quantity = (item.quantity || 0) - (item.quantitydispensed || 0);
+
+      onAddToCart({
+        drugId: item.drugid,
+        drugName: item.drugname,
+        genericName: item.genericname,
+        form: item.form,
+        strength: item.strength,
+        batchId: selectedBatch.batchId,
+        lotNumber: selectedBatch.batchNumber,
+        expiryDate: selectedBatch.expiryDate,
+        quantity: quantity,
+        unitPrice: price,
+        discountPercent: 0,
+        discountAmount: 0,
+        taxAmount: 0,
+        totalAmount: price * quantity,
+        pharmacyOrderItemId: item.itemid,
+        prescribedQuantity: item.quantity,
+        quantitydispensed: item.quantitydispensed,
+        availableStock: selectedBatch.quantity,
+      });
+
+      console.log('[PrescriptionItems] Added item to cart:', item.drugname, 'Batch:', selectedBatch.batchNumber);
+    } catch (error) {
+      console.error('[PrescriptionItems] Error adding item:', error);
+    }
   };
 
   const addAll = () => {

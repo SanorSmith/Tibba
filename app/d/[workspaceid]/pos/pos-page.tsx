@@ -10,6 +10,8 @@ import {
   Clock,
   BarChart3,
   AlertCircle,
+  RotateCcw,
+  FileText,
 } from "lucide-react";
 import { SearchBar } from "./components/SearchBar";
 import { PatientInfo } from "./components/PatientInfo";
@@ -17,7 +19,8 @@ import { PrescriptionItems } from "./components/PrescriptionItems";
 import { DrugSearch } from "./components/DrugSearch";
 import { ShoppingCart } from "./components/ShoppingCart";
 import { CheckoutDialog } from "./components/CheckoutDialog";
-import { PharmacyNav } from "./components/PharmacyNav";
+import { PharmacyNav } from "@/components/pharmacy/PharmacyNav";
+import ReprintReceiptDialog from "./components/ReprintReceiptDialog";
 
 export type CartItem = {
   cartItemId: number;
@@ -38,6 +41,7 @@ export type CartItem = {
   pharmacyOrderItemId?: string | null;
   prescribedQuantity?: number;
   quantitydispensed?: number;
+  availableStock?: number;
 };
 
 type ShiftData = {
@@ -63,6 +67,7 @@ export default function POSClientPage({
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [currentShift, setCurrentShift] = useState<ShiftData | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
+  const [reprintDialogOpen, setReprintDialogOpen] = useState(false);
 
   // Load current shift on mount
   useEffect(() => {
@@ -77,6 +82,7 @@ export default function POSClientPage({
     if (orderId) {
       console.log('[POS] Auto-loading from URL params:', { orderId, patientId });
       
+      // Load order to show items in Prescription Items card
       if (patientId && patientId !== 'undefined') {
         // Auto-load patient first, then the order
         handlePatientSelect(patientId).then(() => {
@@ -99,6 +105,43 @@ export default function POSClientPage({
       setCurrentShift(null);
     } finally {
       setShiftLoading(false);
+    }
+  };
+
+  // Handle loading inventory item from inventory selection modal
+  const handleInventoryItemLoad = async (itemId: string, batchId: string, quantity: number, pharmacyOrderItemId?: string) => {
+    try {
+      // Fetch inventory item details using the new API
+      const res = await fetch(`/api/d/${workspaceid}/pharmacy/orders/temp/inventory-item?itemId=${itemId}&batchId=${batchId}`);
+      if (!res.ok) {
+        console.error("[POS] Failed to fetch inventory item:", res.status);
+        return;
+      }
+      const data = await res.json();
+      
+      // Add to cart with correct availableStock from the selected batch
+      addToCart({
+        drugId: data.drugId,
+        drugName: data.itemName,
+        genericName: data.genericName,
+        form: data.form,
+        strength: data.strength,
+        batchId: batchId,
+        lotNumber: data.batchNumber,
+        expiryDate: data.expiryDate,
+        quantity: quantity,
+        unitPrice: data.sellingPrice ? parseFloat(data.sellingPrice) : 0,
+        discountPercent: 0,
+        discountAmount: 0,
+        taxAmount: 0,
+        totalAmount: data.sellingPrice ? parseFloat(data.sellingPrice) * quantity : 0,
+        availableStock: data.batchQuantity, // Use the actual batch quantity
+        pharmacyOrderItemId: pharmacyOrderItemId, // Link to prescription item
+      });
+      
+      console.log("[POS] Added inventory item to cart:", data.itemName, "Qty:", quantity, "Stock:", data.batchQuantity, "OrderItem:", pharmacyOrderItemId);
+    } catch (error) {
+      console.error("[POS] Error loading inventory item:", error);
     }
   };
 
@@ -212,6 +255,11 @@ export default function POSClientPage({
 
   return (
     <div className="flex flex-1 flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
+        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>Point of Sale</span>
+      </div>
+
       {/* Pharmacy Dashboard Navigation */}
       <PharmacyNav workspaceid={workspaceid} activeTab="pos" />
 
@@ -219,10 +267,6 @@ export default function POSClientPage({
       <div className="flex-shrink-0 p-4 pt-0 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <CartIcon className="h-6 w-6" />
-              Point of Sale
-            </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {currentShift ? (
                 <span className="flex items-center gap-1">
@@ -259,12 +303,32 @@ export default function POSClientPage({
               variant="outline"
               size="sm"
               onClick={() =>
+                (window.location.href = `/d/${workspaceid}/pos/returns`)
+              }
+              className="gap-1"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Returns
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
                 (window.location.href = `/d/${workspaceid}/pos/reports`)
               }
               className="gap-1"
             >
               <BarChart3 className="h-4 w-4" />
               Reports
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReprintDialogOpen(true)}
+              className="gap-1"
+            >
+              <FileText className="h-4 w-4" />
+              Reprint Receipt
             </Button>
           </div>
         </div>
@@ -294,6 +358,7 @@ export default function POSClientPage({
               order={dispensedOrder}
               onAddToCart={addToCart}
               cartItems={cart}
+              workspaceid={workspaceid}
             />
             <DrugSearch onAddToCart={addToCart} />
           </div>
@@ -331,6 +396,13 @@ export default function POSClientPage({
         shiftId={currentShift?.shiftid || null}
         workspaceId={workspaceid}
         onSuccess={clearAll}
+      />
+
+      {/* Reprint Receipt Dialog */}
+      <ReprintReceiptDialog
+        open={reprintDialogOpen}
+        onClose={() => setReprintDialogOpen(false)}
+        workspaceid={workspaceid}
       />
     </div>
   );

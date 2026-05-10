@@ -84,7 +84,6 @@ export async function POST(
         storagetype: body.storagetype || null,
         indication: body.indication || null,
         traffic: body.traffic || null,
-        notes: body.notes || null,
         insuranceapproved: body.insuranceapproved ?? false,
         requiresprescription: body.requiresprescription ?? true,
         metadata: body.metadata || {},
