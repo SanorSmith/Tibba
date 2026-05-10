@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { drugid, name, strength, form } = await request.json();
+    const { drugid, name, strength, form, unit, route } = await request.json();
     
     if (!drugid) {
       return NextResponse.json(
@@ -120,6 +120,8 @@ export async function PATCH(request: NextRequest) {
         name = COALESCE(${name}, name),
         strength = COALESCE(${strength}, strength),
         form = COALESCE(${form}, form),
+        unit = COALESCE(${unit}, unit),
+        route = COALESCE(${route}, route),
         updatedat = NOW()
       WHERE drugid = ${drugid}::uuid
     `);

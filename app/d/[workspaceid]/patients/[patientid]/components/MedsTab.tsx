@@ -357,10 +357,10 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
       !prescriptionForm.route ||
       !prescriptionForm.doseAmount ||
       !prescriptionForm.doseUnit ||
-      !prescriptionForm.timingDirections
+      !prescriptionForm.additionalInstruction
     ) {
       showToast(
-        "Please fill in all required fields (Medication Item, Route, Dose Amount, Dose Unit, Timing Directions)",
+        "Please fill in all required fields (Medication Item, Route, Dose Amount, Dose Unit, Instructions)",
         "info"
       );
       return;
@@ -831,7 +831,7 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                       route: formattedRoute,
                       doseUnit: "mg", // Default to mg for all medications
                       // Pre-fill strength as dose amount if it's numeric
-                      doseAmount: drug.strength.match(/^\d+/)?.[0] || "",
+                      doseAmount: drug.strength?.match(/^\d+/)?.[0] || "",
                     });
                   }}
                   placeholder="Type to search medications (e.g., Amoxicillin, Metformin)"
@@ -915,70 +915,10 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
               </div>
             </div>
 
-            {/* Instructions & Usage */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">Instructions</label>
-                <select
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
-                  value={prescriptionForm.additionalInstruction}
-                  onChange={(e) =>
-                    setPrescriptionForm({
-                      ...prescriptionForm,
-                      additionalInstruction: e.target.value,
-                    })
-                  }
-                  aria-label="Instructions"
-                  title="Select specific instructions"
-                >
-                  <option value="">Select...</option>
-                  <option value="Take with food">Take with food</option>
-                  <option value="Take before meals">Take before meals</option>
-                  <option value="Take after meals">Take after meals</option>
-                  <option value="Take with plenty of water">Take with plenty of water</option>
-                  <option value="Swallow whole, do not crush">Swallow whole, do not crush</option>
-                  <option value="Chew well before swallowing">Chew well before swallowing</option>
-                  <option value="Dissolve under tongue">Dissolve under tongue</option>
-                  <option value="Shake well before use">Shake well before use</option>
-                  <option value="Avoid driving after taking">Avoid driving after taking</option>
-                  <option value="Avoid alcohol during treatment">Avoid alcohol during treatment</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Usage</label>
-                <select
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
-                  value={prescriptionForm.usage}
-                  onChange={(e) =>
-                    setPrescriptionForm({
-                      ...prescriptionForm,
-                      usage: e.target.value,
-                    })
-                  }
-                  aria-label="Usage"
-                  title="Select the usage purpose"
-                >
-                  <option value="">Select...</option>
-                  <option value="For headache">For headache</option>
-                  <option value="For fever">For fever</option>
-                  <option value="For high blood pressure">For high blood pressure</option>
-                  <option value="For diabetes">For diabetes</option>
-                  <option value="For infection">For infection</option>
-                  <option value="For asthma">For asthma</option>
-                  <option value="For allergies">For allergies</option>
-                  <option value="For stomach pain">For stomach pain</option>
-                  <option value="For diarrhea">For diarrhea</option>
-                  <option value="For anxiety">For anxiety</option>
-                  <option value="For anemia">For anemia</option>
-                  <option value="For vitamin deficiency">For vitamin deficiency</option>
-                </select>
-              </div>
-            </div>
-
             {/* Timing Directions, Duration & Valid Until */}
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-sm font-medium">Timing Directions *</label>
+                <label className="text-sm font-medium">Timing Directions</label>
                 <select
                   className="w-full mt-1.5 px-3 py-2 border rounded-md"
                   value={prescriptionForm.timingDirections}
@@ -1049,50 +989,9 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
               </div>
             </div>
 
-            {/* Additional usage notes (removed duplicate - using dropdown above) */}
-
-            {/* PRN */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="asRequired"
-                checked={prescriptionForm.asRequired}
-                onChange={(e) =>
-                  setPrescriptionForm({
-                    ...prescriptionForm,
-                    asRequired: e.target.checked,
-                  })
-                }
-                aria-label="As required checkbox"
-                title="Check if medication is to be taken as needed"
-              />
-              <label htmlFor="asRequired" className="text-sm font-medium">
-                As Required (PRN)
-              </label>
-            </div>
-            {prescriptionForm.asRequired && (
-              <div>
-                <label className="text-sm font-medium">PRN Criterion</label>
-                <input
-                  type="text"
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
-                  placeholder="e.g., for pain"
-                  value={prescriptionForm.asRequiredCriterion}
-                  onChange={(e) =>
-                    setPrescriptionForm({
-                      ...prescriptionForm,
-                      asRequiredCriterion: e.target.value,
-                    })
-                  }
-                  aria-label="PRN criterion"
-                  title="Specify when the medication should be taken as needed"
-                />
-              </div>
-            )}
-
             {/* Instructions */}
             <div>
-              <label className="text-sm font-medium">Instructions</label>
+              <label className="text-sm font-medium">Instructions *</label>
               <textarea
                 className="w-full mt-1.5 px-3 py-2 border rounded-md"
                 rows={2}
@@ -1104,6 +1003,7 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                     additionalInstruction: e.target.value,
                   })
                 }
+                required
                 aria-label="Additional instructions"
                 title="Enter any additional instructions for taking the medication"
               />

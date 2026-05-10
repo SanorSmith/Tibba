@@ -47,7 +47,7 @@ export async function GET(
           NULLIF(d.strength, '')
         ) as strength,
         COALESCE(gd.unit, d.unit, i.uom) as unit,
-        COALESCE(gd.description, d.description, '') as route,
+        COALESCE(gd.route, d.route, '') as route,
         COALESCE(gd.atccode, d.atccode, '') as atccode,
         COALESCE(gd.category, d.category, '') as category,
         COALESCE(gd.interaction, d.interaction, '') as interaction,

@@ -79,6 +79,7 @@ type PatientCreatePayload = {
   dateofbirth?: string;
   gender?: string;
   phone?: string;
+  email?: string;
 };
 
 interface ValidationError {
@@ -1046,86 +1047,113 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                         Create a new patient in the EHR and database, then continue with the lab order.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-firstname">First name *</Label>
-                          <Input
-                            id="reg-firstname"
-                            value={registerPatientForm.firstname}
-                            onChange={(e) =>
-                              setRegisterPatientForm((prev) => ({ ...prev, firstname: e.target.value }))
-                            }
-                          />
+                    <div className="space-y-3 py-4 max-h-[70vh] overflow-y-auto">
+                      {/* Basic Information */}
+                      <div className="bg-white rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b bg-gray-50">
+                          <h4 className="text-sm font-semibold text-gray-800">Basic Information</h4>
                         </div>
-                          <div className="space-y-2">
-                          <Label htmlFor="reg-middlename">Middle name *</Label>
-                          <Input
-                            id="reg-middlename"
-                            value={registerPatientForm.middlename}
-                            onChange={(e) =>
-                              setRegisterPatientForm((prev) => ({ ...prev,middlename: e.target.value }))
-                            }
-                          />
+                        <div className="p-4 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-xs">First Name (Arabic) *</Label>
+                              <Input
+                                value={registerPatientForm.firstname}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, firstname: e.target.value }))}
+                                placeholder="e.g., أحمد"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Last Name (Arabic) *</Label>
+                              <Input
+                                value={registerPatientForm.lastname}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, lastname: e.target.value }))}
+                                placeholder="e.g., محمد"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Middle Name</Label>
+                              <Input
+                                value={registerPatientForm.middlename || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, middlename: e.target.value }))}
+                                placeholder="e.g., عبد"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Date of Birth *</Label>
+                              <Input
+                                type="date"
+                                value={registerPatientForm.dateofbirth || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, dateofbirth: e.target.value }))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Gender *</Label>
+                              <Select
+                                value={registerPatientForm.gender || ""}
+                                onValueChange={(value) => setRegisterPatientForm((prev) => ({ ...prev, gender: value }))}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Select Gender" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MALE">Male</SelectItem>
+                                  <SelectItem value="FEMALE">Female</SelectItem>
+                                  <SelectItem value="OTHER">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">National ID (optional)</Label>
+                              <Input
+                                value={registerPatientForm.nationalid || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '');
+                                  if (value.length <= 12) {
+                                    setRegisterPatientForm((prev) => ({ ...prev, nationalid: value }));
+                                  }
+                                }}
+                                placeholder="e.g., 123456789012"
+                                maxLength={12}
+                                className="h-8 text-xs font-mono"
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-lastname">Last name *</Label>
-                          <Input
-                            id="reg-lastname"
-                            value={registerPatientForm.lastname}
-                            onChange={(e) =>
-                              setRegisterPatientForm((prev) => ({ ...prev, lastname: e.target.value }))
-                            }
-                          />
+                      </div>
+
+                      {/* Contact Information */}
+                      <div className="bg-white rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b bg-gray-50">
+                          <h4 className="text-sm font-semibold text-gray-800">Contact Information</h4>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-nationalid">National ID (optional)</Label>
-                          <Input
-                            id="reg-nationalid"
-                            value={registerPatientForm.nationalid || ""}
-                            onChange={(e) =>
-                              setRegisterPatientForm((prev) => ({ ...prev, nationalid: e.target.value }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-dob">Date of birth (optional)</Label>
-                          <Input
-                            id="reg-dob"
-                            type="date"
-                            value={registerPatientForm.dateofbirth || ""}
-                            onChange={(e) =>
-                              setRegisterPatientForm((prev) => ({ ...prev, dateofbirth: e.target.value }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-gender">Gender (optional)</Label>
-                          <Select
-                            value={registerPatientForm.gender || ""}
-                            onValueChange={(value) =>
-                              setRegisterPatientForm((prev) => ({ ...prev, gender: value }))
-                            }
-                          >
-                            <SelectTrigger id="reg-gender">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="reg-phone">Phone (optional)</Label>
-                          <Input
-                            id="reg-phone"
-                            value={registerPatientForm.phone || ""}
-                            onChange={(e) =>
-                              setRegisterPatientForm((prev) => ({ ...prev, phone: e.target.value }))
-                            }
-                          />
+                        <div className="p-4 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Phone Number *</Label>
+                              <Input
+                                type="tel"
+                                value={registerPatientForm.phone || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, phone: e.target.value }))}
+                                placeholder="e.g., +964 770 123 4567"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Email Address (optional)</Label>
+                              <Input
+                                type="email"
+                                value={registerPatientForm.email || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, email: e.target.value }))}
+                                placeholder="e.g., patient@email.com"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1159,6 +1187,7 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                             dateofbirth: registerPatientForm.dateofbirth || undefined,
                             gender: registerPatientForm.gender || undefined,
                             phone: registerPatientForm.phone?.trim() || undefined,
+                            email: registerPatientForm.email?.trim() || undefined,
                           });
                         }}
                         disabled={createPatientMutation.isPending}

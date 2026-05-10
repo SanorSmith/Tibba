@@ -10,7 +10,6 @@ import {
   pharmacyOrderItems,
   drugs,
   stockLevels,
-  invoices,
   posSales,
 } from "@/lib/db/schema";
 import { eq, and, sql, lt, gte, count } from "drizzle-orm";
@@ -46,9 +45,7 @@ export async function GET(
       lowStockItems,
       orderStats,
       todayStats,
-      salesStats,
       posSalesStats,
-      todaySales,
       todayPosSales,
       overdueOrders,
       doctorNotifications,
@@ -92,18 +89,7 @@ export async function GET(
           )
         ),
 
-      // 4. Sales stats (from invoices)
-      db
-        .select({
-          totalSales: sql<string>`COALESCE(SUM(${invoices.total}::numeric), 0)`,
-          totalInvoices: count(),
-          paidInvoices: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'PAID')`,
-        })
-        .from(invoices)
-        .innerJoin(pharmacyOrders, eq(invoices.orderid, pharmacyOrders.orderid))
-        .where(eq(pharmacyOrders.workspaceid, workspaceid)),
-
-      // 4b. Sales stats (from POS sales)
+      // 4. Sales stats (from POS sales)
       db
         .select({
           totalSales: sql<string>`COALESCE(SUM(${posSales.totalamount}::numeric), 0)`,
@@ -111,20 +97,6 @@ export async function GET(
         })
         .from(posSales)
         .where(eq(posSales.workspaceid, workspaceid)),
-
-      // Today's sales (invoices)
-      db
-        .select({
-          total: sql<string>`COALESCE(SUM(${invoices.total}::numeric), 0)`,
-        })
-        .from(invoices)
-        .innerJoin(pharmacyOrders, eq(invoices.orderid, pharmacyOrders.orderid))
-        .where(
-          and(
-            eq(pharmacyOrders.workspaceid, workspaceid),
-            gte(invoices.createdat, todayStart)
-          )
-        ),
 
       // Today's sales (POS)
       db
@@ -228,10 +200,10 @@ export async function GET(
         todayVisits: Number(todayStats?.[0]?.uniquePatients || 0),
       },
       sales: {
-        totalRevenue: parseFloat(salesStats?.[0]?.totalSales || "0") + parseFloat(posSalesStats?.[0]?.totalSales || "0"),
-        todayRevenue: parseFloat(todaySales?.[0]?.total || "0") + parseFloat(todayPosSales?.[0]?.total || "0"),
-        totalInvoices: Number(salesStats?.[0]?.totalInvoices || 0) + Number(posSalesStats?.[0]?.totalInvoices || 0),
-        paidInvoices: Number(salesStats?.[0]?.paidInvoices || 0),
+        totalRevenue: parseFloat(posSalesStats?.[0]?.totalSales || "0"),
+        todayRevenue: parseFloat(todayPosSales?.[0]?.total || "0"),
+        totalInvoices: Number(posSalesStats?.[0]?.totalInvoices || 0),
+        paidInvoices: 0, // No invoices table available
       },
       overdue: {
         count: overdueOrders.length,

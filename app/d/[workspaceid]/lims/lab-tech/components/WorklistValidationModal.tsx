@@ -88,7 +88,6 @@ export default function WorklistValidationModal({
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRerunDialog, setShowRerunDialog] = useState(false);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [editedResults, setEditedResults] = useState<Record<string, string>>({});
@@ -268,25 +267,6 @@ export default function WorklistValidationModal({
     },
   });
 
-  // Reject result mutation
-  const rejectMutation = useMutation({
-    mutationFn: async ({ resultid, reason }: { resultid: string; reason?: string }) => {
-      const response = await fetch(`/api/d/${workspaceid}/test-results/${resultid}/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject', rejectionreason: reason }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to reject result');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["worklist-detail", worklistid] });
-      setShowRejectDialog(false);
-    },
-  });
 
   // Rerun result mutation
   const rerunMutation = useMutation({
@@ -950,24 +930,16 @@ export default function WorklistValidationModal({
                     );
                   })()}
 
-                  {/* Reject and Rerun - always available unless released */}
+                  {/* Rerun - always available unless released */}
                   {(() => {
                     const isReleased = currentItem.validationState?.currentstate === "RELEASED";
                     return !isReleased && (
-                      <>
-                        <Button
-                          variant="destructive"
-                          onClick={() => setShowRejectDialog(true)}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowRerunDialog(true)}
-                        >
-                          Rerun
-                        </Button>
-                      </>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowRerunDialog(true)}
+                      >
+                        Rerun
+                      </Button>
                     );
                   })()}
                   <Button
@@ -982,35 +954,6 @@ export default function WorklistValidationModal({
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Reject Confirmation Dialog */}
-      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reject Results</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to reject these test results? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (currentItem) {
-                  (currentItem.results || []).forEach((result: TestResult) => {
-                    if (result.resultid && result.status !== 'released') {
-                      rejectMutation.mutate({ resultid: result.resultid, reason: 'Rejected by lab technician' });
-                    }
-                  });
-                }
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Reject
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Rerun Confirmation Dialog */}
       <AlertDialog open={showRerunDialog} onOpenChange={setShowRerunDialog}>

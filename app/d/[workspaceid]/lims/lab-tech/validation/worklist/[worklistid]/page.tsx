@@ -63,7 +63,6 @@ export default function WorklistValidationPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRerunDialog, setShowRerunDialog] = useState(false);
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
   const [editedResults, setEditedResults] = useState<Record<string, string>>({});
@@ -122,22 +121,6 @@ export default function WorklistValidationPage() {
     },
   });
 
-  // Reject result mutation
-  const rejectMutation = useMutation({
-    mutationFn: async (resultid: string) => {
-      const response = await fetch(`/api/d/${workspaceid}/test-results/${resultid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'rejected' }),
-      });
-      if (!response.ok) throw new Error('Failed to reject result');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["worklist-detail", worklistid] });
-      setShowRejectDialog(false);
-    },
-  });
 
   // Rerun result mutation
   const rerunMutation = useMutation({
@@ -456,15 +439,6 @@ export default function WorklistValidationPage() {
           Release
         </Button>
         <Button
-          variant="destructive"
-          onClick={() => {
-            setSelectedResultId(currentItem.results[0]?.resultid);
-            setShowRejectDialog(true);
-          }}
-        >
-          Reject
-        </Button>
-        <Button
           variant="outline"
           onClick={() => {
             setSelectedResultId(currentItem.results[0]?.resultid);
@@ -478,31 +452,6 @@ export default function WorklistValidationPage() {
           Printer
         </Button>
       </div>
-
-      {/* Reject Confirmation Dialog */}
-      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reject Test Results</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to reject these test results? This action will mark all results for this sample as rejected.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                currentItem.results.forEach(result => {
-                  rejectMutation.mutate(result.resultid);
-                });
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Reject
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Rerun Confirmation Dialog */}
       <AlertDialog open={showRerunDialog} onOpenChange={setShowRerunDialog}>
