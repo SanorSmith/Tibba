@@ -932,6 +932,7 @@ export * from "./tables/global-drugs";
 export * from "./tables/pharmacy-drugs";
 export * from "./tables/pharmacy-stock";
 export * from "./tables/pharmacy-orders";
+export * from "./tables/invoices";
 export * from "./tables/pharmacy-invoices";
 export * from "./tables/pharmacy-insurance";
 export * from "./tables/pos-schema";

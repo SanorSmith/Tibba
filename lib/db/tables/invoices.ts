@@ -9,7 +9,7 @@ import { pgTable, text, timestamp, numeric, uuid, varchar, date, unique } from "
 import { relations } from "drizzle-orm";
 
 // ── General Invoices ──────────────────────────────────────────────────
-export const invoices = pgTable(
+export const generalInvoices = pgTable(
   "invoices",
   {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -49,17 +49,17 @@ export const invoices = pgTable(
   }
 );
 
-export type Invoice = typeof invoices.$inferSelect;
-export type NewInvoice = typeof invoices.$inferInsert;
+export type GeneralInvoice = typeof generalInvoices.$inferSelect;
+export type NewGeneralInvoice = typeof generalInvoices.$inferInsert;
 
 // ── Invoice Items ──────────────────────────────────────────────────
-export const invoiceItems = pgTable(
+export const generalInvoiceItems = pgTable(
   "invoice_items",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     invoice_id: uuid("invoice_id")
       .notNull()
-      .references(() => invoices.id, { onDelete: "cascade" }),
+      .references(() => generalInvoices.id, { onDelete: "cascade" }),
     
     // Service details
     service_id: varchar("service_id", { length: 50 }),
@@ -76,17 +76,17 @@ export const invoiceItems = pgTable(
   }
 );
 
-export type InvoiceItem = typeof invoiceItems.$inferSelect;
-export type NewInvoiceItem = typeof invoiceItems.$inferInsert;
+export type GeneralInvoiceItem = typeof generalInvoiceItems.$inferSelect;
+export type NewGeneralInvoiceItem = typeof generalInvoiceItems.$inferInsert;
 
 // ── Relations ──────────────────────────────────────────────────
-export const invoicesRelations = relations(invoices, ({ many }) => ({
-  items: many(invoiceItems),
+export const generalInvoicesRelations = relations(generalInvoices, ({ many }) => ({
+  items: many(generalInvoiceItems),
 }));
 
-export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
-  invoice: one(invoices, {
-    fields: [invoiceItems.invoice_id],
-    references: [invoices.id],
+export const generalInvoiceItemsRelations = relations(generalInvoiceItems, ({ one }) => ({
+  invoice: one(generalInvoices, {
+    fields: [generalInvoiceItems.invoice_id],
+    references: [generalInvoices.id],
   }),
 }));
