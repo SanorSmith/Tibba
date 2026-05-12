@@ -91,9 +91,15 @@ function DualSearch({ onSelect, onSelectExisting, workspaceid }: { onSelect:(dru
                     style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f9fafb",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fff"}}
                     onMouseEnter={e=>(e.currentTarget.style.background="#eff6ff")}
                     onMouseLeave={e=>(e.currentTarget.style.background="#fff")}>
-                    <div>
+                    <div style={{flex:1}}>
                       <div style={{fontWeight:600,fontSize:13}}>{d.name}</div>
-                      <div style={{fontSize:11,color:"#6b7280"}}>{d.genericname} {d.atccode&&`· ${d.atccode}`}</div>
+                      <div style={{fontSize:11,color:"#6b7280"}}>
+                        {d.strength&&<span>{d.strength}</span>}
+                        {d.unit&&<span> {d.unit}</span>}
+                        {d.route&&<span> · {d.route}</span>}
+                        {d.genericname&&<span> · {d.genericname}</span>}
+                        {d.atccode&&<span> · {d.atccode}</span>}
+                      </div>
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
                       {d.form&&<span style={{fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:20,background:`${fc}18`,color:fc}}>{d.form}</span>}
