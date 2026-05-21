@@ -927,50 +927,36 @@ export default function CreateOrderModal({
             <Label className="text-base font-semibold">Add Medications</Label>
             
             <div className="space-y-3">
-              {/* Single Row: Medication Name, Quantity, Dose Amount, Dose Unit */}
-              <div className="grid grid-cols-5 gap-2">
-                <div className="col-span-2">
-                  <Label className="text-xs">Medication Name *</Label>
-                  <DrugAutocomplete
-                    workspaceid={workspaceid}
-                    value={currentItem.drugname}
-                    onChange={(value) =>
-                      setCurrentItem({ ...currentItem, drugname: value })
-                    }
-                    onSelect={(drug) => {
-                      // Extract numeric dose amount from strength (e.g., "500mg" -> "500")
-                      const numericDose = drug.strength?.match(/^\d+(\.\d+)?/)?.[0] || "";
-                      
-                      setCurrentItem({
-                        ...currentItem,
-                        drugid: drug.drugid,
-                        drugname: drug.name,
-                        form: drug.form || "",
-                        strength: drug.strength || "",
-                        route: drug.route || "",
-                        doseAmount: numericDose,
-                        doseUnit: drug.unit || "mg",
-                        pharmacistNotes: "",
-                      });
-                    }}
-                    placeholder="Search medication..."
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Quantity *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={currentItem.quantity}
-                    onChange={(e) =>
-                      setCurrentItem({
-                        ...currentItem,
-                        quantity: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
+              {/* Medication Name */}
+              <div>
+                <Label>Medication Name *</Label>
+                <DrugAutocomplete
+                  workspaceid={workspaceid}
+                  value={currentItem.drugname}
+                  onChange={(value) =>
+                    setCurrentItem({ ...currentItem, drugname: value })
+                  }
+                  onSelect={(drug) => {
+                    // Extract numeric dose amount from strength (e.g., "500mg" -> "500")
+                    const numericDose = drug.strength?.match(/^\d+(\.\d+)?/)?.[0] || "";
+                    
+                    setCurrentItem({
+                      ...currentItem,
+                      drugid: drug.drugid,
+                      drugname: drug.name,
+                      form: drug.form || "",
+                      strength: drug.strength || "",
+                      route: drug.route || "",
+                      doseAmount: numericDose,
+                      doseUnit: drug.unit || "mg",
+                      pharmacistNotes: "",
+                    });
+                  }}
+                  placeholder="Type to search medications (e.g., Amoxicillin, Metformin)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Start typing to see suggestions. Select a drug to auto-fill form fields.
+                </p>
               </div>
 
               {/* Drug Information - Auto-filled from database */}
@@ -1022,27 +1008,18 @@ export default function CreateOrderModal({
                 </div>
               </div>
 
-              {/* Single Row: Timing, Duration, Instructions, Usage, Valid Until */}
-              <div className="grid grid-cols-5 gap-2">
-                <div style={{display: 'none'}}>
-                  <Label className="text-xs">Route *</Label>
-                  <Input
-                    placeholder="Auto-filled"
-                    value={currentItem.route}
-                    readOnly
-                    className="h-8 text-xs bg-gray-100"
-                  />
-                </div>
+              {/* Timing Directions, Duration, Valid Until */}
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Timing *</Label>
+                  <Label>Timing Directions</Label>
                   <Select
                     value={currentItem.timingDirections}
                     onValueChange={(value) =>
                       setCurrentItem({ ...currentItem, timingDirections: value })
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Timing..." />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Once daily">Once daily</SelectItem>
@@ -1052,25 +1029,22 @@ export default function CreateOrderModal({
                       <SelectItem value="Every 6 hours">Every 6 hours</SelectItem>
                       <SelectItem value="Every 8 hours">Every 8 hours</SelectItem>
                       <SelectItem value="Every 12 hours">Every 12 hours</SelectItem>
-                      <SelectItem value="As needed">As needed</SelectItem>
-                      <SelectItem value="When in pain">When in pain</SelectItem>
-                      <SelectItem value="When fever rises">When fever rises</SelectItem>
                       <SelectItem value="Before sleep">Before sleep</SelectItem>
                       <SelectItem value="After meals">After meals</SelectItem>
                       <SelectItem value="Before meals">Before meals</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Duration</Label>
+                  <Label>Duration</Label>
                   <Select
                     value={currentItem.directionDuration}
                     onValueChange={(value) =>
                       setCurrentItem({ ...currentItem, directionDuration: value })
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Duration..." />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="3 days">3 days</SelectItem>
@@ -1080,17 +1054,28 @@ export default function CreateOrderModal({
                       <SelectItem value="2 weeks">2 weeks</SelectItem>
                       <SelectItem value="1 month">1 month</SelectItem>
                       <SelectItem value="Until finished">Until finished</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label>Valid until</Label>
+                  <Input
+                    type="date"
+                    value={currentItem.validUntil}
+                    onChange={(e) =>
+                      setCurrentItem({ ...currentItem, validUntil: e.target.value })
+                    }
+                    placeholder="yyyy-mm-dd"
+                  />
                 </div>
               </div>
 
               {/* Instructions */}
               <div>
-                <Label className="text-xs">Instructions *</Label>
+                <Label>Instructions *</Label>
                 <textarea
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md text-xs"
-                  rows={2}
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                  rows={3}
                   placeholder="e.g., Take with food"
                   value={currentItem.additionalInstruction}
                   onChange={(e) =>
@@ -1100,33 +1085,35 @@ export default function CreateOrderModal({
                 />
               </div>
 
-              {/* Pharmacist Notes */}
+              {/* Clinical Indication */}
               <div>
-                <Label className="text-xs">Pharmacist Notes</Label>
+                <Label>Clinical Indication</Label>
                 <textarea
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md text-xs"
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
                   rows={2}
-                  placeholder="Add pharmacist notes for this medication..."
-                  value={currentItem.pharmacistNotes}
+                  placeholder="e.g., Bacterial infection"
+                  value={currentItem.clinicalIndication}
                   onChange={(e) =>
-                    setCurrentItem({ ...currentItem, pharmacistNotes: e.target.value })
+                    setCurrentItem({ ...currentItem, clinicalIndication: e.target.value })
                   }
                 />
               </div>
             </div>
 
-            
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddItem}
-              disabled={!currentItem.drugname || currentItem.quantity < 1 || !currentItem.additionalInstruction?.trim()}
-              className=" w-full bg-gray-100 hover:bg-green-300 text-gray-900 gap-2"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Medication to Order
-            </Button>
+              {/* Add to List Button */}
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddItem}
+                  disabled={!currentItem.drugname || !currentItem.additionalInstruction?.trim()}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add to Prescription List
+                </Button>
+              </div>
           </div>
           )}
 
