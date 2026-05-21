@@ -46,6 +46,7 @@ export function DrugAutocomplete({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const justSelectedRef = useRef(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -61,6 +62,12 @@ export function DrugAutocomplete({
   // Fetch suggestions when value changes
   useEffect(() => {
     const fetchSuggestions = async () => {
+      // Skip fetching if we just selected a drug
+      if (justSelectedRef.current) {
+        justSelectedRef.current = false;
+        return;
+      }
+
       if (value.length < 2) {
         setSuggestions([]);
         setShowDropdown(false);
@@ -117,11 +124,15 @@ export function DrugAutocomplete({
   };
 
   const handleSelect = (drug: DrugSuggestion) => {
-    onChange(drug.name);
-    onSelect(drug);
+    // Set flag to prevent re-fetching when value changes
+    justSelectedRef.current = true;
+    // Clear suggestions first to prevent re-fetching
+    setSuggestions([]);
     setShowDropdown(false);
     setSelectedIndex(-1);
-    setSuggestions([]);
+    // Then update the value and trigger onSelect
+    onChange(drug.name);
+    onSelect(drug);
   };
 
   return (

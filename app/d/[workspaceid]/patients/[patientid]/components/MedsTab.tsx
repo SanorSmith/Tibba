@@ -825,13 +825,15 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                     
                     const formattedRoute = routeMapping[route] || route.charAt(0).toUpperCase() + route.slice(1);
                     
+                    // Extract numeric dose amount from strength (e.g., "500mg" -> "500")
+                    const numericDose = drug.strength?.match(/^\d+(\.\d+)?/)?.[0] || "";
+                    
                     setPrescriptionForm({
                       ...prescriptionForm,
                       medicationItem: drug.name,
-                      route: formattedRoute,
-                      doseUnit: "mg", // Default to mg for all medications
-                      // Pre-fill strength as dose amount if it's numeric
-                      doseAmount: drug.strength?.match(/^\d+/)?.[0] || "",
+                      route: drug.route || formattedRoute,
+                      doseUnit: drug.unit || "mg",
+                      doseAmount: numericDose,
                     });
                   }}
                   placeholder="Type to search medications (e.g., Amoxicillin, Metformin)"
@@ -842,61 +844,81 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
               </p>
             </div>
 
-            {/* Dose & Route */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Dose & Route - Auto-filled from drug database */}
+            {prescriptionForm.medicationItem && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <div className="text-xs font-medium text-blue-900 mb-2">Drug Information (from database)</div>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-600">Dose Amount:</span>
+                    <span className="ml-2 font-medium">{prescriptionForm.doseAmount || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Unit:</span>
+                    <span className="ml-2 font-medium">{prescriptionForm.doseUnit || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Route:</span>
+                    <span className="ml-2 font-medium">{prescriptionForm.route || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden fields to maintain form structure */}
+            <input type="hidden" value={prescriptionForm.doseAmount} />
+            <input type="hidden" value={prescriptionForm.doseUnit} />
+            <input type="hidden" value={prescriptionForm.route} />
+
+            <div className="grid grid-cols-3 gap-3" style={{display: 'none'}}>
               <div>
                 <label className="text-sm font-medium">Dose Amount *</label>
                 <input
                   type="text"
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
-                  placeholder="e.g., 500"
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md bg-gray-100"
+                  placeholder="Auto-filled"
                   value={prescriptionForm.doseAmount}
-                  onChange={(e) =>
-                    setPrescriptionForm({
-                      ...prescriptionForm,
-                      doseAmount: e.target.value,
-                    })
-                  }
+                  readOnly
                   aria-label="Dose amount"
-                  title="Enter the dose amount"
+                  title="Auto-filled from drug database"
                 />
               </div>
               <div>
                 <label className="text-sm font-medium">Unit *</label>
-                <select
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                <input
+                  type="text"
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md bg-gray-100"
+                  placeholder="Auto-filled"
                   value={prescriptionForm.doseUnit}
-                  onChange={(e) =>
-                    setPrescriptionForm({
-                      ...prescriptionForm,
-                      doseUnit: e.target.value,
-                    })
-                  }
+                  readOnly
                   aria-label="Dose unit"
-                  title="Select the dose unit"
-                >
-                  <option value="">Select...</option>
-                  <option value="g">g (gram)</option>
-                  <option value="mg">mg (milligram)</option>
-                  <option value="mcg">mcg (microgram)</option>
-                  <option value="U">U (unit)</option>
-                  <option value="TU">TU (thousand units)</option>
-                  <option value="MU">MU (million units)</option>
-                  <option value="mmol">mmol (millimole)</option>
-                  <option value="ml">ml (milliliter)</option>
-                </select>
+                  title="Auto-filled from drug database"
+                />
               </div>
               <div>
                 <label className="text-sm font-medium">Route *</label>
-                <select
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                <input
+                  type="text"
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md bg-gray-100"
+                  placeholder="Auto-filled"
                   value={prescriptionForm.route}
-                  onChange={(e) =>
-                    setPrescriptionForm({
-                      ...prescriptionForm,
-                      route: e.target.value,
-                    })
-                  }
+                  readOnly
+                  aria-label="Route"
+                  title="Auto-filled from drug database"
+                />
+              </div>
+            </div>
+            <div style={{display: 'none'}}>
+              <label className="text-sm font-medium">Route *</label>
+              <select
+                className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                value={prescriptionForm.route}
+                onChange={(e) =>
+                  setPrescriptionForm({
+                    ...prescriptionForm,
+                    route: e.target.value,
+                  })
+                }
                   aria-label="Route of administration"
                   title="Select the route of administration"
                 >
@@ -913,7 +935,6 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                   <option value="Vaginal">Vaginal</option>
                 </select>
               </div>
-            </div>
 
             {/* Timing Directions, Duration & Valid Until */}
             <div className="grid grid-cols-3 gap-3">
