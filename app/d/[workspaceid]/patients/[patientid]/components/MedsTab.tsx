@@ -844,87 +844,88 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
               </p>
             </div>
 
-            {/* Dose & Route - Auto-filled from drug database */}
-            {prescriptionForm.medicationItem && (
+            {/* Dose & Route - Show info box if auto-filled, otherwise show editable fields */}
+            {prescriptionForm.medicationItem && prescriptionForm.doseAmount && prescriptionForm.route && (
               <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
                 <div className="text-xs font-medium text-blue-900 mb-2">Drug Information (from database)</div>
                 <div className="grid grid-cols-3 gap-3 text-sm">
                   <div>
                     <span className="text-gray-600">Dose Amount:</span>
-                    <span className="ml-2 font-medium">{prescriptionForm.doseAmount || "N/A"}</span>
+                    <span className="ml-2 font-medium">{prescriptionForm.doseAmount}</span>
                   </div>
                   <div>
                     <span className="text-gray-600">Unit:</span>
-                    <span className="ml-2 font-medium">{prescriptionForm.doseUnit || "N/A"}</span>
+                    <span className="ml-2 font-medium">{prescriptionForm.doseUnit}</span>
                   </div>
                   <div>
                     <span className="text-gray-600">Route:</span>
-                    <span className="ml-2 font-medium">{prescriptionForm.route || "N/A"}</span>
+                    <span className="ml-2 font-medium">{prescriptionForm.route}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Hidden fields to maintain form structure */}
-            <input type="hidden" value={prescriptionForm.doseAmount} />
-            <input type="hidden" value={prescriptionForm.doseUnit} />
-            <input type="hidden" value={prescriptionForm.route} />
-
-            <div className="grid grid-cols-3 gap-3" style={{display: 'none'}}>
-              <div>
-                <label className="text-sm font-medium">Dose Amount *</label>
-                <input
-                  type="text"
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md bg-gray-100"
-                  placeholder="Auto-filled"
-                  value={prescriptionForm.doseAmount}
-                  readOnly
-                  aria-label="Dose amount"
-                  title="Auto-filled from drug database"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Unit *</label>
-                <input
-                  type="text"
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md bg-gray-100"
-                  placeholder="Auto-filled"
-                  value={prescriptionForm.doseUnit}
-                  readOnly
-                  aria-label="Dose unit"
-                  title="Auto-filled from drug database"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Route *</label>
-                <input
-                  type="text"
-                  className="w-full mt-1.5 px-3 py-2 border rounded-md bg-gray-100"
-                  placeholder="Auto-filled"
-                  value={prescriptionForm.route}
-                  readOnly
-                  aria-label="Route"
-                  title="Auto-filled from drug database"
-                />
-              </div>
-            </div>
-            <div style={{display: 'none'}}>
-              <label className="text-sm font-medium">Route *</label>
-              <select
-                className="w-full mt-1.5 px-3 py-2 border rounded-md"
-                value={prescriptionForm.route}
-                onChange={(e) =>
-                  setPrescriptionForm({
-                    ...prescriptionForm,
-                    route: e.target.value,
-                  })
-                }
-                  aria-label="Route of administration"
-                  title="Select the route of administration"
-                >
-                  <option value="">Select...</option>
-                  <option value="Implant">Implant</option>
-                  <option value="Inhalation">Inhalation</option>
+            {/* Show editable fields when drug database doesn't provide values */}
+            {prescriptionForm.medicationItem && (!prescriptionForm.doseAmount || !prescriptionForm.route) && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                <div className="text-xs font-medium text-yellow-900 mb-3">⚠️ Drug information not found in database - Please enter manually</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm font-medium">Dose Amount *</label>
+                    <input
+                      type="text"
+                      className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                      placeholder="e.g., 500"
+                      value={prescriptionForm.doseAmount}
+                      onChange={(e) =>
+                        setPrescriptionForm({
+                          ...prescriptionForm,
+                          doseAmount: e.target.value,
+                        })
+                      }
+                      aria-label="Dose amount"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Unit *</label>
+                    <select
+                      className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                      value={prescriptionForm.doseUnit}
+                      onChange={(e) =>
+                        setPrescriptionForm({
+                          ...prescriptionForm,
+                          doseUnit: e.target.value,
+                        })
+                      }
+                      aria-label="Dose unit"
+                    >
+                      <option value="">Select...</option>
+                      <option value="mg">mg</option>
+                      <option value="ml">ml</option>
+                      <option value="g">g</option>
+                      <option value="mcg">mcg</option>
+                      <option value="IU">IU</option>
+                      <option value="drops">drops</option>
+                      <option value="tablets">tablets</option>
+                      <option value="capsules">capsules</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Route *</label>
+                    <select
+                      className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                      value={prescriptionForm.route}
+                      onChange={(e) =>
+                        setPrescriptionForm({
+                          ...prescriptionForm,
+                          route: e.target.value,
+                        })
+                      }
+                      aria-label="Route of administration"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Implant">Implant</option>
+                      <option value="Inhalation">Inhalation</option>
                   <option value="Instillation">Instillation</option>
                   <option value="Nasal">Nasal</option>
                   <option value="Oral">Oral</option>
@@ -935,6 +936,9 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                   <option value="Vaginal">Vaginal</option>
                 </select>
               </div>
+                </div>
+              </div>
+            )}
 
             {/* Timing Directions, Duration & Valid Until */}
             <div className="grid grid-cols-3 gap-3">

@@ -482,7 +482,10 @@ export default function PatientDashboard({
               loading={loading}
               workspaceid={workspaceid}
               patientid={patient.patientid}
-              onAppointmentAdded={() => console.log("Appointment added")}
+              onAppointmentAdded={() => {
+                // Invalidate appointments query to refresh the list
+                queryClient.invalidateQueries({ queryKey: ["appointments", workspaceid, patient.patientid] });
+              }}
             />
           </TabsContent>
 
