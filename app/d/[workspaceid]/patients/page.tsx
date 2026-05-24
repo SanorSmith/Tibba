@@ -5,12 +5,9 @@
  * - Determines admin visibility (workspace admin or global admin) to show the "Register Patient" link.
  * - Delegates data fetching/rendering to a client component (PatientsList).
  */
-import Link from "next/link";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import PatientsList from "./patients-list";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 interface PageProps {
   params: Promise<{ workspaceid: string }>;
 }
@@ -65,15 +62,6 @@ export default async function PatientsPage({ params }: PageProps) {
                 <h1 className="text-2xl font-bold">Patients</h1>
               </div>
             </div>
-            {/* Right side: Register button */}
-            {(isAdmin || userRole === "doctor") && (
-              <Link href={`/d/${workspaceid}/patients/new`}>
-                <Button className="bg-[#618FF5] border-blue-400 text-white hover:bg-[#618FF5] hover:border-blue-900">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Register Patient
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
        <p className="pl-4 mx-auto text-sm text-muted-foreground mt-1">
@@ -81,9 +69,7 @@ export default async function PatientsPage({ params }: PageProps) {
                 </p>
 
         {/* Fetch and render list client-side to avoid server relative-URL issues */}
-        {isAdmin && (
-          <PatientsList workspaceid={workspaceid} userRole={userRole} />
-        )}
+        <PatientsList workspaceid={workspaceid} userRole={userRole} />
       </div>
     </>
   );
