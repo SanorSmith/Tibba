@@ -69,7 +69,8 @@ export async function GET(
     
     console.log("[Doctor Referrals] Doctor name:", doctorFullName);
 
-    // Get patients with pagination support
+    // Get patients with pagination support - limit to 5 for performance
+    const maxPatientsToCheck = Math.min(limit, 5);
     const recentPatients = await db
       .select({
         patientid: patients.patientid,
@@ -79,10 +80,10 @@ export async function GET(
       })
       .from(patients)
       .where(eq(patients.workspaceid, workspaceid))
-      .limit(limit)
+      .limit(maxPatientsToCheck)
       .offset(offset);
 
-    console.log("[Doctor Referrals] Checking", recentPatients.length, "patients (limit:", limit, "offset:", offset, ")");
+    console.log("[Doctor Referrals] Checking", recentPatients.length, "patients (max:", maxPatientsToCheck, ")");
 
     const incomingReferrals: Array<{
       composition_uid: string;
@@ -128,8 +129,8 @@ export async function GET(
         // Get compositions for this patient
         const compositions = await getOpenEHRCompositions(ehrId);
         
-        // Check each composition for referrals
-        for (const comp of compositions.slice(0, 5)) { // Limit to 5 most recent
+        // Check each composition for referrals (limit to 3 for performance)
+        for (const comp of compositions.slice(0, 3)) {
           try {
             const details = await getOpenEHRComposition(ehrId, comp.composition_uid) as Record<string, unknown>;
             
@@ -140,6 +141,14 @@ export async function GET(
             const clinicalDescription = details["template_clinical_encounter_v1/problem_diagnosis/clinical_description"] as string || "";
             const [department, receivingPhysician] = clinicalDescription.split(" | ");
             const composer = details["template_clinical_encounter_v1/composer|name"] as string || "Unknown";
+            
+            console.log("[Doctor Referrals] 🔍 Found referral:", {
+              problemDiagnosis,
+              department,
+              receivingPhysician,
+              composer,
+              doctorFullName
+            });
             
             const referral = {
               composition_uid: comp.composition_uid,
@@ -156,11 +165,19 @@ export async function GET(
               patientNationalId: patient.nationalid || patient.patientid,
             };
 
-            // Categorize as incoming or outgoing
-            if (receivingPhysician && receivingPhysician.includes(doctorFullName)) {
+            // Categorize as incoming or outgoing (case-insensitive matching)
+            const doctorNameLower = doctorFullName.toLowerCase();
+            const receivingPhysicianLower = (receivingPhysician || "").toLowerCase();
+            const composerLower = composer.toLowerCase();
+            
+            if (receivingPhysicianLower.includes(doctorNameLower)) {
+              console.log("[Doctor Referrals] ✅ Incoming referral - receiving:", receivingPhysician);
               incomingReferrals.push(referral);
-            } else if (composer.includes(doctorFullName)) {
+            } else if (composerLower.includes(doctorNameLower)) {
+              console.log("[Doctor Referrals] ✅ Outgoing referral - composer:", composer);
               outgoingReferrals.push(referral);
+            } else {
+              console.log("[Doctor Referrals] ⚠️ Skipped - no match. Receiving:", receivingPhysician, "Composer:", composer);
             }
           } catch {
             // Skip failed compositions

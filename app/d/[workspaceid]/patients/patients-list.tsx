@@ -7,7 +7,7 @@
  * - Administrators can edit patient information
  */
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -54,6 +54,11 @@ export default function PatientsList({
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+
+  // Clear patient cache on mount to prevent showing stale search results
+  useEffect(() => {
+    queryClient.setQueryData(["patients", workspaceid], []);
+  }, [workspaceid, queryClient]);
   
   // Only doctors and nurses can view patient details
   const canViewDetails = userRole === "doctor" || userRole === "nurse";
@@ -190,6 +195,23 @@ export default function PatientsList({
               window.location.href = `/d/${workspaceid}/patients/${patient.patientid}`;
             }}
           />
+        </div>
+      )}
+
+      {/* Empty state when no search performed */}
+      {!showRegistrationForm && displayedPatients.length === 0 && !loadingPatients && (
+        <div className="px-4 py-12 text-center">
+          <div className="mx-auto max-w-md">
+            <div className="mb-4 text-gray-400">
+              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Search for Patients</h3>
+            <p className="text-sm text-gray-500">
+              Use the search bar in the header to find patients by name, national ID, or phone number.
+            </p>
+          </div>
         </div>
       )}
 
