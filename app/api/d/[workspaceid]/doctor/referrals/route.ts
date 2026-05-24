@@ -3,7 +3,7 @@ import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { db } from "@/lib/db";
 import { patients, staff } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { 
   getOpenEHREHRBySubjectId,
   getOpenEHRCompositions,
@@ -67,19 +67,29 @@ export async function GET(
       ? `${doctorRecord[0].firstname} ${doctorRecord[0].lastname}`
       : user.name || user.email;
     
-    console.log("[Doctor Referrals] Doctor name:", doctorFullName);
+    // Also store user.name and email for matching
+    const userName = user.name || "";
+    const userEmail = user.email || "";
+    
+    console.log("[Doctor Referrals] Doctor identifiers:", {
+      doctorFullName,
+      userName,
+      userEmail
+    });
 
-    // Get patients with pagination support - limit to 5 for performance
-    const maxPatientsToCheck = Math.min(limit, 5);
+    // Get patients with pagination support - check up to 20 most recent patients
+    const maxPatientsToCheck = Math.min(limit, 20);
     const recentPatients = await db
       .select({
         patientid: patients.patientid,
         firstname: patients.firstname,
         lastname: patients.lastname,
         nationalid: patients.nationalid,
+        createdat: patients.createdat,
       })
       .from(patients)
       .where(eq(patients.workspaceid, workspaceid))
+      .orderBy(desc(patients.createdat)) // Most recent patients first
       .limit(maxPatientsToCheck)
       .offset(offset);
 
@@ -166,14 +176,26 @@ export async function GET(
             };
 
             // Categorize as incoming or outgoing (case-insensitive matching)
-            const doctorNameLower = doctorFullName.toLowerCase();
+            // Check against multiple identifiers for better matching
             const receivingPhysicianLower = (receivingPhysician || "").toLowerCase();
             const composerLower = composer.toLowerCase();
             
-            if (receivingPhysicianLower.includes(doctorNameLower)) {
+            // Check if this doctor is receiving the referral
+            const isIncoming = 
+              receivingPhysicianLower.includes(doctorFullName.toLowerCase()) ||
+              (userName && receivingPhysicianLower.includes(userName.toLowerCase())) ||
+              (userEmail && receivingPhysicianLower.includes(userEmail.toLowerCase()));
+            
+            // Check if this doctor created the referral
+            const isOutgoing = 
+              composerLower.includes(doctorFullName.toLowerCase()) ||
+              (userName && composerLower.includes(userName.toLowerCase())) ||
+              (userEmail && composerLower.includes(userEmail.toLowerCase()));
+            
+            if (isIncoming) {
               console.log("[Doctor Referrals] ✅ Incoming referral - receiving:", receivingPhysician);
               incomingReferrals.push(referral);
-            } else if (composerLower.includes(doctorNameLower)) {
+            } else if (isOutgoing) {
               console.log("[Doctor Referrals] ✅ Outgoing referral - composer:", composer);
               outgoingReferrals.push(referral);
             } else {
