@@ -74,7 +74,7 @@ export default function PatientsList({
     enabled: false, // Will be triggered by global header search
   });
 
-  // Fetch EHRs
+  // Fetch EHRs - DISABLED for performance (was fetching ALL EHRs which is very slow)
   const { data: ehrs = [] } = useQuery({
     queryKey: ["ehrs"],
     queryFn: async () => {
@@ -83,7 +83,7 @@ export default function PatientsList({
       const data = await res.json();
       return (data as OpenEHREHR[]) ?? [];
     },
-    enabled: rows.length > 0, // Only fetch EHRs if we have patients
+    enabled: false, // Disabled - fetching all EHRs is too slow
   });
 
   const mutation = useMutation({
