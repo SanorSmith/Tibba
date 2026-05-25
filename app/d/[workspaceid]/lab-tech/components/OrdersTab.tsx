@@ -1020,7 +1020,7 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-4 max-h-[70vh] overflow-y-auto">
-                      {/* Personal Information */}
+                      {/* Personal Information - Updated 2026-05-25 */}
                       <div className="bg-white rounded-lg border shadow-sm">
                         <div className="px-4 py-3 border-b bg-gray-50">
                           <h4 className="text-sm font-semibold text-gray-800">Personal Information</h4>
