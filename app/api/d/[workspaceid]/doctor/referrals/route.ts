@@ -77,23 +77,19 @@ export async function GET(
       userEmail
     });
 
-    // Get patients with pagination support - check up to 20 most recent patients
-    const maxPatientsToCheck = Math.min(limit, 20);
+    // Get all patients in workspace (no limit for now to ensure we find all referrals)
     const recentPatients = await db
       .select({
         patientid: patients.patientid,
         firstname: patients.firstname,
         lastname: patients.lastname,
         nationalid: patients.nationalid,
-        createdat: patients.createdat,
       })
       .from(patients)
-      .where(eq(patients.workspaceid, workspaceid))
-      .orderBy(desc(patients.createdat)) // Most recent patients first
-      .limit(maxPatientsToCheck)
-      .offset(offset);
+      .where(eq(patients.workspaceid, workspaceid));
 
-    console.log("[Doctor Referrals] Checking", recentPatients.length, "patients (max:", maxPatientsToCheck, ")");
+    console.log("[Doctor Referrals] Checking", recentPatients.length, "patients");
+    console.log("[Doctor Referrals] Patient names:", recentPatients.map(p => `${p.firstname} ${p.lastname}`).join(", "));
 
     const incomingReferrals: Array<{
       composition_uid: string;
