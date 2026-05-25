@@ -84,7 +84,8 @@ export async function GET(
         eval/data[at0001]/items[at0069]/value/value AS comment,
         eval/data[at0001]/items[at0012]/value/value AS body_site,
         c/composer/name AS composer_name,
-        e/ehr_id/value AS ehr_id
+        e/ehr_id/value AS ehr_id,
+        e/ehr_status/subject/external_ref/id/value AS subject_id
       FROM EHR e
       CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.encounter.v1]
       CONTAINS EVALUATION eval[openEHR-EHR-EVALUATION.problem_diagnosis.v1]
@@ -104,9 +105,32 @@ export async function GET(
       body_site: string;
       composer_name: string;
       ehr_id: string;
+      subject_id: string;
     }>(aqlQuery);
 
     console.log("[Doctor Referrals] AQL returned", results.length, "compositions");
+
+    // Get all unique subject IDs to fetch patient info
+    const subjectIds = [...new Set(results.map(r => r.subject_id).filter(Boolean))];
+    
+    // Fetch patient info from database for all subject IDs
+    const { patients } = await import("@/lib/db/schema");
+    const { inArray } = await import("drizzle-orm");
+    
+    const patientsData = await db
+      .select({
+        patientid: patients.patientid,
+        nationalid: patients.nationalid,
+        firstname: patients.firstname,
+        lastname: patients.lastname,
+      })
+      .from(patients)
+      .where(inArray(patients.nationalid, subjectIds));
+    
+    // Create a map for quick lookup
+    const patientMap = new Map(
+      patientsData.map(p => [p.nationalid, p])
+    );
 
     const incomingReferrals: Array<any> = [];
     const outgoingReferrals: Array<any> = [];
@@ -120,11 +144,15 @@ export async function GET(
 
       const [department, receivingPhysician] = (row.clinical_description || "").split(" | ");
       const composer = row.composer_name || "Unknown";
+      
+      // Get patient info from map
+      const patient = patientMap.get(row.subject_id);
 
       console.log("[Doctor Referrals] 🔍 Found referral:", {
         problemDiagnosis,
         composer,
-        receivingPhysician
+        receivingPhysician,
+        patientName: patient ? `${patient.firstname} ${patient.lastname}` : row.subject_id
       });
 
       const referral = {
@@ -137,9 +165,9 @@ export async function GET(
         comment: row.comment || "",
         referred_by: composer,
         status: row.body_site || "pending",
-        patientid: "", // We don't have patient info from AQL, but it's not needed for notifications
-        patientName: "",
-        patientNationalId: "",
+        patientid: patient?.patientid || "",
+        patientName: patient ? `${patient.firstname} ${patient.lastname}` : "",
+        patientNationalId: row.subject_id || "",
       };
 
       // Categorize as incoming or outgoing
