@@ -318,7 +318,7 @@ export default function SampleValidationContent({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/d/${workspaceid}/lab-tech`}>
+          <Link href={`/d/${workspaceid}/lims/lab-tech`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Worklist

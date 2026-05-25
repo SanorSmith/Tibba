@@ -48,7 +48,7 @@ export default async function Dashboard({ params }: CompanyDashboardProps) {
       redirect(`/d/${workspaceid}/pharmacy/dashboard`);
       break;
     case "lab_technician":
-      redirect(`/d/${workspaceid}/lab-tech`);
+      redirect(`/d/${workspaceid}/lims/lab-tech`);
       break;
     default:
       // Default dashboard for unknown roles
