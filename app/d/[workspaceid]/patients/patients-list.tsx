@@ -7,7 +7,7 @@
  * - Administrators can edit patient information
  */
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
+import InlinePatientRegistration from "./components/InlinePatientRegistration";
 
 type Patient = {
   patientid: string;
@@ -52,11 +53,19 @@ export default function PatientsList({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+
+  // Clear patient cache on mount to prevent showing stale search results
+  useEffect(() => {
+    queryClient.setQueryData(["patients", workspaceid], []);
+  }, [workspaceid, queryClient]);
   
   // Only doctors and nurses can view patient details
   const canViewDetails = userRole === "doctor" || userRole === "nurse";
   // Only administrators can edit
   const canEdit = userRole === "administrator";
+  // Administrators and doctors can register patients
+  const canRegister = userRole === "administrator" || userRole === "doctor";
 
   // Fetch patients - disabled by default, will be triggered by global header search
   const { data: rows = [], isLoading: loadingPatients, error: patientsError } = useQuery({
@@ -70,7 +79,7 @@ export default function PatientsList({
     enabled: false, // Will be triggered by global header search
   });
 
-  // Fetch EHRs
+  // Fetch EHRs - DISABLED for performance (was fetching ALL EHRs which is very slow)
   const { data: ehrs = [] } = useQuery({
     queryKey: ["ehrs"],
     queryFn: async () => {
@@ -79,7 +88,7 @@ export default function PatientsList({
       const data = await res.json();
       return (data as OpenEHREHR[]) ?? [];
     },
-    enabled: rows.length > 0, // Only fetch EHRs if we have patients
+    enabled: false, // Disabled - fetching all EHRs is too slow
   });
 
   const mutation = useMutation({
@@ -160,18 +169,55 @@ export default function PatientsList({
 
   return (
     <>
-      {/* Patients Table */}
-      {loadingPatients ? (
-        <p className="text-sm text-muted-foreground">Loading patients...</p>
-      ) : patientsError ? (
-        <div className="text-center py-8 border rounded-md">
-          <p className="text-sm text-red-600">{(patientsError as Error).message}</p>
+      {/* Register Patient Button */}
+      {!showRegistrationForm && canRegister && (
+        <div className="mb-4 px-4">
+          <Button
+            onClick={() => setShowRegistrationForm(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Register New Patient
+          </Button>
         </div>
-      ) : displayedPatients.length === 0 ? (
-        <div className="text-center py-8 border rounded-md">
-          <p className="text-sm text-muted-foreground">No patients found. Use the search in the header to find patients.</p>
+      )}
+
+      {/* Inline Patient Registration Form */}
+      {showRegistrationForm && (
+        <div className="mb-6 px-4">
+          <InlinePatientRegistration
+            workspaceid={workspaceid}
+            onCancel={() => setShowRegistrationForm(false)}
+            onSuccess={(patient) => {
+              setShowRegistrationForm(false);
+              queryClient.invalidateQueries({ queryKey: ["patients", workspaceid] });
+              // Optionally navigate to the new patient
+              window.location.href = `/d/${workspaceid}/patients/${patient.patientid}`;
+            }}
+          />
         </div>
-      ) : (
+      )}
+
+      {/* Empty state when no search performed */}
+      {!showRegistrationForm && displayedPatients.length === 0 && !loadingPatients && (
+        <div className="px-4 py-12 text-center">
+          <div className="mx-auto max-w-md">
+            <div className="mb-4 text-gray-400">
+              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Search for Patients</h3>
+            <p className="text-sm text-gray-500">
+              Use the search bar in the header to find patients by name, national ID, or phone number.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Patients Table - Only show when there are search results */}
+      {!showRegistrationForm && displayedPatients.length > 0 && (
+        <div className="px-4">
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -249,6 +295,7 @@ export default function PatientsList({
               ))}
             </TableBody>
           </Table>
+        </div>
         </div>
       )}
 

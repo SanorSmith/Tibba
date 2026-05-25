@@ -225,6 +225,7 @@ export default function CreateOrderModal({
     const formattedPatient: Patient = {
       patientid: patient.patientid,
       firstname: patient.firstname,
+      middlename: patient.middlename || null,
       lastname: patient.lastname,
       nationalid: patient.nationalid,
       dateofbirth: patient.dateofbirth,
@@ -330,6 +331,7 @@ export default function CreateOrderModal({
         const formattedPatient: Patient = {
           patientid: result.patient.patientid,
           firstname: result.patient.firstname,
+          middlename: result.patient.middlename || null,
           lastname: result.patient.lastname,
           nationalid: result.patient.nationalid,
           dateofbirth: result.patient.dateofbirth,
@@ -925,107 +927,65 @@ export default function CreateOrderModal({
             <Label className="text-base font-semibold">Add Medications</Label>
             
             <div className="space-y-3">
-              {/* Single Row: Medication Name, Quantity, Dose Amount, Dose Unit */}
-              <div className="grid grid-cols-5 gap-2">
-                <div className="col-span-2">
-                  <Label className="text-xs">Medication Name *</Label>
-                  <DrugAutocomplete
-                    workspaceid={workspaceid}
-                    value={currentItem.drugname}
-                    onChange={(value) =>
-                      setCurrentItem({ ...currentItem, drugname: value })
-                    }
-                    onSelect={(drug) => {
-                      console.log("Selected drug:", drug); // Debug log
-                      
-                      // Handle different route data formats
-                      let route = "";
-                      
-                      if (drug.route) {
-                        if (typeof drug.route === 'string') {
-                          // If route is already a simple string like "oral"
-                          if (!drug.route.includes('Route:')) {
-                            route = drug.route.toLowerCase();
-                          } else {
-                            // If route is in format "Route: Oral"
-                            const routeMatch = drug.route.match(/Route:\s*([^,]+)/i);
-                            route = routeMatch ? routeMatch[1].trim().toLowerCase() : drug.route.toLowerCase();
-                          }
-                        }
-                      }
-                      
-                      // Map route names to dropdown values
-                      const routeMapping: { [key: string]: string } = {
-                        'oral': 'Oral',
-                        'parenteral': 'Parenteral', 
-                        'nasal': 'Nasal',
-                        'rectal': 'Rectal',
-                        'vaginal': 'Vaginal',
-                        'implant': 'Implant',
-                        'inhalation': 'Inhalation',
-                        'instillation': 'Instillation',
-                        'sublingual': 'Sublingual',
-                        'buccal': 'Sublingual',
-                        'oromucosal': 'Sublingual',
-                        'transdermal': 'Transdermal',
-                        'intravenous': 'Parenteral',
-                        'intramuscular': 'Parenteral',
-                        'subcutaneous': 'Parenteral',
-                        'topical': 'Transdermal'
-                      };
-                      
-                      const formattedRoute = routeMapping[route] || route.charAt(0).toUpperCase() + route.slice(1);
-                      const strengthMatch = drug.strength?.match(/^(\d+)/);
-                      
-                      // Improved dose unit logic
-                      let doseUnit = "mg"; // default
-                      if (drug.unit) {
-                        // Use the unit from the drug data directly
-                        doseUnit = drug.unit.toLowerCase();
-                        // Normalize common units
-                        if (doseUnit === 'tablet' || doseUnit === 'capsule') {
-                          doseUnit = 'mg';
-                        } else if (doseUnit === 'microgram') {
-                          doseUnit = 'mcg';
-                        } else if (doseUnit === 'milliliter') {
-                          doseUnit = 'ml';
-                        } else if (doseUnit === 'gram') {
-                          doseUnit = 'g';
-                        }
-                      }
-                      
-                      console.log("Setting doseUnit to:", doseUnit); // Debug log
-                      
-                      setCurrentItem({
-                        ...currentItem,
-                        drugid: drug.drugid,
-                        drugname: drug.name,
-                        form: drug.form || "",
-                        strength: drug.strength || "",
-                        route: formattedRoute,
-                        doseAmount: strengthMatch ? strengthMatch[1] : "",
-                        doseUnit: doseUnit,
-                        pharmacistNotes: "",
-                      });
-                    }}
-                    placeholder="Search medication..."
-                  />
+              {/* Medication Name */}
+              <div>
+                <Label>Medication Name *</Label>
+                <DrugAutocomplete
+                  workspaceid={workspaceid}
+                  value={currentItem.drugname}
+                  onChange={(value) =>
+                    setCurrentItem({ ...currentItem, drugname: value })
+                  }
+                  onSelect={(drug) => {
+                    // Extract numeric dose amount from strength (e.g., "500mg" -> "500")
+                    const numericDose = drug.strength?.match(/^\d+(\.\d+)?/)?.[0] || "";
+                    
+                    setCurrentItem({
+                      ...currentItem,
+                      drugid: drug.drugid,
+                      drugname: drug.name,
+                      form: drug.form || "",
+                      strength: drug.strength || "",
+                      route: drug.route || "",
+                      doseAmount: numericDose,
+                      doseUnit: drug.unit || "mg",
+                      pharmacistNotes: "",
+                    });
+                  }}
+                  placeholder="Type to search medications (e.g., Amoxicillin, Metformin)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Start typing to see suggestions. Select a drug to auto-fill form fields.
+                </p>
+              </div>
+
+              {/* Drug Information - Auto-filled from database */}
+              {currentItem.drugname && (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-2 mb-2">
+                  <div className="text-xs font-medium text-blue-900 mb-1">Drug Information (from database)</div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <span className="text-gray-600">Dose:</span>
+                      <span className="ml-1 font-medium">{currentItem.doseAmount || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Unit:</span>
+                      <span className="ml-1 font-medium">{currentItem.doseUnit || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Route:</span>
+                      <span className="ml-1 font-medium">{currentItem.route || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Form:</span>
+                      <span className="ml-1 font-medium">{currentItem.form || "N/A"}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs">Quantity *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={currentItem.quantity}
-                    onChange={(e) =>
-                      setCurrentItem({
-                        ...currentItem,
-                        quantity: parseInt(e.target.value) || 1,
-                      })
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
+              )}
+
+              {/* Hidden fields for dose, unit, route */}
+              <div className="grid grid-cols-3 gap-2" style={{display: 'none'}}>
                 <div>
                   <Label className="text-xs">Dose Amount *</Label>
                   <Input
@@ -1039,66 +999,27 @@ export default function CreateOrderModal({
                 </div>
                 <div>
                   <Label className="text-xs">Dose Unit *</Label>
-                  <Select
+                  <Input
+                    placeholder="Auto-filled"
                     value={currentItem.doseUnit}
-                    onValueChange={(value) =>
-                      setCurrentItem({ ...currentItem, doseUnit: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="g">g</SelectItem>
-                      <SelectItem value="mg">mg</SelectItem>
-                      <SelectItem value="mcg">mcg</SelectItem>
-                      <SelectItem value="U">U</SelectItem>
-                      <SelectItem value="TU">TU</SelectItem>
-                      <SelectItem value="MU">MU</SelectItem>
-                      <SelectItem value="mmol">mmol</SelectItem>
-                      <SelectItem value="ml">ml</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    readOnly
+                    className="h-8 text-xs bg-gray-100"
+                  />
                 </div>
               </div>
 
-              {/* Single Row: Route, Timing, Duration, Instructions, Usage, Valid Until */}
-              <div className="grid grid-cols-6 gap-2">
+              {/* Timing Directions, Duration, Valid Until */}
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Route *</Label>
-                  <Select
-                    value={currentItem.route}
-                    onValueChange={(value) =>
-                      setCurrentItem({ ...currentItem, route: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Implant">Implant</SelectItem>
-                      <SelectItem value="Inhalation">Inhalation</SelectItem>
-                      <SelectItem value="Instillation">Instillation</SelectItem>
-                      <SelectItem value="Nasal">Nasal</SelectItem>
-                      <SelectItem value="Oral">Oral</SelectItem>
-                      <SelectItem value="Parenteral">Parenteral</SelectItem>
-                      <SelectItem value="Rectal">Rectal</SelectItem>
-                      <SelectItem value="Sublingual">Sublingual</SelectItem>
-                      <SelectItem value="Transdermal">Transdermal</SelectItem>
-                      <SelectItem value="Vaginal">Vaginal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Timing *</Label>
+                  <Label>Timing Directions</Label>
                   <Select
                     value={currentItem.timingDirections}
                     onValueChange={(value) =>
                       setCurrentItem({ ...currentItem, timingDirections: value })
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Timing..." />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Once daily">Once daily</SelectItem>
@@ -1108,25 +1029,22 @@ export default function CreateOrderModal({
                       <SelectItem value="Every 6 hours">Every 6 hours</SelectItem>
                       <SelectItem value="Every 8 hours">Every 8 hours</SelectItem>
                       <SelectItem value="Every 12 hours">Every 12 hours</SelectItem>
-                      <SelectItem value="As needed">As needed</SelectItem>
-                      <SelectItem value="When in pain">When in pain</SelectItem>
-                      <SelectItem value="When fever rises">When fever rises</SelectItem>
                       <SelectItem value="Before sleep">Before sleep</SelectItem>
                       <SelectItem value="After meals">After meals</SelectItem>
                       <SelectItem value="Before meals">Before meals</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Duration</Label>
+                  <Label>Duration</Label>
                   <Select
                     value={currentItem.directionDuration}
                     onValueChange={(value) =>
                       setCurrentItem({ ...currentItem, directionDuration: value })
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Duration..." />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="3 days">3 days</SelectItem>
@@ -1136,155 +1054,66 @@ export default function CreateOrderModal({
                       <SelectItem value="2 weeks">2 weeks</SelectItem>
                       <SelectItem value="1 month">1 month</SelectItem>
                       <SelectItem value="Until finished">Until finished</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Instructions *</Label>
-                  <Select
-                    value={currentItem.additionalInstruction}
-                    onValueChange={(value) =>
-                      setCurrentItem({ ...currentItem, additionalInstruction: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Instructions..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Take with food">Take with food</SelectItem>
-                      <SelectItem value="Take before meals">Take before meals</SelectItem>
-                      <SelectItem value="Take after meals">Take after meals</SelectItem>
-                      <SelectItem value="Take with plenty of water">Take with plenty of water</SelectItem>
-                      <SelectItem value="Swallow whole, do not crush">Swallow whole, do not crush</SelectItem>
-                      <SelectItem value="Chew well before swallowing">Chew well before swallowing</SelectItem>
-                      <SelectItem value="Dissolve under tongue">Dissolve under tongue</SelectItem>
-                      <SelectItem value="Shake well before use">Shake well before use</SelectItem>
-                      <SelectItem value="Avoid driving after taking">Avoid driving after taking</SelectItem>
-                      <SelectItem value="Avoid alcohol during treatment">Avoid alcohol during treatment</SelectItem>
-                  </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Usage</Label>
-                  <Select
-                    value={currentItem.usage}
-                    onValueChange={(value) =>
-                      setCurrentItem({ ...currentItem, usage: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Usage..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="For headache">For headache</SelectItem>
-                      <SelectItem value="For fever">For fever</SelectItem>
-                      <SelectItem value="For high blood pressure">For high blood pressure</SelectItem>
-                      <SelectItem value="For diabetes">For diabetes</SelectItem>
-                      <SelectItem value="For infection">For infection</SelectItem>
-                      <SelectItem value="For asthma">For asthma</SelectItem>
-                      <SelectItem value="For allergies">For allergies</SelectItem>
-                      <SelectItem value="For stomach pain">For stomach pain</SelectItem>
-                      <SelectItem value="For diarrhea">For diarrhea</SelectItem>
-                      <SelectItem value="For anxiety">For anxiety</SelectItem>
-                      <SelectItem value="For anemia">For anemia</SelectItem>
-                      <SelectItem value="For vitamin deficiency">For vitamin deficiency</SelectItem>
-                  </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Valid Until</Label>
+                  <Label>Valid until</Label>
                   <Input
                     type="date"
                     value={currentItem.validUntil}
                     onChange={(e) =>
                       setCurrentItem({ ...currentItem, validUntil: e.target.value })
                     }
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-
-            
-            {/* PRN & Clinical Indication */}
-            <div className="space-y-3">
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="asRequired"
-                  checked={currentItem.asRequired}
-                  onChange={(e) =>
-                    setCurrentItem({ ...currentItem, asRequired: e.target.checked })
-                  }
-                />
-                <Label htmlFor="asRequired">As Required (PRN)</Label>
-              </div>
-
-              {currentItem.asRequired && (
-                <div>
-                  <Label>PRN Criterion</Label>
-                  <Input
-                    placeholder="e.g., for pain"
-                    value={currentItem.asRequiredCriterion}
-                    onChange={(e) =>
-                      setCurrentItem({ ...currentItem, asRequiredCriterion: e.target.value })
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Instructions *</Label>
-                  <Input
-                    placeholder="e.g., Take with food"
-                    value={currentItem.additionalInstruction}
-                    onChange={(e) =>
-                      setCurrentItem({ ...currentItem, additionalInstruction: e.target.value })
-                    }
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Clinical Indication</Label>
-                  <Input
-                    placeholder="e.g., Bacterial infection"
-                    value={currentItem.clinicalIndication}
-                    onChange={(e) =>
-                      setCurrentItem({ ...currentItem, clinicalIndication: e.target.value })
-                    }
-                    className="h-8 text-xs"
+                    placeholder="yyyy-mm-dd"
                   />
                 </div>
               </div>
 
-              {/* Pharmacist Notes */}
+              {/* Instructions */}
               <div>
-                <Label className="text-xs">Pharmacist Notes</Label>
-                <Input
-                  placeholder="Add pharmacist notes for this medication..."
-                  value={currentItem.pharmacistNotes}
+                <Label>Instructions *</Label>
+                <textarea
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                  rows={3}
+                  placeholder="e.g., Take with food"
+                  value={currentItem.additionalInstruction}
                   onChange={(e) =>
-                    setCurrentItem({ ...currentItem, pharmacistNotes: e.target.value })
+                    setCurrentItem({ ...currentItem, additionalInstruction: e.target.value })
                   }
-                  className="h-8 text-xs"
+                  required
+                />
+              </div>
+
+              {/* Clinical Indication */}
+              <div>
+                <Label>Clinical Indication</Label>
+                <textarea
+                  className="w-full mt-1.5 px-3 py-2 border rounded-md"
+                  rows={2}
+                  placeholder="e.g., Bacterial infection"
+                  value={currentItem.clinicalIndication}
+                  onChange={(e) =>
+                    setCurrentItem({ ...currentItem, clinicalIndication: e.target.value })
+                  }
                 />
               </div>
             </div>
 
-            
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddItem}
-              disabled={!currentItem.drugname || currentItem.quantity < 1 || !currentItem.additionalInstruction?.trim()}
-              className=" w-full bg-gray-100 hover:bg-green-300 text-gray-900 gap-2"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Medication to Order
-            </Button>
+              {/* Add to List Button */}
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddItem}
+                  disabled={!currentItem.drugname || !currentItem.additionalInstruction?.trim()}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add to Prescription List
+                </Button>
+              </div>
           </div>
           )}
 

@@ -9,9 +9,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // With SSR, we usually want to set some default staleTime
-            // above 0 to avoid refetching immediately on the client
-            staleTime: 60 * 1000,
+            // Keep data fresh for 5 minutes to avoid refetching on navigation
+            staleTime: 5 * 60 * 1000, // 5 minutes
+            // Keep unused data in cache for 10 minutes
+            gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+            // Don't refetch on window focus for better UX
+            refetchOnWindowFocus: false,
           },
         },
       })
