@@ -83,6 +83,12 @@ type PatientCreatePayload = {
   bloodgroup?: string;
   phone?: string;
   email?: string;
+  governorate?: string;
+  address?: string;
+  emergencycontact?: string;
+  emergencyphone?: string;
+  insurancecompany?: string;
+  insurancenumber?: string;
 };
 
 interface ValidationError {
@@ -1051,10 +1057,10 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-4 max-h-[70vh] overflow-y-auto">
-                      {/* Personal Information */}
+                      {/* Personal Information - UPDATED VERSION 2.0 */}
                       <div className="bg-white rounded-lg border shadow-sm">
                         <div className="px-4 py-3 border-b bg-gray-50">
-                          <h4 className="text-sm font-semibold text-gray-800">Personal Information</h4>
+                          <h4 className="text-sm font-semibold text-gray-800">🆕 Personal Information (Updated)</h4>
                         </div>
                         <div className="p-4 space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1188,7 +1194,7 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                           <h4 className="text-sm font-semibold text-gray-800">Contact Information</h4>
                         </div>
                         <div className="p-4 space-y-3">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             <div>
                               <Label className="text-xs">Phone Number *</Label>
                               <Input
@@ -1200,13 +1206,90 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
                               />
                             </div>
                             <div>
-                              <Label className="text-xs">Email Address (optional)</Label>
+                              <Label className="text-xs">Email Address</Label>
                               <Input
                                 type="email"
                                 value={registerPatientForm.email || ""}
                                 onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, email: e.target.value }))}
                                 placeholder="e.g., patient@email.com"
                                 className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Governorate</Label>
+                              <Input
+                                value={registerPatientForm.governorate || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, governorate: e.target.value }))}
+                                placeholder="e.g., Baghdad"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="lg:col-span-3">
+                              <Label className="text-xs">Address</Label>
+                              <Input
+                                value={registerPatientForm.address || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, address: e.target.value }))}
+                                placeholder="e.g., Street, District, City, Governorate"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Emergency Contact */}
+                      <div className="bg-white rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b bg-gray-50">
+                          <h4 className="text-sm font-semibold text-gray-800">Emergency Contact</h4>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Emergency Contact Name</Label>
+                              <Input
+                                value={registerPatientForm.emergencycontact || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, emergencycontact: e.target.value }))}
+                                placeholder="e.g., Sarah Mohammed"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Emergency Contact Phone</Label>
+                              <Input
+                                type="tel"
+                                value={registerPatientForm.emergencyphone || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, emergencyphone: e.target.value }))}
+                                placeholder="e.g., +964 770 987 6543"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Insurance Information */}
+                      <div className="bg-white rounded-lg border shadow-sm">
+                        <div className="px-4 py-3 border-b bg-gray-50">
+                          <h4 className="text-sm font-semibold text-gray-800">Insurance Information</h4>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-xs">Insurance Company</Label>
+                              <Input
+                                value={registerPatientForm.insurancecompany || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, insurancecompany: e.target.value }))}
+                                placeholder="e.g., National Insurance"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Insurance Number</Label>
+                              <Input
+                                value={registerPatientForm.insurancenumber || ""}
+                                onChange={(e) => setRegisterPatientForm((prev) => ({ ...prev, insurancenumber: e.target.value }))}
+                                placeholder="e.g., NAT001-12345-2024"
+                                className="h-8 text-xs font-mono"
                               />
                             </div>
                           </div>
