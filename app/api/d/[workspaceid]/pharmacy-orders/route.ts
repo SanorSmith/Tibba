@@ -328,6 +328,23 @@ export async function POST(
       let selectedBatchId: string | null = null;
       const drugid = item.drugid && item.drugid !== "" ? item.drugid : null;
       
+      // Validate drug exists if drugid is provided
+      if (drugid) {
+        const [drugExists] = await db
+          .select({ drugid: drugs.drugid })
+          .from(drugs)
+          .where(eq(drugs.drugid, drugid))
+          .limit(1);
+        
+        if (!drugExists) {
+          console.error(`[Pharmacy Orders POST] Drug ID ${drugid} not found in drugs table for item: ${item.drugname}`);
+          return NextResponse.json(
+            { error: `Drug not found: ${item.drugname} (ID: ${drugid})` },
+            { status: 400 }
+          );
+        }
+      }
+      
       if (drugid) {
         const optimalBatch = await selectOptimalBatch(drugid, item.quantity);
         if (optimalBatch) {
