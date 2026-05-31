@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { LeaveRequest, Employee } from '@/types/hr';
 
+export const dynamic = 'force-dynamic';
+
 // Balance key lookup by leave type name
 const BALANCE_KEY_MAP: Record<string, string> = {
   'Annual Leave': 'annual',
