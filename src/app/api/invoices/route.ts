@@ -125,9 +125,10 @@ export async function POST(request: NextRequest) {
       payment_method,
       payment_date,
       notes,
+      authorization_number,
       items
     } = body;
-    
+
     // Get service prices for items that don't have unit_price
     let servicePrices: Record<string, number> = {};
     if (items && Array.isArray(items)) {
@@ -224,10 +225,11 @@ export async function POST(request: NextRequest) {
           payment_method,
           payment_date,
           notes,
+          authorization_number,
           createdat,
           updatedat
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
         ) RETURNING *
       `, [
         invoice_number,
@@ -248,7 +250,8 @@ export async function POST(request: NextRequest) {
         status,
         payment_method,
         payment_date,
-        notes
+        notes,
+        authorization_number || null
       ]);
 
       const newInvoice = invoiceResult.rows[0];
@@ -257,12 +260,18 @@ export async function POST(request: NextRequest) {
       if (items && Array.isArray(items) && items.length > 0) {
         console.log(`Inserting ${items.length} invoice items`);
         
+        // Each line item can carry the receptionist's chosen provider (stakeholder)
+        await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS stakeholder_id UUID`).catch(() => {});
+
         for (const item of items) {
           const serviceId = item.service_id || item.item_code || '';
           const unitPrice = item.unit_price || servicePrices[serviceId] || 0;
           const quantity = item.quantity || 1;
           const totalPrice = item.subtotal || item.total_price || (quantity * unitPrice);
-          
+          // Chosen provider for this line; 'ALL' (or empty) means split across all configured providers
+          const chosenStakeholder =
+            item.stakeholder_id && item.stakeholder_id !== 'ALL' ? item.stakeholder_id : null;
+
           const itemData = {
             invoice_id: newInvoice.id,
             service_id: serviceId,
@@ -270,11 +279,12 @@ export async function POST(request: NextRequest) {
             service_name_ar: item.service_name_ar || item.item_name_ar || '',
             quantity: quantity,
             unit_price: unitPrice,
-            total_price: totalPrice
+            total_price: totalPrice,
+            stakeholder_id: chosenStakeholder,
           };
-          
+
           console.log('Inserting item:', itemData);
-          
+
           await pool.query(`
             INSERT INTO invoice_items (
               invoice_id,
@@ -283,9 +293,10 @@ export async function POST(request: NextRequest) {
               service_name_ar,
               quantity,
               unit_price,
-              total_price
+              total_price,
+              stakeholder_id
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7
+              $1, $2, $3, $4, $5, $6, $7, $8
             )
           `, [
             itemData.invoice_id,
@@ -294,10 +305,63 @@ export async function POST(request: NextRequest) {
             itemData.service_name_ar,
             itemData.quantity,
             itemData.unit_price,
-            itemData.total_price
+            itemData.total_price,
+            itemData.stakeholder_id,
           ]);
         }
         console.log('All items inserted successfully');
+      }
+
+      // ── Auto-create invoice_shares from service_stakeholders config ──
+      // For each saved item, look up which stakeholders are configured for that
+      // service (joined via services.code = invoice_items.service_id) and
+      // insert a PENDING invoice_shares row for each.
+      try {
+        const savedItemsRes = await pool.query(
+          'SELECT id, service_id, stakeholder_id, total_price FROM invoice_items WHERE invoice_id = $1',
+          [newInvoice.id]
+        );
+        let sharesInserted = 0;
+        for (const savedItem of savedItemsRes.rows) {
+          if (!savedItem.service_id) continue;
+          // Match configured providers by service UUID OR legacy service code.
+          // If the receptionist chose a specific provider for this line, keep only that one;
+          // otherwise fall back to all configured providers (split).
+          const stkRes = await pool.query(
+            `SELECT ss.stakeholder_id, ss.provider_role, ss.share_type,
+                    ss.share_percentage, ss.share_amount AS fixed_amount
+             FROM service_stakeholders ss
+             JOIN services s ON ss.service_id = s.id
+             WHERE (s.id::text = $1 OR s.code = $1)
+               AND ss.is_active = true
+               AND ($2::uuid IS NULL OR ss.stakeholder_id = $2::uuid)`,
+            [savedItem.service_id, savedItem.stakeholder_id]
+          );
+          for (const stk of stkRes.rows) {
+            const itemTotal = parseFloat(savedItem.total_price) || 0;
+            const shareAmt =
+              stk.share_type === 'PERCENTAGE'
+                ? (itemTotal * (parseFloat(stk.share_percentage) || 0)) / 100
+                : parseFloat(stk.fixed_amount) || 0;
+            await pool.query(
+              `INSERT INTO invoice_shares
+                 (invoice_id, invoice_item_id, service_id, stakeholder_id, provider_role,
+                  share_type, share_percentage, share_amount, payment_status, createdat, updatedat)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'PENDING',NOW(),NOW())
+               ON CONFLICT DO NOTHING`,
+              [
+                newInvoice.id, savedItem.id, savedItem.service_id,
+                stk.stakeholder_id, stk.provider_role, stk.share_type,
+                stk.share_percentage ?? null, shareAmt,
+              ]
+            );
+            sharesInserted++;
+          }
+        }
+        console.log(`Auto-created ${sharesInserted} invoice_shares for invoice ${newInvoice.id}`);
+      } catch (shareErr) {
+        // Non-fatal: shares can be recreated later; don't fail the whole invoice
+        console.error('Warning: invoice_shares auto-creation failed:', shareErr);
       }
 
       // Commit transaction

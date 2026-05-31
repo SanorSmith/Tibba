@@ -113,59 +113,8 @@ export default function DashboardPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Facilities</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Laboratories</CardTitle>
-              <FlaskConical className="w-4 h-4 text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{facilities.laboratories}</div>
-              <p className="text-xs text-gray-500 mt-1">Lab facilities</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Pharmacies</CardTitle>
-              <Pill className="w-4 h-4 text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{facilities.pharmacies}</div>
-              <p className="text-xs text-gray-500 mt-1">Pharmacy locations</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Growth</CardTitle>
-              <ArrowUpRight className="w-4 h-4 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">+{facilities.totalRegistrations}</div>
-              <p className="text-xs text-gray-500 mt-1">Total registrations</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link href="/patients">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Manage Patients</h3>
-                  <p className="text-sm text-gray-500">View and edit patient records</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
 
           <Link href="/hr/employees">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -181,20 +130,6 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/appointments">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-warning-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">View Appointments</h3>
-                  <p className="text-sm text-gray-500">Manage all appointments</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
           <Link href="/departments">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="flex items-center gap-4 p-6">
@@ -204,34 +139,6 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="font-semibold text-gray-900">Departments</h3>
                   <p className="text-sm text-gray-500">Manage hospital departments</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/laboratories">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <FlaskConical className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Laboratories</h3>
-                  <p className="text-sm text-gray-500">Manage lab facilities</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/pharmacies">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-                  <Pill className="w-6 h-6 text-pink-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Pharmacies</h3>
-                  <p className="text-sm text-gray-500">Manage pharmacy locations</p>
                 </div>
               </CardContent>
             </Card>

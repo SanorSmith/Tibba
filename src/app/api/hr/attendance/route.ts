@@ -137,9 +137,6 @@ export async function POST(request: NextRequest) {
       shift_id,
       first_in,
       last_out,
-      total_hours,
-      regular_hours,
-      overtime_hours,
       late_minutes,
       status,
     } = body;
@@ -150,6 +147,30 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    // ── Auto-calculate hours from timestamps when not supplied ─────────
+    let total_hours: number   = parseFloat(body.total_hours)   || 0;
+    let regular_hours: number = parseFloat(body.regular_hours) || 0;
+    let overtime_hours: number = parseFloat(body.overtime_hours) || 0;
+
+    if (first_in && last_out && total_hours === 0) {
+      try {
+        const inTime  = new Date(`${date}T${first_in}`);
+        const outTime = new Date(`${date}T${last_out}`);
+        // Handle overnight shifts (last_out < first_in)
+        const diffMs  = outTime < inTime
+          ? outTime.getTime() + 86_400_000 - inTime.getTime()
+          : outTime.getTime() - inTime.getTime();
+        total_hours = diffMs / 3_600_000; // ms → hours
+      } catch {}
+    }
+
+    // Derive regular / overtime from total_hours vs shift standard (8 h default)
+    if (total_hours > 0 && regular_hours === 0 && overtime_hours === 0) {
+      const STANDARD_HOURS = 8;
+      regular_hours  = Math.min(total_hours, STANDARD_HOURS);
+      overtime_hours = Math.max(0, total_hours - STANDARD_HOURS);
     }
 
     // Get staff UUID

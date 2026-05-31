@@ -6,7 +6,7 @@ const ROLE_MODULES: Record<string, string[]> = {
   SUPER_ADMIN:      ['*'],
   FINANCE_ADMIN:    ['/finance'],
   HR_ADMIN:         ['/hr'],
-  INVENTORY_ADMIN:  ['/inventory'],
+  INVENTORY_ADMIN:  ['/inventory', '/hospital'],
   RECEPTION_ADMIN:  ['/reception'],
 };
 

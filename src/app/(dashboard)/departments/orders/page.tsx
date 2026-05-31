@@ -55,23 +55,26 @@ interface OrderItem {
 }
 
 interface StaffMember {
-  staff_id: string;
-  staff_name: string;
-  staff_email?: string;
-  staff_phone?: string;
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
   department_id: string;
   department_name: string;
   position?: string;
-  is_active: boolean;
+  active: boolean;
 }
 
 interface Department {
-  department_id: string;
-  department_name: string;
-  department_name_ar?: string;
+  id: string;
+  name: string;
+  name_ar?: string;
+  code?: string;
   location?: string;
-  manager_name?: string;
-  is_active: boolean;
+  manager?: string;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export default function DepartmentOrdersPage() {
@@ -130,6 +133,11 @@ export default function DepartmentOrdersPage() {
         { id: '3', item_code: 'MED-015', item_name: 'Ibuprofen 400mg', category: 'Medication', unit_price: 0.75, quantity_in_stock: 800, unit_of_measure: 'tablet' },
         { id: '4', item_code: 'SUP-012', item_name: 'Syringes 5ml (Pack)', category: 'Supplies', unit_price: 8.00, quantity_in_stock: 150, unit_of_measure: 'pack' },
         { id: '5', item_code: 'EQP-003', item_name: 'Blood Pressure Monitor', category: 'Equipment', unit_price: 250.00, quantity_in_stock: 10, unit_of_measure: 'unit' },
+        { id: '6', item_code: 'TEST-001', item_name: 'Test Kit for Laboratory', category: 'Test Supplies', unit_price: 45.00, quantity_in_stock: 50, unit_of_measure: 'kit' },
+        { id: '7', item_code: 'TEST-002', item_name: 'Test Tubes (Box)', category: 'Test Supplies', unit_price: 12.00, quantity_in_stock: 200, unit_of_measure: 'box' },
+        { id: '8', item_code: 'TEST-003', item_name: 'Test Strips for Blood Sugar', category: 'Test Supplies', unit_price: 25.00, quantity_in_stock: 100, unit_of_measure: 'pack' },
+        { id: '9', item_code: 'MED-TEST', item_name: 'Test Medication Sample', category: 'Medication', unit_price: 5.00, quantity_in_stock: 25, unit_of_measure: 'bottle' },
+        { id: '10', item_code: 'EQP-TEST', item_name: 'Test Equipment Calibration Tool', category: 'Equipment', unit_price: 150.00, quantity_in_stock: 5, unit_of_measure: 'unit' },
       ];
       setInventoryItems(mockItems);
     } catch (error) {
@@ -171,12 +179,12 @@ export default function DepartmentOrdersPage() {
 
   const handleStaffSelect = (staffMember: StaffMember) => {
     setSelectedStaff(staffMember);
-    setRequestedBy(staffMember.staff_name);
-    setRequestedByEmail(staffMember.staff_email || '');
+    setRequestedBy(staffMember.name);
+    setRequestedByEmail(staffMember.email || '');
     setDepartmentId(staffMember.department_id);
     setDepartmentName(staffMember.department_name);
     setDeliveryLocation(staffMember.department_name);
-    setStaffSearch(staffMember.staff_name);
+    setStaffSearch(staffMember.name);
     setShowStaffResults(false);
   };
 
@@ -434,17 +442,17 @@ export default function DepartmentOrdersPage() {
                   <select
                     value={departmentId}
                     onChange={(e) => {
-                      const dept = departments.find(d => d.department_id === e.target.value);
+                      const dept = departments.find(d => d.id === e.target.value);
                       setDepartmentId(e.target.value);
-                      setDepartmentName(dept?.department_name || '');
-                      setDeliveryLocation(dept?.department_name || '');
+                      setDepartmentName(dept?.name || '');
+                      setDeliveryLocation(dept?.location || '');
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Department</option>
                     {departments.map(dept => (
-                      <option key={dept.department_id} value={dept.department_id}>
-                        {dept.department_name}
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
                       </option>
                     ))}
                   </select>
@@ -479,20 +487,20 @@ export default function DepartmentOrdersPage() {
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {staff.map(staffMember => (
                         <button
-                          key={staffMember.staff_id}
+                          key={staffMember.id}
                           onClick={() => handleStaffSelect(staffMember)}
                           className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium text-sm">{staffMember.staff_name}</p>
-                              <p className="text-xs text-gray-500">ID: {staffMember.staff_id}</p>
+                              <p className="font-medium text-sm">{staffMember.name}</p>
+                              <p className="text-xs text-gray-500">ID: {staffMember.id}</p>
                               <p className="text-xs text-gray-500">{staffMember.position}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-gray-600">{staffMember.department_name}</p>
-                              {staffMember.staff_email && (
-                                <p className="text-xs text-gray-400">{staffMember.staff_email}</p>
+                              {staffMember.email && (
+                                <p className="text-xs text-gray-400">{staffMember.email}</p>
                               )}
                             </div>
                           </div>

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Get current balance
     const currentBalance = await pool.query(`
-      SELECT * FROM leave_balances 
+      SELECT * FROM leave_balance 
       WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3
     `, [employee_id, leave_type_id, year]);
 
@@ -48,14 +48,14 @@ export async function POST(request: NextRequest) {
 
     // Calculate new values
     const newAccrued = Math.max(0, (balance.accrued || 0) + adjustment_days);
-    const newClosingBalance = Math.max(0, (balance.closing_balance || 0) + adjustment_days);
+    const newClosingBalance = Math.max(0, (balance.available_balance || 0) + adjustment_days);
 
     // Update balance
     const result = await pool.query(`
-      UPDATE leave_balances 
+      UPDATE leave_balance 
       SET 
         accrued = $1,
-        closing_balance = $2,
+        available_balance = $2,
         updated_at = NOW()
       WHERE employee_id = $3 AND leave_type_id = $4 AND year = $5
       RETURNING *

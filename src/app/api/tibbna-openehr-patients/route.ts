@@ -24,6 +24,11 @@ function generatePatientNumber(): string {
   return `P-${year}-${random}`;
 }
 
+// Generate openEHR ID using standard UUID format
+function generateOpenEHRId(): string {
+  return crypto.randomUUID();
+}
+
 // Phone number normalization function
 function normalizePhoneNumber(phone: string): string {
   // Remove all non-digit characters
@@ -394,8 +399,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Creating new patient:', body);
 
-    // Generate patient number if not provided
-    const patientNumber = body.patientNumber || generatePatientNumber();
+    // Generate openEHR ID using standard UUID format
+    const patientNumber = body.patientNumber || generateOpenEHRId();
 
     // Start a transaction to ensure all inserts succeed or fail together
     const client = await pool.connect();
@@ -433,7 +438,7 @@ export async function POST(request: NextRequest) {
           $9,
           $10,
           $11,
-          'b227528d-ca34-4850-9b72-94a220365d7f',
+          NULL,
           NOW()
         ) RETURNING *
       `;

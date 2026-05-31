@@ -42,19 +42,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For now, return a simple mock authentication
-    // TODO: Implement proper user authentication with password hashing
     console.log('Login attempt for:', loginIdentifier);
 
-    // Mock user data - replace with actual database query
-    const mockUser = {
-      id: '123e4567-e89b-12d3-a456-426614174000',
-      email: loginIdentifier.includes('@') ? loginIdentifier : `${loginIdentifier}@hospital.com`,
+    // Look up real user in DB
+    const lookupEmail = loginIdentifier.includes('@')
+      ? loginIdentifier
+      : `${loginIdentifier}@hospital.com`;
+
+    let dbUser: any = null;
+    try {
+      const r = await pool.query(
+        'SELECT userid, name, email FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($2) LIMIT 1',
+        [lookupEmail, loginIdentifier]
+      );
+      if (r.rows.length > 0) dbUser = r.rows[0];
+    } catch (e) {
+      console.warn('User DB lookup failed, falling back to mock:', e);
+    }
+
+    // Default workspace = Hospital 1
+    const DEFAULT_WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
+
+    const resolvedUser = {
+      id: dbUser?.userid ?? '123e4567-e89b-12d3-a456-426614174000',
+      email: dbUser?.email ?? lookupEmail,
       username: loginIdentifier,
-      firstName: 'Admin',
-      lastName: 'User',
+      name: dbUser?.name ?? 'Admin User',
+      firstName: dbUser?.name?.split(' ')[0] ?? 'Admin',
+      lastName: dbUser?.name?.split(' ').slice(1).join(' ') ?? 'User',
       role: 'Admin',
-      workspaceId: '550e8400-e29b-41d4-a716-446655440000'
+      workspaceId: DEFAULT_WORKSPACE_ID,
     };
 
     // Map username to role for middleware
@@ -68,12 +85,17 @@ export async function POST(request: NextRequest) {
 
     const userRole = roleMap[loginIdentifier.toLowerCase()] || 'SUPER_ADMIN';
 
-    // Create session object for cookie
+    // Create session object for cookie — now includes userId, workspaceId, email
     const session = {
       username: loginIdentifier,
       role: userRole,
       timestamp: Date.now(),
+      userId: resolvedUser.id,
+      workspaceId: resolvedUser.workspaceId,
+      email: resolvedUser.email,
     };
+
+    const mockUser = resolvedUser;
 
     // Encode session as base64 cookie
     const sessionCookie = Buffer.from(JSON.stringify(session)).toString('base64');

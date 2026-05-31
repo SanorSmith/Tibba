@@ -35,54 +35,378 @@ export async function GET(request: NextRequest) {
       )
     `);
 
+    console.log('Services table exists:', tableExists.rows[0].exists);
+
     if (!tableExists.rows[0].exists) {
+      console.log('Services table does not exist, returning mock data');
       // Return mock medical services if table doesn't exist
       return NextResponse.json([
-        { id: 'SRV-001', name: 'General Consultation', code: 'GC001', price: '50000.00', category: 'Consultation' },
-        { id: 'SRV-002', name: 'Specialist Consultation', code: 'SC001', price: '100000.00', category: 'Consultation' },
-        { id: 'SRV-003', name: 'Blood Test', code: 'BT001', price: '25000.00', category: 'Laboratory' },
-        { id: 'SRV-004', name: 'X-Ray', code: 'XR001', price: '75000.00', category: 'Radiology' },
-        { id: 'SRV-005', name: 'Ultrasound', code: 'US001', price: '150000.00', category: 'Radiology' },
-        { id: 'SRV-006', name: 'ECG', code: 'EC001', price: '30000.00', category: 'Cardiology' },
-        { id: 'SRV-007', name: 'Vaccination', code: 'VC001', price: '20000.00', category: 'Preventive' },
-        { id: 'SRV-008', name: 'Dental Checkup', code: 'DC001', price: '80000.00', category: 'Dental' },
-        { id: 'SRV-009', name: 'Physical Therapy', code: 'PT001', price: '120000.00', category: 'Therapy' },
-        { id: 'SRV-010', name: 'Minor Surgery', code: 'MS001', price: '500000.00', category: 'Surgery' }
+        { 
+          id: 'SRV-001', 
+          code: 'GC001', 
+          name: 'General Consultation', 
+          name_ar: 'استشارة عامة',
+          category: 'Consultation',
+          subcategory: 'General Medicine',
+          description: 'General medical consultation',
+          price_self_pay: 50000,
+          price_insurance: 45000,
+          price_government: 40000,
+          department_id: 'DEPT001',
+          department_name: 'General Medicine',
+          requires_appointment: true,
+          duration_minutes: 30,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-002', 
+          code: 'SC001', 
+          name: 'Specialist Consultation', 
+          name_ar: 'استشارة متخصصة',
+          category: 'Consultation',
+          subcategory: 'Specialist',
+          description: 'Specialist medical consultation',
+          price_self_pay: 100000,
+          price_insurance: 90000,
+          price_government: 80000,
+          department_id: 'DEPT002',
+          department_name: 'Specialist Medicine',
+          requires_appointment: true,
+          duration_minutes: 45,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-003', 
+          code: 'BT001', 
+          name: 'Blood Test', 
+          name_ar: 'فحص الدم',
+          category: 'Laboratory',
+          subcategory: 'Hematology',
+          description: 'Complete blood count test',
+          price_self_pay: 25000,
+          price_insurance: 22500,
+          price_government: 20000,
+          department_id: 'DEPT003',
+          department_name: 'Laboratory',
+          requires_appointment: false,
+          duration_minutes: 15,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-004', 
+          code: 'XR001', 
+          name: 'X-Ray', 
+          name_ar: 'أشعة سينية',
+          category: 'Radiology',
+          subcategory: 'Diagnostic Imaging',
+          description: 'X-ray imaging service',
+          price_self_pay: 75000,
+          price_insurance: 67500,
+          price_government: 60000,
+          department_id: 'DEPT004',
+          department_name: 'Radiology',
+          requires_appointment: true,
+          duration_minutes: 20,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-005', 
+          code: 'US001', 
+          name: 'Ultrasound', 
+          name_ar: 'الموجات فوق الصوتية',
+          category: 'Radiology',
+          subcategory: 'Diagnostic Imaging',
+          description: 'Ultrasound imaging service',
+          price_self_pay: 150000,
+          price_insurance: 135000,
+          price_government: 120000,
+          department_id: 'DEPT004',
+          department_name: 'Radiology',
+          requires_appointment: true,
+          duration_minutes: 30,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-006', 
+          code: 'EC001', 
+          name: 'ECG', 
+          name_ar: 'تخطيط القلب',
+          category: 'Cardiology',
+          subcategory: 'Diagnostic',
+          description: 'Electrocardiogram test',
+          price_self_pay: 30000,
+          price_insurance: 27000,
+          price_government: 24000,
+          department_id: 'DEPT005',
+          department_name: 'Cardiology',
+          requires_appointment: false,
+          duration_minutes: 15,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-007', 
+          code: 'VC001', 
+          name: 'Vaccination', 
+          name_ar: 'التطعيم',
+          category: 'Preventive',
+          subcategory: 'Immunization',
+          description: 'Vaccination service',
+          price_self_pay: 20000,
+          price_insurance: 18000,
+          price_government: 16000,
+          department_id: 'DEPT006',
+          department_name: 'Preventive Medicine',
+          requires_appointment: false,
+          duration_minutes: 10,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-008', 
+          code: 'DC001', 
+          name: 'Dental Checkup', 
+          name_ar: 'فحص الأسنان',
+          category: 'Dental',
+          subcategory: 'General Dentistry',
+          description: 'Dental examination and cleaning',
+          price_self_pay: 80000,
+          price_insurance: 72000,
+          price_government: 64000,
+          department_id: 'DEPT007',
+          department_name: 'Dental',
+          requires_appointment: true,
+          duration_minutes: 30,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-009', 
+          code: 'PT001', 
+          name: 'Physical Therapy', 
+          name_ar: 'العلاج الطبيعي',
+          category: 'Therapy',
+          subcategory: 'Rehabilitation',
+          description: 'Physical therapy session',
+          price_self_pay: 120000,
+          price_insurance: 108000,
+          price_government: 96000,
+          department_id: 'DEPT008',
+          department_name: 'Rehabilitation',
+          requires_appointment: true,
+          duration_minutes: 60,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        },
+        { 
+          id: 'SRV-010', 
+          code: 'MS001', 
+          name: 'Minor Surgery', 
+          name_ar: 'جراحة بسيطة',
+          category: 'Surgery',
+          subcategory: 'Outpatient',
+          description: 'Minor surgical procedures',
+          price_self_pay: 500000,
+          price_insurance: 450000,
+          price_government: 400000,
+          department_id: 'DEPT009',
+          department_name: 'Surgery',
+          requires_appointment: true,
+          duration_minutes: 90,
+          provider_id: null,
+          provider_name: null,
+          service_fee: 0,
+          active: true,
+          createdat: new Date().toISOString(),
+          updatedat: new Date().toISOString()
+        }
       ]);
     }
 
-    const result = await pool.query(`
+    // First try without department join to see if that's the issue
+    const simpleResult = await pool.query(`
       SELECT 
         id,
-        name,
         code,
-        price_self_pay as price,
+        name,
+        name_ar,
         category,
+        subcategory,
         description,
+        price_self_pay,
+        price_insurance,
+        price_government,
+        department_id,
+        requires_appointment,
+        duration_minutes,
+        provider_id,
+        provider_name,
+        service_fee,
+        active,
         createdat,
         updatedat
       FROM services
       WHERE active = true
       ORDER BY category, name
     `);
+    
+    console.log('Simple query result (no dept join):', simpleResult.rows.length, 'services found');
+    
+    // Try different department join approaches
+    let result;
+    try {
+      // Try with UUID department_id matching
+      result = await pool.query(`
+        SELECT 
+          s.id,
+          s.code,
+          s.name,
+          s.name_ar,
+          s.category,
+          s.subcategory,
+          s.description,
+          s.price_self_pay,
+          s.price_insurance,
+          s.price_government,
+          s.department_id,
+          d.name as department_name,
+          s.requires_appointment,
+          s.duration_minutes,
+          s.provider_id,
+          s.provider_name,
+          s.service_fee,
+          s.active,
+          s.createdat,
+          s.updatedat
+        FROM services s
+        LEFT JOIN departments d ON s.department_id::text = d.departmentid::text
+        WHERE s.active = true
+        ORDER BY s.category, s.name
+      `);
+      console.log('Department join (UUID match) result:', result.rows.length, 'services found');
+    } catch (error) {
+      console.log('Department join failed, using simple query:', error instanceof Error ? error.message : String(error));
+      result = simpleResult;
+    }
 
-    return NextResponse.json(result.rows);
+    console.log('Database query result (with dept join):', result.rows.length, 'services found');
+    console.log('First service sample:', result.rows[0]);
+    
+    // Also check total services count (including inactive)
+    const totalCount = await pool.query('SELECT COUNT(*) as total FROM services');
+    console.log('Total services in table (including inactive):', totalCount.rows[0].total);
+    
+    // Check active services count
+    const activeCount = await pool.query('SELECT COUNT(*) as active FROM services WHERE active = true');
+    console.log('Active services count:', activeCount.rows[0].active);
+    
+    // Always return the query with more services
+    let finalResult = simpleResult.rows.length >= result.rows.length ? simpleResult : result;
+    
+    console.log('Final result count:', finalResult.rows.length);
+    console.log('Using query:', simpleResult.rows.length >= result.rows.length ? 'simple (no dept join)' : 'with dept join');
+
+    // If no active services found, show all services
+    if (finalResult.rows.length === 0) {
+      console.log('No active services found, showing all services');
+      const allServices = await pool.query(`
+        SELECT 
+          id,
+          code,
+          name,
+          name_ar,
+          category,
+          subcategory,
+          description,
+          price_self_pay,
+          price_insurance,
+          price_government,
+          department_id,
+          requires_appointment,
+          duration_minutes,
+          provider_id,
+          provider_name,
+          service_fee,
+          active,
+          createdat,
+          updatedat
+        FROM services
+        ORDER BY category, name
+      `);
+      finalResult = allServices;
+      console.log('All services count:', finalResult.rows.length);
+    }
+
+    return NextResponse.json(finalResult.rows);
 
   } catch (error) {
     console.error('Error fetching services:', error);
     
     // Return mock data on error
     return NextResponse.json([
-      { id: 'SRV-001', name: 'General Consultation', code: 'GC001', price: '50000.00', category: 'Consultation' },
-      { id: 'SRV-002', name: 'Specialist Consultation', code: 'SC001', price: '100000.00', category: 'Consultation' },
-      { id: 'SRV-003', name: 'Blood Test', code: 'BT001', price: '25000.00', category: 'Laboratory' },
-      { id: 'SRV-004', name: 'X-Ray', code: 'XR001', price: '75000.00', category: 'Radiology' },
-      { id: 'SRV-005', name: 'Ultrasound', code: 'US001', price: '150000.00', category: 'Radiology' },
-      { id: 'SRV-006', name: 'ECG', code: 'EC001', price: '30000.00', category: 'Cardiology' },
-      { id: 'SRV-007', name: 'Vaccination', code: 'VC001', price: '20000.00', category: 'Preventive' },
-      { id: 'SRV-008', name: 'Dental Checkup', code: 'DC001', price: '80000.00', category: 'Dental' },
-      { id: 'SRV-009', name: 'Physical Therapy', code: 'PT001', price: '120000.00', category: 'Therapy' },
-      { id: 'SRV-010', name: 'Minor Surgery', code: 'MS001', price: '500000.00', category: 'Surgery' }
+      { 
+        id: 'SRV-001', 
+        code: 'GC001', 
+        name: 'General Consultation', 
+        name_ar: 'استشارة عامة',
+        category: 'Consultation',
+        subcategory: 'General Medicine',
+        description: 'General medical consultation',
+        price_self_pay: 50000,
+        price_insurance: 45000,
+        price_government: 40000,
+        department_id: 'DEPT001',
+        department_name: 'General Medicine',
+        requires_appointment: true,
+        duration_minutes: 30,
+        provider_id: null,
+        provider_name: null,
+        service_fee: 0,
+        active: true,
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString()
+      }
     ]);
   }
 }
@@ -100,33 +424,96 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, code, price, category, description } = body;
+    const { 
+      name, 
+      name_ar,
+      code, 
+      category, 
+      subcategory,
+      description,
+      price_self_pay,
+      price_insurance,
+      price_government,
+      department_id,
+      requires_appointment,
+      duration_minutes,
+      provider_id,
+      provider_name,
+      service_fee
+    } = body;
 
-    // Check if table exists, create if not
+    // Generate unique code if not provided
+    const serviceCode = code || `SVC${Date.now().toString().slice(-6)}`;
+
+    // Add provider columns if they don't exist
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS services (
-        id VARCHAR(50) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        code VARCHAR(50) UNIQUE,
-        price DECIMAL(10,2) NOT NULL,
-        category VARCHAR(100),
-        description TEXT,
-        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+      ALTER TABLE services 
+      ADD COLUMN IF NOT EXISTS provider_id VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS service_fee NUMERIC(12,2) DEFAULT 0
     `);
 
+    // Validate department exists (if provided)
+    if (department_id) {
+      console.log(`Validating department_id: ${department_id}`);
+      const deptCheck = await pool.query(`
+        SELECT departmentid, name FROM departments WHERE departmentid = $1
+      `, [department_id]);
+      
+      console.log(`Department query result:`, deptCheck.rows);
+      
+      if (deptCheck.rows.length === 0) {
+        return NextResponse.json(
+          { 
+            error: 'Invalid department ID', 
+            details: `Department with ID '${department_id}' does not exist.`,
+            code: 'INVALID_DEPARTMENT'
+          },
+          { status: 400 }
+        );
+      }
+      
+      console.log(`Service linked to department: ${deptCheck.rows[0].name} (${department_id})`);
+    }
+
     const result = await pool.query(`
-      INSERT INTO services (id, name, code, price, category, description)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO services (
+        code,
+        name,
+        name_ar,
+        category,
+        subcategory,
+        description,
+        price_self_pay,
+        price_insurance,
+        price_government,
+        department_id,
+        requires_appointment,
+        duration_minutes,
+        provider_id,
+        provider_name,
+        service_fee,
+        active
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `, [
-      `SRV-${Math.floor(Math.random() * 100000)}`,
+      serviceCode,
       name,
-      code,
-      price,
+      name_ar || null,
       category,
-      description
+      subcategory || null,
+      description || null,
+      price_self_pay || 0,
+      price_insurance || 0,
+      price_government || 0,
+      department_id || null,
+      requires_appointment !== undefined ? requires_appointment : true,
+      duration_minutes || 30,
+      provider_id || null,
+      provider_name || null,
+      service_fee || 0,
+      true
     ]);
 
     return NextResponse.json({

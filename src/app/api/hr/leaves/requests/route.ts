@@ -9,13 +9,17 @@ async function calculateWorkingDays(pool: Pool, startDate: string, endDate: stri
   const end = new Date(endDate);
   let workingDays = 0;
 
-  // Get holidays in the date range
-  const holidays = await pool.query(`
-    SELECT date FROM holidays 
-    WHERE date >= $1 AND date <= $2 AND is_active = true
-  `, [startDate, endDate]);
-
-  const holidayDates = new Set(holidays.rows.map(h => h.date.toISOString().split('T')[0]));
+  // Get holidays in the date range (table: official_holidays)
+  let holidayDates = new Set<string>();
+  try {
+    const holidays = await pool.query(`
+      SELECT date FROM official_holidays
+      WHERE date >= $1 AND date <= $2 AND is_active = true
+    `, [startDate, endDate]);
+    holidayDates = new Set(holidays.rows.map((h: any) => h.date.toISOString().split('T')[0]));
+  } catch {
+    // official_holidays table not available — skip holiday exclusion
+  }
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dayOfWeek = d.getDay();
@@ -30,12 +34,6 @@ async function calculateWorkingDays(pool: Pool, startDate: string, endDate: stri
   return workingDays;
 }
 
-// Generate request number
-function generateRequestNumber(): string {
-  const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `LR-${year}-${random}`;
-}
 
 export async function GET(request: NextRequest) {
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
@@ -207,10 +205,11 @@ export async function POST(request: NextRequest) {
     const leaveTypeData = leaveType.rows[0];
 
     // Validate consecutive days
-    if (leaveTypeData.max_consecutive && totalDays > leaveTypeData.max_consecutive) {
+    const maxConsecutive = leaveTypeData.max_consecutive_days ?? leaveTypeData.max_consecutive;
+    if (maxConsecutive && totalDays > maxConsecutive) {
       await pool.end();
       return NextResponse.json(
-        { error: `Maximum consecutive days for ${leaveTypeData.name} is ${leaveTypeData.max_consecutive}` },
+        { error: `Maximum consecutive days for ${leaveTypeData.name} is ${maxConsecutive}` },
         { status: 400 }
       );
     }
@@ -218,12 +217,12 @@ export async function POST(request: NextRequest) {
     // Check if employee has sufficient balance
     const currentYear = new Date().getFullYear();
     const balance = await pool.query(`
-      SELECT * FROM leave_balances 
+      SELECT * FROM leave_balance
       WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3
     `, [employee_id, leave_type_id, currentYear]);
 
     if (balance.rows.length > 0) {
-      const availableBalance = balance.rows[0].closing_balance - balance.rows[0].pending;
+      const availableBalance = balance.rows[0].available_balance ?? 0;
       if (totalDays > availableBalance) {
         await pool.end();
         return NextResponse.json(
@@ -233,19 +232,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate request number
-    const requestNumber = generateRequestNumber();
-
-    // Insert leave request
+    // Insert leave request (mapped to real leave_requests schema)
     const result = await pool.query(`
       INSERT INTO leave_requests (
-        request_number, employee_id, leave_type_id, start_date, end_date,
-        total_days, reason, emergency_contact, emergency_phone, handover_to,
-        attachment_url, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'PENDING')
+        organization_id, employee_id, leave_type_id, start_date, end_date,
+        days_count, reason, emergency_contact, handover_notes, status
+      ) VALUES ('00000000-0000-0000-0000-000000000001', $1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
       RETURNING *
     `, [
-      requestNumber,
       employee_id,
       leave_type_id,
       start_date,
@@ -253,29 +247,18 @@ export async function POST(request: NextRequest) {
       totalDays,
       reason || null,
       emergency_contact || null,
-      emergency_phone || null,
-      handover_to || null,
-      attachment_url || null
+      handover_to || null
     ]);
 
-    // Update pending balance
-    await pool.query(`
-      UPDATE leave_balances 
-      SET pending = pending + $1, updated_at = NOW()
-      WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4
-    `, [totalDays, employee_id, leave_type_id, currentYear]);
-
-    // Create approval record for level 1
-    const employee = await pool.query(`
-      SELECT reporting_to FROM staff WHERE staffid = $1
-    `, [employee_id]);
-
-    if (employee.rows.length > 0 && employee.rows[0].reporting_to) {
+    // Create level-1 approval record
+    try {
       await pool.query(`
-        INSERT INTO leave_approvals (
-          leave_request_id, approver_id, approval_level, status
-        ) VALUES ($1, $2, 1, 'PENDING')
-      `, [result.rows[0].id, employee.rows[0].reporting_to]);
+        INSERT INTO leave_request_approvals (
+          organization_id, leave_request_id, approval_level, status
+        ) VALUES ('00000000-0000-0000-0000-000000000001', $1, 1, 'PENDING')
+      `, [result.rows[0].id]);
+    } catch {
+      // non-fatal — approval record creation is best-effort
     }
 
     await pool.end();

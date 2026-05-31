@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { postInvoicePayment } from '@/lib/gl-posting';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -61,11 +62,31 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const invoice = result.rows[0];
     const items = itemsResult.rows || [];
 
+    // Map items to frontend-expected format
+    const mappedItems = items.map(item => ({
+      id: item.id,
+      item_code: item.service_id,
+      item_name: item.service_name,
+      item_name_ar: item.service_name_ar,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      subtotal: item.total_price,
+      createdat: item.createdat
+    }));
+
+    console.log('🔍 API Debug - Invoice GET:');
+    console.log('- Invoice ID:', invoice.id);
+    console.log('- Items count (raw):', items.length);
+    console.log('- Items count (mapped):', mappedItems.length);
+    if (mappedItems.length > 0) {
+      console.log('- First item (mapped):', mappedItems[0]);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         ...invoice,
-        items: items
+        items: mappedItems
       }
     });
 
@@ -119,6 +140,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
     const {
       invoice_number,
       invoice_date,
@@ -179,22 +202,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
       if (subtotal !== undefined) {
         updateFields.push(`subtotal = $${paramIndex}`);
-        updateValues.push(subtotal);
+        updateValues.push(parseFloat(subtotal) || 0);
         paramIndex++;
       }
       if (discount_percentage !== undefined) {
         updateFields.push(`discount_percentage = $${paramIndex}`);
-        updateValues.push(discount_percentage);
+        updateValues.push(parseFloat(discount_percentage) || 0);
         paramIndex++;
       }
       if (discount_amount !== undefined) {
         updateFields.push(`discount_amount = $${paramIndex}`);
-        updateValues.push(discount_amount);
+        updateValues.push(parseFloat(discount_amount) || 0);
         paramIndex++;
       }
       if (total_amount !== undefined) {
         updateFields.push(`total_amount = $${paramIndex}`);
-        updateValues.push(total_amount);
+        updateValues.push(parseFloat(total_amount) || 0);
         paramIndex++;
       }
       if (insurance_company_id !== undefined) {
@@ -204,27 +227,27 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
       if (insurance_coverage_amount !== undefined) {
         updateFields.push(`insurance_coverage_amount = $${paramIndex}`);
-        updateValues.push(insurance_coverage_amount);
+        updateValues.push(parseFloat(insurance_coverage_amount) || 0);
         paramIndex++;
       }
       if (insurance_coverage_percentage !== undefined) {
         updateFields.push(`insurance_coverage_percentage = $${paramIndex}`);
-        updateValues.push(insurance_coverage_percentage);
+        updateValues.push(parseFloat(insurance_coverage_percentage) || 0);
         paramIndex++;
       }
       if (patient_responsibility !== undefined) {
         updateFields.push(`patient_responsibility = $${paramIndex}`);
-        updateValues.push(patient_responsibility);
+        updateValues.push(parseFloat(patient_responsibility) || 0);
         paramIndex++;
       }
       if (amount_paid !== undefined) {
         updateFields.push(`amount_paid = $${paramIndex}`);
-        updateValues.push(amount_paid);
+        updateValues.push(parseFloat(amount_paid) || 0);
         paramIndex++;
       }
       if (balance_due !== undefined) {
         updateFields.push(`balance_due = $${paramIndex}`);
-        updateValues.push(balance_due);
+        updateValues.push(parseFloat(balance_due) || 0);
         paramIndex++;
       }
       if (status !== undefined) {
@@ -280,12 +303,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
       // Handle invoice items if provided
       if (items && Array.isArray(items)) {
-        // Delete existing invoice items
+        console.log(`Processing ${items.length} items...`);
+        console.log('Items data:', JSON.stringify(items, null, 2));
+        
+        // Delete existing invoice items (and their PENDING shares — PAID shares are kept)
+        await pool.query(
+          `DELETE FROM invoice_shares WHERE invoice_id = $1 AND payment_status = 'PENDING'`,
+          [id]
+        );
         await pool.query('DELETE FROM invoice_items WHERE invoice_id = $1', [id]);
+        console.log('Deleted existing items and pending shares');
 
         // Insert new invoice items
         if (items.length > 0) {
           for (const item of items) {
+            console.log('Processing item:', item);
+            
             await pool.query(`
               INSERT INTO invoice_items (
                 invoice_id,
@@ -305,9 +338,95 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               item.service_name_ar || item.item_name_ar || '',
               item.quantity || 1,
               item.unit_price || 0,
-              item.subtotal || (item.quantity || 1) * (item.unit_price || 0)
+              item.subtotal || item.total_price || (item.quantity || 1) * (item.unit_price || 0)
             ]);
           }
+          console.log('Inserted new items');
+        }
+
+        // ── Auto-recreate invoice_shares from service_stakeholders config ──
+        try {
+          const savedItemsRes = await pool.query(
+            'SELECT id, service_id, total_price FROM invoice_items WHERE invoice_id = $1',
+            [id]
+          );
+          let sharesInserted = 0;
+          for (const savedItem of savedItemsRes.rows) {
+            if (!savedItem.service_id) continue;
+            const stkRes = await pool.query(
+              `SELECT ss.stakeholder_id, ss.provider_role, ss.share_type,
+                      ss.share_percentage, ss.share_amount AS fixed_amount
+               FROM service_stakeholders ss
+               JOIN services s ON ss.service_id = s.id
+               WHERE s.code = $1 AND ss.is_active = true`,
+              [savedItem.service_id]
+            );
+            for (const stk of stkRes.rows) {
+              const itemTotal = parseFloat(savedItem.total_price) || 0;
+              const shareAmt =
+                stk.share_type === 'PERCENTAGE'
+                  ? (itemTotal * (parseFloat(stk.share_percentage) || 0)) / 100
+                  : parseFloat(stk.fixed_amount) || 0;
+              await pool.query(
+                `INSERT INTO invoice_shares
+                   (invoice_id, invoice_item_id, service_id, stakeholder_id, provider_role,
+                    share_type, share_percentage, share_amount, payment_status, createdat, updatedat)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'PENDING',NOW(),NOW())
+                 ON CONFLICT DO NOTHING`,
+                [
+                  id, savedItem.id, savedItem.service_id,
+                  stk.stakeholder_id, stk.provider_role, stk.share_type,
+                  stk.share_percentage ?? null, shareAmt,
+                ]
+              );
+              sharesInserted++;
+            }
+          }
+          console.log(`Auto-recreated ${sharesInserted} invoice_shares for invoice ${id}`);
+        } catch (shareErr) {
+          console.error('Warning: invoice_shares auto-recreation failed:', shareErr);
+        }
+      }
+
+      // ── GL auto-posting when invoice is marked PAID ──────────────────
+      if (status === 'PAID' || status === 'PARTIAL') {
+        try {
+          // Get the latest invoice snapshot for amounts
+          const glInv = await pool.query(
+            `SELECT invoice_number, total_amount, amount_paid, insurance_coverage_amount,
+                    patient_responsibility, payment_date
+             FROM invoices WHERE id = $1`, [id]
+          );
+          if (glInv.rows.length > 0) {
+            const inv = glInv.rows[0];
+            const patientAmt   = parseFloat(inv.patient_responsibility  || '0');
+            const insuranceAmt = parseFloat(inv.insurance_coverage_amount || '0');
+            const entryDate    = inv.payment_date
+              ? new Date(inv.payment_date).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0];
+
+            // Use pool.connect() so GL uses same connection pool
+            const glClient = await pool.connect();
+            try {
+              await glClient.query('BEGIN');
+              await postInvoicePayment(
+                glClient,
+                id,
+                inv.invoice_number,
+                patientAmt,
+                insuranceAmt,
+                entryDate
+              );
+              await glClient.query('COMMIT');
+            } catch (glErr) {
+              await glClient.query('ROLLBACK');
+              console.error('[GL] Invoice posting failed (non-fatal):', glErr);
+            } finally {
+              glClient.release();
+            }
+          }
+        } catch (glErr) {
+          console.error('[GL] GL posting setup failed (non-fatal):', glErr);
         }
       }
 

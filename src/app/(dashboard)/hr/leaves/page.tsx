@@ -10,7 +10,10 @@ import {
   TriangleAlert,
   FileText,
   ChartColumn,
-  Settings
+  Settings,
+  Plus,
+  CheckSquare,
+  Scale,
 } from 'lucide-react';
 
 export default function LeavesPage() {
@@ -28,12 +31,71 @@ export default function LeavesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Boss Dashboard</h1>
-          <p className="text-gray-600 mt-1">Overview of all hospital operations</p>
+          <h1 className="text-3xl font-bold text-gray-900">Leave Management</h1>
+          <p className="text-gray-600 mt-1">Manage employee leave requests, approvals and balances</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"></div>
-        </div>
+        <Link href="/hr/leaves/requests">
+          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            <Plus className="w-4 h-4" />
+            New Leave Request
+          </button>
+        </Link>
+      </div>
+
+      {/* Quick section links */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link href="/hr/leaves/requests">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 hover:bg-blue-100 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <FileText className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-900 text-sm">Leave Requests</p>
+                <p className="text-xs text-blue-600">Submit &amp; view requests</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+        <Link href="/hr/leaves/approvals">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 hover:bg-amber-100 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <CheckSquare className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900 text-sm">Approvals</p>
+                <p className="text-xs text-amber-600">{stats.pendingApprovals} pending review</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+        <Link href="/hr/leaves/balances">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 hover:bg-emerald-100 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <Scale className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-emerald-900 text-sm">Balances</p>
+                <p className="text-xs text-emerald-600">View leave balances</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+        <Link href="/hr/leaves/calendar">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 hover:bg-purple-100 transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-purple-900 text-sm">Calendar</p>
+                <p className="text-xs text-purple-600">Team leave calendar</p>
+              </div>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* Stats Grid */}

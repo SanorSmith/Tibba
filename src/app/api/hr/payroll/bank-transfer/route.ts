@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { createBankFileGenerator } from '@/lib/services/bank-file-generator';
+import { postPayrollPayment } from '@/lib/gl-posting';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -38,6 +39,44 @@ export async function POST(request: NextRequest) {
       company_iban,
       value_date
     });
+
+    // ── Post the salary disbursement to the GL (DR Employee Payable / CR Cash) ──
+    // Fires once the bank file is generated. Non-fatal + idempotent (clears prior).
+    try {
+      const sums = await pool.query(
+        `SELECT COALESCE(SUM(net_salary),0) AS net FROM payroll_transactions WHERE period_id = $1`,
+        [period_id]
+      );
+      const periodRow = await pool.query(
+        `SELECT period_name, end_date FROM payroll_periods WHERE id = $1`, [period_id]
+      );
+      const net = parseFloat(sums.rows[0].net) || 0;
+      if (net > 0 && periodRow.rows.length > 0) {
+        const periodName = periodRow.rows[0].period_name || 'Period';
+        const entryDate  = value_date || (periodRow.rows[0].end_date
+          ? new Date(periodRow.rows[0].end_date).toISOString().split('T')[0]
+          : undefined);
+        const glClient = await pool.connect();
+        try {
+          await glClient.query('BEGIN');
+          await glClient.query(
+            `DELETE FROM fin_journal_lines WHERE journalid IN (
+               SELECT journalid FROM fin_journal_entries
+               WHERE sourcetype='PAYROLL_PAYMENT' AND sourceid=$1)`, [period_id]);
+          await glClient.query(
+            `DELETE FROM fin_journal_entries WHERE sourcetype='PAYROLL_PAYMENT' AND sourceid=$1`, [period_id]);
+          await postPayrollPayment(glClient, period_id, periodName, net, entryDate);
+          await glClient.query('COMMIT');
+        } catch (glErr) {
+          await glClient.query('ROLLBACK');
+          console.error('[bank-transfer] GL posting failed (non-fatal):', glErr);
+        } finally {
+          glClient.release();
+        }
+      }
+    } catch (glOuter) {
+      console.error('[bank-transfer] GL setup failed (non-fatal):', glOuter);
+    }
 
     return NextResponse.json({
       success: true,

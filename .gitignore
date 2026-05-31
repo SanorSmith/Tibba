@@ -30,3 +30,11 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# Local secrets (do not commit)
+.env.local
+.env*.local
+
+# Local tooling
+.claude/
+.windsurf/
