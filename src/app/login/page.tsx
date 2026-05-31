@@ -4,6 +4,8 @@ import { useState, FormEvent, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Hospital, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 const ROLES = [
   {
     username: 'superadmin',

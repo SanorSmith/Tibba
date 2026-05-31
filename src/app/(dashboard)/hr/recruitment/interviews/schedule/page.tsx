@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { ArrowLeft, Calendar, X } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 const WS = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
-export default function ScheduleInterviewPage() {
+function ScheduleInterviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const applicationId = searchParams.get('applicationId') || '';
@@ -191,5 +193,13 @@ export default function ScheduleInterviewPage() {
         </button>
       </div>
     </>
+  );
+}
+
+export default function ScheduleInterviewPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ScheduleInterviewContent />
+    </Suspense>
   );
 }
