@@ -254,14 +254,25 @@ export async function POST(request: NextRequest) {
         dailySummaryId = newResult.rows[0].id;
       }
     } else {
-      // Check-out - update last_out and calculate hours
+      // Check-out - update last_out and calculate hours INCLUDING overtime split.
+      // Standard day = 8 hours. Anything beyond 8 is overtime.
       const updateResult = await pool.query(`
-        UPDATE daily_attendance 
+        UPDATE daily_attendance
         SET last_out = $1,
-            total_hours = CASE 
-              WHEN first_in IS NOT NULL THEN 
+            total_hours = CASE
+              WHEN first_in IS NOT NULL THEN
                 EXTRACT(EPOCH FROM ($1 - first_in)) / 3600
               ELSE total_hours
+            END,
+            regular_hours = CASE
+              WHEN first_in IS NOT NULL THEN
+                LEAST(EXTRACT(EPOCH FROM ($1 - first_in)) / 3600, 8)
+              ELSE regular_hours
+            END,
+            overtime_hours = CASE
+              WHEN first_in IS NOT NULL THEN
+                GREATEST(EXTRACT(EPOCH FROM ($1 - first_in)) / 3600 - 8, 0)
+              ELSE overtime_hours
             END
         WHERE employee_id = $2 AND date = $3
         RETURNING id

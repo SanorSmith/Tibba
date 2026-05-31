@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Receipt, Plus, Search, Eye, Trash2, Edit, X, Percent, RefreshCw, ChevronDown } from 'lucide-react';
+import { Receipt, Plus, Search, Eye, Trash2, Edit, X, Percent, RefreshCw, ChevronDown, Shield, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Invoice {
@@ -16,6 +16,7 @@ interface Invoice {
   discount_amount: number;
   total_amount: number;
   insurance_company_id?: string;
+  authorization_number?: string;
   insurance_coverage_amount: number;
   insurance_coverage_percentage: number;
   patient_responsibility: number;
@@ -65,6 +66,17 @@ interface LineItem {
   provider_id?: string;
   provider_name?: string;
   service_fee?: number;
+  stakeholder_id?: string;       // receptionist's chosen provider for this line ('ALL' = split)
+  providers?: ServiceProvider[]; // configured providers for the selected service
+}
+
+interface ServiceProvider {
+  stakeholder_id: string;
+  stakeholder_name: string;
+  stakeholder_name_en?: string;
+  provider_role?: string;
+  share_type?: string;
+  share_percentage?: number;
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
@@ -88,11 +100,50 @@ export default function InvoicesPage() {
   const [newStatus, setNewStatus] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
   const [patientResults, setPatientResults] = useState<any[]>([]);
+  const [activeApproval, setActiveApproval] = useState<any | null>(null);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+
+  // Claim submission state
+  const [claimInvoice, setClaimInvoice] = useState<Invoice | null>(null);
+  const [claimNotes, setClaimNotes] = useState('');
+  const [submittingClaim, setSubmittingClaim] = useState(false);
+
+  // Auto-load items when viewInvoice changes
+  useEffect(() => {
+    if (viewInvoice?.id) {
+      console.log('🔄 Auto-loading items for invoice:', viewInvoice.id);
+      loadInvoiceItems(viewInvoice.id);
+    }
+  }, [viewInvoice]);
+
+  const loadInvoiceItems = async (invoiceId: string) => {
+    try {
+      const r = await fetch(`/api/invoices/${invoiceId}`);
+      if (r.ok) { 
+        const d = await r.json(); 
+        console.log('🔄 Auto-load response:', d);
+        const items = d.data?.items || d.items || [];
+        console.log('🔄 Auto-loading items:', items);
+        setViewItems(items);
+      }
+    } catch (error) {
+      console.error('Auto-load error:', error);
+    }
+  };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Auto-recalculate balance due when amount paid or patient responsibility changes
+  useEffect(() => {
+    if (lineItems.length > 0 && (formData.patient_responsibility !== undefined || formData.amount_paid !== undefined)) {
+      const newBalanceDue = (formData.patient_responsibility || 0) - (formData.amount_paid || 0);
+      if (formData.balance_due !== newBalanceDue) {
+        setFormData(prev => ({ ...prev, balance_due: newBalanceDue }));
+      }
+    }
+  }, [formData.amount_paid, formData.patient_responsibility, lineItems.length]);
 
   const loadData = async () => {
     try {
@@ -134,6 +185,7 @@ export default function InvoicesPage() {
     });
     setPatientSearch('');
     setPatientResults([]);
+    setActiveApproval(null);
     setShowModal(true);
   };
 
@@ -143,22 +195,29 @@ export default function InvoicesPage() {
     setFormData(invoice);
     setPatientSearch(invoice.patient_name_ar || invoice.patient_name || '');
     setPatientResults([]);
+    setActiveApproval(invoice.authorization_number ? { authorization_number: invoice.authorization_number } : null);
     setShowModal(true);
 
     // Fetch existing items for this invoice
     try {
       const res = await fetch(`/api/invoices/${invoice.id}`);
       if (res.ok) {
-        const data = await res.json();
-        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-          const mapped: LineItem[] = data.items.map((item: any) => {
-            // Try to match back to a service by service_id or name
+        const response = await res.json();
+        console.log('🔍 Edit Modal - API Response:', response);
+        
+        // Handle both response formats: data.items or data.data.items
+        const items = response.data?.items || response.data?.data?.items || [];
+        console.log('🔍 Edit Modal - Items found:', items.length);
+        
+        if (items.length > 0) {
+          const mapped: LineItem[] = items.map((item: any) => {
+            // Try to match back to a service by service_id or service_name
             const svc = services.find(
-              s => s.id === item.item_code || s.name_ar === item.item_name_ar
+              s => s.id === item.item_code || s.code === item.item_code || s.name_ar === item.item_name_ar || s.name === item.item_name
             );
             return {
               service_id: svc?.id || item.item_code || '',
-              service_code: item.item_code || svc?.code || '',
+              service_code: svc?.code || item.item_code || '',
               service_name: item.item_name || svc?.name || '',
               service_name_ar: item.item_name_ar || svc?.name_ar || '',
               service_category: item.description || svc?.category || '',
@@ -171,6 +230,11 @@ export default function InvoicesPage() {
             };
           });
           setLineItems(mapped);
+          
+          // Recalculate totals after loading items
+          setTimeout(() => {
+            recalcFromLines(mapped, invoice.discount_percentage || 0, invoice.insurance_coverage_percentage || 0);
+          }, 100);
         }
       }
     } catch (err) {
@@ -189,9 +253,31 @@ export default function InvoicesPage() {
     const updated = [...lineItems];
     const qty = updated[idx].quantity || 1;
     const price = svc.price_self_pay;
-    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: qty, unit_price: price, line_total: price * qty, provider_id: svc.provider_id, provider_name: svc.provider_name, service_fee: svc.service_fee };
+    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: qty, unit_price: price, line_total: price * qty, provider_id: svc.provider_id, provider_name: svc.provider_name, service_fee: svc.service_fee, stakeholder_id: undefined, providers: [] };
     setLineItems(updated);
     recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+
+    // Fetch which providers are configured for this service → drives the per-line provider picker
+    fetch(`/api/services/${svc.id}/providers`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        const provs: ServiceProvider[] = json?.data || [];
+        setLineItems(prev => {
+          const copy = [...prev];
+          if (!copy[idx] || copy[idx].service_id !== svc.id) return prev; // line changed meanwhile
+          // 0 providers → none; 1 → auto-select; 2+ → leave unset so receptionist must pick
+          const auto = provs.length === 1 ? provs[0].stakeholder_id : undefined;
+          copy[idx] = { ...copy[idx], providers: provs, stakeholder_id: auto };
+          return copy;
+        });
+      })
+      .catch(() => {});
+  };
+
+  const updateLineProvider = (idx: number, stakeholderId: string) => {
+    const updated = [...lineItems];
+    updated[idx] = { ...updated[idx], stakeholder_id: stakeholderId || undefined };
+    setLineItems(updated);
   };
 
   const updateLineQty = (idx: number, qty: number) => {
@@ -220,6 +306,18 @@ export default function InvoicesPage() {
     const totalAmount = subtotal - discountAmount;
     const insuranceCoverage = Math.round(totalAmount * insPct / 100);
     const patientResp = totalAmount - insuranceCoverage;
+    const balanceDue = patientResp - (formData.amount_paid || 0);
+    
+    console.log('🔧 Recalculation:', {
+      subtotal,
+      discountAmount,
+      totalAmount,
+      insuranceCoverage,
+      patientResp,
+      amountPaid: formData.amount_paid || 0,
+      balanceDue
+    });
+    
     setFormData(prev => ({
       ...prev,
       subtotal,
@@ -227,7 +325,7 @@ export default function InvoicesPage() {
       total_amount: totalAmount,
       insurance_coverage_amount: insuranceCoverage,
       patient_responsibility: patientResp,
-      balance_due: patientResp - (prev.amount_paid || 0),
+      balance_due: balanceDue,
     }));
   };
 
@@ -239,6 +337,18 @@ export default function InvoicesPage() {
   const handleInsurancePctChange = (insPct: number) => {
     setFormData(prev => ({ ...prev, insurance_coverage_percentage: insPct }));
     recalcFromLines(lineItems, formData.discount_percentage || 0, insPct);
+  };
+
+  const handleAmountPaidChange = (amountPaid: number) => {
+    setFormData(prev => {
+      const newBalanceDue = (prev.patient_responsibility || 0) - amountPaid;
+      console.log('💰 Amount paid changed:', { amountPaid, patientResp: prev.patient_responsibility, newBalanceDue });
+      return {
+        ...prev,
+        amount_paid: amountPaid,
+        balance_due: newBalanceDue,
+      };
+    });
   };
 
   const searchPatients = async (query: string) => {
@@ -287,17 +397,310 @@ export default function InvoicesPage() {
     }
   };
 
-  const selectPatient = (patient: any) => {
-    setFormData({
-      ...formData,
-      patient_id: patient.id || patient.patient_id,
-      patient_name: patient.fullNameEn || patient.full_name,
-      patient_name_ar: patient.fullNameAr || patient.full_name_ar,
-      insurance_company_id: patient.insuranceCompany?.id || patient.insurance_provider_id || formData.insurance_company_id,
-    });
-    setPatientSearch(patient.fullNameAr || patient.fullNameEn || patient.full_name_ar || patient.full_name);
+  const selectPatient = async (patient: any) => {
+    const patientId = patient.id || patient.patient_id;
+    const currentDiscount = formData.discount_percentage || 0;
+
+    setFormData(prev => ({
+      ...prev,
+      patient_id: patientId,
+      patient_name: patient.fullNameEn || patient.full_name || '',
+      patient_name_ar: patient.fullNameAr || patient.full_name_ar || '',
+    }));
+    setPatientSearch(patient.fullNameAr || patient.fullNameEn || patient.full_name_ar || patient.full_name || '');
     setShowPatientDropdown(false);
     setPatientResults([]);
+
+    // ── Auto-fill insurance from patient's stored policy ──────────────────────
+    try {
+      const res = await fetch(`/api/patient-insurance?patient_id=${encodeURIComponent(patientId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const policy = Array.isArray(data.data) ? data.data[0] : data.data;
+        if (policy) {
+          const coverage = parseFloat(policy.coverage_percentage) || 0;
+          setFormData(prev => ({
+            ...prev,
+            insurance_company_id: policy.company_id,
+            insurance_coverage_percentage: coverage,
+          }));
+          recalcFromLines(lineItems, currentDiscount, coverage);
+          toast.success(
+            `Insurance auto-filled: ${policy.company_name || 'Policy found'} · ${coverage}% coverage`
+          );
+        }
+      }
+    } catch {
+      // silent — insurance lookup is optional
+    }
+
+    // ── Detect an APPROVED pre-approval for this patient ──────────────────────
+    try {
+      const pa = await fetch(`/api/insurance-pre-approvals?status=APPROVED&patient_id=${encodeURIComponent(patientId)}`).then(r => r.json());
+      const approved = (pa.data || [])[0] || null;
+      setActiveApproval(approved);
+      if (approved) {
+        toast.info(`Approved pre-approval on file: ${approved.authorization_number} (${new Intl.NumberFormat('en-IQ').format(Math.round(approved.authorized_amount || 0))} IQD)`);
+      }
+    } catch {
+      setActiveApproval(null);
+    }
+  };
+
+  const printInsuranceReport = async (inv: Invoice) => {
+    const fmtN = (n: number | string) => new Intl.NumberFormat('en-IQ').format(parseFloat(String(n)) || 0);
+    const fmtD = (d: string) => d ? new Date(d).toLocaleDateString('en-GB') : '-';
+
+    try {
+      toast.info('Preparing insurance report…');
+      const res = await fetch(`/api/invoices/${inv.id}/insurance-report`);
+      if (!res.ok) throw new Error('Failed to fetch report data');
+      const { data } = await res.json();
+      const { invoice, items, patient, insuranceCompany } = data;
+
+      const insPct = parseFloat(invoice.insurance_coverage_percentage) || 0;
+
+      const serviceRows = (items as any[]).map((item, i) => {
+        const lineTotal = parseFloat(item.total_price ?? item.subtotal ?? (item.unit_price * (item.quantity || 1))) || 0;
+        const insCovered = Math.round(lineTotal * insPct / 100);
+        const patPays = lineTotal - insCovered;
+        return `<tr>
+          <td>${i + 1}</td>
+          <td><strong>${item.service_name || item.item_name || '-'}</strong></td>
+          <td style="direction:rtl;text-align:right">${item.service_name_ar || item.item_name_ar || '-'}</td>
+          <td class="r">${item.quantity || 1}</td>
+          <td class="r">${fmtN(item.unit_price)}</td>
+          <td class="r"><strong>${fmtN(lineTotal)}</strong></td>
+          <td class="r ins">${fmtN(insCovered)}</td>
+          <td class="r pat">${fmtN(patPays)}</td>
+        </tr>`;
+      }).join('');
+
+      const hasMedical = patient?.medical_history || patient?.allergies || patient?.chronic_diseases || patient?.current_medications;
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Insurance Report – ${invoice.invoice_number}</title>
+  <style>
+    @page { size: A4; margin: 14mm 18mm; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:10.5px;color:#1a1a2e;background:#fff}
+    /* header */
+    .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:3px solid #0066cc;margin-bottom:14px}
+    .hosp-name{font-size:20px;font-weight:800;color:#0066cc;letter-spacing:-.5px}
+    .hosp-sub{font-size:9px;color:#888;margin-top:2px}
+    .badge{background:#0066cc;color:#fff;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700}
+    .gen-date{font-size:8.5px;color:#aaa;text-align:right;margin-top:4px}
+    /* section */
+    .sec{margin-bottom:13px}
+    .sec-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0066cc;border-bottom:1px solid #e0e0e0;padding-bottom:3px;margin-bottom:7px}
+    /* info grid */
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+    .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+    .ibox{background:#f8fafc;border-radius:5px;padding:5px 9px;border-left:3px solid #0066cc}
+    .ilbl{font-size:8.5px;color:#888;font-weight:600;text-transform:uppercase}
+    .ival{font-size:10.5px;font-weight:600;margin-top:1px}
+    /* medical */
+    .med-box{background:#fff8f0;border:1px solid #ffe0b2;border-radius:7px;padding:9px 13px}
+    .mlbl{font-size:8.5px;color:#e65100;font-weight:700;text-transform:uppercase}
+    .mval{font-size:10px;color:#3e2723;margin-top:2px;line-height:1.45;white-space:pre-wrap}
+    .mitem{margin-bottom:6px}
+    .mitem:last-child{margin-bottom:0}
+    /* insurance box */
+    .ins-box{background:#e8f4fd;border:1px solid #b3d9f7;border-radius:7px;padding:9px 13px}
+    /* table */
+    table{width:100%;border-collapse:collapse;font-size:9.5px}
+    thead tr{background:#0066cc;color:#fff}
+    th{padding:5px 7px;text-align:left;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    th.r,td.r{text-align:right}
+    tbody tr:nth-child(even){background:#f8fafc}
+    td{padding:5px 7px;border-bottom:1px solid #eee}
+    td.ins{color:#0066cc;font-weight:600}
+    td.pat{color:#c62828;font-weight:600}
+    tfoot tr{background:#dbeafe;font-weight:700}
+    tfoot td{padding:5px 7px;font-size:10px}
+    /* fin summary */
+    .fin{background:#f8fafc;border-radius:7px;padding:8px 12px;border:1px solid #e0e0e0}
+    .fr{display:flex;justify-content:space-between;padding:2.5px 0;font-size:10px}
+    .fr.tot{border-top:2px solid #0066cc;margin-top:4px;padding-top:5px;font-size:12px;font-weight:800;color:#0066cc}
+    .fr.ins-r{color:#0066cc}
+    .fr.paid{color:#2e7d32}
+    .fr.bal{color:#c62828;font-weight:700;font-size:11px}
+    .fr.resp{border-top:1px dashed #ccc;margin-top:4px;padding-top:4px;font-weight:700}
+    /* status */
+    .st{display:inline-block;padding:1.5px 7px;border-radius:10px;font-size:8.5px;font-weight:700}
+    .st-PAID{background:#e8f5e9;color:#2e7d32}
+    .st-PARTIALLY_PAID{background:#fff8e1;color:#f57f17}
+    .st-PENDING{background:#e3f2fd;color:#1565c0}
+    .st-UNPAID{background:#ffebee;color:#c62828}
+    .st-CANCELLED{background:#f5f5f5;color:#757575}
+    /* footer */
+    .foot{margin-top:18px;padding-top:8px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:flex-end}
+    .foot-note{font-size:7.5px;color:#bbb;max-width:55%;line-height:1.4}
+    .sig{text-align:center}
+    .sig-line{border-top:1px solid #555;width:120px;margin:0 auto}
+    .sig-lbl{font-size:7.5px;color:#aaa;margin-top:2px}
+    @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div>
+      <div class="hosp-name">Tibbna Hospital</div>
+      <div class="hosp-sub">Healthcare Management System</div>
+    </div>
+    <div style="text-align:right">
+      <div class="badge">Insurance Claim Report</div>
+      <div class="gen-date">Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}</div>
+    </div>
+  </div>
+
+  <!-- Patient Info -->
+  <div class="sec">
+    <div class="sec-title">Patient Information</div>
+    <div class="grid3">
+      <div class="ibox"><div class="ilbl">Full Name</div><div class="ival">${invoice.patient_name || patient?.full_name || '-'}</div></div>
+      <div class="ibox"><div class="ilbl">Arabic Name</div><div class="ival" style="direction:rtl">${invoice.patient_name_ar || patient?.full_name_ar || '-'}</div></div>
+      <div class="ibox"><div class="ilbl">Patient ID</div><div class="ival" style="font-family:monospace;font-size:8.5px">${invoice.patient_id || '-'}</div></div>
+      <div class="ibox"><div class="ilbl">Date of Birth</div><div class="ival">${patient?.date_of_birth ? fmtD(patient.date_of_birth) : '-'}</div></div>
+      <div class="ibox"><div class="ilbl">Gender</div><div class="ival">${patient?.gender || '-'}</div></div>
+      <div class="ibox"><div class="ilbl">National ID</div><div class="ival">${patient?.national_id || '-'}</div></div>
+      ${patient?.phone ? `<div class="ibox"><div class="ilbl">Phone</div><div class="ival">${patient.phone}</div></div>` : ''}
+      ${patient?.blood_group ? `<div class="ibox"><div class="ilbl">Blood Group</div><div class="ival">${patient.blood_group}</div></div>` : ''}
+    </div>
+  </div>
+
+  <!-- Medical / Diagnoses -->
+  ${hasMedical ? `
+  <div class="sec">
+    <div class="sec-title">Medical Information &amp; Diagnoses</div>
+    <div class="med-box">
+      ${patient?.medical_history ? `<div class="mitem"><div class="mlbl">Medical History &amp; Diagnoses</div><div class="mval">${patient.medical_history}</div></div>` : ''}
+      ${patient?.chronic_diseases ? `<div class="mitem"><div class="mlbl">Chronic Diseases</div><div class="mval">${patient.chronic_diseases}</div></div>` : ''}
+      ${patient?.allergies ? `<div class="mitem"><div class="mlbl">Allergies</div><div class="mval">${patient.allergies}</div></div>` : ''}
+      ${patient?.current_medications ? `<div class="mitem"><div class="mlbl">Current Medications</div><div class="mval">${patient.current_medications}</div></div>` : ''}
+    </div>
+  </div>` : ''}
+
+  <!-- Insurance & Invoice Details -->
+  <div class="sec">
+    <div class="sec-title">Insurance &amp; Invoice Details</div>
+    <div class="grid2">
+      <div class="ins-box">
+        <div class="ilbl" style="color:#0066cc">Insurance Company</div>
+        <div style="font-size:14px;font-weight:800;color:#0066cc;margin-top:3px">${insuranceCompany?.name || '-'}</div>
+        ${insuranceCompany?.code ? `<div style="font-size:8.5px;color:#666;margin-top:1px">Code: ${insuranceCompany.code}</div>` : ''}
+        <div style="margin-top:6px"><span class="ilbl">Coverage: </span><span style="font-size:15px;font-weight:900;color:#0066cc">${insPct}%</span></div>
+      </div>
+      <div class="fin" style="border-left:4px solid #0066cc">
+        <div class="fr"><span style="color:#888">Invoice #</span><span style="font-family:monospace;font-weight:600">${invoice.invoice_number}</span></div>
+        <div class="fr"><span style="color:#888">Invoice Date</span><span>${fmtD(invoice.invoice_date)}</span></div>
+        <div class="fr"><span style="color:#888">Status</span><span class="st st-${invoice.status}">${invoice.status.replace(/_/g,' ')}</span></div>
+        ${invoice.payment_method ? `<div class="fr"><span style="color:#888">Payment Method</span><span>${invoice.payment_method}</span></div>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- Services Table -->
+  <div class="sec">
+    <div class="sec-title">Medical Services Rendered</div>
+    <table>
+      <thead><tr>
+        <th>#</th><th>Service Name</th><th style="text-align:right">Arabic Name</th>
+        <th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total (IQD)</th>
+        <th class="r">Ins. Covered</th><th class="r">Patient Pays</th>
+      </tr></thead>
+      <tbody>${serviceRows}</tbody>
+      <tfoot><tr>
+        <td colspan="5" style="text-align:right;color:#888;font-size:9px">TOTALS</td>
+        <td class="r">${fmtN(invoice.total_amount)} IQD</td>
+        <td class="r ins">${fmtN(invoice.insurance_coverage_amount)} IQD</td>
+        <td class="r pat">${fmtN(invoice.patient_responsibility)} IQD</td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  <!-- Financial Summary -->
+  <div class="sec">
+    <div class="sec-title">Financial Summary</div>
+    <div class="grid2">
+      <div class="fin">
+        <div class="fr"><span style="color:#888">Subtotal</span><span>${fmtN(invoice.subtotal)} IQD</span></div>
+        ${parseFloat(invoice.discount_percentage) > 0 ? `<div class="fr" style="color:#f57f17"><span>Discount (${parseFloat(invoice.discount_percentage)}%)</span><span>-${fmtN(invoice.discount_amount)} IQD</span></div>` : ''}
+        <div class="fr tot"><span>Grand Total</span><span>${fmtN(invoice.total_amount)} IQD</span></div>
+      </div>
+      <div class="fin">
+        <div class="fr ins-r"><span>Insurance Coverage (${insPct}%)</span><span>-${fmtN(invoice.insurance_coverage_amount)} IQD</span></div>
+        <div class="fr resp"><span>Patient Responsibility</span><span>${fmtN(invoice.patient_responsibility)} IQD</span></div>
+        <div class="fr paid"><span>Amount Paid</span><span>-${fmtN(invoice.amount_paid)} IQD</span></div>
+        <div class="fr bal"><span>Balance Due</span><span>${fmtN(invoice.balance_due)} IQD</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="foot">
+    <div class="foot-note">
+      Official insurance claim report — Tibbna Hospital Management System.<br>
+      Computer-generated document. Valid without signature unless stated otherwise.<br>
+      For queries contact the billing department.
+    </div>
+    <div style="display:flex;gap:28px">
+      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Treating Physician</div></div>
+      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Billing Department</div></div>
+    </div>
+  </div>
+
+  <script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>`;
+
+      const pw = window.open('', '_blank', 'width=900,height=750');
+      if (pw) {
+        pw.document.write(html);
+        pw.document.close();
+      } else {
+        toast.error('Please allow pop-ups to print the report');
+      }
+    } catch (err) {
+      console.error('printInsuranceReport error:', err);
+      toast.error('Failed to generate report');
+    }
+  };
+
+  // Auto-submit claim to Finance when a new invoice with insurance is saved
+  const autoSubmitClaim = async (invoice: any) => {
+    try {
+      const insCompany = insuranceCompanies.find(c => c.id === invoice.insurance_company_id);
+      const res = await fetch('/api/insurance-claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          patient_id: invoice.patient_id,
+          patient_name: invoice.patient_name,
+          patient_name_ar: invoice.patient_name_ar,
+          insurance_company_id: invoice.insurance_company_id,
+          insurance_company_name: insCompany?.name || '',
+          claim_amount: parseFloat(String(invoice.insurance_coverage_amount)) || 0,
+          service_date: invoice.invoice_date,
+          authorization_number: invoice.authorization_number || null,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Claim ${data.data.claim_number} auto-submitted to Finance`);
+      } else if (res.status === 409) {
+        // Claim already exists — silent, no problem
+      } else {
+        toast.warning('Invoice saved. Claim auto-submit failed — use the 🛡️ button to retry.');
+      }
+    } catch {
+      toast.warning('Invoice saved. Claim auto-submit failed — use the 🛡️ button to retry.');
+    }
   };
 
   const handleSave = async () => {
@@ -307,11 +710,31 @@ export default function InvoicesPage() {
       if (lineItems.length === 0) { toast.error('Add at least one service'); return; }
       if (lineItems.some(l => !l.service_id && !l.service_name)) { toast.error('Select a service for each line'); return; }
       if (lineItems.some(l => l.unit_price <= 0)) { toast.error('Unit price must be greater than 0 for all services'); return; }
+      // Multi-provider lines must have a provider chosen (or explicitly split)
+      if (lineItems.some(l => (l.providers?.length || 0) > 1 && !l.stakeholder_id)) {
+        toast.error('Select the provider who performed each multi-provider service');
+        return;
+      }
+
+      // Validate against an attached pre-approval (amount + expiry)
+      if (activeApproval) {
+        const total = formData.total_amount || 0;
+        const authAmt = parseFloat(activeApproval.authorized_amount) || 0;
+        const expired = activeApproval.expiration_date && new Date(activeApproval.expiration_date) < new Date();
+        if (expired) {
+          if (!window.confirm(`The attached authorization ${activeApproval.authorization_number} EXPIRED on ${new Date(activeApproval.expiration_date).toLocaleDateString('en-GB')}. The insurer may reject the claim. Proceed anyway?`)) return;
+        }
+        if (authAmt > 0 && total > authAmt) {
+          if (!window.confirm(`Invoice total (${new Intl.NumberFormat('en-IQ').format(total)} IQD) exceeds the authorized amount (${new Intl.NumberFormat('en-IQ').format(authAmt)} IQD) on ${activeApproval.authorization_number}. The insurer may only pay up to the authorized amount. Proceed anyway?`)) return;
+        }
+      }
 
       const payload = {
         ...formData,
+        authorization_number: activeApproval?.authorization_number || null,
         items: lineItems.map(l => ({
           item_type: 'SERVICE',
+          service_id: l.service_id || null,
           item_code: l.service_code,
           item_name: l.service_name,
           item_name_ar: l.service_name_ar,
@@ -326,6 +749,8 @@ export default function InvoicesPage() {
           provider_id: l.provider_id || null,
           provider_name: l.provider_name || null,
           service_fee: l.service_fee || 0,
+          // Receptionist's chosen provider for revenue-share allocation ('ALL' = split)
+          stakeholder_id: l.stakeholder_id || null,
         })),
       };
 
@@ -335,7 +760,18 @@ export default function InvoicesPage() {
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
       if (res.ok) {
+        const savedData = await res.json();
         toast.success(editingInvoice ? 'Invoice updated' : 'Invoice created');
+
+        // Auto-submit claim to Finance for new invoices that have insurance
+        if (!editingInvoice && parseFloat(String(savedData.data?.insurance_coverage_amount)) > 0) {
+          if (savedData.data?.insurance_company_id) {
+            await autoSubmitClaim(savedData.data);
+          } else {
+            toast.info('Invoice saved with insurance coverage — select an insurance company then use the 🛡️ button to submit the claim.');
+          }
+        }
+
         setShowModal(false);
         loadData();
       } else {
@@ -446,6 +882,48 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleSubmitClaim = async () => {
+    if (!claimInvoice) return;
+    setSubmittingClaim(true);
+    try {
+      const res = await fetch('/api/insurance-claims', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_id: claimInvoice.id,
+          invoice_number: claimInvoice.invoice_number,
+          patient_id: claimInvoice.patient_id,
+          patient_name: claimInvoice.patient_name,
+          patient_name_ar: claimInvoice.patient_name_ar,
+          insurance_company_id: claimInvoice.insurance_company_id,
+          insurance_company_name: claimInvoice.insurance_companies?.company_name || '',
+          claim_amount: claimInvoice.insurance_coverage_amount,
+          service_date: claimInvoice.invoice_date,
+          notes: claimNotes,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`Claim ${data.data.claim_number} submitted successfully`);
+        setClaimInvoice(null);
+        setClaimNotes('');
+      } else {
+        const err = await res.json();
+        // If already exists, surface the existing claim info
+        if (res.status === 409) {
+          toast.error(`A claim already exists for this invoice (${err.existing?.claim_number})`);
+        } else {
+          toast.error(err.error || 'Failed to submit claim');
+        }
+      }
+    } catch (error) {
+      toast.error('Failed to submit claim');
+    } finally {
+      setSubmittingClaim(false);
+    }
+  };
+
   const filteredInvoices = invoices.filter(inv => {
     if (statusFilter !== 'ALL' && inv.status !== statusFilter) return false;
     if (search) {
@@ -461,9 +939,9 @@ export default function InvoicesPage() {
 
   const stats = {
     total: invoices.length,
-    totalAmount: invoices.reduce((s, i) => s + i.total_amount, 0),
-    collected: invoices.reduce((s, i) => s + i.amount_paid, 0),
-    outstanding: invoices.reduce((s, i) => s + i.balance_due, 0),
+    totalAmount: invoices.reduce((s, i) => s + (parseFloat(String(i.total_amount)) || 0), 0),
+    collected: invoices.reduce((s, i) => s + (parseFloat(String(i.amount_paid)) || 0), 0),
+    outstanding: invoices.reduce((s, i) => s + (parseFloat(String(i.balance_due)) || 0), 0),
   };
 
   const statusColor = (s: string) => {
@@ -568,7 +1046,7 @@ export default function InvoicesPage() {
               {filteredInvoices.map(inv => (
                 <tr key={inv.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-xs">{inv.invoice_number}</td>
-                  <td className="px-4 py-3 text-gray-600">{inv.invoice_date}</td>
+                  <td className="px-4 py-3 text-gray-600">{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-GB') : '-'}</td>
                   <td className="px-4 py-3">
                     <div className="font-medium">{inv.patient_name_ar || inv.patient_name || '-'}</div>
                     {inv.patient_id && <div className="text-xs text-gray-500">{inv.patient_id}</div>}
@@ -593,8 +1071,20 @@ export default function InvoicesPage() {
                           setViewItems([]);
                           try {
                             const r = await fetch(`/api/invoices/${inv.id}`);
-                            if (r.ok) { const d = await r.json(); setViewItems(d.items || []); }
-                          } catch {}
+                            if (r.ok) {
+                              const response = await r.json();
+                              console.log('🔍 Frontend Debug - API Response:', response);
+                              console.log('🔍 Frontend Debug - response.data.items:', response.data?.items);
+                              console.log('🔍 Frontend Debug - response.data.data.items:', response.data?.data?.items);
+                              
+                              // Handle both response formats: data.items or data.data.items
+                              const items = response.data?.items || response.data?.data?.items || [];
+                              console.log('🔍 Frontend Debug - Final items:', items);
+                              setViewItems(items); 
+                            }
+                          } catch (error) {
+                            console.error('Frontend error fetching invoice:', error);
+                          }
                         }}
                         className="p-1 hover:bg-gray-100 rounded"
                         title="View"
@@ -628,6 +1118,25 @@ export default function InvoicesPage() {
                       >
                         <Edit className="w-4 h-4 text-gray-600" />
                       </button>
+                      {/* Submit Insurance Claim — only for invoices with insurance coverage */}
+                      {inv.insurance_coverage_amount > 0 && inv.status !== 'CANCELLED' && (
+                        <button
+                          onClick={() => { setClaimInvoice(inv); setClaimNotes(''); }}
+                          className="p-1 hover:bg-blue-50 rounded"
+                          title="Submit Insurance Claim"
+                        >
+                          <Shield className="w-4 h-4 text-blue-600" />
+                        </button>
+                      )}
+                      {inv.insurance_coverage_amount > 0 && (
+                        <button
+                          onClick={() => printInsuranceReport(inv)}
+                          className="p-1 hover:bg-purple-50 rounded"
+                          title="Print Insurance Report (PDF)"
+                        >
+                          <Printer className="w-4 h-4 text-purple-600" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(inv.id)}
                         className="p-1 hover:bg-gray-100 rounded"
@@ -709,7 +1218,7 @@ export default function InvoicesPage() {
                     </label>
                     <input
                       type="date"
-                      value={formData.invoice_date || ''}
+                      value={formData.invoice_date ? formData.invoice_date.split('T')[0] : ''}
                       onChange={e => setFormData({ ...formData, invoice_date: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
@@ -821,7 +1330,8 @@ export default function InvoicesPage() {
 
                 <div className="space-y-2">
                   {lineItems.map((line, idx) => (
-                    <div key={idx} className="grid grid-cols-12 gap-2 items-end bg-gray-50 rounded-lg p-3">
+                    <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2">
+                     <div className="grid grid-cols-12 gap-2 items-end">
                       {/* Service selector */}
                       <div className="col-span-5">
                         <label className="block text-xs text-gray-500 mb-1">Service</label>
@@ -874,6 +1384,40 @@ export default function InvoicesPage() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
+                     </div>
+
+                      {/* Provider / stakeholder picker — only when the service has providers configured */}
+                      {line.providers && line.providers.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-500 whitespace-nowrap">
+                            👤 Provider{line.providers.length > 1 ? ' *' : ''}:
+                          </label>
+                          {line.providers.length === 1 ? (
+                            <span className="text-xs font-medium text-gray-800 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                              {line.providers[0].stakeholder_name_en || line.providers[0].stakeholder_name}
+                              {line.providers[0].provider_role ? ` · ${line.providers[0].provider_role}` : ''}
+                            </span>
+                          ) : (
+                            <select
+                              value={line.stakeholder_id || ''}
+                              onChange={e => updateLineProvider(idx, e.target.value)}
+                              className={`flex-1 border rounded-lg px-2 py-1.5 text-xs bg-white ${
+                                !line.stakeholder_id ? 'border-amber-400 ring-1 ring-amber-200' : ''
+                              }`}
+                            >
+                              <option value="">— Select who performed this —</option>
+                              {line.providers.map(p => (
+                                <option key={p.stakeholder_id} value={p.stakeholder_id}>
+                                  {(p.stakeholder_name_en || p.stakeholder_name)}
+                                  {p.provider_role ? ` · ${p.provider_role}` : ''}
+                                  {p.share_percentage ? ` (${p.share_percentage}%)` : ''}
+                                </option>
+                              ))}
+                              <option value="ALL">⚊ Split across all providers</option>
+                            </select>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -933,6 +1477,31 @@ export default function InvoicesPage() {
               {/* Insurance */}
               <div>
                 <h3 className="font-semibold text-sm mb-3">Insurance Information</h3>
+
+                {/* Pre-approval banner — surfaces an APPROVED authorization for this patient */}
+                {activeApproval && (() => {
+                  const authAmt = parseFloat(activeApproval.authorized_amount) || 0;
+                  const total = formData.total_amount || 0;
+                  const expired = activeApproval.expiration_date && new Date(activeApproval.expiration_date) < new Date();
+                  const over = authAmt > 0 && total > authAmt;
+                  return (
+                    <div className={`mb-3 rounded-lg border p-3 text-sm ${expired || over ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-800">
+                          ✓ Pre-Approval on file: <span className="font-mono">{activeApproval.authorization_number}</span>
+                        </span>
+                        <span className="text-xs text-gray-500">attached to this invoice</span>
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1 grid grid-cols-2 gap-x-4">
+                        <span>Authorized: <strong>{new Intl.NumberFormat('en-IQ').format(authAmt)} IQD</strong></span>
+                        <span>Expires: {activeApproval.expiration_date ? new Date(activeApproval.expiration_date).toLocaleDateString('en-GB') : '—'}</span>
+                      </div>
+                      {over && <p className="text-[11px] text-amber-700 mt-1">⚠ Invoice total exceeds the authorized amount — insurer may only pay up to {new Intl.NumberFormat('en-IQ').format(authAmt)} IQD.</p>}
+                      {expired && <p className="text-[11px] text-red-600 mt-1">⚠ This authorization has expired — the claim may be rejected.</p>}
+                    </div>
+                  );
+                })()}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Insurance Company</label>
@@ -1000,7 +1569,7 @@ export default function InvoicesPage() {
                       min="0"
                       step="1000"
                       value={formData.amount_paid || 0}
-                      onChange={e => setFormData({ ...formData, amount_paid: parseFloat(e.target.value) || 0 })}
+                      onChange={e => handleAmountPaidChange(parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
                   </div>
@@ -1050,7 +1619,7 @@ export default function InvoicesPage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Payment Date</label>
                     <input
                       type="date"
-                      value={formData.payment_date || ''}
+                      value={formData.payment_date ? formData.payment_date.split('T')[0] : ''}
                       onChange={e => setFormData({ ...formData, payment_date: e.target.value || '' })}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
@@ -1099,7 +1668,7 @@ export default function InvoicesPage() {
           >
             <div className="p-6 border-b">
               <h2 className="text-lg font-bold">{viewInvoice.invoice_number}</h2>
-              <p className="text-xs text-gray-500">Invoice Date: {viewInvoice.invoice_date}</p>
+              <p className="text-xs text-gray-500">Invoice Date: {viewInvoice.invoice_date ? new Date(viewInvoice.invoice_date).toLocaleDateString('en-GB') : '-'}</p>
             </div>
             <div className="p-6 space-y-5">
               {/* Patient & Status */}
@@ -1119,34 +1688,30 @@ export default function InvoicesPage() {
               {/* Services table */}
               <div>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Services</h3>
-                {viewItems.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic">No services recorded for this invoice.</p>
+                {viewItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {viewItems.map((item: any, i: number) => (
+                      <div key={i} className="bg-gray-50 border rounded-lg p-3">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-medium text-sm">{item.item_name_ar || item.item_name || '-'}</div>
+                            <div className="text-xs text-gray-500">{item.item_code || item.description || ''}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-gray-500">Qty: {item.quantity || 1}</div>
+                            <div className="font-medium">{fmt(item.unit_price || 0)} IQD</div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t">
+                          <span className="text-xs text-gray-500">Line Total</span>
+                          <span className="font-semibold">{fmt(item.subtotal || (item.unit_price * (item.quantity || 1)) || 0)} IQD</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b">
-                        <tr>
-                          <th className="text-left px-3 py-2 text-xs font-medium text-gray-600">Service</th>
-                          <th className="text-center px-3 py-2 text-xs font-medium text-gray-600">Qty</th>
-                          <th className="text-right px-3 py-2 text-xs font-medium text-gray-600">Unit Price</th>
-                          <th className="text-right px-3 py-2 text-xs font-medium text-gray-600">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y">
-                        {viewItems.map((item: any, i: number) => (
-                          <tr key={i} className="hover:bg-gray-50">
-                            <td className="px-3 py-2">
-                              <div className="font-medium">{item.item_name_ar || item.item_name}</div>
-                              {item.item_name_ar && item.item_name && <div className="text-xs text-gray-400">{item.item_name}</div>}
-                              {item.item_code && <div className="text-xs text-gray-400 font-mono">{item.item_code}</div>}
-                            </td>
-                            <td className="px-3 py-2 text-center">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right">{fmt(item.unit_price)} IQD</td>
-                            <td className="px-3 py-2 text-right font-medium">{fmt(item.subtotal || item.unit_price * item.quantity)} IQD</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="text-sm text-gray-400 border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
+                    No service items found for this invoice
                   </div>
                 )}
               </div>
@@ -1273,6 +1838,80 @@ export default function InvoicesPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
               >
                 Apply Discount
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Insurance Claim Modal */}
+      {claimInvoice && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" /> Submit Insurance Claim
+              </h2>
+              <button onClick={() => setClaimInvoice(null)} className="p-1 hover:bg-gray-100 rounded">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 text-sm">
+              {/* Invoice summary */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Invoice</span>
+                  <span className="font-mono font-medium">{claimInvoice.invoice_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Patient</span>
+                  <span className="font-medium">{claimInvoice.patient_name_ar || claimInvoice.patient_name || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Insurance Company</span>
+                  <span className="font-medium">{claimInvoice.insurance_companies?.company_name || claimInvoice.insurance_company_id || '-'}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-500">Total Invoice</span>
+                  <span className="font-medium">{fmt(claimInvoice.total_amount)} IQD</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Coverage ({claimInvoice.insurance_coverage_percentage}%)</span>
+                  <span className="font-medium text-blue-700">{fmt(claimInvoice.insurance_coverage_amount)} IQD</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Patient Pays</span>
+                  <span className="font-semibold">{fmt(claimInvoice.patient_responsibility)} IQD</span>
+                </div>
+              </div>
+
+              {/* Claim amount is the insurance coverage amount */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="text-xs font-medium text-blue-800 mb-1">Claim Amount</div>
+                <div className="text-xl font-bold text-blue-900">{fmt(claimInvoice.insurance_coverage_amount)} IQD</div>
+                <div className="text-xs text-blue-600 mt-0.5">Amount to be claimed from the insurance company</div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <textarea
+                  value={claimNotes}
+                  onChange={e => setClaimNotes(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm"
+                  rows={2}
+                  placeholder="Any additional information for the claim..."
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-3">
+              <button onClick={() => setClaimInvoice(null)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              <button
+                onClick={handleSubmitClaim}
+                disabled={submittingClaim}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4" />
+                {submittingClaim ? 'Submitting...' : 'Submit Claim'}
               </button>
             </div>
           </div>

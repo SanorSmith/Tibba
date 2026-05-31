@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, X, Search, Edit, Trash2, RefreshCw, Eye, ArrowRight, ArrowRightLeft, ShoppingCart, Check, FileText, Activity, UserRound, MonitorPlay, Building2, Package } from "lucide-react";
@@ -23,12 +23,12 @@ const s:Record<string,any>={
   page:{fontFamily:"Inter,sans-serif",minHeight:"100vh",background:"#f8f9fa",color:"#111827"},
   header:{background:"#fff",borderBottom:"1px solid #e5e7eb",padding:"0 24px",height:56,display:"flex",alignItems:"center",gap:12,position:"sticky" as const,top:0,zIndex:10},
   content:{padding:24,maxWidth:1400,margin:"0 auto"},
-  tabs:{display:"flex",gap:2,marginBottom:16,background:"#f0f0ff",border:"1px solid #e0e0ff",flexWrap:"wrap" as const,borderRadius:12,padding:"5px",position:"sticky" as const,top:56,zIndex:9,boxShadow:"0 2px 8px rgba(99,102,241,0.08)"},
-  tab:(a:boolean)=>({padding:"9px 16px",fontSize:12,fontWeight:a?700:500,border:"none",background:a?"#6366f1":"transparent",cursor:"pointer",color:a?"#fff":"#6366f1",borderRadius:8,margin:"2px",whiteSpace:"nowrap" as const,boxShadow:a?"0 2px 10px rgba(99,102,241,0.25)":"none"}),
+  tabs:{display:"flex",gap:4,marginBottom:16,background:"#f3f4f6",flexWrap:"wrap" as const,borderRadius:10,padding:"4px",position:"sticky" as const,top:56,zIndex:9},
+  tab:(a:boolean)=>({padding:"8px 14px",fontSize:13,fontWeight:a?600:500,border:"none",background:a?"#fff":"transparent",cursor:"pointer",color:a?"#111827":"#6b7280",borderRadius:8,margin:"0",whiteSpace:"nowrap" as const,boxShadow:a?"0 1px 2px rgba(0,0,0,0.08)":"none",transition:"all .15s"}),
   card:{background:"#fff",borderRadius:10,border:"1px solid #e5e7eb",overflow:"hidden",marginBottom:16},
   th:{padding:"10px 12px",textAlign:"left" as const,fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase" as const,background:"#f9fafb",borderBottom:"1px solid #e5e7eb",whiteSpace:"nowrap" as const},
   td:{padding:"10px 12px",borderBottom:"1px solid #f9fafb",fontSize:13,color:"#111827"},
-  btn:(c:string)=>({padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:"none",background:c==="purple"?"#6366f1":c==="green"?"#16a34a":c==="blue"?"#2563eb":c==="red"?"#dc2626":c==="orange"?"#d97706":"#f3f4f6",color:c==="ghost"?"#374151":"#fff"}),
+  btn:(c:string)=>({padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:500,cursor:"pointer",border:c==="ghost"?"1px solid #e5e7eb":"none",background:c==="purple"?"#2563eb":c==="green"?"#16a34a":c==="blue"?"#2563eb":c==="red"?"#dc2626":c==="orange"?"#d97706":c==="ghost"?"#fff":"#f3f4f6",color:c==="ghost"?"#374151":"#fff"}),
   input:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid #d1d5db",fontSize:13,color:"#111827",boxSizing:"border-box" as const},
   label:{fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:4},
   overlay:{position:"fixed" as const,inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50},
@@ -85,9 +85,9 @@ function StorageSearch({value,locations,onChange}:{value:string;locations:any[];
     <div style={{position:"relative"}}>
       <input style={s.input} value={q} placeholder="Search or type new shelf..." onChange={e=>{setQ(e.target.value);onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}/>
       {open&&(filtered.length>0||showCreate)&&(
-        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #6366f1",borderRadius:8,zIndex:200,maxHeight:180,overflowY:"auto" as const}}>
+        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #2563eb",borderRadius:8,zIndex:200,maxHeight:180,overflowY:"auto" as const}}>
           {filtered.slice(0,10).map(s=>(<div key={s} onMouseDown={()=>{setQ(s);onChange(s);setOpen(false);}} style={{padding:"8px 12px",cursor:"pointer",fontSize:13}} onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}>{s}</div>))}
-          {showCreate&&(<div onMouseDown={()=>{setQ(q);onChange(q);setOpen(false);}} style={{padding:"8px 12px",cursor:"pointer",fontSize:13,color:"#6366f1",fontWeight:600}} onMouseEnter={e=>(e.currentTarget.style.background="#eef2ff")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}>Create "{q}"</div>)}
+          {showCreate&&(<div onMouseDown={()=>{setQ(q);onChange(q);setOpen(false);}} style={{padding:"8px 12px",cursor:"pointer",fontSize:13,color:"#2563eb",fontWeight:600}} onMouseEnter={e=>(e.currentTarget.style.background="#eff6ff")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}>Create "{q}"</div>)}
         </div>
       )}
     </div>
@@ -247,7 +247,7 @@ function AddItemWizard({onClose,onSuccess,departments,storageLocations,manufactu
               {searching&&<div style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"#9ca3af"}}>searching...</div>}
             </div>
             {searchResults.length>0&&(
-              <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #6366f1",borderRadius:8,boxShadow:"0 8px 24px rgba(99,102,241,0.15)",zIndex:300,overflow:"hidden",marginTop:2}}>
+              <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #2563eb",borderRadius:8,boxShadow:"0 8px 24px rgba(99,102,241,0.15)",zIndex:300,overflow:"hidden",marginTop:2}}>
                 <div style={{padding:"6px 12px",background:"#fef3c7",fontSize:11,fontWeight:600,color:"#92400e"}}> These items already exist - click to load details</div>
                 {searchResults.map(item=>(
                   <div key={item.id} onClick={()=>selectExisting(item)}
@@ -342,8 +342,8 @@ function TransferModal({items,departments,onClose,onSuccess}:{items:any[];depart
           <input style={{...s.input,paddingLeft:30}} value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Search items to add..."/>
         </div>
         {searchQ&&filtered.length>0&&(
-          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #6366f1",borderRadius:8,zIndex:100,maxHeight:180,overflowY:"auto" as const}}>
-            {filtered.slice(0,8).map(item=>(<div key={item.id} onClick={()=>{if(!tItems.find(i=>i.itemId===item.id)){setTItems(t=>[...t,{itemId:item.id,itemName:item.name,quantity:1}]);}setSearchQ("");}} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between"}} onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}><span style={{fontWeight:600,fontSize:13}}>{item.name}</span><span style={{fontSize:11,color:"#6366f1",fontWeight:600}}>+ Add</span></div>))}
+          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #2563eb",borderRadius:8,zIndex:100,maxHeight:180,overflowY:"auto" as const}}>
+            {filtered.slice(0,8).map(item=>(<div key={item.id} onClick={()=>{if(!tItems.find(i=>i.itemId===item.id)){setTItems(t=>[...t,{itemId:item.id,itemName:item.name,quantity:1}]);}setSearchQ("");}} style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between"}} onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}><span style={{fontWeight:600,fontSize:13}}>{item.name}</span><span style={{fontSize:11,color:"#2563eb",fontWeight:600}}>+ Add</span></div>))}
           </div>
         )}
       </div>
@@ -428,16 +428,16 @@ function CreateOrderModal({items,suppliers,departments,initialCart,onClose,onSuc
             <div style={{fontSize:11,fontWeight:700,color:"#6b7280",marginBottom:8,textTransform:"uppercase" as const,letterSpacing:"0.05em"}}>Add Items from Hospital Inventory</div>
             <div style={{position:"relative"}}>
               <div style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Search size={14} color="#9ca3af"/></div>
-              <input style={{...s.input,paddingLeft:34,border:"2px solid #6366f1"}} value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name, code, type..."/>
+              <input style={{...s.input,paddingLeft:34,border:"2px solid #2563eb"}} value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by name, code, type..."/>
             </div>
             {(results.length>0||(q.length>=2&&results.length===0))&&(
-              <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #6366f1",borderRadius:10,boxShadow:"0 8px 24px rgba(99,102,241,0.15)",zIndex:500,overflow:"hidden",marginTop:2}}>
+              <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #2563eb",borderRadius:10,boxShadow:"0 8px 24px rgba(99,102,241,0.15)",zIndex:500,overflow:"hidden",marginTop:2}}>
                 {q.length>=2&&results.length===0&&(<div style={{padding:"12px 16px",fontSize:13,color:"#9ca3af",textAlign:"center" as const}}>No items found for "{q}"<br/><span style={{fontSize:11}}>Add the item first via the Add Item button, then search again.</span></div>)}
                 {results.map((item:any)=>{
                   const added=lines.some(l=>l.itemId===item.id);
-                  return(<div key={item.id} onClick={()=>!added&&addLine(item)} style={{padding:"10px 14px",cursor:added?"default":"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}} onMouseEnter={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#eef2ff";}} onMouseLeave={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#fff";}}>
+                  return(<div key={item.id} onClick={()=>!added&&addLine(item)} style={{padding:"10px 14px",cursor:added?"default":"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}} onMouseEnter={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#eff6ff";}} onMouseLeave={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#fff";}}>
                     <div><div style={{fontWeight:600,fontSize:13,color:added?"#9ca3af":"#111827"}}>{item.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{item.itemcode} - {item.uom} - Stock: <strong style={{color:parseInt(item.total_stock||0)===0?"#dc2626":"#16a34a"}}>{item.total_stock??0}</strong>{item.unit_cost?` - $${parseFloat(item.unit_cost).toFixed(2)}`:""}</div></div>
-                    {added?<span style={{fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>Added</span>:<span style={{background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:6}}>+ Add</span>}
+                    {added?<span style={{fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>Added</span>:<span style={{background:"#2563eb",color:"#fff",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:6}}>+ Add</span>}
                   </div>);
                 })}
               </div>
@@ -449,8 +449,8 @@ function CreateOrderModal({items,suppliers,departments,initialCart,onClose,onSuc
             <div style={{border:"1px solid #e5e7eb",borderRadius:10,overflow:"hidden"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead><tr>{["#","Item","Unit of Measure","Quantity","Unit Cost ($)","Total",""].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
-                <tbody>{lines.map((l,i)=>(<tr key={l.itemId}><td style={{...s.td,color:"#9ca3af",fontSize:11,width:28}}>{i+1}</td><td style={{...s.td,fontWeight:600,minWidth:160}}>{l.itemName}</td><td style={{...s.td,color:"#6b7280"}}>{l.uom}</td><td style={s.td}><input type="number" min={1} value={l.qty} onChange={e=>updateLine(l.itemId,"qty",e.target.value)} style={{...s.input,width:80,textAlign:"center" as const,padding:"5px 8px"}}/></td><td style={s.td}><input type="number" step="0.01" min="0" value={l.unitCost} onChange={e=>updateLine(l.itemId,"unitCost",e.target.value)} placeholder="0.00" style={{...s.input,width:100,padding:"5px 8px"}}/></td><td style={{...s.td,fontWeight:700,color:"#6366f1"}}>${(l.qty*(parseFloat(l.unitCost)||0)).toFixed(2)}</td><td style={s.td}><button onClick={()=>removeLine(l.itemId)} style={{background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} color="#dc2626"/></button></td></tr>))}</tbody>
-                <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={5} style={{...s.td,fontWeight:700,textAlign:"right" as const,paddingRight:16}}>Total:</td><td style={{...s.td,fontWeight:700,color:"#6366f1",fontSize:14}}>${total.toFixed(2)}</td><td/></tr></tfoot>
+                <tbody>{lines.map((l,i)=>(<tr key={l.itemId}><td style={{...s.td,color:"#9ca3af",fontSize:11,width:28}}>{i+1}</td><td style={{...s.td,fontWeight:600,minWidth:160}}>{l.itemName}</td><td style={{...s.td,color:"#6b7280"}}>{l.uom}</td><td style={s.td}><input type="number" min={1} value={l.qty} onChange={e=>updateLine(l.itemId,"qty",e.target.value)} style={{...s.input,width:80,textAlign:"center" as const,padding:"5px 8px"}}/></td><td style={s.td}><input type="number" step="0.01" min="0" value={l.unitCost} onChange={e=>updateLine(l.itemId,"unitCost",e.target.value)} placeholder="0.00" style={{...s.input,width:100,padding:"5px 8px"}}/></td><td style={{...s.td,fontWeight:700,color:"#2563eb"}}>${(l.qty*(parseFloat(l.unitCost)||0)).toFixed(2)}</td><td style={s.td}><button onClick={()=>removeLine(l.itemId)} style={{background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",display:"flex",alignItems:"center"}}><Trash2 size={13} color="#dc2626"/></button></td></tr>))}</tbody>
+                <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={5} style={{...s.td,fontWeight:700,textAlign:"right" as const,paddingRight:16}}>Total:</td><td style={{...s.td,fontWeight:700,color:"#2563eb",fontSize:14}}>${total.toFixed(2)}</td><td/></tr></tfoot>
               </table>
             </div>
           )}
@@ -705,11 +705,11 @@ function EditOrderModal({detail,suppliers,onClose,onSuccess}:{detail:any;supplie
                     <td style={s.td}>{l.uom}</td>
                     <td style={s.td}><input type="text" inputMode="numeric" pattern="[0-9]*" value={l.qty} onChange={e=>setLines(p=>p.map((x,j)=>j===i?{...x,qty:parseInt(e.target.value.replace(/[^0-9]/g,""))||0}:x))} style={{...s.input,width:70,textAlign:"center" as const}}/></td>
                     <td style={s.td}><input type="number" step="0.01" min="0" value={l.unitCost} onChange={e=>setLines(p=>p.map((x,j)=>j===i?{...x,unitCost:e.target.value}:x))} style={{...s.input,width:100}}/></td>
-                    <td style={{...s.td,color:"#6366f1",fontWeight:600}}>${((l.qty||0)*(parseFloat(l.unitCost)||0)).toFixed(2)}</td>
+                    <td style={{...s.td,color:"#2563eb",fontWeight:600}}>${((l.qty||0)*(parseFloat(l.unitCost)||0)).toFixed(2)}</td>
                     <td style={s.td}><button onClick={()=>setLines(p=>p.filter((_,j)=>j!==i))} style={{background:"#fee2e2",border:"none",borderRadius:4,padding:"3px 8px",cursor:"pointer",fontSize:11,color:"#dc2626"}}>x</button></td>
                   </tr>
                 ))}</tbody>
-                <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={4} style={{...s.td,fontWeight:700,textAlign:"right" as const}}>Total:</td><td style={{...s.td,fontWeight:700,color:"#6366f1",fontSize:14}}>${total.toFixed(2)}</td><td/></tr></tfoot>
+                <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={4} style={{...s.td,fontWeight:700,textAlign:"right" as const}}>Total:</td><td style={{...s.td,fontWeight:700,color:"#2563eb",fontSize:14}}>${total.toFixed(2)}</td><td/></tr></tfoot>
               </table>
             </div>
           )}
@@ -744,12 +744,12 @@ function ViewOrderModal({detail,onClose,onReceive,onEdit}:{detail:any;onClose:()
       </div>
       <table style={{width:"100%",borderCollapse:"collapse",marginBottom:16}}>
         <thead><tr>{["Item","Unit of Measure","Ordered Qty","Unit Cost","Total"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
-        <tbody>{items.map((i:any)=>(<tr key={i.id}><td style={{...s.td,fontWeight:600}}>{i.item_name}</td><td style={s.td}>{i.uom}</td><td style={{...s.td,fontWeight:700,textAlign:"center" as const}}>{i.ordered_qty}</td><td style={s.td}>{i.unit_cost?`$${parseFloat(i.unit_cost).toFixed(2)}`:"-"}</td><td style={{...s.td,fontWeight:600,color:"#6366f1"}}>${(parseInt(i.ordered_qty||0)*parseFloat(i.unit_cost||0)).toFixed(2)}</td></tr>))}</tbody>
-        <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={4} style={{...s.td,fontWeight:700,textAlign:"right" as const,paddingRight:12}}>Total:</td><td style={{...s.td,fontWeight:700,color:"#6366f1",fontSize:14}}>${total.toFixed(2)}</td></tr></tfoot>
+        <tbody>{items.map((i:any)=>(<tr key={i.id}><td style={{...s.td,fontWeight:600}}>{i.item_name}</td><td style={s.td}>{i.uom}</td><td style={{...s.td,fontWeight:700,textAlign:"center" as const}}>{i.ordered_qty}</td><td style={s.td}>{i.unit_cost?`$${parseFloat(i.unit_cost).toFixed(2)}`:"-"}</td><td style={{...s.td,fontWeight:600,color:"#2563eb"}}>${(parseInt(i.ordered_qty||0)*parseFloat(i.unit_cost||0)).toFixed(2)}</td></tr>))}</tbody>
+        <tfoot><tr style={{background:"#f9fafb"}}><td colSpan={4} style={{...s.td,fontWeight:700,textAlign:"right" as const,paddingRight:12}}>Total:</td><td style={{...s.td,fontWeight:700,color:"#2563eb",fontSize:14}}>${total.toFixed(2)}</td></tr></tfoot>
       </table>
       <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
         <button onClick={onClose} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Close</button>
-        <button onClick={()=>{onClose();onEdit();}} style={{...s.btn("ghost"),border:"1px solid #6366f1",color:"#6366f1",display:"flex",alignItems:"center",gap:5}}><Edit size={12} color="#6366f1"/> Edit</button>
+        <button onClick={()=>{onClose();onEdit();}} style={{...s.btn("ghost"),border:"1px solid #2563eb",color:"#2563eb",display:"flex",alignItems:"center",gap:5}}><Edit size={12} color="#2563eb"/> Edit</button>
         {(order.status==="PENDING"||order.status==="PARTIALLY_DELIVERED")&&<button onClick={()=>{onClose();onReceive();}} style={s.btn("green")}>Receive This Order</button>}
       </div>
     </div></div>
@@ -889,7 +889,7 @@ function CorrectionModal({onClose,onSuccess}:{onClose:()=>void;onSuccess:(msg:st
                 <label style={{fontSize:12,fontWeight:600,color:"#374151",display:"block",marginBottom:4}}>To Date</label>
                 <input type="date" style={{padding:"8px 10px",borderRadius:8,border:"1px solid #d1d5db",fontSize:13}} value={dateTo} onChange={e=>setDateTo(e.target.value)}/>
               </div>
-              <button onClick={()=>doSearch()} disabled={searching} style={{padding:"8px 18px",borderRadius:8,background:"#6366f1",color:"#fff",border:"none",fontWeight:600,fontSize:13,cursor:"pointer"}}>{searching?"SearchingG":"Search"}</button>
+              <button onClick={()=>doSearch()} disabled={searching} style={{padding:"8px 18px",borderRadius:8,background:"#2563eb",color:"#fff",border:"none",fontWeight:600,fontSize:13,cursor:"pointer"}}>{searching?"SearchingG":"Search"}</button>
             </div>
             {err&&<div style={{padding:"10px 14px",background:"#fee2e2",color:"#991b1b",borderRadius:8,fontSize:13,marginBottom:12}}>{err}</div>}
             {searching&&<div style={{textAlign:"center",padding:32,color:"#9ca3af",fontSize:13}}>SearchingG</div>}
@@ -901,14 +901,14 @@ function CorrectionModal({onClose,onSuccess}:{onClose:()=>void;onSuccess:(msg:st
                   {results.map((gr:any)=>{
                     const sc=stColors[gr.status]??{bg:"#f3f4f6",color:"#374151"};
                     return(<tr key={gr.id} style={{cursor:"pointer"}} onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")} onMouseLeave={e=>(e.currentTarget.style.background="")}>
-                      <td style={{padding:"10px 12px",fontSize:12,fontFamily:"monospace",color:"#6366f1",fontWeight:600}}>{gr.receipt_number}</td>
+                      <td style={{padding:"10px 12px",fontSize:12,fontFamily:"monospace",color:"#2563eb",fontWeight:600}}>{gr.receipt_number}</td>
                       <td style={{padding:"10px 12px",fontSize:12,fontFamily:"monospace",color:"#9ca3af"}}>{gr.order_number??"-"}</td>
                       <td style={{padding:"10px 12px",fontSize:13,fontWeight:600}}>{gr.supplier_name??"-"}</td>
                       <td style={{padding:"10px 12px",fontSize:13}}>{gr.received_by}</td>
                       <td style={{padding:"10px 12px",fontSize:12,color:"#6b7280"}}>{gr.receipt_date?new Date(gr.receipt_date).toLocaleDateString():"-"}</td>
                       <td style={{padding:"10px 12px",fontSize:13,fontWeight:600}}>{gr.item_count??0} items</td>
                       <td style={{padding:"10px 12px"}}><span style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:20,background:sc.bg,color:sc.color}}>{gr.status}</span></td>
-                      <td style={{padding:"10px 12px"}}><button onClick={()=>selectReceipt(gr)} style={{padding:"5px 14px",borderRadius:7,background:"#6366f1",color:"#fff",border:"none",fontWeight:600,fontSize:12,cursor:"pointer"}}>Select</button></td>
+                      <td style={{padding:"10px 12px"}}><button onClick={()=>selectReceipt(gr)} style={{padding:"5px 14px",borderRadius:7,background:"#2563eb",color:"#fff",border:"none",fontWeight:600,fontSize:12,cursor:"pointer"}}>Select</button></td>
                     </tr>);
                   })}
                 </tbody>
@@ -918,7 +918,7 @@ function CorrectionModal({onClose,onSuccess}:{onClose:()=>void;onSuccess:(msg:st
 
           {phase==="form"&&selected&&(<>
             {/* Back link + receipt info */}
-            <button onClick={()=>setPhase("search")} style={{background:"none",border:"none",cursor:"pointer",color:"#6366f1",fontWeight:600,fontSize:13,padding:0,marginBottom:14}}>Back to search</button>
+            <button onClick={()=>setPhase("search")} style={{background:"none",border:"none",cursor:"pointer",color:"#2563eb",fontWeight:600,fontSize:13,padding:0,marginBottom:14}}>Back to search</button>
             <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
               <div style={{fontWeight:700,fontSize:13,color:"#1d4ed8",marginBottom:4}}>Correcting: {selected.receipt_number}</div>
               <div style={{fontSize:12,color:"#3b82f6"}}>Order: {selected.order_number??"-"} - Supplier: {selected.supplier_name??"-"} - Received by: {selected.received_by} - Date: {selected.receipt_date?new Date(selected.receipt_date).toLocaleDateString():"-"}</div>
@@ -971,7 +971,7 @@ function CorrectionModal({onClose,onSuccess}:{onClose:()=>void;onSuccess:(msg:st
 
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button onClick={onClose} style={{padding:"9px 20px",borderRadius:8,border:"1px solid #e5e7eb",background:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",color:"#374151"}}>Cancel</button>
-              <button onClick={doSave} disabled={saving} style={{padding:"9px 20px",borderRadius:8,background:"#6366f1",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:saving?"default":"pointer",opacity:saving?0.7:1}}>
+              <button onClick={doSave} disabled={saving} style={{padding:"9px 20px",borderRadius:8,background:"#2563eb",color:"#fff",border:"none",fontWeight:700,fontSize:13,cursor:saving?"default":"pointer",opacity:saving?0.7:1}}>
                 {saving?"SavingG":"OK Submit Correction"}
               </button>
             </div>
@@ -1112,8 +1112,8 @@ function NewGoodsReceiptModal({orders,departments,tibbnaSuppliers,onClose,onSucc
         {/* Mode selector */}
         {step==="select"&&(
           <div style={{padding:"12px 24px",borderBottom:"1px solid #f3f4f6",display:"flex",gap:8}}>
-            <button onClick={()=>setMode("order")} style={{padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:`2px solid ${mode==="order"?"#6366f1":"#e5e7eb"}`,background:mode==="order"?"#eef2ff":"#fff",color:mode==="order"?"#6366f1":"#374151"}}>= Against a Purchase Order</button>
-            <button onClick={()=>setMode("standalone")} style={{padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:`2px solid ${mode==="standalone"?"#6366f1":"#e5e7eb"}`,background:mode==="standalone"?"#eef2ff":"#fff",color:mode==="standalone"?"#6366f1":"#374151"}}>= Standalone (no order)</button>
+            <button onClick={()=>setMode("order")} style={{padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:`2px solid ${mode==="order"?"#2563eb":"#e5e7eb"}`,background:mode==="order"?"#eff6ff":"#fff",color:mode==="order"?"#2563eb":"#374151"}}>= Against a Purchase Order</button>
+            <button onClick={()=>setMode("standalone")} style={{padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:`2px solid ${mode==="standalone"?"#2563eb":"#e5e7eb"}`,background:mode==="standalone"?"#eff6ff":"#fff",color:mode==="standalone"?"#2563eb":"#374151"}}>= Standalone (no order)</button>
           </div>
         )}
 
@@ -1186,12 +1186,12 @@ function NewGoodsReceiptModal({orders,departments,tibbnaSuppliers,onClose,onSucc
                       <div style={{display:"flex",flexDirection:"column" as const,gap:8,maxHeight:360,overflowY:"auto" as const}}>
                         {filtered.map(o=>(
                           <div key={o.id} onClick={()=>{setSelectedOrderId(o.id);loadOrder(o.id);}}
-                            style={{border:`2px solid ${selectedOrderId===o.id?"#6366f1":"#e5e7eb"}`,borderRadius:10,padding:"14px 18px",cursor:"pointer",background:selectedOrderId===o.id?"#eef2ff":"#fff",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}
+                            style={{border:`2px solid ${selectedOrderId===o.id?"#2563eb":"#e5e7eb"}`,borderRadius:10,padding:"14px 18px",cursor:"pointer",background:selectedOrderId===o.id?"#eff6ff":"#fff",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}
                             onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")}
-                            onMouseLeave={e=>(e.currentTarget.style.background=selectedOrderId===o.id?"#eef2ff":"#fff")}>
+                            onMouseLeave={e=>(e.currentTarget.style.background=selectedOrderId===o.id?"#eff6ff":"#fff")}>
                             <div>
                               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{fontFamily:"monospace",fontSize:12,fontWeight:700,color:"#6366f1"}}>{o.order_number}</span>
+                                <span style={{fontFamily:"monospace",fontSize:12,fontWeight:700,color:"#2563eb"}}>{o.order_number}</span>
                                 <span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:o.status==="PARTIALLY_DELIVERED"?"#fef3c7":"#dbeafe",color:o.status==="PARTIALLY_DELIVERED"?"#92400e":"#1d4ed8"}}>{o.status}</span>
                               </div>
                               <div style={{fontSize:13,fontWeight:600,marginTop:4}}>{o.supplier_name||"No supplier"}</div>
@@ -1233,22 +1233,22 @@ function NewGoodsReceiptModal({orders,departments,tibbnaSuppliers,onClose,onSucc
                 <div style={{fontSize:11,fontWeight:700,color:"#6b7280",marginBottom:8,textTransform:"uppercase" as const,letterSpacing:"0.05em"}}>Add Items from Hospital Inventory</div>
                 <div style={{position:"relative"}}>
                   <div style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}}><Search size={14} color="#9ca3af"/></div>
-                  <input style={{...s.input,paddingLeft:34,border:"2px solid #6366f1"}} value={itemQ} onChange={e=>setItemQ(e.target.value)} placeholder="Search items to add..."/>
+                  <input style={{...s.input,paddingLeft:34,border:"2px solid #2563eb"}} value={itemQ} onChange={e=>setItemQ(e.target.value)} placeholder="Search items to add..."/>
                 </div>
                 {itemResults.length>0&&(
-                  <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #6366f1",borderRadius:10,boxShadow:"0 8px 24px rgba(99,102,241,0.15)",zIndex:500,overflow:"hidden",marginTop:2}}>
+                  <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #2563eb",borderRadius:10,boxShadow:"0 8px 24px rgba(99,102,241,0.15)",zIndex:500,overflow:"hidden",marginTop:2}}>
                     {itemResults.map((item:any)=>{
                       const added=lines.some(l=>l.itemId===item.id);
                       return(
                         <div key={item.id} onClick={()=>!added&&addStandaloneLine(item)}
                           style={{padding:"10px 14px",cursor:added?"default":"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                          onMouseEnter={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#eef2ff";}}
+                          onMouseEnter={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#eff6ff";}}
                           onMouseLeave={e=>{if(!added)(e.currentTarget as HTMLElement).style.background="#fff";}}>
                           <div>
                             <div style={{fontWeight:600,fontSize:13,color:added?"#9ca3af":"#111827"}}>{item.name}</div>
                             <div style={{fontSize:11,color:"#9ca3af"}}>{item.itemcode} - {item.uom} - Stock: <strong style={{color:parseInt(item.total_stock||0)===0?"#dc2626":"#16a34a"}}>{item.total_stock??0}</strong></div>
                           </div>
-                          {added?<span style={{fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>Added</span>:<span style={{background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:6}}>+ Add</span>}
+                          {added?<span style={{fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>Added</span>:<span style={{background:"#2563eb",color:"#fff",fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:6}}>+ Add</span>}
                         </div>
                       );
                     })}
@@ -1421,8 +1421,8 @@ function CreateTransferTab({items,departments,onSuccess}:{items:any[];department
             <input style={{...s.input,paddingLeft:30}} value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="Search items to add..."/>
           </div>
           {searchQ&&filtered.length>0&&(
-            <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #6366f1",borderRadius:8,zIndex:100,maxHeight:200,overflowY:"auto" as const}}>
-              {filtered.slice(0,8).map(item=>(<div key={item.id} onClick={()=>{if(!tItems.find(i=>i.itemId===item.id)){setTItems(t=>[...t,{itemId:item.id,itemName:item.name,quantity:1}]);}setSearchQ("");}} style={{padding:"9px 12px",cursor:"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}} onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}><div><div style={{fontWeight:600,fontSize:13}}>{item.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{item.itemcode} - {item.uom}</div></div><span style={{fontSize:11,color:"#6366f1",fontWeight:600}}>+ Add</span></div>))}
+            <div style={{position:"absolute",left:0,right:0,top:"100%",background:"#fff",border:"1px solid #2563eb",borderRadius:8,zIndex:100,maxHeight:200,overflowY:"auto" as const}}>
+              {filtered.slice(0,8).map(item=>(<div key={item.id} onClick={()=>{if(!tItems.find(i=>i.itemId===item.id)){setTItems(t=>[...t,{itemId:item.id,itemName:item.name,quantity:1}]);}setSearchQ("");}} style={{padding:"9px 12px",cursor:"pointer",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}} onMouseEnter={e=>(e.currentTarget.style.background="#f9fafb")} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}><div><div style={{fontWeight:600,fontSize:13}}>{item.name}</div><div style={{fontSize:11,color:"#9ca3af"}}>{item.itemcode} - {item.uom}</div></div><span style={{fontSize:11,color:"#2563eb",fontWeight:600}}>+ Add</span></div>))}
             </div>
           )}
         </div>
@@ -1704,8 +1704,8 @@ export default function HospitalPage(){
       body{font-family:Arial,sans-serif;padding:32px;color:#111;margin:0;}
       h2{margin:0 0 4px;font-size:18px;}
       .meta{font-size:13px;color:#555;margin-bottom:20px;}
-      .key-box{border:2px solid #6366f1;border-radius:10px;padding:16px 24px;margin-bottom:24px;background:#eef2ff;display:inline-block;}
-      .key-label{font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+      .key-box{border:2px solid #2563eb;border-radius:10px;padding:16px 24px;margin-bottom:24px;background:#eff6ff;display:inline-block;}
+      .key-label{font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
       .key-val{font-size:38px;font-weight:900;font-family:monospace;letter-spacing:.25em;color:#4338ca;}
       table{width:100%;border-collapse:collapse;margin-top:16px;}
       th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;background:#f9fafb;border-bottom:2px solid #e5e7eb;}
@@ -1828,29 +1828,15 @@ export default function HospitalPage(){
       <div style={{...s.content,marginTop:8}}>
         {/* Summary Cards */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-          {[{label:"Total Items",value:totalItems,color:"#6366f1",bg:"#eef2ff"},{label:"Low Stock",value:lowStock,color:"#d97706",bg:"#fef3c7"},{label:"Out of Stock",value:outOfStock,color:"#dc2626",bg:"#fee2e2"},{label:"Departments",value:totalDepts,color:"#0891b2",bg:"#e0f2fe"}].map(m=>(
-            <div key={m.label} style={{background:m.bg,borderRadius:10,padding:"14px 18px"}}>
-              <div style={{fontSize:11,fontWeight:600,color:m.color,marginBottom:4}}>{m.label}</div>
-              <div style={{fontSize:28,fontWeight:700}}>{m.value}</div>
+          {[{label:"Total Items",value:totalItems,color:"#111827"},{label:"Low Stock",value:lowStock,color:"#d97706"},{label:"Out of Stock",value:outOfStock,color:"#dc2626"},{label:"Departments",value:totalDepts,color:"#111827"}].map(m=>(
+            <div key={m.label} style={{background:"#fff",borderRadius:8,border:"1px solid #e5e7eb",padding:"16px 18px"}}>
+              <div style={{fontSize:12,color:"#6b7280",marginBottom:6}}>{m.label}</div>
+              <div style={{fontSize:24,fontWeight:700,color:m.color}}>{m.value}</div>
             </div>
           ))}
         </div>
 
-        {/* Dept quick nav */}
-        <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap" as const}}>
-          {departments.map(dept=>{
-            const dc=DEPT_COLORS[dept.type]??DEPT_COLORS.general;
-            return(
-              <Link key={dept.id} href={`/hospital/${dept.id}`} style={{textDecoration:"none"}}>
-                <div style={{background:dc.bg,color:dc.color,borderRadius:10,padding:"10px 16px",display:"flex",alignItems:"center",gap:8,cursor:"pointer",border:`1px solid ${dc.bg}`}} onMouseEnter={e=>(e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.1)")} onMouseLeave={e=>(e.currentTarget.style.boxShadow="none")}>
-                  <dc.icon size={18} />
-                  <div><div style={{fontWeight:700,fontSize:13}}>{dept.name}</div><div style={{fontSize:11,opacity:0.8}}>{dept.item_count??0} items - {dept.type}</div></div>
-                  <ArrowRight size={14} color={dc.color}/>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        {/* Dept quick nav moved to the sidebar (Inventory → departments) */}
 
         {/* Tabs */}
         <div style={s.tabs}>
@@ -1872,7 +1858,7 @@ export default function HospitalPage(){
               <span style={{fontSize:12,color:"#9ca3af",marginLeft:"auto"}}>{items.length} items</span>
             </div>
             {loading?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>Loading...</div>
-            :items.length===0?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No items. <button onClick={()=>setShowAddItem(true)} style={{color:"#6366f1",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Add one Next</button></div>
+            :items.length===0?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No items. <button onClick={()=>setShowAddItem(true)} style={{color:"#2563eb",background:"none",border:"none",cursor:"pointer",fontWeight:600}}>Add one Next</button></div>
             :<>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1948,7 +1934,7 @@ export default function HospitalPage(){
                             <tr key={i}>
                               <td style={{...s.td,fontWeight:600}}>{row.name}</td>
                               <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6b7280"}}>{row.itemcode}</td>
-                              <td style={s.td}><span style={s.badge(row.department_name?"#eef2ff":"#f0fdf4",row.department_name?"#6366f1":"#16a34a")}>{row.department_name??"= Central Store"}</span></td>
+                              <td style={s.td}><span style={s.badge(row.department_name?"#eff6ff":"#f0fdf4",row.department_name?"#2563eb":"#16a34a")}>{row.department_name??"= Central Store"}</span></td>
                               <td style={{...s.td,fontWeight:700}}>{row.quantity||0}</td>
                               <td style={{...s.td,fontWeight:700,color:stc.color}}>{avail}</td>
                               <td style={{...s.td,color:"#6b7280"}}>{row.reorder_level||0}</td>
@@ -1996,12 +1982,12 @@ export default function HospitalPage(){
                 {historySearchResults.results.length===0?<div style={{color:"#9ca3af",fontSize:13}}>No items found.</div>:(
                   <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
                     {historySearchResults.results.map((item:any)=>(
-                      <div key={item.id} onClick={()=>{setHistorySelectedItem(item);fetchItemOrders(item.id);}} style={{padding:"10px 14px",borderRadius:8,border:"1px solid #e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:"#fafafa"}} onMouseEnter={e=>(e.currentTarget.style.background="#eef2ff")} onMouseLeave={e=>(e.currentTarget.style.background="#fafafa")}>
+                      <div key={item.id} onClick={()=>{setHistorySelectedItem(item);fetchItemOrders(item.id);}} style={{padding:"10px 14px",borderRadius:8,border:"1px solid #e5e7eb",cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:"#fafafa"}} onMouseEnter={e=>(e.currentTarget.style.background="#eff6ff")} onMouseLeave={e=>(e.currentTarget.style.background="#fafafa")}>
                         <div style={{flex:1}}>
                           <div style={{fontWeight:600,fontSize:13}}>{item.name}</div>
                           {item.generic_name&&<div style={{fontSize:12,color:"#6b7280"}}>{item.generic_name}</div>}
                         </div>
-                        <span style={s.badge("#eef2ff","#6366f1")}>{item.itemcode??"-"}</span>
+                        <span style={s.badge("#eff6ff","#2563eb")}>{item.itemcode??"-"}</span>
                         <span style={s.badge("#f3f4f6","#374151")}>{item.itemtype}</span>
                         <span style={{fontSize:12,color:"#9ca3af"}}>Next</span>
                       </div>
@@ -2044,7 +2030,7 @@ export default function HospitalPage(){
                   <button style={{...s.btn("ghost"),border:"1px solid #e5e7eb",display:"flex",alignItems:"center",gap:4}} onClick={()=>{setHistorySelectedItem(null);setHistoryItemOrders([]);}}>Back Back</button>
                   <div>
                     <span style={{fontWeight:600,fontSize:13}}>{historySelectedItem.name}</span>
-                    {historySelectedItem.itemcode&&<span style={{...s.badge("#eef2ff","#6366f1"),marginLeft:8}}>{historySelectedItem.itemcode}</span>}
+                    {historySelectedItem.itemcode&&<span style={{...s.badge("#eff6ff","#2563eb"),marginLeft:8}}>{historySelectedItem.itemcode}</span>}
                   </div>
                 </div>
                 {historyItemOrdersLoading?<div style={{padding:24,textAlign:"center",color:"#9ca3af"}}>Loading ordersG</div>:historyItemOrders.length===0?<div style={{padding:24,textAlign:"center",color:"#9ca3af"}}>No orders found for this item.</div>:(
@@ -2080,7 +2066,7 @@ export default function HospitalPage(){
                 <div style={{padding:"16px 20px",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
                     <span style={{fontSize:15,fontWeight:700}}>Order Detail</span>
-                    <span style={{...s.badge("#eef2ff","#6366f1"),marginLeft:10,fontFamily:"monospace"}}>{historySelectedOrder.order_number}</span>
+                    <span style={{...s.badge("#eff6ff","#2563eb"),marginLeft:10,fontFamily:"monospace"}}>{historySelectedOrder.order_number}</span>
                   </div>
                   <button onClick={()=>{setHistorySelectedOrder(null);setHistoryOrderDetail(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#6b7280"}}>x</button>
                 </div>
@@ -2216,7 +2202,7 @@ export default function HospitalPage(){
                   <thead><tr>{["Name","Code","Country","Contact","Email","Products","Actions"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
                   <tbody>
                     {manufacturers.length===0&&<tr><td colSpan={7} style={{...s.td,textAlign:"center",padding:40,color:"#9ca3af"}}>No manufacturers yet</td></tr>}
-                    {pagedMfr.map(m=>(<tr key={m.id}><td style={{...s.td,fontWeight:600}}>{m.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:11}}>{m.code||"-"}</td><td style={s.td}>{m.country||"-"}</td><td style={s.td}>{m.contact_name||"-"}</td><td style={{...s.td,color:"#6366f1",fontSize:12}}>{m.email||"-"}</td><td style={{...s.td,fontSize:12,color:"#6b7280"}}>{m.product_types||"-"}</td><td style={s.td}><div style={{display:"flex",gap:4}}><button onClick={()=>setEditMfr({...m})} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Edit size={12} color="#2563eb"/></button><button onClick={async()=>{if(confirm(`Delete ${m.name}?`)){await fetch("/api/hospital/manufacturers",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:m.id})});fetchManufacturers();showToast("Deleted");}}} style={{background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Trash2 size={12} color="#dc2626"/></button></div></td></tr>))}
+                    {pagedMfr.map(m=>(<tr key={m.id}><td style={{...s.td,fontWeight:600}}>{m.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:11}}>{m.code||"-"}</td><td style={s.td}>{m.country||"-"}</td><td style={s.td}>{m.contact_name||"-"}</td><td style={{...s.td,color:"#2563eb",fontSize:12}}>{m.email||"-"}</td><td style={{...s.td,fontSize:12,color:"#6b7280"}}>{m.product_types||"-"}</td><td style={s.td}><div style={{display:"flex",gap:4}}><button onClick={()=>setEditMfr({...m})} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Edit size={12} color="#2563eb"/></button><button onClick={async()=>{if(confirm(`Delete ${m.name}?`)){await fetch("/api/hospital/manufacturers",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:m.id})});fetchManufacturers();showToast("Deleted");}}} style={{background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Trash2 size={12} color="#dc2626"/></button></div></td></tr>))}
                   </tbody>
                 </table>
                 <Pagination page={mfrPage} total={manufacturers.length} onPage={setMfrPage}/>
@@ -2390,7 +2376,7 @@ export default function HospitalPage(){
                 <span style={{fontSize:13,fontWeight:600}}>All Transfers</span>
                 <div style={{display:"flex",gap:5}}>
                   {["ALL","PENDING","RECEIVED","REQUESTED","CANCELLED"].map(st=>(
-                    <button key={st} onClick={()=>setTransferStatus(st)} style={{padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${transferStatus===st?"#6366f1":"#e5e7eb"}`,background:transferStatus===st?"#6366f1":"#f9fafb",color:transferStatus===st?"#fff":"#374151"}}>{st}</button>
+                    <button key={st} onClick={()=>setTransferStatus(st)} style={{padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${transferStatus===st?"#2563eb":"#e5e7eb"}`,background:transferStatus===st?"#2563eb":"#f9fafb",color:transferStatus===st?"#fff":"#374151"}}>{st}</button>
                   ))}
                 </div>
                 <div style={{position:"relative",display:"flex",alignItems:"center"}}>
@@ -2425,7 +2411,7 @@ export default function HospitalPage(){
                           const stc=statusColors[t.status]??{bg:"#f3f4f6",color:"#374151"};
                           return(
                             <tr key={t.id}>
-                              <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6366f1"}}>{t.transfer_number}</td>
+                              <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#2563eb"}}>{t.transfer_number}</td>
                               <td style={{...s.td,fontWeight:600}}>{t.department_name??"-"}</td>
                               <td style={{...s.td,fontWeight:600}}>{t.item_count??0} items</td>
                               <td style={s.td}>{isReq?<span style={{fontSize:11,color:"#d97706",fontWeight:600}}> Pending fulfillment</span>:t.sent_by}</td>
@@ -2434,7 +2420,7 @@ export default function HospitalPage(){
                               <td style={s.td}><span style={{fontSize:11,fontWeight:600,padding:"3px 10px",borderRadius:20,background:stc.bg,color:stc.color}}>{isReq?"REQUESTED":t.status}</span></td>
                               <td style={s.td}>
                                 <div style={{display:"flex",gap:5,flexWrap:"wrap" as const}}>
-                                  {t.status==="PENDING"&&!isReq&&<button onClick={()=>printTransfer(t)} style={{...s.btn("ghost"),border:"1px solid #6366f1",fontSize:11,padding:"3px 8px",color:"#6366f1"}}>= Print</button>}
+                                  {t.status==="PENDING"&&!isReq&&<button onClick={()=>printTransfer(t)} style={{...s.btn("ghost"),border:"1px solid #2563eb",fontSize:11,padding:"3px 8px",color:"#2563eb"}}>= Print</button>}
                                   {t.status==="PENDING"&&!isReq&&<button onClick={()=>{setConfirmTrf(t);setConfirmKey("");setConfirmReceiver("");setConfirmErr("");}} style={{...s.btn("green"),fontSize:11,padding:"3px 8px"}}>OK Confirm</button>}
                                   {t.status==="PENDING"&&!isReq&&<button onClick={async()=>{await fetch(`/api/hospital/transfers/${t.id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"CANCELLED"})});fetchTransfers();showToast("Cancelled");}} style={{...s.btn("ghost"),border:"1px solid #e5e7eb",fontSize:11,padding:"3px 8px"}}>Cancel</button>}
                                 </div>
@@ -2476,7 +2462,7 @@ export default function HospitalPage(){
               <span style={{fontSize:13,fontWeight:600}}>Purchase Orders</span>
               <div style={{display:"flex",gap:5}}>
                 {["ALL","PENDING","PARTIALLY_DELIVERED","DELIVERED","CANCELLED"].map(st=>(
-                  <button key={st} onClick={()=>setOrderStatusFilter(st)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${orderStatusFilter===st?"#6366f1":"#e5e7eb"}`,background:orderStatusFilter===st?"#6366f1":"#f9fafb",color:orderStatusFilter===st?"#fff":"#374151"}}>{st==="PARTIALLY_DELIVERED"?"PARTIAL":st}</button>
+                  <button key={st} onClick={()=>setOrderStatusFilter(st)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${orderStatusFilter===st?"#2563eb":"#e5e7eb"}`,background:orderStatusFilter===st?"#2563eb":"#f9fafb",color:orderStatusFilter===st?"#fff":"#374151"}}>{st==="PARTIALLY_DELIVERED"?"PARTIAL":st}</button>
                 ))}
               </div>
               <div style={{position:"relative",display:"flex",alignItems:"center"}}>
@@ -2488,7 +2474,7 @@ export default function HospitalPage(){
                 <input type="date" value={orderDateFrom} onChange={e=>setOrderDateFrom(e.target.value)} style={{...s.input,width:140,fontSize:12,padding:"6px 8px"}}/>
                 <span style={{fontSize:11,color:"#9ca3af",whiteSpace:"nowrap" as const}}>To</span>
                 <input type="date" value={orderDateTo} onChange={e=>setOrderDateTo(e.target.value)} style={{...s.input,width:140,fontSize:12,padding:"6px 8px"}}/>
-                {(orderDateFrom||orderDateTo)&&<button onClick={()=>{setOrderDateFrom("");setOrderDateTo("");}} style={{fontSize:11,background:"none",border:"none",cursor:"pointer",color:"#6366f1",padding:"2px 4px"}}>x Clear</button>}
+                {(orderDateFrom||orderDateTo)&&<button onClick={()=>{setOrderDateFrom("");setOrderDateTo("");}} style={{fontSize:11,background:"none",border:"none",cursor:"pointer",color:"#2563eb",padding:"2px 4px"}}>x Clear</button>}
               </div>
               <button onClick={fetchHospitalOrders} style={{...s.btn("ghost"),border:"1px solid #e5e7eb",display:"flex",alignItems:"center",gap:4}}><RefreshCw size={13}/></button>
               <button onClick={()=>setShowOrderModal(true)} style={{...s.btn("purple"),display:"flex",alignItems:"center",gap:6,marginLeft:"auto"}}><Plus size={13} color="#fff"/> Create Order</button>
@@ -2515,7 +2501,7 @@ export default function HospitalPage(){
                             const sc=statusColors[order.status]??{bg:"#f3f4f6",color:"#374151"};
                             return(
                               <tr key={order.id}>
-                                <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6366f1",fontWeight:600}}>{order.order_number}</td>
+                                <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#2563eb",fontWeight:600}}>{order.order_number}</td>
                                 <td style={{...s.td,fontWeight:600}}>{order.ordered_by}</td>
                                 <td style={s.td}>{order.supplier_name??"-"}</td>
                                 <td style={{...s.td,fontWeight:600}}>{order.item_count??0} items</td>
@@ -2569,7 +2555,7 @@ export default function HospitalPage(){
                 <span style={{fontSize:13,fontWeight:600}}>Goods Receipts</span>
                 <div style={{display:"flex",gap:5}}>
                   {["ALL","PENDING","PARTIAL","COMPLETE"].map(st=>(
-                    <button key={st} onClick={()=>setGrStatusFilter(st)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${grStatusFilter===st?"#6366f1":"#e5e7eb"}`,background:grStatusFilter===st?"#6366f1":"#f9fafb",color:grStatusFilter===st?"#fff":"#374151"}}>{st}</button>
+                    <button key={st} onClick={()=>setGrStatusFilter(st)} style={{padding:"4px 10px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${grStatusFilter===st?"#2563eb":"#e5e7eb"}`,background:grStatusFilter===st?"#2563eb":"#f9fafb",color:grStatusFilter===st?"#fff":"#374151"}}>{st}</button>
                   ))}
                 </div>
                 <input value={grSearch} onChange={e=>setGrSearch(e.target.value)}
@@ -2592,7 +2578,7 @@ export default function HospitalPage(){
                         {paged.map((gr:any)=>{
                           const sc=stColors[gr.status]??{bg:"#f3f4f6",color:"#374151"};
                           return(<tr key={gr.id}>
-                            <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6366f1",fontWeight:600}}>{gr.receipt_number}</td>
+                            <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#2563eb",fontWeight:600}}>{gr.receipt_number}</td>
                             <td style={{...s.td,fontSize:11,color:"#374151"}}>{gr.delivery_note_number??"-"}</td>
                             <td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#9ca3af"}}>{gr.order_number??"-"}</td>
                             <td style={{...s.td,fontWeight:600}}>{gr.supplier_name??"-"}</td>
@@ -2624,7 +2610,7 @@ export default function HospitalPage(){
                 <div style={s.fgroup}><label style={s.label}>To UOM</label><select style={s.input} value={uomForm.to_uom} onChange={e=>setUomForm(f=>({...f,to_uom:e.target.value}))}><option value="">Select</option>{["tablet","capsule","strip","box","bottle","vial","ampoule","ml","mg","g","kg","l","piece","sachet","pack"].map(u=><option key={u} value={u}>{u}</option>)}</select></div>
               </div>
               <div style={s.fgroup}><label style={s.label}>Factor</label><input type="number" step="0.001" style={s.input} value={uomForm.factor} onChange={e=>setUomForm(f=>({...f,factor:e.target.value}))} placeholder="e.g. 10"/></div>
-              {uomForm.from_uom&&uomForm.to_uom&&uomForm.factor&&<div style={{padding:"8px 12px",background:"#eef2ff",borderRadius:6,fontSize:13,color:"#4338ca",marginBottom:12}}>1 {uomForm.from_uom} = {uomForm.factor} {uomForm.to_uom}</div>}
+              {uomForm.from_uom&&uomForm.to_uom&&uomForm.factor&&<div style={{padding:"8px 12px",background:"#eff6ff",borderRadius:6,fontSize:13,color:"#4338ca",marginBottom:12}}>1 {uomForm.from_uom} = {uomForm.factor} {uomForm.to_uom}</div>}
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button onClick={()=>setUomModal(null)} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Cancel</button>
                 <button onClick={async()=>{if(!uomForm.from_uom||!uomForm.to_uom||!uomForm.factor){showToast("All fields required");return;}const url=uomModal==="edit"?`/api/uom/${uomRow.id}`:"/api/uom";await fetch(url,{method:uomModal==="edit"?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...uomForm,factor:parseFloat(uomForm.factor)})});setUomModal(null);fetchUom();showToast("Saved!");}} style={s.btn("purple")}>Save</button>
@@ -2638,7 +2624,7 @@ export default function HospitalPage(){
               {uomConversions.length===0?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No conversions yet</div>:(
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <thead><tr>{["From","Factor","To","Example","Actions"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
-                  <tbody>{uomConversions.map(c=>(<tr key={c.id}><td style={s.td}><span style={{fontWeight:700,color:"#6366f1"}}>{c.from_uom}</span></td><td style={{...s.td,fontWeight:700,textAlign:"center" as const}}>+{c.factor}</td><td style={s.td}><span style={{fontWeight:700,color:"#16a34a"}}>{c.to_uom}</span></td><td style={{...s.td,fontSize:12,color:"#6b7280"}}>1 {c.from_uom} = {c.factor} {c.to_uom}</td><td style={s.td}><div style={{display:"flex",gap:4}}><button onClick={()=>{setUomForm({from_uom:c.from_uom,to_uom:c.to_uom,factor:String(c.factor)});setUomRow(c);setUomModal("edit");}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Edit size={12} color="#2563eb"/></button><button onClick={async()=>{await fetch(`/api/uom/${c.id}`,{method:"DELETE"});fetchUom();showToast("Deleted");}} style={{background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Trash2 size={12} color="#dc2626"/></button></div></td></tr>))}</tbody>
+                  <tbody>{uomConversions.map(c=>(<tr key={c.id}><td style={s.td}><span style={{fontWeight:700,color:"#2563eb"}}>{c.from_uom}</span></td><td style={{...s.td,fontWeight:700,textAlign:"center" as const}}>+{c.factor}</td><td style={s.td}><span style={{fontWeight:700,color:"#16a34a"}}>{c.to_uom}</span></td><td style={{...s.td,fontSize:12,color:"#6b7280"}}>1 {c.from_uom} = {c.factor} {c.to_uom}</td><td style={s.td}><div style={{display:"flex",gap:4}}><button onClick={()=>{setUomForm({from_uom:c.from_uom,to_uom:c.to_uom,factor:String(c.factor)});setUomRow(c);setUomModal("edit");}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Edit size={12} color="#2563eb"/></button><button onClick={async()=>{await fetch(`/api/uom/${c.id}`,{method:"DELETE"});fetchUom();showToast("Deleted");}} style={{background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer"}}><Trash2 size={12} color="#dc2626"/></button></div></td></tr>))}</tbody>
                 </table>
               )}
             </div>
@@ -2649,14 +2635,14 @@ export default function HospitalPage(){
         {tab==="reports"&&(
           <div>
             <div style={{display:"flex",gap:8,marginBottom:16}}>
-              {(["stock","consumption"] as const).map(type=>(<button key={type} onClick={()=>setReportType(type)} style={{padding:"8px 18px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${reportType===type?"#6366f1":"#e5e7eb"}`,background:reportType===type?"#6366f1":"#fff",color:reportType===type?"#fff":"#374151"}}>{type==="stock"?"= Stock on Hand":"= Consumption"}</button>))}
+              {(["stock","consumption"] as const).map(type=>(<button key={type} onClick={()=>setReportType(type)} style={{padding:"8px 18px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${reportType===type?"#2563eb":"#e5e7eb"}`,background:reportType===type?"#2563eb":"#fff",color:reportType===type?"#fff":"#374151"}}>{type==="stock"?"= Stock on Hand":"= Consumption"}</button>))}
               <button onClick={()=>{const NL=String.fromCharCode(10);const headers=reports.length>0?Object.keys(reports[0]).join(","):"";const rows=reports.map(r=>Object.values(r).map(v=>String(v??"").replace(/\n/g," ")).join(","));const csv=[headers,...rows].join(NL);const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`hospital-${reportType}-${new Date().toISOString().slice(0,10)}.csv`;a.click();}} style={{...s.btn("ghost"),border:"1px solid #e5e7eb",marginLeft:"auto"}}>= Export CSV</button>
             </div>
             <div style={s.card}>
               <div style={{padding:"12px 16px",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,fontWeight:600}}>{reportType==="stock"?"Stock on Hand":"Consumption Log"}</span><span style={{fontSize:12,color:"#9ca3af"}}>{reports.length} records</span></div>
               {reports.length===0?<div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No data</div>:(
                 <div style={{overflowX:"auto"}}>
-                  {reportType==="stock"&&(<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["Item","Code","Department","UOM","Stock","Available","Reorder","Unit Cost","Value","Status"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead><tbody>{reports.map((r:any,i:number)=>{const avail=parseInt(r.available||r.total_stock||0);const stc=sc(avail,parseInt(r.reorder_level||0));return(<tr key={i}><td style={{...s.td,fontWeight:600}}>{r.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6b7280"}}>{r.itemcode}</td><td style={s.td}><span style={s.badge("#eef2ff","#6366f1")}>{r.department_name??"All"}</span></td><td style={s.td}>{r.uom}</td><td style={{...s.td,fontWeight:700}}>{r.total_stock||0}</td><td style={{...s.td,fontWeight:700,color:stc.color}}>{avail}</td><td style={{...s.td,color:"#6b7280"}}>{r.reorder_level||0}</td><td style={s.td}>{r.unit_cost?`$${parseFloat(r.unit_cost).toFixed(2)}`:"-"}</td><td style={{...s.td,fontWeight:600,color:"#6366f1"}}>${(avail*parseFloat(r.unit_cost||0)).toFixed(2)}</td><td style={s.td}><span style={s.badge(stc.bg,stc.color)}>{stc.label}</span></td></tr>);})}</tbody></table>)}
+                  {reportType==="stock"&&(<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["Item","Code","Department","UOM","Stock","Available","Reorder","Unit Cost","Value","Status"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead><tbody>{reports.map((r:any,i:number)=>{const avail=parseInt(r.available||r.total_stock||0);const stc=sc(avail,parseInt(r.reorder_level||0));return(<tr key={i}><td style={{...s.td,fontWeight:600}}>{r.name}</td><td style={{...s.td,fontFamily:"monospace",fontSize:11,color:"#6b7280"}}>{r.itemcode}</td><td style={s.td}><span style={s.badge("#eff6ff","#2563eb")}>{r.department_name??"All"}</span></td><td style={s.td}>{r.uom}</td><td style={{...s.td,fontWeight:700}}>{r.total_stock||0}</td><td style={{...s.td,fontWeight:700,color:stc.color}}>{avail}</td><td style={{...s.td,color:"#6b7280"}}>{r.reorder_level||0}</td><td style={s.td}>{r.unit_cost?`$${parseFloat(r.unit_cost).toFixed(2)}`:"-"}</td><td style={{...s.td,fontWeight:600,color:"#2563eb"}}>${(avail*parseFloat(r.unit_cost||0)).toFixed(2)}</td><td style={s.td}><span style={s.badge(stc.bg,stc.color)}>{stc.label}</span></td></tr>);})}</tbody></table>)}
                   {reportType==="consumption"&&(<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>{["Item","Action","Department","Total Qty","Transactions","Last Movement"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead><tbody>{reports.map((r:any,i:number)=>(<tr key={i}><td style={{...s.td,fontWeight:600}}>{r.item_name}</td><td style={s.td}><span style={s.badge("#ede9fe","#5b21b6")}>{r.action_type}</span></td><td style={s.td}>{r.department_name??"-"}</td><td style={{...s.td,fontWeight:700}}>{r.total_qty}</td><td style={s.td}>{r.tx_count}</td><td style={{...s.td,fontSize:12,color:"#6b7280"}}>{r.last_moved?new Date(r.last_moved).toLocaleDateString():"-"}</td></tr>))}</tbody></table>)}
                 </div>
               )}
@@ -2793,7 +2779,7 @@ export default function HospitalPage(){
                       .slice(0,8);
                     if(!results.length)return null;
                     return(
-                      <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #6366f1",borderRadius:8,zIndex:100,maxHeight:220,overflowY:"auto" as const,boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
+                      <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #2563eb",borderRadius:8,zIndex:100,maxHeight:220,overflowY:"auto" as const,boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
                         {results.map((item:any)=>{
                           const added=dispenseItems.some(d=>d.itemId===item.id);
                           return(
@@ -2803,7 +2789,7 @@ export default function HospitalPage(){
                               setDispenseItemQ("");
                             }} style={{padding:"10px 14px",cursor:added?"default":"pointer",borderBottom:"1px solid #f9fafb",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:added?0.5:1}} onMouseEnter={e=>{if(!added)e.currentTarget.style.background="#f9fafb";}} onMouseLeave={e=>(e.currentTarget.style.background="#fff")}>
                               <div><div style={{fontWeight:600,fontSize:13}}>{item.name}</div><div style={{fontSize:11,color:"#6b7280"}}>Available: <strong style={{color:item.available===0?"#dc2626":"#16a34a"}}>{item.available}</strong> {item.uom}</div></div>
-                              {added?<span style={{fontSize:11,color:"#9ca3af"}}>Added</span>:<span style={{fontSize:11,color:"#6366f1",fontWeight:600}}>+ Add</span>}
+                              {added?<span style={{fontSize:11,color:"#9ca3af"}}>Added</span>:<span style={{fontSize:11,color:"#2563eb",fontWeight:600}}>+ Add</span>}
                             </div>
                           );
                         })}

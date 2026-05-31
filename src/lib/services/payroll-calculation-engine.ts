@@ -5,6 +5,7 @@
 
 import { Pool } from 'pg';
 import { calculateIraqiTax } from './iraq-tax-calculator';
+import { postPayroll } from '../gl-posting';
 
 // =====================================================
 // TYPES & INTERFACES
@@ -66,6 +67,8 @@ export interface DeductionsBreakdown {
   loan_deduction: number;
   advance_deduction: number;
   absence_deduction: number;
+  unpaid_leave_deduction: number;   // ← NEW: deduction for unpaid leave days
+  unpaid_leave_days: number;        // ← NEW: how many unpaid days were deducted
   total_deductions: number;
 }
 
@@ -278,15 +281,22 @@ export class PayrollCalculationEngine {
       attendance.absent_days,
       basicSalary
     );
-    
+
+    // ── Leave deduction (unpaid leave types) ──────────────────────────
+    // Queries leave_requests JOIN leave_types for the period.
+    // Deducts days where the leave type category is 'UNPAID' or is_paid = false.
+    const { unpaidLeaveDays, unpaidLeaveDeduction } =
+      await this.calculateUnpaidLeaveDeduction(employeeId, periodId, basicSalary);
+
     const totalDeductions =
       socialSecurity +
       healthInsurance +
       incomeTax +
       loanDeduction +
       advanceDeduction +
-      absenceDeduction;
-    
+      absenceDeduction +
+      unpaidLeaveDeduction;
+
     return {
       social_security: socialSecurity,
       health_insurance: healthInsurance,
@@ -294,6 +304,8 @@ export class PayrollCalculationEngine {
       loan_deduction: loanDeduction,
       advance_deduction: advanceDeduction,
       absence_deduction: absenceDeduction,
+      unpaid_leave_deduction: unpaidLeaveDeduction,
+      unpaid_leave_days: unpaidLeaveDays,
       total_deductions: totalDeductions
     };
   }
@@ -480,6 +492,61 @@ export class PayrollCalculationEngine {
   }
 
   /**
+   * Calculate unpaid-leave deduction.
+   * Queries leave_requests for the payroll period and cross-references leave_types
+   * to find categories that are not paid (category = 'UNPAID' or is_paid = false).
+   * Falls back to 0 gracefully if tables/columns don't exist.
+   */
+  private async calculateUnpaidLeaveDeduction(
+    employeeId: string,
+    periodId: string,
+    basicSalary: number
+  ): Promise<{ unpaidLeaveDays: number; unpaidLeaveDeduction: number }> {
+    try {
+      // Get period dates
+      const periodRes = await this.pool.query(
+        `SELECT start_date, end_date FROM payroll_periods WHERE id = $1`, [periodId]
+      );
+      if (periodRes.rows.length === 0) return { unpaidLeaveDays: 0, unpaidLeaveDeduction: 0 };
+
+      const { start_date, end_date } = periodRes.rows[0];
+
+      // Find approved leave requests that overlap with this payroll period.
+      // Leave type is "unpaid" when leave_types.is_paid = false.
+      const leaveRes = await this.pool.query(
+        `SELECT
+           lr.days_count,
+           lt.name,
+           COALESCE(lt.is_paid, true) AS is_paid
+         FROM leave_requests lr
+         JOIN leave_types lt ON lr.leave_type_id = lt.id
+         WHERE lr.employee_id::text = $1::text
+           AND lr.status = 'APPROVED'
+           AND lr.start_date <= $3
+           AND lr.end_date   >= $2`,
+        [employeeId, start_date, end_date]
+      );
+
+      let unpaidDays = 0;
+      for (const row of leaveRes.rows) {
+        if (!row.is_paid) {
+          unpaidDays += parseFloat(row.days_count) || 0;
+        }
+      }
+
+      const dailyRate = basicSalary / this.DAYS_IN_MONTH;
+      return {
+        unpaidLeaveDays: unpaidDays,
+        unpaidLeaveDeduction: unpaidDays * dailyRate,
+      };
+    } catch (err) {
+      // Non-fatal — if leave_types.is_paid doesn't exist yet or other DB error
+      console.warn('[Payroll] calculateUnpaidLeaveDeduction skipped:', (err as Error).message);
+      return { unpaidLeaveDays: 0, unpaidLeaveDeduction: 0 };
+    }
+  }
+
+  /**
    * Calculate absence deduction
    */
   private calculateAbsenceDeduction(absentDays: number, basicSalary: number): number {
@@ -641,19 +708,29 @@ export class PayrollCalculationEngine {
             basic_salary, housing_allowance, transport_allowance, meal_allowance,
             overtime_pay, night_shift_pay, weekend_pay, holiday_pay, hazard_pay, bonuses,
             gross_salary, social_security, health_insurance, income_tax,
-            loan_deduction, advance_deduction, absence_deduction, total_deductions,
+            loan_deduction, advance_deduction, absence_deduction,
+            unpaid_leave_deduction, unpaid_leave_days, total_deductions,
             net_salary, currency, worked_days, absent_days, leave_days,
             overtime_hours, night_shifts, weekend_shifts, holiday_shifts,
             is_pro_rata, calculation_metadata, warnings, errors, status
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
             $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-            $31, $32, $33, $34, $35, $36, $37, $38
+            $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
           )
-          ON CONFLICT (period_id, employee_id) 
+          ON CONFLICT (period_id, employee_id)
           DO UPDATE SET
             basic_salary = EXCLUDED.basic_salary,
             gross_salary = EXCLUDED.gross_salary,
+            social_security = EXCLUDED.social_security,
+            income_tax = EXCLUDED.income_tax,
+            loan_deduction = EXCLUDED.loan_deduction,
+            advance_deduction = EXCLUDED.advance_deduction,
+            absence_deduction = EXCLUDED.absence_deduction,
+            unpaid_leave_deduction = EXCLUDED.unpaid_leave_deduction,
+            unpaid_leave_days = EXCLUDED.unpaid_leave_days,
+            overtime_pay = EXCLUDED.overtime_pay,
+            overtime_hours = EXCLUDED.overtime_hours,
             total_deductions = EXCLUDED.total_deductions,
             net_salary = EXCLUDED.net_salary,
             updated_at = NOW()
@@ -679,8 +756,10 @@ export class PayrollCalculationEngine {
           calc.deductions.health_insurance || 0,
           calc.deductions.income_tax || 0, 
           calc.deductions.loan_deduction || 0,
-          calc.deductions.advance_deduction || 0, 
+          calc.deductions.advance_deduction || 0,
           calc.deductions.absence_deduction || 0,
+          calc.deductions.unpaid_leave_deduction || 0,
+          calc.deductions.unpaid_leave_days || 0,
           calc.deductions.total_deductions || 0,
           calc.net_salary || 0, 
           calc.currency || 'USD',
@@ -711,9 +790,62 @@ export class PayrollCalculationEngine {
           status = 'CALCULATED'
         WHERE id = $1
       `, [periodId]);
-      
+
       await client.query('COMMIT');
-      
+
+      // ── Post payroll to the General Ledger (accrual). Non-fatal. ──────
+      // One consolidated entry per period: DR Salaries / CR Payables.
+      // Replaces any prior PAYROLL entry for this period to avoid double-count.
+      try {
+        const sums = await this.pool.query(
+          `SELECT
+             COALESCE(SUM(gross_salary), 0)  AS gross,
+             COALESCE(SUM(net_salary), 0)    AS net,
+             COALESCE(SUM(income_tax), 0)    AS tax
+           FROM payroll_transactions WHERE period_id = $1`,
+          [periodId]
+        );
+        const periodRow = await this.pool.query(
+          `SELECT period_name, end_date FROM payroll_periods WHERE id = $1`, [periodId]
+        );
+        const gross = parseFloat(sums.rows[0].gross) || 0;
+        if (gross > 0 && periodRow.rows.length > 0) {
+          const periodName = periodRow.rows[0].period_name || 'Period';
+          const entryDate  = periodRow.rows[0].end_date
+            ? new Date(periodRow.rows[0].end_date).toISOString().split('T')[0]
+            : undefined;
+
+          const glClient = await this.pool.connect();
+          try {
+            await glClient.query('BEGIN');
+            // Remove any existing payroll accrual entry for this period (re-calc safe)
+            await glClient.query(
+              `DELETE FROM fin_journal_lines WHERE journalid IN (
+                 SELECT journalid FROM fin_journal_entries
+                 WHERE sourcetype = 'PAYROLL' AND sourceid = $1)`,
+              [periodId]
+            );
+            await glClient.query(
+              `DELETE FROM fin_journal_entries WHERE sourcetype = 'PAYROLL' AND sourceid = $1`,
+              [periodId]
+            );
+            await postPayroll(glClient, periodId, periodName, {
+              gross,
+              net: parseFloat(sums.rows[0].net) || 0,
+              incomeTax: parseFloat(sums.rows[0].tax) || 0,
+            }, entryDate);
+            await glClient.query('COMMIT');
+          } catch (glErr) {
+            await glClient.query('ROLLBACK');
+            console.error('[Payroll] GL posting failed (non-fatal):', glErr);
+          } finally {
+            glClient.release();
+          }
+        }
+      } catch (glOuter) {
+        console.error('[Payroll] GL posting setup failed (non-fatal):', glOuter);
+      }
+
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

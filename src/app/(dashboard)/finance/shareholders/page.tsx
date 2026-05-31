@@ -53,6 +53,27 @@ export default function ShareholdersPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
 
+  // Dividend declaration
+  const [showDividend, setShowDividend] = useState(false);
+  const [dividendAmount, setDividendAmount] = useState('');
+  const [dividendDate, setDividendDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dividendNotes, setDividendNotes] = useState('');
+  const [declaring, setDeclaring] = useState(false);
+  const [distributable, setDistributable] = useState<any | null>(null);
+
+  const openDividendModal = async () => {
+    setShowDividend(true);
+    setDistributable(null);
+    try {
+      const d = await fetch('/api/shareholders/distributable').then(r => r.json());
+      if (d.success) setDistributable(d);
+    } catch { /* non-fatal */ }
+  };
+
+  // Shareholder account statement
+  const [statement, setStatement] = useState<any | null>(null);
+  const [loadingStatement, setLoadingStatement] = useState(false);
+
   const [formData, setFormData] = useState({
     shareholder_id: '',
     full_name: '',
@@ -92,7 +113,17 @@ export default function ShareholdersPage() {
       const res = await fetch('/api/shareholders');
       if (res.ok) {
         const data = await res.json();
-        setShareholders(data);
+        // Postgres NUMERIC columns arrive as strings — coerce so totals/maths work.
+        const num = (v: any) => (typeof v === 'number' ? v : parseFloat(v) || 0);
+        const rows = Array.isArray(data) ? data : (data.data ?? []);
+        setShareholders(rows.map((s: any) => ({
+          ...s,
+          share_percentage: num(s.share_percentage),
+          number_of_shares: num(s.number_of_shares),
+          share_value: num(s.share_value),
+          investment_amount: num(s.investment_amount),
+          total_dividends_received: num(s.total_dividends_received),
+        })));
       }
     } catch (error) {
       console.error('Load error:', error);
@@ -251,6 +282,61 @@ export default function ShareholdersPage() {
     }
   };
 
+  // Live preview of the dividend split by equity %
+  const dividendPreview = (() => {
+    const total = parseFloat(dividendAmount) || 0;
+    if (total <= 0) return [];
+    return shareholders
+      .filter(s => s.status === 'ACTIVE' && s.share_percentage > 0)
+      .map(s => ({ name: s.full_name, code: s.shareholder_id, pct: s.share_percentage, amount: total * s.share_percentage / 100 }));
+  })();
+
+  const declareDividend = async () => {
+    const total = parseFloat(dividendAmount) || 0;
+    if (total <= 0) { toast.error('Enter a dividend amount'); return; }
+    // Guard: distributing more than available profit needs explicit confirmation
+    if (distributable && total > distributable.available_to_distribute) {
+      const over = Math.round(total - distributable.available_to_distribute);
+      const ok = window.confirm(
+        `This dividend (${fmt(total)} IQD) exceeds available profit by ${fmt(over)} IQD.\n\n` +
+        `You would be distributing capital, not earnings. This may be legally restricted.\n\nProceed anyway?`
+      );
+      if (!ok) return;
+    }
+    setDeclaring(true);
+    try {
+      const res = await fetch('/api/shareholders/distributions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ total_amount: total, dividend_date: dividendDate, notes: dividendNotes || null }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed');
+      toast.success(`Dividend ${data.declaration_number} distributed to ${data.shareholder_count} shareholders`);
+      setShowDividend(false);
+      setDividendAmount(''); setDividendNotes('');
+      loadShareholders();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setDeclaring(false);
+    }
+  };
+
+  const openStatement = async (sh: Shareholder) => {
+    setLoadingStatement(true);
+    setStatement({ loading: true });
+    try {
+      const data = await fetch(`/api/shareholders/${sh.id}/statement`).then(r => r.json());
+      setStatement(data);
+    } catch {
+      setStatement(null);
+      toast.error('Failed to load statement');
+    } finally {
+      setLoadingStatement(false);
+    }
+  };
+
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;
 
   return (
@@ -260,12 +346,20 @@ export default function ShareholdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Shareholders</h1>
           <p className="text-gray-500 text-sm">Manage hospital shareholders and ownership</p>
         </div>
-        <button 
-          onClick={() => setShowCreate(true)} 
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-600 w-fit"
-        >
-          <Plus size={16} /> Add Shareholder
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={openDividendModal}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-emerald-700 w-fit"
+          >
+            <TrendingUp size={16} /> Declare Dividend
+          </button>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-600 w-fit"
+          >
+            <Plus size={16} /> Add Shareholder
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -371,6 +465,7 @@ export default function ShareholdersPage() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-1">
+                    <button onClick={() => openStatement(sh)} className="p-1.5 hover:bg-emerald-50 rounded text-emerald-600" title="Account Statement"><TrendingUp size={14} /></button>
                     <button onClick={() => openView(sh)} className="p-1.5 hover:bg-gray-100 rounded" title="View"><Eye size={14} /></button>
                     <button onClick={() => openEdit(sh)} className="p-1.5 hover:bg-gray-100 rounded" title="Edit"><Edit size={14} /></button>
                     <button onClick={() => setDeleteId(sh.id)} className="p-1.5 hover:bg-red-50 rounded text-red-500" title="Delete"><Trash2 size={14} /></button>
@@ -384,6 +479,186 @@ export default function ShareholdersPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Declare Dividend Modal */}
+      {showDividend && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDividend(false)}>
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b">
+              <h2 className="text-lg font-bold flex items-center gap-2"><TrendingUp size={18} className="text-emerald-600" /> Declare Dividend</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Distribute profit to shareholders by their equity %</p>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Available to distribute — sourced from the GL */}
+              <div className={`rounded-lg p-3 border ${distributable?.has_profit ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                {!distributable ? (
+                  <p className="text-xs text-gray-400">Calculating available profit…</p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600">Available to Distribute (from profit)</span>
+                      <span className={`text-lg font-bold ${distributable.has_profit ? 'text-emerald-700' : 'text-red-600'}`}>
+                        {fmt(distributable.available_to_distribute)} IQD
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 mt-1 grid grid-cols-2 gap-x-3">
+                      <span>Net Income: {fmt(distributable.net_income)}</span>
+                      <span>Retained Earnings: {fmt(distributable.retained_earnings)}</span>
+                    </div>
+                    {!distributable.has_profit && (
+                      <p className="text-[11px] text-red-600 mt-1 font-medium">
+                        ⚠ No distributable profit — the business is at a loss. Paying dividends now distributes capital, not earnings.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Payout-ratio shortcuts */}
+              {distributable?.has_profit && (
+                <div className="flex gap-2">
+                  {[25, 50, 75, 100].map(r => (
+                    <button key={r} type="button"
+                      onClick={() => setDividendAmount(String(Math.round(distributable.available_to_distribute * r / 100)))}
+                      className="flex-1 text-xs border rounded-lg py-1.5 hover:bg-emerald-50 hover:border-emerald-300 text-gray-600">
+                      {r}% of profit
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Total Amount (IQD) *</label>
+                  <input type="number" value={dividendAmount} onChange={e => setDividendAmount(e.target.value)}
+                    placeholder="e.g. 1000000"
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      distributable && parseFloat(dividendAmount) > distributable.available_to_distribute
+                        ? 'border-red-400 focus:ring-red-500' : 'focus:ring-emerald-500'
+                    }`} />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Date</label>
+                  <input type="date" value={dividendDate} onChange={e => setDividendDate(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+
+              {/* Over-distribution warning */}
+              {distributable && parseFloat(dividendAmount) > distributable.available_to_distribute && parseFloat(dividendAmount) > 0 && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+                  ⚠ This exceeds available profit by {fmt(Math.round(parseFloat(dividendAmount) - distributable.available_to_distribute))} IQD.
+                  Distributing more than retained earnings reduces capital and may be restricted by law.
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Notes</label>
+                <input type="text" value={dividendNotes} onChange={e => setDividendNotes(e.target.value)}
+                  placeholder="e.g. Q1 2026 profit share" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              {/* Live split preview */}
+              {dividendPreview.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-600">Distribution Preview</div>
+                  <div className="max-h-52 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <tbody className="divide-y">
+                        {dividendPreview.map(p => (
+                          <tr key={p.code}>
+                            <td className="px-3 py-1.5 text-gray-700">{p.name}</td>
+                            <td className="px-3 py-1.5 text-right text-gray-500">{p.pct}%</td>
+                            <td className="px-3 py-1.5 text-right font-semibold text-emerald-700">{fmt(Math.round(p.amount))} IQD</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              <div className="text-xs text-gray-400 bg-amber-50 border border-amber-200 rounded p-2">
+                Posts to GL: DR Retained Earnings / CR Cash &amp; Bank. Updates each shareholder's account.
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2">
+              <button onClick={() => setShowDividend(false)} className="px-4 py-2 border rounded-lg text-sm">Cancel</button>
+              <button onClick={declareDividend} disabled={declaring || !dividendAmount}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2 font-medium">
+                {declaring ? 'Distributing…' : <><TrendingUp size={14} /> Confirm & Distribute</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shareholder Account Statement Modal */}
+      {statement && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setStatement(null)}>
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {statement.loading || loadingStatement ? (
+              <div className="p-12 text-center text-gray-400 text-sm">Loading statement…</div>
+            ) : statement.success ? (
+              <>
+                <div className="p-5 border-b">
+                  <h2 className="text-lg font-bold">{statement.shareholder.name}</h2>
+                  <p className="text-xs text-gray-500">{statement.shareholder.code} · {statement.shareholder.type}
+                    {statement.shareholder.is_board_member && ` · ${statement.shareholder.board_position}`}</p>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">Equity Stake</p>
+                      <p className="text-xl font-bold text-blue-700">{statement.account.share_percentage}%</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">Ownership Value</p>
+                      <p className="text-xl font-bold text-purple-700">{fmt(statement.account.ownership_value)} IQD</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">Paid-in Capital</p>
+                      <p className="text-lg font-bold text-gray-800">{fmt(statement.account.paid_in_capital)} IQD</p>
+                    </div>
+                    <div className="bg-emerald-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500">Total Dividends Received</p>
+                      <p className="text-lg font-bold text-emerald-700">{fmt(statement.account.total_dividends_received)} IQD</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Dividend History</p>
+                    {statement.dividend_history.length === 0 ? (
+                      <p className="text-xs text-gray-400">No dividends paid yet.</p>
+                    ) : (
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-gray-400 border-b">
+                          <th className="text-left py-1.5">Declaration</th>
+                          <th className="text-left py-1.5">Date</th>
+                          <th className="text-right py-1.5">%</th>
+                          <th className="text-right py-1.5">Amount</th>
+                        </tr></thead>
+                        <tbody className="divide-y">
+                          {statement.dividend_history.map((d: any, i: number) => (
+                            <tr key={i}>
+                              <td className="py-1.5 font-mono">{d.declaration_number}</td>
+                              <td className="py-1.5 text-gray-500">{d.dividend_date ? new Date(d.dividend_date).toLocaleDateString('en-GB') : '—'}</td>
+                              <td className="py-1.5 text-right">{parseFloat(d.share_percentage).toFixed(1)}%</td>
+                              <td className="py-1.5 text-right font-semibold text-emerald-700">{fmt(Math.round(parseFloat(d.amount)))} IQD</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+                <div className="p-4 border-t flex justify-end">
+                  <button onClick={() => setStatement(null)} className="px-4 py-2 border rounded-lg text-sm">Close</button>
+                </div>
+              </>
+            ) : (
+              <div className="p-12 text-center text-gray-400 text-sm">Could not load statement.</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Create Modal */}
       {showCreate && (

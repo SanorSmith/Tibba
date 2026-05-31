@@ -60,11 +60,16 @@ export async function GET(request: NextRequest) {
     // Build dynamic query based on available columns
     let selectColumns = [];
     if (columns.includes('id')) selectColumns.push('id');
+    if (columns.includes('company_id')) selectColumns.push('company_id as id');
     if (columns.includes('company_name')) selectColumns.push('company_name as name');
+    if (columns.includes('company_name_ar')) selectColumns.push('company_name_ar');
     if (columns.includes('company_code')) selectColumns.push('company_code as code');
     if (columns.includes('contact_person')) selectColumns.push('contact_person');
-    if (columns.includes('phone')) selectColumns.push('phone');
-    if (columns.includes('email')) selectColumns.push('email');
+    if (columns.includes('contact_phone')) selectColumns.push('contact_phone');
+    if (columns.includes('contact_email')) selectColumns.push('contact_email');
+    if (columns.includes('address')) selectColumns.push('address');
+    if (columns.includes('coverage_percentage')) selectColumns.push('coverage_percentage');
+    if (columns.includes('active')) selectColumns.push('active');
 
     if (selectColumns.length === 0) {
       // If no columns exist, return mock data
@@ -114,7 +119,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, code, contact_email, contact_phone, address } = body;
+    const { 
+      name, 
+      code, 
+      name_ar, 
+      contact_person, 
+      contact_phone, 
+      contact_email, 
+      address, 
+      coverage_percentage, 
+      active 
+    } = body;
 
     // Check if table exists, create if not
     await pool.query(`
@@ -131,16 +146,20 @@ export async function POST(request: NextRequest) {
     `);
 
     const result = await pool.query(`
-      INSERT INTO insurance_companies (id, name, code, contact_email, contact_phone, address)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO insurance_companies (company_id, company_code, company_name, company_name_ar, contact_person, contact_phone, contact_email, address, coverage_percentage, active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `, [
       `INS-${Math.floor(Math.random() * 100000)}`,
-      name,
       code,
-      contact_email,
-      contact_phone,
-      address
+      name,
+      name_ar || '',
+      contact_person || '',
+      contact_phone || '',
+      contact_email || '',
+      address || '',
+      coverage_percentage || 0,
+      active !== false
     ]);
 
     return NextResponse.json({

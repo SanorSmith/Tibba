@@ -3,18 +3,18 @@
         {
             "pgOptions": {
                 "ssl": {
-                    "rejectUnauthorized": false
+                    "rejectUnauthorized": true
                 }
             },
             "ssh": "Disabled",
             "previewLimit": 50,
-            "server": "ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech",
+            "server": "ep-long-river-allaqs25-pooler.c-3.eu-central-1.aws.neon.tech",
             "port": 5432,
-            "askForPassword": true,
             "driver": "PostgreSQL",
-            "name": "None - Midical DB- neon",
+            "name": "neon",
+            "database": "neondb",
             "username": "neondb_owner",
-            "database": "neondb"
+            "password": "npg_RBybikcu3tz5"
         }
     ]
 }

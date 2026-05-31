@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -56,24 +56,27 @@ const moduleLinks = [
     ],
   },
   {
-    href: '/inventory', icon: Package, label: 'Inventory',
-    children: [
-      { href: '/inventory/incoming-orders', icon: PackageSearch, label: 'Incoming Orders' },
-    ],
+    href: '/hospital', icon: Package, label: 'Inventory',
+    children: [],
   },
   {
     href: '/finance', icon: DollarSign, label: 'Finance',
     children: [
+      { href: '/finance/invoices', icon: Receipt, label: 'Customer Invoices' },
       { href: '/services', icon: Hospital, label: 'Services' },
       { href: '/finance/insurance', icon: Shield, label: 'Insurance' },
-      { href: '/finance/purchases', icon: ShoppingCart, label: 'Purchases' },
-      { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
+      { href: '/finance/insurance-claims', icon: FileText, label: 'Insurance Claims' },
+      // Purchases removed — goods receipt + AP invoicing now handled by the Inventory module
+      // { href: '/finance/inventory', icon: Warehouse, label: 'Inventory' },
       { href: '/finance/suppliers', icon: Truck, label: 'Suppliers' },
       { href: '/finance/budget', icon: PieChart, label: 'Budget' },
       { href: '/finance/accounting', icon: BookOpen, label: 'Accounting' },
       { href: '/finance/reports', icon: BarChart3, label: 'Reports' },
       { href: '/finance/shareholders', icon: TrendingUp, label: 'Shareholders' },
       { href: '/finance/stakeholders', icon: Handshake, label: 'Stakeholders' },
+      { href: '/finance/distributions', icon: TrendingUp, label: 'Distributions' },
+      { href: '/finance/service-providers', icon: UsersRound, label: 'Service Providers' },
+      { href: '/finance/payables', icon: Truck, label: 'Payables (AP)' },
       { href: '/finance/service-payments', icon: CreditCard, label: 'Service Payments' },
       { href: '/finance/service-provider-reports', icon: BarChart3, label: 'Service Provider Reports' },
     ],
@@ -107,14 +110,7 @@ const moduleLinks = [
   },
 ];
 
-const existingLinks = [
-  { href: '/patients', icon: UserCircle, label: 'Patients' },
-  { href: '/appointments', icon: Calendar, label: 'Appointments' },
-  { href: '/staff', icon: UsersRound, label: 'Staff/Contacts' },
-  { href: '/laboratories', icon: FlaskConical, label: 'Laboratories' },
-  { href: '/pharmacies', icon: Pill, label: 'Pharmacies' },
-  { href: '/register', icon: UserPlus, label: 'Register' },
-];
+const existingLinks: { href: string; icon: typeof UserPlus; label: string }[] = [];
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -123,6 +119,27 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
+
+  // Hospital departments → shown as sub-items under the Inventory module
+  const [deptChildren, setDeptChildren] = useState<{ href: string; icon: typeof Building2; label: string }[]>([]);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/hospital/departments')
+      .then(r => (r.ok ? r.json() : []))
+      .then((rows: any[]) => {
+        if (!active || !Array.isArray(rows)) return;
+        setDeptChildren(
+          rows.map(d => ({ href: `/hospital/${d.id}`, icon: Building2, label: d.name }))
+        );
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  // Merge dynamic department children into the Inventory module
+  const navLinks = moduleLinks.map(link =>
+    link.href === '/hospital' ? { ...link, children: deptChildren } : link
+  );
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -165,10 +182,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       </div>
 
       <nav className="space-y-0.5 px-2">
-        {moduleLinks.map((link) => {
+        {navLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname.startsWith(link.href);
-          const hasChildren = 'children' in link && link.children;
+          const hasChildren = 'children' in link && link.children && link.children.length > 0;
           const isExpanded = isActive && hasChildren;
           return (
             <div key={link.href}>
@@ -238,34 +255,38 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         })}
       </nav>
 
-      <div className="px-4 mt-5 mb-1.5 sm:mt-6 sm:mb-2">
-        <h3 className="text-[11px] sm:text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
-          Existing System
-        </h3>
-      </div>
+      {existingLinks.length > 0 && (
+        <>
+          <div className="px-4 mt-5 mb-1.5 sm:mt-6 sm:mb-2">
+            <h3 className="text-[11px] sm:text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">
+              Existing System
+            </h3>
+          </div>
 
-      <nav className="space-y-0.5 px-2">
-        {existingLinks.map((link) => {
-          const Icon = link.icon;
-          const isActive = pathname.startsWith(link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded transition-colors',
-                isActive
-                  ? 'bg-[#f5f5f5] text-black font-semibold'
-                  : 'text-[#151515] hover:bg-[#f5f5f5]'
-              )}
-              style={{ fontSize: '14px', lineHeight: '20px' }}
-            >
-              <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
-              <span className="text-sm sm:text-base">{link.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+          <nav className="space-y-0.5 px-2">
+            {existingLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = pathname.startsWith(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 sm:py-3 rounded transition-colors',
+                    isActive
+                      ? 'bg-[#f5f5f5] text-black font-semibold'
+                      : 'text-[#151515] hover:bg-[#f5f5f5]'
+                  )}
+                  style={{ fontSize: '14px', lineHeight: '20px' }}
+                >
+                  <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">{link.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </>
+      )}
     </div>
   );
 

@@ -1,30 +1,57 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
   Users, UserCheck, Calendar, TrendingUp, DollarSign, GraduationCap,
   ClipboardList, Star, Heart, Building2, FileText, Clock, UserPlus,
   AlertTriangle, Award, Briefcase
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import type { Employee, DailyAttendanceSummary, LeaveRequest, PayrollPeriod, TrainingSummary, PerformanceReview, Recognition, JobVacancy, RecruitmentSummary } from '@/types/hr';
-import employeesData from '@/data/hr/employees.json';
-import attendanceData from '@/data/hr/attendance.json';
-import leavesData from '@/data/hr/leaves.json';
-import payrollData from '@/data/hr/payroll.json';
-import trainingData from '@/data/hr/training.json';
-import performanceData from '@/data/hr/performance.json';
-import candidatesData from '@/data/hr/candidates.json';
+
+interface HRData {
+  employees: { active: number; on_leave: number; categories: { name: string; value: number; color: string }[] };
+  attendance: { present: number; absent: number };
+  pendingLeaves: number;
+  recentApprovedLeaves: { employee_name: string; leave_type_code: string; start_date: string; end_date: string; approved_by_name: string }[];
+  vacancies: { open: number; candidates: number };
+  payroll: { period_name: string; status: string; total_gross: string; total_net: string } | null;
+  pendingReviews: number;
+  recognitions: { title: string; reason: string; recognition_date: string; employee_name: string }[];
+}
 
 export default function HRPage() {
-  const activeEmployees = employeesData.employees.filter(e => e.employment_status === 'ACTIVE');
-  const onLeave = employeesData.employees.filter(e => e.employment_status === 'ON_LEAVE');
-  const presentToday = attendanceData.daily_summaries.filter(a => a.status === 'PRESENT').length;
-  const absentToday = attendanceData.daily_summaries.filter(a => a.status === 'ABSENT').length;
-  const pendingLeaves = leavesData.leave_requests.filter(l => l.status === 'PENDING_APPROVAL').length;
-  const openVacancies = candidatesData.vacancies.filter(v => v.status === 'OPEN').length;
-  const expiringCerts = trainingData.training_summary.expiring_certifications;
-  const latestPayroll = payrollData.payroll_periods[payrollData.payroll_periods.length - 1];
+  const [data, setData] = useState<HRData | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/hr/dashboard')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (active && d?.success) setData(d); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  const activeEmployees = { length: data?.employees.active ?? 0 };
+  const onLeave = { length: data?.employees.on_leave ?? 0 };
+  const presentToday = data?.attendance.present ?? 0;
+  const absentToday = data?.attendance.absent ?? 0;
+  const pendingLeaves = data?.pendingLeaves ?? 0;
+  const openVacancies = data?.vacancies.open ?? 0;
+  const totalCandidates = data?.vacancies.candidates ?? 0;
+  const expiringCerts = 0; // no certification-tracking table yet
+  const pendingReviews = data?.pendingReviews ?? 0;
+  const recognitions = data?.recognitions ?? [];
+  const recentApprovedLeaves = data?.recentApprovedLeaves ?? [];
+  const categoryData = data?.employees.categories ?? [];
+  const latestPayroll = data?.payroll
+    ? {
+        name: data.payroll.period_name,
+        status: data.payroll.status,
+        total_gross: parseFloat(data.payroll.total_gross) || 0,
+        total_net: parseFloat(data.payroll.total_net) || 0,
+      }
+    : { name: '—', status: 'N/A', total_gross: 0, total_net: 0 };
 
   const quickActions = [
     { href: '/hr/employees', icon: Users, label: 'Employees' },
@@ -105,7 +132,7 @@ export default function HRPage() {
               <div>
                 <p className="tibbna-card-title">Open Vacancies</p>
                 <p className="tibbna-card-value" style={{ color: '#6366F1' }}>{openVacancies}</p>
-                <p className="tibbna-card-subtitle">{candidatesData.recruitment_summary.total_candidates} applicants</p>
+                <p className="tibbna-card-subtitle">{totalCandidates} applicants</p>
               </div>
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E0E7FF' }}>
                 <Briefcase size={20} style={{ color: '#6366F1' }} />
@@ -153,11 +180,11 @@ export default function HRPage() {
                 </div>
                 <p style={{ fontSize: '12px', color: '#991B1B' }}>{latestPayroll.name} payroll is in {latestPayroll.status} status</p>
               </div>
-              {performanceData.reviews.filter(r => r.status === 'SUBMITTED').length > 0 && (
+              {pendingReviews > 0 && (
                 <div style={{ padding: '12px', backgroundColor: '#F3E8FF', border: '1px solid #E9D5FF' }}>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="tibbna-badge" style={{ backgroundColor: '#7C3AED', color: '#fff' }}>REVIEW</span>
-                    <span style={{ fontSize: '14px', fontWeight: 500 }}>{performanceData.reviews.filter(r => r.status === 'SUBMITTED').length} Performance Reviews Pending</span>
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>{pendingReviews} Performance Reviews Pending</span>
                   </div>
                   <p style={{ fontSize: '12px', color: '#5B21B6' }}>Reviews submitted and awaiting finalization</p>
                 </div>
@@ -171,30 +198,33 @@ export default function HRPage() {
               <h3 className="tibbna-section-title" style={{ margin: 0 }}>Recent Activity</h3>
             </div>
             <div className="tibbna-card-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {performanceData.recognitions.slice(0, 3).map(rec => (
-                <div key={rec.id} className="flex items-start gap-3" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+              {recognitions.map((rec, i) => (
+                <div key={`rec-${i}`} className="flex items-start gap-3" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FEF3C7' }}>
                     <Award size={16} style={{ color: '#F59E0B' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p style={{ fontSize: '13px', fontWeight: 500 }}>{rec.title}</p>
-                    <p style={{ fontSize: '12px', color: '#525252' }}>{rec.employee_name} - {rec.reason.substring(0, 60)}...</p>
-                    <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{rec.date}</p>
+                    <p style={{ fontSize: '12px', color: '#525252' }}>{rec.employee_name}{rec.reason ? ` - ${rec.reason.substring(0, 60)}` : ''}</p>
+                    <p style={{ fontSize: '11px', color: '#a3a3a3' }}>{rec.recognition_date ? new Date(rec.recognition_date).toLocaleDateString('en-GB') : ''}</p>
                   </div>
                 </div>
               ))}
-              {leavesData.leave_requests.filter(l => l.status === 'APPROVED').slice(0, 2).map(lr => (
-                <div key={lr.id} className="flex items-start gap-3" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+              {recentApprovedLeaves.map((lr, i) => (
+                <div key={`leave-${i}`} className="flex items-start gap-3" style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#DBEAFE' }}>
                     <Calendar size={16} style={{ color: '#3B82F6' }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p style={{ fontSize: '13px', fontWeight: 500 }}>Leave Approved: {lr.leave_type}</p>
+                    <p style={{ fontSize: '13px', fontWeight: 500 }}>Leave Approved: {lr.leave_type_code}</p>
                     <p style={{ fontSize: '12px', color: '#525252' }}>{lr.employee_name} - {lr.start_date} to {lr.end_date}</p>
-                    <p style={{ fontSize: '11px', color: '#a3a3a3' }}>Approved by {lr.approver_name}</p>
+                    <p style={{ fontSize: '11px', color: '#a3a3a3' }}>Approved by {lr.approved_by_name || '—'}</p>
                   </div>
                 </div>
               ))}
+              {recognitions.length === 0 && recentApprovedLeaves.length === 0 && (
+                <p style={{ fontSize: '12px', color: '#a3a3a3', textAlign: 'center', padding: '12px' }}>No recent activity</p>
+              )}
             </div>
           </div>
         </div>
@@ -232,13 +262,6 @@ export default function HRPage() {
             </div>
             <div className="tibbna-card-content">
               {(() => {
-                const categoryData = [
-                  { name: 'Medical', value: activeEmployees.filter(e => e.employee_category === 'MEDICAL_STAFF').length, color: '#3B82F6' },
-                  { name: 'Nursing', value: activeEmployees.filter(e => e.employee_category === 'NURSING').length, color: '#EC4899' },
-                  { name: 'Admin', value: activeEmployees.filter(e => e.employee_category === 'ADMINISTRATIVE').length, color: '#6366F1' },
-                  { name: 'Technical', value: activeEmployees.filter(e => e.employee_category === 'TECHNICAL').length, color: '#10B981' },
-                  { name: 'Support', value: activeEmployees.filter(e => e.employee_category === 'SUPPORT').length, color: '#F59E0B' },
-                ];
                 return (
                   <>
                     <div style={{ width: '100%', height: 160 }}>

@@ -5,13 +5,14 @@ import Link from 'next/link';
 import {
   DollarSign, TrendingUp, TrendingDown, Receipt, Users, ShoppingCart,
   Warehouse, AlertTriangle, ArrowRight, FileText, Handshake, RotateCcw,
-  Shield, Truck, BookOpen, BarChart3, Plus, Clock, PieChart, AlertCircle, CheckCircle,
+  Shield, Truck, BookOpen, BarChart3, Plus, Clock, PieChart, AlertCircle, CheckCircle, Calendar,
 } from 'lucide-react';
 import { financeStore } from '@/lib/financeStore';
 import type { MedicalInvoice, PurchaseOrder, Stock } from '@/types/finance';
 import { toast } from 'sonner';
 import TibbnaDBBadge from '@/components/TibbnaDBBadge';
 import { getAllTibbnaPatients } from '@/lib/tibbna-patients-service';
+// Note: UI components will be added manually
 
 const fmt = (n: number) => new Intl.NumberFormat('en-IQ').format(n);
 const pct = (n: number) => `${n.toFixed(1)}%`;
@@ -36,14 +37,39 @@ export default function FinancePage() {
   const [mounted, setMounted] = useState(false);
   const [activeBudget, setActiveBudget] = useState<BudgetPeriod | null>(null);
   const [patientCount, setPatientCount] = useState(0);
+  // Real totals from the new AP + distributions features
+  const [apTotals, setApTotals]       = useState({ purchases: 0, unpaid: 0 });
+  const [shareTotals, setShareTotals] = useState({ pending: 0 });
+  const [invTotals, setInvTotals]     = useState({ stockValue: 0, lowStock: 0 });
 
   useEffect(() => {
     financeStore.initialize();
     setInvoices(financeStore.getInvoices());
     loadActiveBudget();
     loadPatientCount();
+    loadApAndShares();
     setMounted(true);
   }, []);
+
+  const loadApAndShares = async () => {
+    try {
+      const [apRes, distRes, invRes] = await Promise.all([
+        fetch('/api/ap-invoices').then(r => r.json()).catch(() => null),
+        fetch('/api/distributions').then(r => r.json()).catch(() => null),
+        fetch('/api/finance/inventory-summary').then(r => r.json()).catch(() => null),
+      ]);
+      if (apRes?.success) {
+        const total = (apRes.data || []).reduce((s: number, a: any) => s + (parseFloat(a.total_amount) || 0), 0);
+        setApTotals({ purchases: total, unpaid: apRes.totals?.pending || 0 });
+      }
+      if (distRes?.success) {
+        setShareTotals({ pending: distRes.totals?.pending || 0 });
+      }
+      if (invRes?.success) {
+        setInvTotals({ stockValue: invRes.stock_value || 0, lowStock: invRes.low_stock_count || 0 });
+      }
+    } catch { /* non-fatal */ }
+  };
 
   const loadPatientCount = async () => {
     try {
@@ -91,9 +117,14 @@ export default function FinancePage() {
       ? (activeBudget.total_capital_actual / activeBudget.total_capital_budget) * 100 : 0;
     const capitalVariance = activeBudget.total_capital_budget - activeBudget.total_capital_actual;
 
-    // Total budget calculations (matches Budget page totals)
-    const totalBudget = activeBudget.total_revenue_budget + activeBudget.total_expense_budget + activeBudget.total_capital_budget;
-    const totalActual = activeBudget.total_revenue_actual + activeBudget.total_expense_actual + activeBudget.total_capital_actual;
+    // Total budget = operational + capital spending budgets (matches the cards shown).
+    // Use Number(... || 0) so a missing/undefined field never produces NaN.
+    const opBudget   = Number(activeBudget.total_operational_budget) || 0;
+    const capBudget  = Number(activeBudget.total_capital_budget) || 0;
+    const opActual   = Number(activeBudget.total_operational_actual) || 0;
+    const capActual  = Number(activeBudget.total_capital_actual) || 0;
+    const totalBudget = opBudget + capBudget;
+    const totalActual = opActual + capActual;
     const overallUtilization = totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0;
     const totalVariance = totalBudget - totalActual;
 
@@ -113,8 +144,92 @@ export default function FinancePage() {
     };
   }, [activeBudget]);
 
+  const [financialData, setFinancialData] = useState<any>(null);
+  const [financialLoading, setFinancialLoading] = useState(true);
+  const [period, setPeriod] = useState('all_time');
+  const [departmentId, setDepartmentId] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const loadFinancialData = async () => {
+    setFinancialLoading(true);
+    try {
+      const params = new URLSearchParams({
+        period,
+        department_id: departmentId,
+        report_type: 'income_statement',
+      });
+      
+      if (startDate && endDate) {
+        params.append('start_date', startDate);
+        params.append('end_date', endDate);
+      }
+
+      const response = await fetch(`/api/financial-dashboard?${params}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('🔍 Financial Data Debug:');
+        console.log('   - Raw Data:', result.data);
+        console.log('   - Summary Total Revenue:', result.data.summary.totalRevenue);
+        console.log('   - Summary Total Expenses:', result.data.summary.totalExpenses);
+        console.log('   - Revenue Breakdown:', result.data.revenue.breakdown);
+        console.log('   - Setting financialData state...');
+        setFinancialData(result.data);
+        console.log('   - FinancialData state set');
+      } else {
+        console.error('Failed to fetch financial data:', result.error);
+      }
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+    } finally {
+      setFinancialLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFinancialData();
+  }, [period, departmentId, startDate, endDate]);
+
   const stats = useMemo(() => {
     if (!mounted) return null;
+    
+    console.log('🧮 Stats Calculation Debug - Updated:');
+    console.log('   - financialData exists:', !!financialData);
+    console.log('   - financialData.summary:', financialData?.summary);
+    
+    // Use real financial data if available, fallback to mock data
+    if (financialData) {
+      console.log('   - Using real financial data');
+      const calculatedStats = {
+        totalRevenue: financialData.summary.totalRevenue,
+        totalPaid: financialData.revenue.breakdown.find((r: any) => r.category === 'PAID_INVOICES')?.revenue || 0,
+        totalDue: financialData.revenue.total - (financialData.revenue.breakdown.find((r: any) => r.category === 'PAID_INVOICES')?.revenue || 0),
+        insuranceDue: financialData.revenue.breakdown.find((r: any) => r.category === 'INSURANCE_PAYMENTS')?.revenue || 0,
+        paidCount: financialData.revenue.breakdown.find((r: any) => r.category === 'PAID_INVOICES')?.transaction_count || 0,
+        pendingCount: invoices.filter(i => ['PENDING', 'UNPAID', 'PARTIALLY_PAID'].includes(i.status)).length,
+        totalPurchases: apTotals.purchases,   // real AP invoice totals
+        poUnpaid: apTotals.unpaid,            // outstanding payables
+        pendingShares: shareTotals.pending,   // pending stakeholder distributions
+        lowStockCount: invTotals.lowStock,    // real low-stock items from inventory
+        totalStockValue: invTotals.stockValue,// real stock valuation
+        totalReturns: 0,
+        patientCount,
+        supplierCount: 0,
+        pendingPRs: 0,
+        invoiceCount: invoices.length,
+        // Add real expense data
+        totalExpenses: financialData.summary.totalExpenses,
+        netIncome: financialData.summary.netIncome,
+        revenueBreakdown: financialData.revenue.breakdown,
+        expenseBreakdown: financialData.expenses.breakdown,
+      };
+      
+      console.log('   - Calculated Stats:', calculatedStats);
+      return calculatedStats;
+    }
+    
+    // Fallback to mock data if financial data not loaded
     const inv = invoices;
     const totalRevenue = inv.reduce((s, i) => s + i.total_amount, 0);
     const totalPaid = inv.reduce((s, i) => s + i.amount_paid, 0);
@@ -147,8 +262,9 @@ export default function FinancePage() {
       totalPurchases, poUnpaid, pendingShares, lowStockCount, totalStockValue,
       totalReturns, patientCount, supplierCount: suppliers.length,
       pendingPRs, invoiceCount: inv.length,
+      totalExpenses: 0, netIncome: 0, revenueBreakdown: [], expenseBreakdown: [],
     };
-  }, [invoices, mounted]);
+  }, [invoices, mounted, financialData, patientCount]);
 
   if (!mounted || !stats) {
     return <div className="p-6"><div className="animate-pulse h-8 w-64 bg-gray-200 rounded mb-4" /><div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">{[1,2,3,4].map(i=><div key={i} className="h-28 bg-gray-100 rounded-lg" />)}</div></div>;
@@ -170,7 +286,7 @@ export default function FinancePage() {
   const quickActions = [
     { label: 'New Invoice', href: '/finance/invoices/new', icon: Plus, color: 'bg-blue-400 hover:bg-blue-500' },
     { label: 'New Patient', href: '/finance/patients', icon: Users, color: 'bg-blue-400 hover:bg-blue-500' },
-    { label: 'Purchase Request', href: '/finance/purchases', icon: ShoppingCart, color: 'bg-blue-400 hover:bg-blue-500' },
+    { label: 'Payables', href: '/finance/payables', icon: Truck, color: 'bg-blue-400 hover:bg-blue-500' },
     { label: 'View Reports', href: '/finance/reports', icon: BarChart3, color: 'bg-blue-400 hover:bg-blue-500' },
   ];
 
@@ -194,8 +310,8 @@ export default function FinancePage() {
     { label: 'Stakeholders', desc: 'Revenue sharing', href: '/finance/stakeholders', icon: Handshake, color: 'border-orange-200' },
     { label: 'Invoices', desc: `${stats.invoiceCount} invoices`, href: '/finance/invoices', icon: Receipt, color: 'border-emerald-200' },
     { label: 'Returns', desc: `${fmt(stats.totalReturns)} IQD`, href: '/finance/returns', icon: RotateCcw, color: 'border-red-200' },
-    { label: 'Purchases', desc: `${stats.pendingPRs} pending PRs`, href: '/finance/purchases', icon: ShoppingCart, color: 'border-amber-200' },
-    { label: 'Inventory', desc: `${stats.lowStockCount} low stock`, href: '/finance/inventory', icon: Warehouse, color: 'border-teal-200' },
+    { label: 'Payables (AP)', desc: 'Vendor invoices', href: '/finance/payables', icon: Truck, color: 'border-amber-200' },
+    { label: 'Inventory', desc: `${stats.lowStockCount} low stock`, href: '/hospital', icon: Warehouse, color: 'border-teal-200' },
     { label: 'Suppliers', desc: `${stats.supplierCount} suppliers`, href: '/finance/suppliers', icon: Truck, color: 'border-gray-200' },
     { label: 'Budget', desc: 'Budget management', href: '/finance/budget', icon: PieChart, color: 'border-purple-200' },
     { label: 'Accounting', desc: 'Chart of Accounts', href: '/finance/accounting', icon: BookOpen, color: 'border-indigo-200' },
@@ -239,7 +355,11 @@ export default function FinancePage() {
                 <PieChart className="w-8 h-8 text-purple-600" />
                 <h2 className="text-2xl font-bold text-gray-900">Hospital Budget Overview</h2>
               </div>
-              <p className="text-gray-600 text-sm">{activeBudget.period_name} • Fiscal Year {activeBudget.fiscal_year}</p>
+              <p className="text-gray-600 text-sm">
+                {activeBudget.period_name?.includes(String(activeBudget.fiscal_year))
+                  ? activeBudget.period_name
+                  : `${activeBudget.period_name} • Fiscal Year ${activeBudget.fiscal_year}`}
+              </p>
             </div>
             <Link href="/finance/budget" className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
               View Details <ArrowRight size={16} />
@@ -367,6 +487,232 @@ export default function FinancePage() {
         </div>
       )}
 
+      {/* Financial Reports Section */}
+      <div className="p-4 lg:p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Financial Reports</h1>
+          <p className="text-gray-500 text-sm">Income Statement, Balance Sheet, Cash Flow, Trial Balance</p>
+        </div>
+
+        {/* Report Tabs */}
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit flex-wrap">
+          <button className="px-4 py-2 rounded-md text-sm font-medium transition bg-white shadow text-gray-900">Income Statement</button>
+          <button className="px-4 py-2 rounded-md text-sm font-medium transition text-gray-500">Balance Sheet</button>
+          <button className="px-4 py-2 rounded-md text-sm font-medium transition text-gray-500">Cash Flow</button>
+          <button className="px-4 py-2 rounded-md text-sm font-medium transition text-gray-500">Trial Balance</button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Period</label>
+            <select 
+              value={period} 
+              onChange={(e) => setPeriod(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm"
+            >
+              <option value="all_time">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="quarter">This Quarter</option>
+              <option value="year">This Year</option>
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+            <select 
+              value={departmentId} 
+              onChange={(e) => setDepartmentId(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm"
+            >
+              <option value="all">All Departments</option>
+              {financialData?.departments?.map((dept: any) => (
+                <option key={dept.department_id} value={dept.department_id}>
+                  {dept.department_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm"
+            />
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border rounded-md text-sm"
+            />
+          </div>
+
+          <button 
+            onClick={loadFinancialData} 
+            disabled={financialLoading}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+          >
+            <Calendar size={14} />
+            Refresh
+          </button>
+        </div>
+
+        {/* Income Statement */}
+        <div className="max-w-2xl space-y-4">
+          <div className="text-center mb-4">
+            <h2 className="text-lg font-bold">Income Statement</h2>
+            <p className="text-xs text-gray-500">
+              For the period ending {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+
+          {/* Revenue Section */}
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b font-semibold text-sm">Revenue</div>
+            <div className="p-4">
+              {stats?.revenueBreakdown?.map((item: any, index: number) => (
+                <div key={index} className="flex justify-between py-1.5 text-sm">
+                  <span className="ml-6 text-gray-600">
+                    {(() => {
+                      const categoryLabels: { [key: string]: string } = {
+                        'PAID_INVOICES': 'Paid Invoices',
+                        'INSURANCE_PAYMENTS': 'Insurance Payments',
+                        'PATIENT_PAYMENTS': 'Patient Payments',
+                        'SALARIES_WAGES': 'Salaries & Wages',
+                        'SURGERY': 'Surgical Services',
+                        'RADIOLOGY': 'Radiology Services',
+                        'CONSULTATION': 'Consultation Services',
+                        'CARDIOLOGY': 'Cardiology Services',
+                        'DENTAL': 'Dental Services',
+                        'THERAPY': 'Therapy Services',
+                        'ADMINISTRATIVE': 'Administrative Fees',
+                        'PREVENTIVE': 'Preventive Care',
+                        'LABORATORY': 'Laboratory Tests',
+                        'default': 'Other Revenue'
+                      };
+                      
+                      const getCategoryLabel = (category: string): string => {
+                        if (!category) return categoryLabels['default'];
+                        
+                        // Try exact match first
+                        if (categoryLabels[category]) {
+                          return categoryLabels[category];
+                        }
+                        
+                        // Try uppercase match
+                        const upperCategory = category.toUpperCase();
+                        if (categoryLabels[upperCategory]) {
+                          return categoryLabels[upperCategory];
+                        }
+                        
+                        // Try lowercase match
+                        const lowerCategory = category.toLowerCase();
+                        if (categoryLabels[lowerCategory]) {
+                          return categoryLabels[lowerCategory];
+                        }
+                        
+                        // Return default
+                        return categoryLabels['default'];
+                      };
+                      
+                      const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
+                      console.log(`🔥 Finance page rendering: "${item.category}" -> "${label}"`);
+                      return label;
+                    })()}
+                  </span>
+                  <span className="font-medium">{fmt(item.revenue)} IQD</span>
+                </div>
+              ))}
+              <div className="flex justify-between py-1.5 text-sm font-bold border-t pt-2 mt-1">
+                <span>Total Revenue</span>
+                <span className="font-medium text-gray-900">{fmt(stats?.totalRevenue || 0)} IQD</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Expenses Section */}
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 border-b font-semibold text-sm">Expenses</div>
+            <div className="p-4">
+              {stats?.expenseBreakdown?.map((item: any, index: number) => (
+                <div key={index} className="flex justify-between py-1.5 text-sm">
+                  <span className="ml-6 text-gray-600">
+                    {(() => {
+                      const categoryLabels: { [key: string]: string } = {
+                        'PAID_INVOICES': 'Paid Invoices',
+                        'INSURANCE_PAYMENTS': 'Insurance Payments',
+                        'PATIENT_PAYMENTS': 'Patient Payments',
+                        'SALARIES_WAGES': 'Salaries & Wages',
+                        'SURGERY': 'Surgical Services',
+                        'RADIOLOGY': 'Radiology Services',
+                        'CONSULTATION': 'Consultation Services',
+                        'CARDIOLOGY': 'Cardiology Services',
+                        'DENTAL': 'Dental Services',
+                        'THERAPY': 'Therapy Services',
+                        'ADMINISTRATIVE': 'Administrative Fees',
+                        'PREVENTIVE': 'Preventive Care',
+                        'LABORATORY': 'Laboratory Tests',
+                        'default': 'Other Revenue'
+                      };
+                      
+                      const getCategoryLabel = (category: string): string => {
+                        if (!category) return categoryLabels['default'];
+                        
+                        // Try exact match first
+                        if (categoryLabels[category]) {
+                          return categoryLabels[category];
+                        }
+                        
+                        // Try uppercase match
+                        const upperCategory = category.toUpperCase();
+                        if (categoryLabels[upperCategory]) {
+                          return categoryLabels[upperCategory];
+                        }
+                        
+                        // Try lowercase match
+                        const lowerCategory = category.toLowerCase();
+                        if (categoryLabels[lowerCategory]) {
+                          return categoryLabels[lowerCategory];
+                        }
+                        
+                        // Return default
+                        return categoryLabels['default'];
+                      };
+                      
+                      const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
+                      console.log(`🔥 Finance expense rendering: "${item.category}" -> "${label}"`);
+                      return label;
+                    })()}
+                  </span>
+                  <span className="font-medium">{fmt(item.revenue)} IQD</span>
+                </div>
+              ))}
+              <div className="flex justify-between py-1.5 text-sm font-bold border-t pt-2 mt-1">
+                <span>Total Expenses</span>
+                <span className="font-medium text-gray-900">{fmt(stats?.totalExpenses || 0)} IQD</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Net Income */}
+          <div className="bg-white rounded-lg border p-4">
+            <div className="flex justify-between py-1.5 text-sm font-bold border-t pt-2 mt-1">
+              <span>Net Income</span>
+              <span className="font-medium text-gray-900">{fmt(stats?.netIncome || 0)} IQD</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {kpis.map(k => (
@@ -426,13 +772,13 @@ export default function FinancePage() {
             <h3 className="font-semibold text-gray-900 mb-3 text-sm">Alerts</h3>
             <div className="space-y-2">
               {stats.lowStockCount > 0 && (
-                <Link href="/finance/inventory" className="flex items-center gap-2 text-xs p-2 bg-rose-50 rounded text-rose-700 hover:bg-rose-100 transition">
+                <Link href="/hospital" className="flex items-center gap-2 text-xs p-2 bg-rose-50 rounded text-rose-700 hover:bg-rose-100 transition">
                   <AlertTriangle size={14} /> {stats.lowStockCount} items low on stock
                 </Link>
               )}
-              {stats.pendingPRs > 0 && (
-                <Link href="/finance/purchases" className="flex items-center gap-2 text-xs p-2 bg-amber-50 rounded text-amber-700 hover:bg-amber-100 transition">
-                  <Clock size={14} /> {stats.pendingPRs} purchase requests pending
+              {stats.poUnpaid > 0 && (
+                <Link href="/finance/payables" className="flex items-center gap-2 text-xs p-2 bg-amber-50 rounded text-amber-700 hover:bg-amber-100 transition">
+                  <Clock size={14} /> {fmt(stats.poUnpaid)} IQD payables outstanding
                 </Link>
               )}
               {stats.totalDue > 0 && (

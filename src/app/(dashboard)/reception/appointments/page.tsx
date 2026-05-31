@@ -106,6 +106,7 @@ export default function AppointmentsPage() {
   const [doctorSearchTerm, setDoctorSearchTerm] = useState('');
   const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     patientid: '',
     doctorid: '',
@@ -147,6 +148,70 @@ export default function AppointmentsPage() {
     }
   };
 
+  // ── Reset the dialog/form back to a clean "create" state ────────────────
+  const resetForm = () => {
+    setShowDialog(false);
+    setEditingId(null);
+    setPatientSearchTerm('');
+    setSelectedDoctor(null);
+    setFormData({
+      patientid: '', doctorid: '', starttime: '',
+      appointmentname: 'new_patient', appointmenttype: 'visiting',
+      clinicalindication: '', reasonforrequest: '', unit: '', location: '',
+    });
+  };
+
+  // ── Open an existing appointment in the dialog (pre-filled, edit mode) ──
+  const openEdit = (appt: any) => {
+    setEditingId(appt.appointmentid);
+    setFormData({
+      patientid: appt.patientid || '',
+      doctorid: appt.doctorid || '',
+      starttime: appt.starttime || '',
+      appointmentname: appt.appointmentname || 'new_patient',
+      appointmenttype: appt.appointmenttype || 'visiting',
+      clinicalindication: appt.clinicalindication || '',
+      reasonforrequest: appt.reasonforrequest || '',
+      unit: appt.unit || '',
+      location: appt.location || '',
+    });
+    // Show the patient name in the search box
+    const pname = appt.firstname && appt.lastname
+      ? `${appt.firstname} ${appt.middlename ? appt.middlename + ' ' : ''}${appt.lastname}`
+      : '';
+    setPatientSearchTerm(pname);
+    // Pre-select the doctor if we can find them in the loaded list
+    const doc = doctors.find(d => d.id === appt.doctorid);
+    setSelectedDoctor(doc || null);
+    setShowDialog(true);
+  };
+
+  // ── Change status only (e.g. Cancel from inside the dialog) ─────────────
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Update failed'); }
+      setAppointments(prev => prev.map(a => a.appointmentid === id ? ({ ...a, status } as Appointment) : a));
+    } catch (err: any) {
+      alert('Could not update appointment: ' + err.message);
+    }
+  };
+
+  const deleteAppointment = async (appt: any) => {
+    if (!window.confirm('Delete this appointment? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`/api/appointments/${appt.appointmentid}`, { method: 'DELETE' });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Delete failed'); }
+      setAppointments(prev => prev.filter(a => a.appointmentid !== appt.appointmentid));
+    } catch (err: any) {
+      alert('Could not delete appointment: ' + err.message);
+    }
+  };
+
   const loadDoctors = async () => {
     try {
       const response = await fetch(`/api/staff`);
@@ -185,49 +250,44 @@ export default function AppointmentsPage() {
       const startDate = new Date(formData.starttime);
       const endDate = new Date(startDate.getTime() + 45 * 60000); // 45 minutes later
 
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspaceid,
-          patientid: formData.patientid,
-          doctorid: formData.doctorid || null,
-          starttime: startDate.toISOString(),
-          endtime: endDate.toISOString(),
-          appointmentname: formData.appointmentname,
-          appointmenttype: formData.appointmenttype,
-          clinicalindication: formData.clinicalindication || null,
-          reasonforrequest: formData.reasonforrequest || null,
-          unit: formData.unit || null,
-          location: formData.location || null,
-          status: 'scheduled',
-        }),
-      });
+      const payload: any = {
+        patientid: formData.patientid,
+        doctorid: formData.doctorid || null,
+        starttime: startDate.toISOString(),
+        endtime: endDate.toISOString(),
+        appointmentname: formData.appointmentname,
+        appointmenttype: formData.appointmenttype,
+        clinicalindication: formData.clinicalindication || null,
+        reasonforrequest: formData.reasonforrequest || null,
+        unit: formData.unit || null,
+        location: formData.location || null,
+      };
+
+      const response = editingId
+        ? await fetch(`/api/appointments/${editingId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        : await fetch('/api/appointments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, workspaceid, status: 'scheduled' }),
+          });
 
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setShowDialog(false);
-          setPatientSearchTerm('');
-          setFormData({
-            patientid: '',
-            doctorid: '',
-            starttime: '',
-            appointmentname: 'new_patient',
-            appointmenttype: 'visiting',
-            clinicalindication: '',
-            reasonforrequest: '',
-            unit: '',
-            location: '',
-          });
+          const wasEditing = !!editingId;
+          resetForm();
           loadAppointments();
-          alert(result.message || 'Appointment created successfully!');
+          alert(result.message || (wasEditing ? 'Appointment updated successfully!' : 'Appointment created successfully!'));
         } else {
-          alert(`Failed to create appointment: ${result.error || 'Unknown error'}`);
+          alert(`Failed to save appointment: ${result.error || 'Unknown error'}`);
         }
       } else {
         const error = await response.json();
-        alert(`Failed to create appointment: ${error.error || 'Unknown error'}`);
+        alert(`Failed to save appointment: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating appointment:', error);
@@ -367,8 +427,8 @@ export default function AppointmentsPage() {
             Manage patient appointments and schedules
           </p>
         </div>
-        <button 
-          onClick={() => setShowDialog(true)}
+        <button
+          onClick={() => { setEditingId(null); setShowDialog(true); }}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={20} />
@@ -521,15 +581,17 @@ export default function AppointmentsPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Location</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Unit</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAppointments.map((appt) => {
                     const { date, time } = formatDateTime(appt.starttime);
-                    const statusInfo = statusConfig[appt.status];
+                    const statusInfo = statusConfig[appt.status as keyof typeof statusConfig]
+                      ?? { label: appt.status || 'Unknown', color: 'bg-gray-50 text-gray-600 border-gray-300' };
                     
                     return (
-                      <tr key={appt.appointmentid} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={appt.appointmentid} onClick={() => openEdit(appt)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
                             <Calendar size={16} className="text-gray-400" />
@@ -593,6 +655,20 @@ export default function AppointmentsPage() {
                             {statusInfo.label}
                           </span>
                         </td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openEdit(appt)}
+                              title="Open / edit appointment"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium"
+                            ><Edit size={13} /> Edit</button>
+                            <button
+                              onClick={() => deleteAppointment(appt)}
+                              title="Delete appointment"
+                              className="p-1.5 rounded-md text-red-500 hover:bg-red-50"
+                            ><Trash2 size={14} /></button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -611,14 +687,11 @@ export default function AppointmentsPage() {
               {/* Dialog Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold">Add New Appointment</h2>
-                  <p className="text-sm text-gray-600 mt-1">Schedule a new appointment for a patient</p>
+                  <h2 className="text-lg font-semibold">{editingId ? 'Edit Appointment' : 'Add New Appointment'}</h2>
+                  <p className="text-sm text-gray-600 mt-1">{editingId ? 'Update the time, staff, or details — or cancel the appointment' : 'Schedule a new appointment for a patient'}</p>
                 </div>
                 <button
-                  onClick={() => {
-                    setShowDialog(false);
-                    setPatientSearchTerm('');
-                  }}
+                  onClick={resetForm}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X size={24} />
@@ -802,22 +875,35 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Dialog Footer */}
-              <div className="flex justify-end gap-2 mt-6">
-                <button
-                  onClick={() => {
-                    setShowDialog(false);
-                    setPatientSearchTerm('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateAppointment}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Create Appointment
-                </button>
+              <div className="flex justify-between items-center gap-2 mt-6">
+                <div>
+                  {editingId && (
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('Cancel this appointment? It will be marked as cancelled.')) return;
+                        await updateStatus(editingId, 'cancelled');
+                        resetForm();
+                      }}
+                      className="px-4 py-2 border border-amber-300 text-amber-700 rounded-md hover:bg-amber-50 transition-colors text-sm font-medium"
+                    >
+                      Cancel Appointment
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={resetForm}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleCreateAppointment}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    {editingId ? 'Save Changes' : 'Create Appointment'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

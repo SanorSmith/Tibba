@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Clock, UserCheck, UserX, AlertTriangle, Timer, Calendar, Fingerprint, ClipboardList, FileBarChart, ChevronRight, LogIn, LogOut } from 'lucide-react';
+import { Clock, UserCheck, UserX, AlertTriangle, Timer, Calendar, Fingerprint, ClipboardList, FileBarChart, ChevronRight, LogIn, LogOut, Plus, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import attendanceJson from '@/data/hr/attendance.json';
@@ -13,6 +13,64 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Manual attendance entry modal
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [shiftList, setShiftList] = useState<any[]>([]);
+  const [savingEntry, setSavingEntry] = useState(false);
+  const [entry, setEntry] = useState({
+    employee_id: '', date: new Date().toISOString().split('T')[0],
+    shift_id: 'DAY', first_in: '08:00', last_out: '17:00', status: 'PRESENT',
+  });
+
+  // Live preview of computed hours
+  const previewHours = useMemo(() => {
+    if (!entry.first_in || !entry.last_out) return null;
+    const [ih, im] = entry.first_in.split(':').map(Number);
+    const [oh, om] = entry.last_out.split(':').map(Number);
+    let total = (oh * 60 + om - ih * 60 - im) / 60;
+    if (total < 0) total += 24; // overnight
+    const regular = Math.min(total, 8);
+    const overtime = Math.max(0, total - 8);
+    return { total: total.toFixed(1), regular: regular.toFixed(1), overtime: overtime.toFixed(1) };
+  }, [entry.first_in, entry.last_out]);
+
+  const openManualEntry = async () => {
+    setShowManualEntry(true);
+    // Load staff + shifts for the dropdowns (once)
+    if (staffList.length === 0) {
+      try {
+        const [st, sh] = await Promise.all([
+          fetch('/api/hr/staff').then(r => r.json()),
+          fetch('/api/hr/attendance/staff').then(r => r.json()).catch(() => ({})),
+        ]);
+        const rows = st.data ?? st.staff ?? st ?? [];
+        setStaffList(Array.isArray(rows) ? rows : []);
+      } catch { /* non-fatal */ }
+    }
+  };
+
+  const submitManualEntry = async () => {
+    if (!entry.employee_id) { toast.error('Select an employee'); return; }
+    setSavingEntry(true);
+    try {
+      const res = await fetch('/api/hr/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to save');
+      toast.success(`Attendance saved — overtime ${previewHours?.overtime ?? 0}h auto-calculated`);
+      setShowManualEntry(false);
+      loadData();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingEntry(false);
+    }
+  };
 
   // =========================================================================
   // LOAD DATA FROM DATABASE API
@@ -110,11 +168,86 @@ export default function AttendancePage() {
           <Link href="/hr/attendance/exceptions">
             <button className="btn-secondary flex items-center gap-2"><AlertTriangle size={14} /><span className="hidden sm:inline">Exceptions</span></button>
           </Link>
+          <button onClick={openManualEntry} className="btn-secondary flex items-center gap-2">
+            <Plus size={14} /><span className="hidden sm:inline">Manual Entry</span>
+          </button>
           <Link href="/hr/attendance/biometric">
             <button className="btn-primary flex items-center gap-2"><Fingerprint size={14} /><span className="hidden sm:inline">Biometric</span></button>
           </Link>
         </div>
       </div>
+
+      {/* Manual Attendance Entry Modal */}
+      {showManualEntry && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-md">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Manual Attendance Entry</h3>
+              <button onClick={() => setShowManualEntry(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Employee *</label>
+                <select value={entry.employee_id} onChange={e => setEntry(s => ({ ...s, employee_id: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Select employee…</option>
+                  {staffList.map((s: any) => (
+                    <option key={s.staffid || s.id} value={s.staffid || s.id}>
+                      {s.full_name || `${s.firstname || ''} ${s.lastname || ''}`.trim()} {s.staff_id ? `(${s.staff_id})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Date</label>
+                  <input type="date" value={entry.date} onChange={e => setEntry(s => ({ ...s, date: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Shift</label>
+                  <select value={entry.shift_id} onChange={e => setEntry(s => ({ ...s, shift_id: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="DAY">Day Shift</option>
+                    <option value="MORNING">Morning</option>
+                    <option value="AFTERNOON">Afternoon</option>
+                    <option value="NIGHT">Night</option>
+                    <option value="12H-DAY">12-Hour Day</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Check In</label>
+                  <input type="time" value={entry.first_in} onChange={e => setEntry(s => ({ ...s, first_in: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Check Out</label>
+                  <input type="time" value={entry.last_out} onChange={e => setEntry(s => ({ ...s, last_out: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+
+              {/* Live overtime preview */}
+              {previewHours && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm flex justify-between">
+                  <span className="text-gray-600">Total: <strong>{previewHours.total}h</strong></span>
+                  <span className="text-gray-600">Regular: <strong>{previewHours.regular}h</strong></span>
+                  <span className="text-amber-700">Overtime: <strong>{previewHours.overtime}h</strong></span>
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t flex justify-end gap-3">
+              <button onClick={() => setShowManualEntry(false)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+              <button onClick={submitManualEntry} disabled={savingEntry || !entry.employee_id}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium">
+                {savingEntry ? 'Saving…' : <><Plus size={14} /> Save Attendance</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="tibbna-grid-4 tibbna-section">
