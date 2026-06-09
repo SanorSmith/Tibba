@@ -236,7 +236,7 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 25;
   const [currentPage, setCurrentPage] = useState(1);
 
   const drugList = data?.drugs || [];
@@ -285,6 +285,59 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
             </p>
           ) : (
             <TooltipProvider>
+              {/* Pagination - Top */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mb-3 pb-3 border-b">
+                  <p className="text-xs text-muted-foreground">
+                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, drugList.length)} of {drugList.length} drugs
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === "..." ? (
+                          <span key={`ellipsis-${i}`} className="text-xs px-1 text-muted-foreground">…</span>
+                        ) : (
+                          <Button
+                            key={p}
+                            variant={currentPage === p ? "default" : "outline"}
+                            size="sm"
+                            className={`h-7 w-7 p-0 text-xs ${
+                              currentPage === p ? "bg-[#618FF5] text-white hover:bg-[#618FF5]" : ""
+                            }`}
+                            onClick={() => setCurrentPage(p as number)}
+                          >
+                            {p}
+                          </Button>
+                        )
+                      )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -374,59 +427,6 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
                   </TableBody>
                 </Table>
               </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                  <p className="text-xs text-muted-foreground">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, drugList.length)} of {drugList.length} drugs
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </Button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                      .reduce<(number | "...")[]>((acc, p, i, arr) => {
-                        if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push("...");
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, i) =>
-                        p === "..." ? (
-                          <span key={`ellipsis-${i}`} className="text-xs px-1 text-muted-foreground">…</span>
-                        ) : (
-                          <Button
-                            key={p}
-                            variant={currentPage === p ? "default" : "outline"}
-                            size="sm"
-                            className={`h-7 w-7 p-0 text-xs ${
-                              currentPage === p ? "bg-[#618FF5] text-white hover:bg-[#618FF5]" : ""
-                            }`}
-                            onClick={() => setCurrentPage(p as number)}
-                          >
-                            {p}
-                          </Button>
-                        )
-                      )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </TooltipProvider>
           )}
         </CardContent>

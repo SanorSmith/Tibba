@@ -50,9 +50,9 @@ export function PharmacyNav({
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-3 py-1.5 flex items-center gap-1 text-xs"
+                className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-4 py-2.5 flex items-center gap-1.5 text-sm"
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4.5 w-4.5" />
                 {tab.label}
               </TabsTrigger>
             );
