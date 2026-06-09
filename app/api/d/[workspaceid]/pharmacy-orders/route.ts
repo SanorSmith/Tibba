@@ -191,6 +191,11 @@ export async function GET(
       return acc;
     }, {} as Record<string, { status: string; total: string }>);
 
+    console.log(`[Pharmacy Orders] Fetched ${invoicesData.length} invoices`);
+    if (invoicesData.length > 0) {
+      console.log('[Pharmacy Orders] Sample invoice:', invoicesData[0]);
+    }
+
     // Group POS sales by order and calculate cumulative payments
     const paymentsByOrder = posSalesData.reduce((acc, sale) => {
       if (!sale.pharmacyorderid) return acc;
@@ -251,6 +256,11 @@ export async function GET(
         paymentStatus = "UNPAID";
       } else {
         paymentStatus = "UNPAID";
+      }
+      
+      // Log final payment status for dispensed orders
+      if (order.status === "DISPENSED") {
+        console.log(`[Payment Status Final] Order ${order.orderid}: ${paymentStatus}`);
       }
       
       return {
