@@ -22,6 +22,7 @@ import {
 import { DrugAutocomplete } from "@/components/ui/drug-autocomplete";
 import { Loader2, Plus, Trash2, User, Search, ArrowLeft, Phone, Shield, RefreshCw, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Toast } from "@/components/ui/toast";
 import PatientSearchModal from "../../../../../components/PatientSearchModal";
 
 interface Patient {
@@ -77,6 +78,7 @@ export default function CreateOrderModal({
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
   const [showInlinePatientForm, setShowInlinePatientForm] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const [insuranceCompanies, setInsuranceCompanies] = useState<any[]>([]);
   const [newPatientForm, setNewPatientForm] = useState({
     first_name_ar: '',
@@ -268,7 +270,7 @@ export default function CreateOrderModal({
 
   const handleSaveInlinePatientForm = async () => {
     if (!newPatientForm.phone || !newPatientForm.date_of_birth || !newPatientForm.gender || !newPatientForm.first_name_ar || !newPatientForm.last_name_ar) {
-      alert('Please fill all required fields');
+      setToast({ message: 'Please fill all required fields', type: 'error' });
       return;
     }
 
@@ -276,11 +278,11 @@ export default function CreateOrderModal({
     if (newPatientForm.national_id) {
       const nationalIdDigits = newPatientForm.national_id.replace(/\D/g, '');
       if (nationalIdDigits.length !== 12) {
-        alert('National ID must be exactly 12 digits');
+        setToast({ message: 'National ID must be exactly 12 digits', type: 'error' });
         return;
       }
       if (nationalIdDigits !== newPatientForm.national_id) {
-        alert('National ID must contain only digits');
+        setToast({ message: 'National ID must contain only digits', type: 'error' });
         return;
       }
     }
@@ -289,7 +291,7 @@ export default function CreateOrderModal({
     if (newPatientForm.insurance_number && newPatientForm.insurance_company) {
       const insurancePattern = /^[A-Z0-9]{3,6}-\d{4,6}-\d{4}$/;
       if (!insurancePattern.test(newPatientForm.insurance_number)) {
-        alert('Insurance number must follow format: CompanyCode-PatientID-Year (e.g., NAT001-12345-2024)');
+        setToast({ message: 'Insurance number must follow format: CompanyCode-PatientID-Year (e.g., NAT001-12345-2024)', type: 'error' });
         return;
       }
     }
@@ -340,14 +342,14 @@ export default function CreateOrderModal({
         setSelectedPatient(formattedPatient);
         setPatientSearch(`${result.patient.firstname} ${result.patient.lastname}`);
         setShowInlinePatientForm(false);
-        alert('Patient registered successfully!');
+        setToast({ message: 'Patient registered successfully!', type: 'success' });
       } else {
         const error = await res.json();
-        alert(error.error || 'Failed to create patient');
+        setToast({ message: error.error || 'Failed to create patient', type: 'error' });
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert('Failed to save patient');
+      setToast({ message: 'Failed to save patient', type: 'error' });
     }
   };
 
@@ -1177,6 +1179,15 @@ export default function CreateOrderModal({
         onPatientSelect={handlePatientSelect}
         workspaceId={workspaceid}
       />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </>
   );
 }

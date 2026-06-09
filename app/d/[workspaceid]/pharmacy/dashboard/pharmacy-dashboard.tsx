@@ -43,7 +43,7 @@ interface DashboardStats {
   lowStock: { count: number; threshold: number; items: { drugid: string; drugname: string; strength: string; form: string; totalQuantity: number }[] };
   orders: { total: number; pending: number; inProgress: number; dispensed: number; todayCount: number };
   customers: { todayVisits: number };
-  sales: { totalRevenue: number; todayRevenue: number; totalInvoices: number; paidInvoices: number };
+  sales: { totalRevenue: number; todayRevenue: number; monthlyRevenue: number; totalInvoices: number; paidInvoices: number };
   overdue: { count: number; orders: { orderid: string; priority: string; createdat: string }[] };
   notifications: { count: number; items: { orderid: string; priority: string; status: string; notes: string | null; createdat: string; source: string }[] };
   topSellers?: { drugid: string; drugname: string; genericname: string | null; strength: string; form: string; totalquantity: number }[];
@@ -177,9 +177,11 @@ export default function PharmacyDashboard({
                   <Card className="shadow-sm">
                     <CardContent className="pt-4 pb-3 px-4">
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Today&apos;s Sales</p>
                           <p className="text-2xl font-bold">{(stats?.sales.todayRevenue ?? 0).toLocaleString()} IQD</p>
+                          <p className="text-xs text-muted-foreground mt-2">Monthly Sales</p>
+                          <p className="text-xl font-bold text-blue-600">{(stats?.sales.monthlyRevenue ?? 0).toLocaleString()} IQD</p>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center">
                           <DollarSign className="h-5 w-5 text-green-600" />
@@ -211,8 +213,8 @@ export default function PharmacyDashboard({
 
                 {/* Bottom detail cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Low Stock Medicines */}
-                  <Card className="shadow-sm">
+                  {/* Low Stock Medicines - HIDDEN */}
+                  {/* <Card className="shadow-sm">
                     <CardHeader className="pb-2 pt-4 px-4">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
                         <PackageSearch className="h-4 w-4 text-orange-500" />
@@ -225,7 +227,6 @@ export default function PharmacyDashboard({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                      {/* Pharmacy Inventory Summary */}
                       <div className="grid grid-cols-3 gap-2 mb-4">
                         <div 
                           className="text-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
@@ -280,7 +281,7 @@ export default function PharmacyDashboard({
                         </div>
                       )}
                     </CardContent>
-                  </Card>
+                  </Card> */}
 
                   {/* Doctor Notifications & Urgent Orders */}
                   <Card className="shadow-sm">
@@ -395,8 +396,8 @@ export default function PharmacyDashboard({
                     </CardContent>
                   </Card>
 
-                  {/* Order Status Breakdown */}
-                  <Card className="shadow-sm">
+                  {/* Order Status Breakdown - HIDDEN */}
+                  {/* <Card className="shadow-sm">
                     <CardHeader className="pb-2 pt-4 px-4">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-[#618FF5]" />
@@ -410,7 +411,7 @@ export default function PharmacyDashboard({
                         <StatusBar label="Dispensed" value={stats?.orders.dispensed ?? 0} total={stats?.orders.total || 1} color="bg-green-400" />
                       </div>
                     </CardContent>
-                  </Card>
+                  </Card> */}
                 </div>
               </div>
             )}
