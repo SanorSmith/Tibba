@@ -47,6 +47,7 @@ export async function GET(
       todayStats,
       posSalesStats,
       todayPosSales,
+      monthlyPosSales,
       overdueOrders,
       doctorNotifications,
       topSellers,
@@ -98,7 +99,7 @@ export async function GET(
         .from(posSales)
         .where(eq(posSales.workspaceid, workspaceid)),
 
-      // Today's sales (POS)
+      // 5. Today's sales (POS)
       db
         .select({
           total: sql<string>`COALESCE(SUM(${posSales.totalamount}::numeric), 0)`,
@@ -108,6 +109,19 @@ export async function GET(
           and(
             eq(posSales.workspaceid, workspaceid),
             gte(posSales.createdat, todayStart)
+          )
+        ),
+
+      // 6. Monthly sales (POS)
+      db
+        .select({
+          total: sql<string>`COALESCE(SUM(${posSales.totalamount}::numeric), 0)`,
+        })
+        .from(posSales)
+        .where(
+          and(
+            eq(posSales.workspaceid, workspaceid),
+            gte(posSales.createdat, monthStart)
           )
         ),
 
@@ -202,6 +216,7 @@ export async function GET(
       sales: {
         totalRevenue: parseFloat(posSalesStats?.[0]?.totalSales || "0"),
         todayRevenue: parseFloat(todayPosSales?.[0]?.total || "0"),
+        monthlyRevenue: parseFloat(monthlyPosSales?.[0]?.total || "0"),
         totalInvoices: Number(posSalesStats?.[0]?.totalInvoices || 0),
         paidInvoices: 0, // No invoices table available
       },
