@@ -212,21 +212,39 @@ export async function GET(
       const cumulativePayments = paymentsByOrder[order.orderid] || 0;
       let paymentStatus: string;
       
+      // Debug logging for payment status calculation
+      if (order.status === "DISPENSED" && invoice) {
+        console.log(`[Payment Status Debug] Order ${order.orderid}:`, {
+          orderStatus: order.status,
+          invoiceStatus: invoice?.status,
+          invoiceTotal: invoice?.total,
+          cumulativePayments,
+          hasInvoice: !!invoice
+        });
+      }
+      
       // If order is partially dispensed, payment status should be PARTIALLY_PAID
       // even if the invoice for dispensed items is fully paid
       if (order.status === "PARTIALLY_DISPENSED" || order.status === "IN_PROGRESS") {
         paymentStatus = "PARTIALLY_PAID";
       } else if (invoice) {
-        // Calculate payment status based on cumulative payments vs invoice total
-        const invoiceTotal = parseFloat(invoice.total || "0");
-        const TOLERANCE = 0.01;
-        
-        if (cumulativePayments >= (invoiceTotal - TOLERANCE)) {
+        // First check invoice status directly (from billing system)
+        if (invoice.status === "PAID") {
           paymentStatus = "PAID";
-        } else if (cumulativePayments > 0) {
+        } else if (invoice.status === "PARTIAL") {
           paymentStatus = "PARTIALLY_PAID";
         } else {
-          paymentStatus = "UNPAID";
+          // Fallback: Calculate payment status based on cumulative POS payments vs invoice total
+          const invoiceTotal = parseFloat(invoice.total || "0");
+          const TOLERANCE = 0.01;
+          
+          if (cumulativePayments >= (invoiceTotal - TOLERANCE)) {
+            paymentStatus = "PAID";
+          } else if (cumulativePayments > 0) {
+            paymentStatus = "PARTIALLY_PAID";
+          } else {
+            paymentStatus = "UNPAID";
+          }
         }
       } else if (order.status === "DISPENSED") {
         // Dispensed but no invoice - show as unpaid
