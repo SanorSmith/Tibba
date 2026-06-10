@@ -419,33 +419,31 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
 
       {/* Schedule Operation Dialog */}
       <Dialog open={showOperationDialog} onOpenChange={setShowOperationDialog}>
-        <DialogContent className="max-w-[65vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Scissors className="h-5 w-5" />
+        <DialogContent className="max-w-[65vw] max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Scissors className="h-4 w-4" />
               Schedule Operation
             </DialogTitle>
-            <DialogDescription>
-              Schedule a surgical operation for this patient
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="operationname">Operation Name *</Label>
-              <Input
-                id="operationname"
-                placeholder="e.g., Appendectomy"
-                value={operationFormData.operationname}
-                onChange={(e) =>
-                  setOperationFormData({ ...operationFormData, operationname: e.target.value })
-                }
-              />
-            </div>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="operationname" className="text-sm">Operation Name *</Label>
+                <Input
+                  id="operationname"
+                  placeholder="e.g., Appendectomy"
+                  value={operationFormData.operationname}
+                  onChange={(e) =>
+                    setOperationFormData({ ...operationFormData, operationname: e.target.value })
+                  }
+                  className="h-9"
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="scheduleddate">Scheduled Date & Time *</Label>
+              <div className="space-y-1">
+                <Label htmlFor="scheduleddate" className="text-sm">Scheduled Date & Time *</Label>
                 <Input
                   id="scheduleddate"
                   type="datetime-local"
@@ -453,38 +451,21 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                   onChange={(e) =>
                     setOperationFormData({ ...operationFormData, scheduleddate: e.target.value })
                   }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estimatedduration">
-                  Estimated Duration (minutes)
-                </Label>
-                <Input
-                  id="estimatedduration"
-                  type="number"
-                  placeholder="e.g., 120"
-                  value={operationFormData.estimatedduration}
-                  onChange={(e) =>
-                    setOperationFormData({
-                      ...operationFormData,
-                      estimatedduration: e.target.value,
-                    })
-                  }
+                  className="h-9"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="operationtype">Operation Type</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="operationtype" className="text-sm">Operation Type</Label>
                 <Select
                   value={operationFormData.operationtype}
                   onValueChange={(value: "emergency" | "elective" | "urgent") =>
                     setOperationFormData({ ...operationFormData, operationtype: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -495,8 +476,8 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="theater">Theater</Label>
+              <div className="space-y-1">
+                <Label htmlFor="theater" className="text-sm">Theater</Label>
                 <Input
                   id="theater"
                   placeholder="e.g., Theater 1"
@@ -504,24 +485,26 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                   onChange={(e) =>
                     setOperationFormData({ ...operationFormData, theater: e.target.value })
                   }
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="anesthesiatype" className="text-sm">Anesthesia Type</Label>
+                <Input
+                  id="anesthesiatype"
+                  placeholder="e.g., General"
+                  value={operationFormData.anesthesiatype}
+                  onChange={(e) =>
+                    setOperationFormData({ ...operationFormData, anesthesiatype: e.target.value })
+                  }
+                  className="h-9"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="anesthesiatype">Anesthesia Type</Label>
-              <Input
-                id="anesthesiatype"
-                placeholder="e.g., General, Local, Spinal"
-                value={operationFormData.anesthesiatype}
-                onChange={(e) =>
-                  setOperationFormData({ ...operationFormData, anesthesiatype: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="operationdiagnosis">Diagnosis</Label>
+            <div className="space-y-1">
+              <Label htmlFor="operationdiagnosis" className="text-sm">Diagnosis</Label>
               <Textarea
                 id="operationdiagnosis"
                 placeholder="Enter diagnosis..."
@@ -533,17 +516,18 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                     operationdiagnosis: e.target.value,
                   })
                 }
+                className="text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="preoperativeassessment">
+            <div className="space-y-1">
+              <Label htmlFor="preoperativeassessment" className="text-sm">
                 Pre-operative Assessment
               </Label>
               <Textarea
                 id="preoperativeassessment"
                 placeholder="Enter pre-operative assessment..."
-                rows={3}
+                rows={2}
                 value={operationFormData.preoperativeassessment}
                 onChange={(e) =>
                   setOperationFormData({
@@ -551,30 +535,33 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                     preoperativeassessment: e.target.value,
                   })
                 }
+                className="text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="operationdetails">Operation Details</Label>
+            <div className="space-y-1">
+              <Label htmlFor="operationdetails" className="text-sm">Operation Details</Label>
               <Textarea
                 id="operationdetails"
                 placeholder="Enter operation details..."
-                rows={3}
+                rows={2}
                 value={operationFormData.operationdetails}
                 onChange={(e) => setOperationFormData({ ...operationFormData, operationdetails: e.target.value })}
+                className="text-sm"
               />
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button
               variant="outline"
               onClick={() => setShowOperationDialog(false)}
               disabled={savingOperation}
+              className="h-9"
             >
               Cancel
             </Button>
-            <Button onClick={handleAddOperation} disabled={savingOperation} className="bg-orange-500 hover:bg-orange-600">
+            <Button onClick={handleAddOperation} disabled={savingOperation} className="bg-[#4684c2] hover:bg-[#3a6fa0] h-9">
               {savingOperation ? "Scheduling..." : "Schedule Operation"}
             </Button>
           </DialogFooter>
