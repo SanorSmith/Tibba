@@ -940,6 +940,7 @@ export * from "./tables/pharmacy-substitutions";
 export * from "./tables/insurance-reports";
 export * from "./schema/test-reference-ranges";
 export * from "./schema/test-reference-audit-log";
+export * from "./schema/test-packages";
 
 // ─── Finance Module ──────────────────────────────────────────────────────────
 export * from "./tables/finance-enums";
