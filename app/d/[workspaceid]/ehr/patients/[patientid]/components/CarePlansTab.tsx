@@ -103,6 +103,7 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
     operationdiagnosis: "",
     preoperativeassessment: "",
     operationdetails: "",
+    price: "",
   });
 
   // Use React Query for caching
@@ -156,6 +157,7 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
         operationdiagnosis: "",
         preoperativeassessment: "",
         operationdetails: "",
+        price: "",
       });
     } catch (error) {
       console.error("Error creating operation:", error);
@@ -266,91 +268,127 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
 
       {/* Care Plan Form Dialog - Minimal Required Fields */}
       <Dialog open={showCarePlanForm} onOpenChange={setShowCarePlanForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>New Care Plan (openEHR)</DialogTitle>
-            <DialogDescription>
-              Create a care plan with minimal required information
-            </DialogDescription>
+        <DialogContent className="max-w-[65vw] max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-base">New Care Plan (openEHR)</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
+          <div className="space-y-3 py-2">
             {/* Care Plan Fields - Only 7 fields from diagram */}
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="carePlanName" className="text-base">Care Plan Name *</Label>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="carePlanName" className="text-sm">Care Plan Name *</Label>
+                <Select
+                  onValueChange={(value) => {
+                    const input = document.getElementById("carePlanName") as HTMLInputElement;
+                    if (input) input.value = value;
+                  }}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select care plan type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Post-Operative Care - General Surgery">Post-Operative Care - General Surgery</SelectItem>
+                    <SelectItem value="Post-Operative Care - Cardiac Surgery">Post-Operative Care - Cardiac Surgery</SelectItem>
+                    <SelectItem value="Post-Operative Care - Orthopedic Surgery">Post-Operative Care - Orthopedic Surgery</SelectItem>
+                    <SelectItem value="Post-Operative Care - Cesarean Section">Post-Operative Care - Cesarean Section</SelectItem>
+                    <SelectItem value="Diabetes Management">Diabetes Management</SelectItem>
+                    <SelectItem value="Hypertension Management">Hypertension Management</SelectItem>
+                    <SelectItem value="Asthma Management">Asthma Management</SelectItem>
+                    <SelectItem value="COPD Management">COPD Management</SelectItem>
+                    <SelectItem value="Heart Failure Management">Heart Failure Management</SelectItem>
+                    <SelectItem value="Chronic Kidney Disease Management">Chronic Kidney Disease Management</SelectItem>
+                    <SelectItem value="Cancer Treatment Plan">Cancer Treatment Plan</SelectItem>
+                    <SelectItem value="Chemotherapy Treatment">Chemotherapy Treatment</SelectItem>
+                    <SelectItem value="Radiation Therapy">Radiation Therapy</SelectItem>
+                    <SelectItem value="Antibiotic Treatment">Antibiotic Treatment</SelectItem>
+                    <SelectItem value="Pain Management">Pain Management</SelectItem>
+                    <SelectItem value="Wound Care Management">Wound Care Management</SelectItem>
+                    <SelectItem value="Physical Therapy">Physical Therapy</SelectItem>
+                    <SelectItem value="Cardiac Rehabilitation">Cardiac Rehabilitation</SelectItem>
+                    <SelectItem value="Prenatal Care">Prenatal Care</SelectItem>
+                    <SelectItem value="Postnatal Care">Postnatal Care</SelectItem>
+                    <SelectItem value="Mental Health Treatment">Mental Health Treatment</SelectItem>
+                    <SelectItem value="Lab Monitoring - Diabetes">Lab Monitoring - Diabetes</SelectItem>
+                    <SelectItem value="Lab Monitoring - Kidney Function">Lab Monitoring - Kidney Function</SelectItem>
+                    <SelectItem value="Lab Monitoring - Liver Function">Lab Monitoring - Liver Function</SelectItem>
+                    <SelectItem value="Lab Monitoring - Thyroid Function">Lab Monitoring - Thyroid Function</SelectItem>
+                    <SelectItem value="Lab Monitoring - Anticoagulation">Lab Monitoring - Anticoagulation</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   id="carePlanName"
-                  placeholder="e.g., Diabetes Management Care Plan"
+                  className="hidden"
                   required
-                  className="h-11"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="carePlanDescription" className="text-base">Description</Label>
+              <div className="space-y-1">
+                <Label htmlFor="carePlanDescription" className="text-sm">Description</Label>
                 <Textarea
                   id="carePlanDescription"
-                  rows={3}
+                  rows={2}
                   placeholder="Comprehensive description of the care plan..."
-                  className="resize-none"
+                  className="resize-none text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="carePlanReason" className="text-base">Reason</Label>
+              <div className="space-y-1">
+                <Label htmlFor="carePlanReason" className="text-sm">Reason</Label>
                 <Textarea
                   id="carePlanReason"
-                  rows={3}
+                  rows={2}
                   placeholder="Reason for establishing this care plan..."
-                  className="resize-none"
+                  className="resize-none text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="carePlanSchedule" className="text-base">Care Plan Schedule</Label>
+              <div className="space-y-1">
+                <Label htmlFor="carePlanSchedule" className="text-sm">Care Plan Schedule</Label>
                 <Textarea
                   id="carePlanSchedule"
-                  rows={3}
+                  rows={2}
                   placeholder="e.g., Weekly check-ups, Monthly reviews..."
-                  className="resize-none"
+                  className="resize-none text-sm"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="carePlanExpire" className="text-base">Care Plan Expire</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="carePlanExpire" className="text-sm">Care Plan Expire</Label>
                   <Input
                     id="carePlanExpire"
                     type="date"
-                    className="h-11"
+                    className="h-9"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="carePlanCompleted" className="text-base">Care Plan Completed</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="carePlanCompleted" className="text-sm">Care Plan Completed</Label>
                   <Input
                     id="carePlanCompleted"
                     type="date"
-                    className="h-11"
+                    className="h-9"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="carePlanComment" className="text-base">Comment</Label>
+              <div className="space-y-1">
+                <Label htmlFor="carePlanComment" className="text-sm">Comment</Label>
                 <Textarea
                   id="carePlanComment"
-                  rows={3}
+                  rows={2}
                   placeholder="Additional notes or comments..."
-                  className="resize-none"
+                  className="resize-none text-sm"
                 />
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-2">
             <Button
               variant="outline"
               onClick={() => setShowCarePlanForm(false)}
               disabled={savingCarePlan}
+              className="h-9"
             >
               Cancel
             </Button>
@@ -431,15 +469,37 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="operationname" className="text-sm">Operation Name *</Label>
-                <Input
-                  id="operationname"
-                  placeholder="e.g., Appendectomy"
+                <Select
                   value={operationFormData.operationname}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, operationname: e.target.value })
+                  onValueChange={(value) =>
+                    setOperationFormData({ ...operationFormData, operationname: value })
                   }
-                  className="h-9"
-                />
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select operation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Appendectomy">Appendectomy</SelectItem>
+                    <SelectItem value="Cholecystectomy">Cholecystectomy</SelectItem>
+                    <SelectItem value="Hernia Repair">Hernia Repair</SelectItem>
+                    <SelectItem value="Cesarean Section">Cesarean Section</SelectItem>
+                    <SelectItem value="Hysterectomy">Hysterectomy</SelectItem>
+                    <SelectItem value="Knee Arthroscopy">Knee Arthroscopy</SelectItem>
+                    <SelectItem value="Hip Replacement">Hip Replacement</SelectItem>
+                    <SelectItem value="Knee Replacement">Knee Replacement</SelectItem>
+                    <SelectItem value="Cataract Surgery">Cataract Surgery</SelectItem>
+                    <SelectItem value="Tonsillectomy">Tonsillectomy</SelectItem>
+                    <SelectItem value="Coronary Artery Bypass">Coronary Artery Bypass</SelectItem>
+                    <SelectItem value="Mastectomy">Mastectomy</SelectItem>
+                    <SelectItem value="Prostatectomy">Prostatectomy</SelectItem>
+                    <SelectItem value="Thyroidectomy">Thyroidectomy</SelectItem>
+                    <SelectItem value="Spinal Fusion">Spinal Fusion</SelectItem>
+                    <SelectItem value="Gastric Bypass">Gastric Bypass</SelectItem>
+                    <SelectItem value="Colectomy">Colectomy</SelectItem>
+                    <SelectItem value="Craniotomy">Craniotomy</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1">
@@ -456,7 +516,7 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div className="space-y-1">
                 <Label htmlFor="operationtype" className="text-sm">Operation Type</Label>
                 <Select
@@ -497,6 +557,20 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                   value={operationFormData.anesthesiatype}
                   onChange={(e) =>
                     setOperationFormData({ ...operationFormData, anesthesiatype: e.target.value })
+                  }
+                  className="h-9"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="price" className="text-sm">Price</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  placeholder="e.g., 5000"
+                  value={operationFormData.price}
+                  onChange={(e) =>
+                    setOperationFormData({ ...operationFormData, price: e.target.value })
                   }
                   className="h-9"
                 />
