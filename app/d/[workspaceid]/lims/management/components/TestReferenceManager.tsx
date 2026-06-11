@@ -51,6 +51,7 @@ interface TestReferenceRange {
   clinicalindication?: string;
   additionalinformation?: string;
   notes?: string;
+  price?: string;
   isactive: string;
   createdby?: string;
   createdat?: string;
@@ -141,6 +142,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
     clinicalindication: "",
     additionalinformation: "",
     notes: "",
+    price: "",
   });
 
   useEffect(() => {
@@ -257,6 +259,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
         clinicalindication: range.clinicalindication || "",
         additionalinformation: range.additionalinformation || "",
         notes: range.notes || "",
+        price: range.price || "",
       });
     } else {
       setEditingRange(null);
@@ -280,6 +283,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
         clinicalindication: "",
         additionalinformation: "",
         notes: "",
+        price: "",
       });
     }
     setUpdateReason("");
@@ -841,6 +845,10 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
               <div>
                 <Label className="text-[10px]">Panic Text</Label>
                 <Input className="h-6 text-[11px]" value={formData.panictext} onChange={(e) => setFormData({ ...formData, panictext: e.target.value })} placeholder="Positive" />
+              </div>
+              <div>
+                <Label className="text-[10px]">Price</Label>
+                <Input className="h-6 text-[11px]" type="number" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="0.00" />
               </div>
 
               {/* Row 4: Clinical Indication + Additional Info */}
