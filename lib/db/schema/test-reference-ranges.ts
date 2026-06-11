@@ -38,6 +38,7 @@ export const testReferenceRanges = pgTable(
     
     // Additional metadata
     notes: text("notes"),
+    price: numeric("price", { precision: 10, scale: 2 }), // Test price
     isactive: varchar("isactive", { length: 1 }).notNull().default("Y"),
     
     // Audit fields

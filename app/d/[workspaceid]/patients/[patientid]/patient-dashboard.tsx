@@ -21,7 +21,7 @@ import { DiagnosticsTab } from "./components/DiagnosticsTab";
 import EnhancedOrdersTab from "./components/EnhancedOrdersTab";
 import { LabsTab } from "./components/LabsTab";
 import { MedsTab} from "./components/MedsTab";
-import { CarePlansTab } from "./components/CarePlansTab";
+import { CarePlansTab } from "../../ehr/patients/[patientid]/components/CarePlansTab";
 import { ReferralsTab } from "./components/ReferralsTab";
 import { VaccinationsTab } from "./components/VaccinationsTab";
 import { NotesTab } from "./components/NotesTab";

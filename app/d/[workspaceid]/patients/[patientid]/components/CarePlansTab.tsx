@@ -445,36 +445,16 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="scheduleddate">Scheduled Date & Time *</Label>
-                <Input
-                  id="scheduleddate"
-                  type="datetime-local"
-                  value={operationFormData.scheduleddate}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, scheduleddate: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estimatedduration">
-                  Estimated Duration (minutes)
-                </Label>
-                <Input
-                  id="estimatedduration"
-                  type="number"
-                  placeholder="e.g., 120"
-                  value={operationFormData.estimatedduration}
-                  onChange={(e) =>
-                    setOperationFormData({
-                      ...operationFormData,
-                      estimatedduration: e.target.value,
-                    })
-                  }
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="scheduleddate">Scheduled Date & Time *</Label>
+              <Input
+                id="scheduleddate"
+                type="datetime-local"
+                value={operationFormData.scheduleddate}
+                onChange={(e) =>
+                  setOperationFormData({ ...operationFormData, scheduleddate: e.target.value })
+                }
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
