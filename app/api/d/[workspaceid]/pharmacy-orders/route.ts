@@ -533,10 +533,13 @@ export async function POST(
       message: `Successfully created order with ${allItems.length} medication(s)`
     }, { status: 201 });
   } catch (error) {
-    console.error("[Pharmacy Orders POST]", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
+    console.error("[Pharmacy Orders POST] Error:", errMsg);
+    if (errStack) console.error("[Pharmacy Orders POST] Stack:", errStack);
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create order", detail: errMsg }, { status: 500 });
   }
 }
