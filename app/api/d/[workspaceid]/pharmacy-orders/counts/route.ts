@@ -39,10 +39,15 @@ export async function GET(
     });
 
     return NextResponse.json({ counts });
-  } catch (error) {
-    console.error("Error fetching order counts:", error);
+  } catch (error: any) {
+    console.error("[Pharmacy Orders Counts] Error:", error);
+    console.error("[Pharmacy Orders Counts] Error message:", error?.message);
+    console.error("[Pharmacy Orders Counts] Error stack:", error?.stack);
     return NextResponse.json(
-      { error: "Failed to fetch order counts" },
+      { 
+        error: "Failed to fetch order counts",
+        details: error?.message || String(error)
+      },
       { status: 500 }
     );
   }

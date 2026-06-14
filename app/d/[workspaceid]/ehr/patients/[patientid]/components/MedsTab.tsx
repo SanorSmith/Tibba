@@ -413,8 +413,8 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                 </div>
               </div>
 
-              {/* Single Row: Route, Timing Directions, Duration, Instructions, Usage, Valid Until */}
-              <div className="grid grid-cols-6 gap-2">
+              {/* Single Row: Route, Timing Directions, Duration, Valid Until */}
+              <div className="grid grid-cols-4 gap-2">
                 <div>
                   <Label className="text-xs">Route *</Label>
                   <Select
@@ -493,64 +493,6 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                       <SelectItem value="2 weeks">2 weeks</SelectItem>
                       <SelectItem value="1 month">1 month</SelectItem>
                       <SelectItem value="Until finished">Until finished</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Instructions</Label>
-                  <Select
-                    value={prescriptionForm.additionalInstruction}
-                    onValueChange={(value) =>
-                      setPrescriptionForm({
-                        ...prescriptionForm,
-                        additionalInstruction: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Instructions..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Take with food">Take with food</SelectItem>
-                      <SelectItem value="Take before meals">Take before meals</SelectItem>
-                      <SelectItem value="Take after meals">Take after meals</SelectItem>
-                      <SelectItem value="Take with plenty of water">Take with plenty of water</SelectItem>
-                      <SelectItem value="Swallow whole, do not crush">Swallow whole, do not crush</SelectItem>
-                      <SelectItem value="Chew well before swallowing">Chew well before swallowing</SelectItem>
-                      <SelectItem value="Dissolve under tongue">Dissolve under tongue</SelectItem>
-                      <SelectItem value="Shake well before use">Shake well before use</SelectItem>
-                      <SelectItem value="Avoid driving after taking">Avoid driving after taking</SelectItem>
-                      <SelectItem value="Avoid alcohol during treatment">Avoid alcohol during treatment</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Usage</Label>
-                  <Select
-                    value={prescriptionForm.usage}
-                    onValueChange={(value) =>
-                      setPrescriptionForm({
-                        ...prescriptionForm,
-                        usage: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Usage..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="For headache">For headache</SelectItem>
-                      <SelectItem value="For fever">For fever</SelectItem>
-                      <SelectItem value="For high blood pressure">For high blood pressure</SelectItem>
-                      <SelectItem value="For diabetes">For diabetes</SelectItem>
-                      <SelectItem value="For infection">For infection</SelectItem>
-                      <SelectItem value="For asthma">For asthma</SelectItem>
-                      <SelectItem value="For allergies">For allergies</SelectItem>
-                      <SelectItem value="For stomach pain">For stomach pain</SelectItem>
-                      <SelectItem value="For diarrhea">For diarrhea</SelectItem>
-                      <SelectItem value="For anxiety">For anxiety</SelectItem>
-                      <SelectItem value="For anemia">For anemia</SelectItem>
-                      <SelectItem value="For vitamin deficiency">For vitamin deficiency</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

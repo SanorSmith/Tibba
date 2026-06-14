@@ -258,7 +258,7 @@ export default function ImagingTab({
         open={showImagingRequestForm}
         onOpenChange={setShowImagingRequestForm}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[65vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Imaging Request</DialogTitle>
             <DialogDescription>
@@ -269,12 +269,53 @@ export default function ImagingTab({
             {/* Request Name */}
             <div>
               <label className="text-sm font-medium">Request Name *</label>
-              <input
-                type="text"
+              <select
                 className="w-full mt-1.5 px-3 py-2 border rounded-md"
-                placeholder="e.g., Chest X-Ray, CT Scan Abdomen"
                 id="requestName"
-              />
+              >
+                <option value="">Select imaging type</option>
+                <optgroup label="X-Ray">
+                  <option value="Chest X-Ray">Chest X-Ray</option>
+                  <option value="Abdominal X-Ray">Abdominal X-Ray</option>
+                  <option value="Spine X-Ray">Spine X-Ray</option>
+                  <option value="Extremity X-Ray">Extremity X-Ray</option>
+                  <option value="Skull X-Ray">Skull X-Ray</option>
+                  <option value="Pelvis X-Ray">Pelvis X-Ray</option>
+                </optgroup>
+                <optgroup label="Ultrasound">
+                  <option value="Abdominal Ultrasound">Abdominal Ultrasound</option>
+                  <option value="Pelvic Ultrasound">Pelvic Ultrasound</option>
+                  <option value="Obstetric Ultrasound">Obstetric Ultrasound</option>
+                  <option value="Cardiac Ultrasound (Echo)">Cardiac Ultrasound (Echo)</option>
+                  <option value="Thyroid Ultrasound">Thyroid Ultrasound</option>
+                  <option value="Breast Ultrasound">Breast Ultrasound</option>
+                  <option value="Vascular Ultrasound">Vascular Ultrasound</option>
+                </optgroup>
+                <optgroup label="CT Scan">
+                  <option value="CT Scan - Head">CT Scan - Head</option>
+                  <option value="CT Scan - Chest">CT Scan - Chest</option>
+                  <option value="CT Scan - Abdomen">CT Scan - Abdomen</option>
+                  <option value="CT Scan - Pelvis">CT Scan - Pelvis</option>
+                  <option value="CT Scan - Spine">CT Scan - Spine</option>
+                  <option value="CT Angiography">CT Angiography</option>
+                </optgroup>
+                <optgroup label="MRI">
+                  <option value="MRI - Brain">MRI - Brain</option>
+                  <option value="MRI - Spine">MRI - Spine</option>
+                  <option value="MRI - Abdomen">MRI - Abdomen</option>
+                  <option value="MRI - Pelvis">MRI - Pelvis</option>
+                  <option value="MRI - Joints">MRI - Joints</option>
+                  <option value="MRI - Cardiac">MRI - Cardiac</option>
+                </optgroup>
+                <optgroup label="Other Imaging">
+                  <option value="Mammography">Mammography</option>
+                  <option value="Bone Density Scan (DEXA)">Bone Density Scan (DEXA)</option>
+                  <option value="PET Scan">PET Scan</option>
+                  <option value="Nuclear Medicine Scan">Nuclear Medicine Scan</option>
+                  <option value="Fluoroscopy">Fluoroscopy</option>
+                </optgroup>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
             {/* Description */}
@@ -305,8 +346,8 @@ export default function ImagingTab({
               />
             </div>
 
-            {/* Urgency & Contrast Use */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Urgency & Contrast Use - Hidden */}
+            <div className="hidden grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium">Urgency *</label>
                 <select

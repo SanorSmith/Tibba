@@ -133,10 +133,10 @@ export async function POST(
     console.log("DEBUG: requesting_provider value:", requesting_provider);
 
     // Validate required fields
-    if (!service_name || !clinical_indication) {
+    if (!service_name) {
       return NextResponse.json(
         {
-          error: "Service name and clinical indication are required",
+          error: "Service name is required",
         },
         { status: 400 }
       );
@@ -196,9 +196,11 @@ export async function POST(
     compositionData[
       "template_clinical_encounter_v1/service_request/request/description"
     ] = `Status: REQUESTED | ${description || ""}`;
-    compositionData[
-      "template_clinical_encounter_v1/service_request/request/clinical_indication"
-    ] = clinical_indication;
+    if (clinical_indication) {
+      compositionData[
+        "template_clinical_encounter_v1/service_request/request/clinical_indication"
+      ] = clinical_indication;
+    }
     compositionData[
       "template_clinical_encounter_v1/service_request/request/requested_date"
     ] = eventTime;
@@ -224,7 +226,7 @@ export async function POST(
         is_package ? "Package" : "Individual"
       } test order: ${service_name} to ${target_lab || receiving_provider} (${
         urgency || "routine"
-      }) ordered due to ${clinical_indication}` +
+      })${clinical_indication ? ` ordered due to ${clinical_indication}` : " ordered"}` +
         (description ? `\n\nTest Details: ${description}` : "");
     compositionData[
       "template_clinical_encounter_v1/service_request/narrative"

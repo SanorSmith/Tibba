@@ -129,10 +129,11 @@ export async function GET(req: NextRequest) {
       ON ws.id = i.storage_location_id
     WHERE i.is_active = true
       ${workspaceFilter}
-      AND (
-        i.inventorycategory = 'pharmacy'
-        OR i.inventory_category = 'pharmacy'
-        OR stock_agg.item_id IS NOT NULL
+      AND (i.inventorycategory = 'pharmacy' OR i.inventory_category = 'pharmacy')
+      AND EXISTS (
+        SELECT 1 FROM item_batches ib_check
+        WHERE ib_check.item_id = i.id
+          AND (ib_check.unit_cost IS NOT NULL OR ib_check.selling_price IS NOT NULL)
       )
     AND (
         $2 = '%'

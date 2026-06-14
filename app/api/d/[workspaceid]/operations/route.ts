@@ -234,6 +234,7 @@ export async function POST(
         current_state: "planned",
         careflow_step: "procedure_scheduled",
         comment: body.comment,
+        price: body.price,
       },
       composerName
     );

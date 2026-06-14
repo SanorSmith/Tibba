@@ -21,7 +21,7 @@ import { DiagnosticsTab } from "./components/DiagnosticsTab";
 import EnhancedOrdersTab from "./components/EnhancedOrdersTab";
 import { LabsTab } from "./components/LabsTab";
 import { MedsTab} from "./components/MedsTab";
-import { CarePlansTab } from "./components/CarePlansTab";
+import { CarePlansTab } from "../../ehr/patients/[patientid]/components/CarePlansTab";
 import { ReferralsTab } from "./components/ReferralsTab";
 import { VaccinationsTab } from "./components/VaccinationsTab";
 import { NotesTab } from "./components/NotesTab";
@@ -277,9 +277,12 @@ export default function PatientDashboard({
     });
   };
 
-  const loadDiagnoses = async () => {
-    // Data is already loaded via usePatientData hook
-    console.log("Diagnoses already loaded from cache");
+  const loadDiagnoses = async (reset = false) => {
+    console.log("Refreshing diagnoses data...");
+    // Invalidate the diagnoses query to force a refetch
+    await queryClient.invalidateQueries({
+      queryKey: ["diagnoses", workspaceid, patient.patientid]
+    });
   };
 
   const loadImaging = async () => {
@@ -479,7 +482,10 @@ export default function PatientDashboard({
               loading={loading}
               workspaceid={workspaceid}
               patientid={patient.patientid}
-              onAppointmentAdded={() => console.log("Appointment added")}
+              onAppointmentAdded={() => {
+                // Invalidate appointments query to refresh the list
+                queryClient.invalidateQueries({ queryKey: ["appointments", workspaceid, patient.patientid] });
+              }}
             />
           </TabsContent>
 

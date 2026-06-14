@@ -37,7 +37,7 @@ export async function GET(
     // Extract strength from name if not in drug tables (e.g., "Paracetamol 500mg" -> "500mg")
     const results = await db.execute(sql`
       SELECT DISTINCT ON (i.id)
-        COALESCE(i.drug_id, i.id) as drugid,
+        d.drugid as drugid,
         i.id as itemid,
         i.name,
         i.generic_name as genericname,
@@ -62,7 +62,7 @@ export async function GET(
         ws.section_type as "storageType",
         ws.shelf
       FROM items i
-      LEFT JOIN drugs d ON d.drugid = i.drug_id AND d.workspaceid = ${workspaceid}
+      INNER JOIN drugs d ON d.drugid = i.drug_id AND d.workspaceid = ${workspaceid}
       LEFT JOIN global_drugs gd ON gd.drugid = i.drug_id
       LEFT JOIN warehouse_sections ws ON ws.id = i.storage_location_id
       WHERE i.workspace_id = ${workspaceid}

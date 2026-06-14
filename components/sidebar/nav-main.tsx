@@ -328,6 +328,7 @@ export function NavMain() {
             { title: ttt("Claims"), url: `${base}/insurance/claims` },
             { title: ttt("Verification"), url: `${base}/insurance/verification` },
             { title: ttt("Providers"), url: `${base}/insurance/providers` },
+            { title: "Insurance Reports", url: `${base}/insurance-reports` },
           ],
         },
         {
@@ -415,8 +416,12 @@ export function NavMain() {
           icon: ClipboardList,
           items: [
             { title: "Review Prescriptions", url: "/d/prescriptions/review" },
-            { title: ttt("Drug Interactions"), url: "/d/prescriptions/interactions" },
+            {
+              title: ttt("Drug Interactions"),
+              url: "/d/prescriptions/interactions",
+            },
             { title: "Patient Counseling", url: "/d/prescriptions/counseling" },
+            { title: "Insurance Reports", url: `${base}/insurance-reports` },
           ],
         },
         {

@@ -179,6 +179,7 @@ export async function createProcedure(
     current_state?: string;
     careflow_step?: string;
     comment?: string;
+    price?: string;
   },
   composerName: string
 ): Promise<string> {
@@ -232,6 +233,7 @@ export async function createProcedure(
   if (procedureData.theater_location) narrativeParts.push(`Theater: ${procedureData.theater_location}`);
   if (procedureData.estimated_duration) narrativeParts.push(`Duration: ${procedureData.estimated_duration}`);
   if (procedureData.preoperative_assessment) narrativeParts.push(procedureData.preoperative_assessment);
+  if (procedureData.price) narrativeParts.push(`Price: ${procedureData.price}`);
   if (procedureData.comment) narrativeParts.push(procedureData.comment);
   
   if (narrativeParts.length > 0) {

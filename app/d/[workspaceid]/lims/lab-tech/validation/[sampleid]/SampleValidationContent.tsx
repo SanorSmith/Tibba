@@ -74,12 +74,10 @@ export default function SampleValidationContent({
   const [comments, setComments] = useState<Record<string, string>>({});
   const [rerunResults, setRerunResults] = useState<Set<string>>(new Set());
   const [rerunReason, setRerunReason] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
   
   // Dialog states
   const [showValidateDialog, setShowValidateDialog] = useState(false);
   const [showReleaseDialog, setShowReleaseDialog] = useState(false);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRerunDialog, setShowRerunDialog] = useState(false);
 
   // Fetch sample data
@@ -144,30 +142,6 @@ export default function SampleValidationContent({
     },
   });
 
-  // Reject mutation
-  const rejectMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/lims/samples/${sampleid}/reject`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reason: rejectionReason,
-          workspaceid,
-        }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Rejection failed");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sample-validation", sampleid] });
-      queryClient.invalidateQueries({ queryKey: ["validation-worklist"] });
-      setShowRejectDialog(false);
-      setRejectionReason("");
-    },
-  });
 
   // Rerun mutation
   const rerunMutation = useMutation({
@@ -307,7 +281,6 @@ export default function SampleValidationContent({
 
   const canValidate = selectedResults.size > 0 && !isReleased;
   const canRelease = isValidated && !isReleased;
-  const canReject = !isReleased;
   const canRequestRerun = rerunResults.size > 0 && !isReleased;
 
   if (isLoading) {
@@ -345,7 +318,7 @@ export default function SampleValidationContent({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/d/${workspaceid}/lab-tech`}>
+          <Link href={`/d/${workspaceid}/lims/lab-tech`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Worklist
@@ -635,23 +608,6 @@ export default function SampleValidationContent({
                 </Tooltip>
               </TooltipProvider>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      onClick={() => setShowRejectDialog(true)}
-                      disabled={!canReject}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Reject
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Reject validation with reason</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
             </div>
           </CardContent>
         </Card>
@@ -740,46 +696,6 @@ export default function SampleValidationContent({
         </DialogContent>
       </Dialog>
 
-      {/* Reject Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Validation</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this validation. This will be logged in the
-              audit trail.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="rejectionReason">Rejection Reason *</Label>
-            <Textarea
-              id="rejectionReason"
-              placeholder="Enter reason for rejection..."
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="mt-2"
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => rejectMutation.mutate()}
-              disabled={!rejectionReason.trim() || rejectMutation.isPending}
-            >
-              {rejectMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Confirm Rejection
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Rerun Dialog */}
       <Dialog open={showRerunDialog} onOpenChange={setShowRerunDialog}>

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { db } from "@/lib/db";
-import { patients } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { patients, pharmacyOrders, pharmacyOrderItems, drugs } from "@/lib/db/schema";
+import { eq, ilike } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
 import { getOpenEHREHRBySubjectId, createOpenEHRComposition, getOpenEHRPrescriptions } from "@/lib/openehr/openehr";
 import { ensurePatientEHR } from "@/lib/openehr/ensure-ehr";
@@ -377,6 +377,57 @@ export async function POST(
         );
 
         compositionUids.push(compositionUid);
+
+        // ═══ SYNC TO PHARMACY DATABASE ═══
+        // Create pharmacy order record so it appears in pharmacy app
+        try {
+          console.log(`[Prescription] Syncing to pharmacy database: ${prescription.medicationItem}`);
+          
+          // Create pharmacy order
+          const [pharmacyOrder] = await db
+            .insert(pharmacyOrders)
+            .values({
+              workspaceid: workspaceid,
+              patientid: patientid,
+              prescriberid: user.userid,
+              status: "PENDING",
+              source: "openehr",
+              openehrorderid: compositionUid,
+              priority: prescription.urgency || "routine",
+              notes: prescription.comment || `Prescription: ${prescription.medicationItem}`,
+              metadata: {
+                prescriptionData: prescription,
+                composerName: user.name || user.email,
+                createdFrom: "patient-prescription-api",
+              },
+            })
+            .returning();
+
+          console.log(`[Prescription] ✅ Created pharmacy order: ${pharmacyOrder.orderid}`);
+
+          // Try to find matching drug in database
+          const [matchingDrug] = await db
+            .select()
+            .from(drugs)
+            .where(ilike(drugs.name, `%${prescription.medicationItem}%`))
+            .limit(1);
+
+          // Create order item
+          await db.insert(pharmacyOrderItems).values({
+            orderid: pharmacyOrder.orderid,
+            drugid: matchingDrug?.drugid || null,
+            drugname: prescription.medicationItem,
+            dosage: overallDirections,
+            quantity: parseInt(prescription.doseAmount) || 1,
+            status: "PENDING",
+            notes: prescription.additionalInstruction || null,
+          });
+
+          console.log(`[Prescription] ✅ Created pharmacy order item for: ${prescription.medicationItem}`);
+        } catch (syncError) {
+          console.error(`[Prescription] ⚠️ Failed to sync to pharmacy database:`, syncError);
+          // Don't fail the entire request - prescription is still in OpenEHR
+        }
       } catch (error) {
         console.error(`[POST /prescriptions] Error creating composition for ${prescription.medicationItem}:`, error);
         errors.push(`Failed to create prescription for ${prescription.medicationItem}`);

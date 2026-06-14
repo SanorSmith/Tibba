@@ -425,10 +425,6 @@ export default function EnhancedLabOrderFormMultiple({
   }, [addedTests, resolveTest]);
 
   const handleSubmit = async () => {
-    if (!formState.clinical_indication) {
-      alert("Please fill in clinical indication");
-      return;
-    }
 
     if (editMode && !formState.edit_notes) {
       alert("Please provide a reason for editing this order");
@@ -549,7 +545,7 @@ export default function EnhancedLabOrderFormMultiple({
         urgency: formState.urgency,
         requesting_provider: formState.requesting_provider,
         receiving_provider: selectedLab?.name || labCategory,
-        narrative: formState.narrative || `${allPackageNames || "Laboratory tests"} ordered for ${formState.clinical_indication}`,
+        narrative: formState.narrative || (formState.clinical_indication ? `${allPackageNames || "Laboratory tests"} ordered for ${formState.clinical_indication}` : `${allPackageNames || "Laboratory tests"} ordered`),
         service_name: allPackageNames || "Laboratory Tests",
         service_type_code: selectedPackageObjects.map(pkg => pkg.snomedCode).filter(Boolean).join(","),
         service_type_value: "Test Group",
@@ -970,28 +966,8 @@ export default function EnhancedLabOrderFormMultiple({
           {/* Clinical Information */}
           {addedTests.length > 0 && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="clinical_indication" className="text-sm">
-                  Clinical Indication *
-                </Label>
-                <Textarea
-                  id="clinical_indication"
-                  placeholder="Reason for test (e.g., suspected infection, routine checkup)"
-                  value={formState.clinical_indication}
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "clinical_indication",
-                      value: e.target.value,
-                    })
-                  }
-                  className="min-h-[60px] text-sm"
-                  rows={2}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-[200px_1fr] gap-3">
+                <div className="space-y-2">
                   <Label htmlFor="urgency" className="text-sm">Urgency</Label>
                   <Select
                     value={formState.urgency}
@@ -999,7 +975,7 @@ export default function EnhancedLabOrderFormMultiple({
                       dispatch({ type: "SET_FIELD", field: "urgency", value })
                     }
                   >
-                    <SelectTrigger className="mt-1 h-9">
+                    <SelectTrigger className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1010,21 +986,23 @@ export default function EnhancedLabOrderFormMultiple({
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="narrative" className="text-sm">Additional Notes</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="clinical_indication" className="text-sm">
+                    Doctor's Notes *
+                  </Label>
                   <Textarea
-                    id="narrative"
-                    placeholder="Optional notes"
-                    value={formState.narrative}
+                    id="clinical_indication"
+                    placeholder="Add doctor's notes or reason for test (e.g., suspected infection, routine checkup)"
+                    value={formState.clinical_indication}
                     onChange={(e) =>
                       dispatch({
                         type: "SET_FIELD",
-                        field: "narrative",
+                        field: "clinical_indication",
                         value: e.target.value,
                       })
                     }
-                    className="mt-1 min-h-[36px] text-sm"
-                    rows={1}
+                    rows={2}
+                    className="resize-none"
                   />
                 </div>
               </div>
@@ -1054,7 +1032,7 @@ export default function EnhancedLabOrderFormMultiple({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex justify-between items-center">
           <Button
             type="button"
             variant="outline"
@@ -1066,20 +1044,17 @@ export default function EnhancedLabOrderFormMultiple({
           >
             Cancel
           </Button>
-          {addedTests.length > 0 && (
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                isSubmitting ||
-                !formState.clinical_indication ||
-                addedTests.length === 0
-              }
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isSubmitting ? "Submitting..." : editMode ? "Update Order" : "Order Tests"}
-            </Button>
-          )}
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={
+              isSubmitting ||
+              addedTests.length === 0
+            }
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isSubmitting ? "Submitting..." : editMode ? "Update Order" : "Order Tests"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

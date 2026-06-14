@@ -7,8 +7,8 @@ import { eq } from "drizzle-orm";
 import {
   getOpenEHREHRBySubjectId,
   createReferral,
-  listReferrals,
-  getReferral,
+  getOpenEHRCompositions,
+  getOpenEHRComposition,
   type ReferralComposition,
 } from "@/lib/openehr";
 
@@ -67,62 +67,44 @@ export async function GET(
       return NextResponse.json({ referrals: [] }, { status: 200 });
     }
 
-    // Get list of referral compositions with timeout
-    let referralList;
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout fetching referral list')), 30000)
-      );
-      referralList = await Promise.race([listReferrals(ehrId), timeoutPromise]);
-    } catch (error) {
-      console.error("Error or timeout fetching referral list:", error);
-      return NextResponse.json({ 
-        referrals: [],
-        message: "EHRBase is slow or unavailable. Please try again later."
-      }, { status: 200 });
-    }
-
-    // Fetch full details for each referral with timeout protection
+    // Get all compositions for this patient
+    const compositions = await getOpenEHRCompositions(ehrId);
+    
+    // Fetch full details for each composition and filter for referrals
     const referrals = await Promise.all(
-      referralList.map(async (item) => {
+      compositions.map(async (comp) => {
         try {
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 30000)
-          );
-          const composition = await Promise.race([
-            getReferral(ehrId, item.composition_uid),
-            timeoutPromise
-          ]);
+          const composition = await getOpenEHRComposition(ehrId, comp.composition_uid) as Record<string, unknown>;
           
           // Only include compositions that start with "REFERRAL:"
-          const problemDiagnosis = composition["template_clinical_encounter_v1/problem_diagnosis/problem_diagnosis_name"] || "";
+          const problemDiagnosis = composition["template_clinical_encounter_v1/problem_diagnosis/problem_diagnosis_name"] as string || "";
           if (!problemDiagnosis.startsWith("REFERRAL:")) {
             return null;
           }
 
           // Parse referral data from the composition fields
-          const clinicalDescription = composition["template_clinical_encounter_v1/problem_diagnosis/clinical_description"] || "";
+          const clinicalDescription = composition["template_clinical_encounter_v1/problem_diagnosis/clinical_description"] as string || "";
           const [department, physician] = clinicalDescription.split(" | ");
 
           return {
-            composition_uid: item.composition_uid,
-            recorded_time: item.start_time,
+            composition_uid: comp.composition_uid,
+            recorded_time: comp.start_time,
             physician_department: department || "",
             receiving_physician: physician || "",
             clinical_indication: problemDiagnosis.replace("REFERRAL: ", ""),
-            urgency: composition["template_clinical_encounter_v1/problem_diagnosis/variant:0"] || "routine",
-            comment: composition["template_clinical_encounter_v1/problem_diagnosis/comment"] || "",
-            referred_by: composition["template_clinical_encounter_v1/composer|name"] || "Unknown",
-            status: composition["template_clinical_encounter_v1/problem_diagnosis/body_site:0"] || "pending",
+            urgency: composition["template_clinical_encounter_v1/problem_diagnosis/variant:0"] as string || "routine",
+            comment: composition["template_clinical_encounter_v1/problem_diagnosis/comment"] as string || "",
+            referred_by: composition["template_clinical_encounter_v1/composer|name"] as string || "Unknown",
+            status: composition["template_clinical_encounter_v1/problem_diagnosis/body_site:0"] as string || "pending",
           };
         } catch (error) {
-          console.error(`Timeout or error fetching composition ${item.composition_uid}:`, error);
+          console.error(`Error fetching composition ${comp.composition_uid}:`, error);
           return null;
         }
       })
     );
 
-    // Filter out null entries (non-referral compositions and timeouts)
+    // Filter out null entries (non-referral compositions and errors)
     const filteredReferrals = referrals.filter((r) => r !== null);
 
     return NextResponse.json({ referrals: filteredReferrals }, { status: 200 });

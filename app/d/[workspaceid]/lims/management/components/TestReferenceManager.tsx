@@ -51,6 +51,7 @@ interface TestReferenceRange {
   clinicalindication?: string;
   additionalinformation?: string;
   notes?: string;
+  price?: string;
   isactive: string;
   createdby?: string;
   createdat?: string;
@@ -141,6 +142,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
     clinicalindication: "",
     additionalinformation: "",
     notes: "",
+    price: "",
   });
 
   useEffect(() => {
@@ -257,6 +259,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
         clinicalindication: range.clinicalindication || "",
         additionalinformation: range.additionalinformation || "",
         notes: range.notes || "",
+        price: range.price || "",
       });
     } else {
       setEditingRange(null);
@@ -280,6 +283,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
         clinicalindication: "",
         additionalinformation: "",
         notes: "",
+        price: "",
       });
     }
     setUpdateReason("");
@@ -494,6 +498,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                     <th className="font-semibold px-1 py-2 w-10 bg-gray-50 text-center text-foreground align-middle">Sex</th>
                     <th className="font-semibold px-1 py-2 w-24 bg-gray-50 text-left text-foreground align-middle">Reference</th>
                     <th className="font-semibold px-1 py-2 w-14 bg-gray-50 text-left text-foreground align-middle">Unit</th>
+                    <th className="font-semibold px-1 py-2 w-14 bg-gray-50 text-right text-foreground align-middle">Price</th>
                     <th className="font-semibold px-1 py-2 w-16 bg-gray-50 text-left text-red-600 align-middle">Panic</th>
                     <th className="font-semibold px-1 py-2 w-28 bg-gray-50 text-left text-foreground align-middle">Clinical</th>
                     <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-foreground align-middle">Actions</th>
@@ -558,6 +563,9 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                         <div className="truncate max-w-[50px]" title={range.unit}>
                           {range.unit}
                         </div>
+                      </TableCell>
+                      <TableCell className="font-semibold px-1 py-1.5 text-right">
+                        {range.price ? `$${range.price}` : "—"}
                       </TableCell>
                       <TableCell className="text-red-600 font-medium px-1 py-1.5">
                         <div className="truncate max-w-[60px]" title={getPanicDisplay(range)}>
@@ -841,6 +849,10 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
               <div>
                 <Label className="text-[10px]">Panic Text</Label>
                 <Input className="h-6 text-[11px]" value={formData.panictext} onChange={(e) => setFormData({ ...formData, panictext: e.target.value })} placeholder="Positive" />
+              </div>
+              <div>
+                <Label className="text-[10px]">Price</Label>
+                <Input className="h-6 text-[11px]" type="number" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} placeholder="0.00" />
               </div>
 
               {/* Row 4: Clinical Indication + Additional Info */}

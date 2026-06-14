@@ -210,7 +210,7 @@ export async function GET(
           );
 
           // Only return if there's actual lab order data
-          if (serviceName && clinicalIndication) {
+          if (serviceName) {
             console.log(
               `Composition ${comp.composition_uid} has lab order: ${serviceName}`
             );
@@ -320,10 +320,10 @@ export async function POST(
     } = body.labOrder;
 
     // Validate required fields
-    if (!service_name || !clinical_indication) {
+    if (!service_name) {
       return NextResponse.json(
         {
-          error: "Service name and clinical indication are required",
+          error: "Service name is required",
         },
         { status: 400 }
       );
@@ -392,9 +392,11 @@ export async function POST(
     compositionData[
       "template_clinical_encounter_v2/service_request/request/description"
     ] = description || "";
-    compositionData[
-      "template_clinical_encounter_v2/service_request/request/clinical_indication"
-    ] = clinical_indication;
+    if (clinical_indication) {
+      compositionData[
+        "template_clinical_encounter_v2/service_request/request/clinical_indication"
+      ] = clinical_indication;
+    }
     compositionData[
       "template_clinical_encounter_v2/service_request/request/urgency|value"
     ] = urgency.charAt(0).toUpperCase() + urgency.slice(1); // Capitalize first letter
@@ -430,7 +432,7 @@ export async function POST(
     ] = `labreq-${Date.now()}`;
     compositionData[
       "template_clinical_encounter_v2/service_request/narrative"
-    ] = narrative || `${service_name} ordered due to ${clinical_indication}`;
+    ] = narrative || (clinical_indication ? `${service_name} ordered due to ${clinical_indication}` : `${service_name} ordered`);
     compositionData[
       "template_clinical_encounter_v2/service_request/language|code"
     ] = "en";

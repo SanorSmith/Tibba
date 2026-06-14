@@ -510,7 +510,7 @@ export default function DashboardContent({
               <CardDescription>Laboratory inventory and equipment</CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href={`/d/${workspaceid}/lab-management`}>
+              <Link href={`/d/${workspaceid}/lims/management`}>
                 <Button className="w-full bg-blue-500 hover:bg-blue-600 ">
                   <Settings className="h-4 w-4 mr-2" />
                   Manage Inventory

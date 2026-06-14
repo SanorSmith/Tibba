@@ -1119,44 +1119,43 @@ export default function OrderDetailsModal({
 
     {/* Drug Details Modal */}
     <Dialog open={showDrugDetails} onOpenChange={setShowDrugDetails}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{selectedDrug?.drugname} - Storage Information</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Once click on the drug name will show the storage
-          </p>
-          <p className="text-sm text-blue-600 font-medium">
-            Scan the drug barcode
-          </p>
+        <div className="space-y-4">
+          <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+              📦 Scan the drug barcode to dispense
+            </p>
+          </div>
           
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead>Drug ID</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Shelf</TableHead>
-                  <TableHead>Number</TableHead>
-                  <TableHead>Expire Date</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Drug ID</TableHead>
+                  <TableHead className="whitespace-nowrap">Stock</TableHead>
+                  <TableHead className="whitespace-nowrap">Shelf</TableHead>
+                  <TableHead className="whitespace-nowrap">Quantity</TableHead>
+                  <TableHead className="whitespace-nowrap">Expire Date</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {selectedDrug?.batches?.map((batch: any, index: number) => (
                   <TableRow key={batch.batchid || index}>
-                    <TableCell>{batch.batchid || selectedDrug.drugid}</TableCell>
+                    <TableCell className="font-mono text-xs">{batch.batchid?.substring(0, 8) || selectedDrug.drugid?.substring(0, 8)}...</TableCell>
                     <TableCell>{batch.stock || batch.location || "N/A"}</TableCell>
                     <TableCell>{batch.shelf || "N/A"}</TableCell>
                     <TableCell>{batch.number || batch.quantity || "0"}</TableCell>
-                    <TableCell>{batch.expiredate || batch.expirydate || "N/A"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{batch.expiredate || batch.expirydate || "N/A"}</TableCell>
                     <TableCell>
                       <Badge 
                         variant={batch.status === "Low" ? "destructive" : "default"}
-                        className="text-xs"
+                        className={`text-xs whitespace-nowrap ${batch.status !== "Low" ? "bg-blue-600 hover:bg-blue-700" : ""}`}
                       >
-                        {batch.status || "Available"}
+                        {batch.status || "In Stock"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -1165,13 +1164,15 @@ export default function OrderDetailsModal({
             </Table>
           </div>
 
-          <p className="text-sm text-red-600">
-            Once the drug scanned the inventory system should be updated and price add to the invoice
-          </p>
+          <div className="bg-amber-50 dark:bg-amber-950 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              ⚠️ After scanning, inventory will be updated and price will be added to the invoice
+            </p>
+          </div>
 
           <div className="flex justify-end">
-            <Button onClick={() => setShowDrugDetails(false)}>
-              ok
+            <Button onClick={() => setShowDrugDetails(false)} className="bg-blue-600 hover:bg-blue-700">
+              OK
             </Button>
           </div>
         </div>

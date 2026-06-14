@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Toast } from "@/components/ui/toast";
 import {
   Dialog,
   DialogContent,
@@ -89,6 +90,7 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
   const [selectedCarePlan, setSelectedCarePlan] = useState<CarePlan | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [savingCarePlan, setSavingCarePlan] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   
   // Operation-related state
   const [showOperationDialog, setShowOperationDialog] = useState(false);
@@ -367,7 +369,7 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                 const carePlanComment = (document.getElementById("carePlanComment") as HTMLTextAreaElement)?.value?.trim();
 
                 if (!carePlanName) {
-                  alert("Please fill in the Care Plan Name (required field)");
+                  setToast({ message: "Please fill in the Care Plan Name (required field)", type: "error" });
                   return;
                 }
 
@@ -397,14 +399,14 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
                   if (res.ok) {
                     await loadCarePlans();
                     setShowCarePlanForm(false);
-                    alert("Care plan created successfully in openEHR!");
+                    setToast({ message: "Care plan created successfully!", type: "success" });
                   } else {
                     const error = await res.json();
-                    alert(`Failed to create care plan: ${error.error}`);
+                    setToast({ message: `Failed to create care plan: ${error.error}`, type: "error" });
                   }
                 } catch (error) {
                   console.error("Error creating care plan:", error);
-                  alert("Failed to create care plan. Please check the console for details.");
+                  setToast({ message: "Failed to create care plan. Please try again.", type: "error" });
                 } finally {
                   setSavingCarePlan(false);
                 }
@@ -443,36 +445,16 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="scheduleddate">Scheduled Date & Time *</Label>
-                <Input
-                  id="scheduleddate"
-                  type="datetime-local"
-                  value={operationFormData.scheduleddate}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, scheduleddate: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estimatedduration">
-                  Estimated Duration (minutes)
-                </Label>
-                <Input
-                  id="estimatedduration"
-                  type="number"
-                  placeholder="e.g., 120"
-                  value={operationFormData.estimatedduration}
-                  onChange={(e) =>
-                    setOperationFormData({
-                      ...operationFormData,
-                      estimatedduration: e.target.value,
-                    })
-                  }
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="scheduleddate">Scheduled Date & Time *</Label>
+              <Input
+                id="scheduleddate"
+                type="datetime-local"
+                value={operationFormData.scheduleddate}
+                onChange={(e) =>
+                  setOperationFormData({ ...operationFormData, scheduleddate: e.target.value })
+                }
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -706,6 +688,15 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </>
   );
 }

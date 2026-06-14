@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { db } from "@/lib/db";
-import { patients, staff } from "@/lib/db/schema";
+import { staff } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { 
-  getOpenEHREHRBySubjectId,
-  getOpenEHRCompositions,
-  getOpenEHRComposition
-} from "@/lib/openehr/openehr";
+import { queryOpenEHR } from "@/lib/openehr/openehr";
 
 /**
  * GET /api/d/[workspaceid]/doctor/referrals
@@ -67,132 +63,141 @@ export async function GET(
       ? `${doctorRecord[0].firstname} ${doctorRecord[0].lastname}`
       : user.name || user.email;
     
-    console.log("[Doctor Referrals] Doctor name:", doctorFullName);
+    // Also store user.name and email for matching
+    const userName = user.name || "";
+    const userEmail = user.email || "";
+    
+    console.log("[Doctor Referrals] Doctor identifiers:", {
+      doctorFullName,
+      userName,
+      userEmail
+    });
 
-    // Get patients with pagination support
-    const recentPatients = await db
+    // Use AQL to query all referrals across all EHRs in one go
+    const aqlQuery = `
+      SELECT 
+        c/uid/value AS composition_uid,
+        c/context/start_time/value AS start_time,
+        eval/data[at0001]/items[at0002]/value/value AS problem_diagnosis,
+        eval/data[at0001]/items[at0009]/value/value AS clinical_description,
+        eval/data[at0001]/items[at0077]/value/value AS variant,
+        eval/data[at0001]/items[at0069]/value/value AS comment,
+        eval/data[at0001]/items[at0012]/value/value AS body_site,
+        c/composer/name AS composer_name,
+        e/ehr_id/value AS ehr_id,
+        e/ehr_status/subject/external_ref/id/value AS subject_id
+      FROM EHR e
+      CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.encounter.v1]
+      CONTAINS EVALUATION eval[openEHR-EHR-EVALUATION.problem_diagnosis.v1]
+      WHERE c/archetype_details/template_id/value = 'template_clinical_encounter_v1'
+    `;
+
+    console.log("[Doctor Referrals] Executing AQL query for all referrals");
+
+    // Execute AQL query using the helper function
+    const results = await queryOpenEHR<{
+      composition_uid: string;
+      start_time: string;
+      problem_diagnosis: string;
+      clinical_description: string;
+      variant: string;
+      comment: string;
+      body_site: string;
+      composer_name: string;
+      ehr_id: string;
+      subject_id: string;
+    }>(aqlQuery);
+
+    console.log("[Doctor Referrals] AQL returned", results.length, "compositions");
+
+    // Get all unique subject IDs to fetch patient info
+    const subjectIds = [...new Set(results.map(r => r.subject_id).filter(Boolean))];
+    
+    // Fetch patient info from database for all subject IDs
+    const { patients } = await import("@/lib/db/schema");
+    const { inArray } = await import("drizzle-orm");
+    
+    const patientsData = await db
       .select({
         patientid: patients.patientid,
+        nationalid: patients.nationalid,
         firstname: patients.firstname,
         lastname: patients.lastname,
-        nationalid: patients.nationalid,
       })
       .from(patients)
-      .where(eq(patients.workspaceid, workspaceid))
-      .limit(limit)
-      .offset(offset);
+      .where(inArray(patients.nationalid, subjectIds));
+    
+    // Create a map for quick lookup
+    const patientMap = new Map(
+      patientsData.map(p => [p.nationalid, p])
+    );
 
-    console.log("[Doctor Referrals] Checking", recentPatients.length, "patients (limit:", limit, "offset:", offset, ")");
+    const incomingReferrals: Array<any> = [];
+    const outgoingReferrals: Array<any> = [];
 
-    const incomingReferrals: Array<{
-      composition_uid: string;
-      recorded_time: string;
-      physician_department: string;
-      receiving_physician: string;
-      clinical_indication: string;
-      urgency: string;
-      comment: string;
-      referred_by: string;
-      status: string;
-      patientid: string;
-      patientName: string;
-      patientNationalId: string;
-    }> = [];
-    const outgoingReferrals: Array<{
-      composition_uid: string;
-      recorded_time: string;
-      physician_department: string;
-      receiving_physician: string;
-      clinical_indication: string;
-      urgency: string;
-      comment: string;
-      referred_by: string;
-      status: string;
-      patientid: string;
-      patientName: string;
-      patientNationalId: string;
-    }> = [];
+    // Process AQL results
+    for (const row of results) {
+      const problemDiagnosis = row.problem_diagnosis || "";
+      
+      // Only process referrals
+      if (!problemDiagnosis.startsWith("REFERRAL:")) continue;
 
-    // Process each patient (limited to 10 for speed)
-    for (const patient of recentPatients) {
-      try {
-        // Get EHR ID
-        let ehrId = patient.nationalid 
-          ? await getOpenEHREHRBySubjectId(patient.nationalid)
-          : null;
-        if (!ehrId) {
-          ehrId = await getOpenEHREHRBySubjectId(patient.patientid);
-        }
-        if (!ehrId) continue;
+      const [department, receivingPhysician] = (row.clinical_description || "").split(" | ");
+      const composer = row.composer_name || "Unknown";
+      
+      // Get patient info from map
+      const patient = patientMap.get(row.subject_id);
 
-        // Get compositions for this patient
-        const compositions = await getOpenEHRCompositions(ehrId);
-        
-        // Check each composition for referrals
-        for (const comp of compositions.slice(0, 5)) { // Limit to 5 most recent
-          try {
-            const details = await getOpenEHRComposition(ehrId, comp.composition_uid) as Record<string, unknown>;
-            
-            // Check if it's a referral (v1 template)
-            const problemDiagnosis = details["template_clinical_encounter_v1/problem_diagnosis/problem_diagnosis_name"] as string || "";
-            if (!problemDiagnosis.startsWith("REFERRAL:")) continue;
+      console.log("[Doctor Referrals] 🔍 Found referral:", {
+        problemDiagnosis,
+        composer,
+        receivingPhysician,
+        patientName: patient ? `${patient.firstname} ${patient.lastname}` : row.subject_id
+      });
 
-            const clinicalDescription = details["template_clinical_encounter_v1/problem_diagnosis/clinical_description"] as string || "";
-            const [department, receivingPhysician] = clinicalDescription.split(" | ");
-            const composer = details["template_clinical_encounter_v1/composer|name"] as string || "Unknown";
-            
-            const referral = {
-              composition_uid: comp.composition_uid,
-              recorded_time: comp.start_time,
-              physician_department: department || "",
-              receiving_physician: receivingPhysician || "",
-              clinical_indication: problemDiagnosis.replace("REFERRAL: ", ""),
-              urgency: (details["template_clinical_encounter_v1/problem_diagnosis/variant:0"] as string || "routine").toLowerCase(),
-              comment: details["template_clinical_encounter_v1/problem_diagnosis/comment"] as string || "",
-              referred_by: composer,
-              status: details["template_clinical_encounter_v1/problem_diagnosis/body_site:0"] as string || "pending",
-              patientid: patient.patientid,
-              patientName: `${patient.firstname} ${patient.lastname}`,
-              patientNationalId: patient.nationalid || patient.patientid,
-            };
+      const referral = {
+        composition_uid: row.composition_uid,
+        recorded_time: row.start_time,
+        physician_department: department || "",
+        receiving_physician: receivingPhysician || "",
+        clinical_indication: problemDiagnosis.replace("REFERRAL: ", ""),
+        urgency: (row.variant || "routine").toLowerCase(),
+        comment: row.comment || "",
+        referred_by: composer,
+        status: row.body_site || "pending",
+        patientid: patient?.patientid || "",
+        patientName: patient ? `${patient.firstname} ${patient.lastname}` : "",
+        patientNationalId: row.subject_id || "",
+      };
 
-            // Categorize as incoming or outgoing
-            if (receivingPhysician && receivingPhysician.includes(doctorFullName)) {
-              incomingReferrals.push(referral);
-            } else if (composer.includes(doctorFullName)) {
-              outgoingReferrals.push(referral);
-            }
-          } catch {
-            // Skip failed compositions
-            continue;
-          }
-        }
-      } catch {
-        // Skip patients with EHR errors
-        continue;
+      // Categorize as incoming or outgoing
+      const receivingPhysicianLower = (receivingPhysician || "").toLowerCase();
+      const composerLower = composer.toLowerCase();
+      
+      const isIncoming = 
+        receivingPhysicianLower.includes(doctorFullName.toLowerCase()) ||
+        (userName && receivingPhysicianLower.includes(userName.toLowerCase())) ||
+        (userEmail && receivingPhysicianLower.includes(userEmail.toLowerCase()));
+      
+      const isOutgoing = 
+        composerLower.includes(doctorFullName.toLowerCase()) ||
+        (userName && composerLower.includes(userName.toLowerCase())) ||
+        (userEmail && composerLower.includes(userEmail.toLowerCase()));
+      
+      if (isIncoming) {
+        console.log("[Doctor Referrals] ✅ Incoming referral");
+        incomingReferrals.push(referral);
+      } else if (isOutgoing) {
+        console.log("[Doctor Referrals] ✅ Outgoing referral");
+        outgoingReferrals.push(referral);
       }
     }
 
     console.log("[Doctor Referrals] Found", incomingReferrals.length, "incoming,", outgoingReferrals.length, "outgoing");
 
-    // Get total patient count for pagination
-    const totalPatientsResult = await db
-      .select({ count: patients.patientid })
-      .from(patients)
-      .where(eq(patients.workspaceid, workspaceid));
-    
-    const totalPatients = totalPatientsResult.length;
-    const hasMore = offset + limit < totalPatients;
-
     return NextResponse.json({ 
       incomingReferrals, 
-      outgoingReferrals,
-      pagination: {
-        limit,
-        offset,
-        hasMore,
-        totalPatients
-      }
+      outgoingReferrals
     }, { status: 200 });
   } catch (error) {
     console.error("[Doctor Referrals] Error:", error);

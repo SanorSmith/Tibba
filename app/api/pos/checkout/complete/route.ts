@@ -15,6 +15,7 @@ import {
   pharmacyOrderItems,
   patientCreditAccounts,
 } from "@/lib/db/schema";
+import { invoices } from "@/lib/db/tables/pharmacy-invoices";
 import { PHARMACY_ITEM_STATUS, type PharmacyItemStatus } from "@/lib/db/tables/pharmacy-orders";
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
@@ -498,6 +499,30 @@ export async function POST(request: NextRequest) {
         console.log(
           `[POS] Order ${data.pharmacyOrderId}: ${dispensedItems}/${totalItems} items dispensed → ${orderStatus}`
         );
+
+        // 5b. Update invoice status to PAID
+        try {
+          const [invoice] = await db
+            .select()
+            .from(invoices)
+            .where(eq(invoices.orderid, data.pharmacyOrderId))
+            .limit(1);
+
+          if (invoice) {
+            await db
+              .update(invoices)
+              .set({
+                status: "PAID",
+                updatedat: new Date(),
+              })
+              .where(eq(invoices.invoiceid, invoice.invoiceid));
+
+            console.log(`[POS] Invoice ${invoice.invoicenumber} marked as PAID`);
+          }
+        } catch (invoiceError) {
+          console.error(`[POS] Failed to update invoice status:`, invoiceError);
+          // Don't fail the entire transaction - invoice update is not critical
+        }
       }
 
       return {
