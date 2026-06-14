@@ -661,10 +661,8 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                       <TableCell className="font-semibold px-1 py-1.5 text-center">
                         {range.price ? `$${range.price}` : "—"}
                       </TableCell>
-                      <TableCell className="text-red-600 font-medium px-1 py-1.5 text-center">
-                        <div className="truncate max-w-[60px]" title={getPanicDisplay(range)}>
-                          {getPanicDisplay(range)}
-                        </div>
+                      <TableCell className="text-red-600 font-medium px-1 py-1.5 text-center" title={getPanicDisplay(range)}>
+                        {getPanicDisplay(range)}
                       </TableCell>
                       <TableCell className="px-1 py-1.5">
                         <div className="truncate max-w-[100px]" title={range.clinicalindication || ""}>
