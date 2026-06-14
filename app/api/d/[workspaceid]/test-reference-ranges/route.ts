@@ -47,6 +47,7 @@ const testReferenceRangeSchema = z.object({
   clinicalindication: z.string().optional(),
   additionalinformation: z.string().optional(),
   notes: z.string().optional(),
+  price: z.string().optional(),
   isactive: z.enum(["Y", "N"]).default("Y"),
 });
 
@@ -145,6 +146,36 @@ export async function POST(
     }
 
     const body = await request.json();
+    
+    // Handle array values and case conversion for enum fields
+    if (Array.isArray(body.agegroup)) {
+      body.agegroup = body.agegroup[0] || "ALL";
+    }
+    if (typeof body.agegroup === 'string') {
+      // Convert case-insensitive values to uppercase enum values
+      const ageGroupMap: { [key: string]: string } = {
+        'neo': 'NEO',
+        'ped': 'PED', 
+        'adult': 'ADULT',
+        'all': 'ALL'
+      };
+      body.agegroup = ageGroupMap[body.agegroup.toLowerCase()] || body.agegroup;
+    }
+    
+    if (Array.isArray(body.sex)) {
+      body.sex = body.sex[0] || "ANY";
+    }
+    if (typeof body.sex === 'string') {
+      // Convert case-insensitive values to uppercase enum values
+      const sexMap: { [key: string]: string } = {
+        'm': 'M',
+        'f': 'F',
+        'any': 'ANY',
+        'all': 'ANY'
+      };
+      body.sex = sexMap[body.sex.toLowerCase()] || body.sex;
+    }
+    
     const validatedData = testReferenceRangeSchema.parse(body);
 
     const newRange = await db
@@ -170,6 +201,7 @@ export async function POST(
         clinicalindication: validatedData.clinicalindication,
         additionalinformation: validatedData.additionalinformation,
         notes: validatedData.notes,
+        price: validatedData.price,
         isactive: validatedData.isactive,
         createdby: user.userid,
       })
@@ -217,6 +249,42 @@ export async function PUT(
 
     const body = await request.json();
     const { rangeid, updateReason, ...updateData } = body;
+
+    // Debug logging
+    console.log("Received updateData:", JSON.stringify(updateData, null, 2));
+
+    // Handle array values and case conversion for enum fields
+    if (Array.isArray(updateData.agegroup)) {
+      updateData.agegroup = updateData.agegroup[0] || "ALL";
+    }
+    if (typeof updateData.agegroup === 'string') {
+      // Convert case-insensitive values to uppercase enum values
+      const ageGroupMap: { [key: string]: string } = {
+        'neo': 'NEO',
+        'ped': 'PED', 
+        'adult': 'ADULT',
+        'all': 'ALL'
+      };
+      updateData.agegroup = ageGroupMap[updateData.agegroup.toLowerCase()] || updateData.agegroup;
+    }
+    
+    if (Array.isArray(updateData.sex)) {
+      updateData.sex = updateData.sex[0] || "ANY";
+    }
+    if (typeof updateData.sex === 'string') {
+      // Convert case-insensitive values to uppercase enum values
+      const sexMap: { [key: string]: string } = {
+        'm': 'M',
+        'f': 'F',
+        'any': 'ANY',
+        'all': 'ANY'
+      };
+      const originalSex = updateData.sex;
+      updateData.sex = sexMap[updateData.sex.toLowerCase()] || updateData.sex;
+      console.log(`Sex conversion: "${originalSex}" -> "${updateData.sex}"`);
+    }
+
+    console.log("Final updateData before validation:", JSON.stringify(updateData, null, 2));
 
     if (!rangeid) {
       return NextResponse.json(

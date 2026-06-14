@@ -238,13 +238,34 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
 
   const handleOpenDialog = (range?: TestReferenceRange) => {
     if (range) {
+      console.log("Editing range data:", JSON.stringify(range, null, 2));
       setEditingRange(range);
+      // Convert case for Select components
+      const normalizedAgeGroup = range.agegroup?.toUpperCase() || "ALL";
+      
+      // Handle sex conversion with specific mapping
+      let normalizedSex = "ANY";
+      if (range.sex) {
+        const sexLower = range.sex.toLowerCase();
+        if (sexLower === 'm' || sexLower === 'male') {
+          normalizedSex = "M";
+        } else if (sexLower === 'f' || sexLower === 'female') {
+          normalizedSex = "F";
+        } else if (sexLower === 'any' || sexLower === 'all') {
+          normalizedSex = "ANY";
+        } else {
+          normalizedSex = range.sex.toUpperCase(); // fallback
+        }
+      }
+      
+      console.log(`Sex conversion in form: "${range.sex}" -> "${normalizedSex}"`);
+      
       setFormData({
         testcode: range.testcode,
         testname: range.testname,
         unit: range.unit,
-        agegroup: range.agegroup,
-        sex: range.sex,
+        agegroup: normalizedAgeGroup,
+        sex: normalizedSex,
         referencemin: range.referencemin || "",
         referencemax: range.referencemax || "",
         referencetext: range.referencetext || "",
@@ -261,6 +282,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
         notes: range.notes || "",
         price: range.price || "",
       });
+      console.log("Form data set:", JSON.stringify(formData, null, 2));
     } else {
       setEditingRange(null);
       setFormData({
@@ -570,8 +592,8 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                     <th className="font-semibold px-1 py-2 w-10 bg-gray-50 text-center text-foreground align-middle">Sex</th>
                     <th className="font-semibold px-1 py-2 w-24 bg-gray-50 text-left text-foreground align-middle">Reference</th>
                     <th className="font-semibold px-1 py-2 w-14 bg-gray-50 text-left text-foreground align-middle">Unit</th>
-                    <th className="font-semibold px-1 py-2 w-14 bg-gray-50 text-right text-foreground align-middle">Price</th>
-                    <th className="font-semibold px-1 py-2 w-16 bg-gray-50 text-left text-red-600 align-middle">Panic</th>
+                    <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-foreground align-middle">Price</th>
+                    <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-red-600 align-middle">Panic</th>
                     <th className="font-semibold px-1 py-2 w-28 bg-gray-50 text-left text-foreground align-middle">Clinical</th>
                     <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-foreground align-middle">Actions</th>
                   </tr>
@@ -636,10 +658,10 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                           {range.unit}
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold px-1 py-1.5 text-right">
+                      <TableCell className="font-semibold px-1 py-1.5 text-center">
                         {range.price ? `$${range.price}` : "—"}
                       </TableCell>
-                      <TableCell className="text-red-600 font-medium px-1 py-1.5">
+                      <TableCell className="text-red-600 font-medium px-1 py-1.5 text-center">
                         <div className="truncate max-w-[60px]" title={getPanicDisplay(range)}>
                           {getPanicDisplay(range)}
                         </div>
@@ -704,14 +726,14 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
 
         {/* Add/Edit Dialog */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-[75vw] max-h-[85vh] overflow-y-auto p-4">
-            <DialogHeader className="pb-0 mb-1">
+          <DialogContent className="max-w-[75vw] max-h-[85vh] overflow-y-auto p-4 flex flex-col">
+            <DialogHeader className="pb-4 flex-shrink-0">
               <DialogTitle className="text-sm">
                 {editingRange ? "Edit Test Reference Range" : "Add Test Reference Range"}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="grid grid-cols-6 gap-x-2 gap-y-1">
+            <div className="grid grid-cols-6 gap-x-2 gap-y-1 flex-1">
               {/* Row 1: Test Code, Test Name, Unit, Age Group, Sex */}
               <div>
                 <Label className="text-[10px]">Test Code *</Label>
