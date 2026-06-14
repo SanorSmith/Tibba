@@ -19,6 +19,7 @@ interface MedicationCardPrintPreviewProps {
   workspaceid: string;
   orderid: string;
   items: any[];
+  doctorName?: string;
 }
 
 export default function MedicationCardPrintPreview({
@@ -27,6 +28,7 @@ export default function MedicationCardPrintPreview({
   workspaceid,
   orderid,
   items,
+  doctorName,
 }: MedicationCardPrintPreviewProps) {
   const [printing, setPrinting] = useState(false);
 
@@ -90,19 +92,20 @@ export default function MedicationCardPrintPreview({
       
       card.innerHTML = `
         <div style="font-size: 8px; color: #666; line-height: 1.3; margin-bottom: 1mm;">
-          <strong>Order:</strong> ${orderid.slice(0, 8)}... | ${new Date().toLocaleDateString()}
+          ${orderid.slice(0, 8)} | ${doctorName || ''} | ${new Date().toLocaleDateString()}
         </div>
         <div style="font-size: 10px; font-weight: bold; color: #000; margin: 1mm 0 0.5mm; line-height: 1.3;">
           ${item.drugname}
         </div>
         ${doseInfo.dose ? `<div style="font-size: 9px; font-weight: bold; color: #1a56db; margin-bottom: 1mm;">${doseInfo.dose}</div>` : ''}
         <div style="font-size: 7.5px; line-height: 1.5;">
-          ${item.quantity ? `<div><strong>Qty:</strong> ${(item.quantity || 0) - (item.quantitydispensed || 0)}</div>` : ''}
-          ${doseInfo.route ? `<div><strong>Route:</strong> ${doseInfo.route}</div>` : ''}
-          ${doseInfo.timing ? `<div><strong>Timing:</strong> ${doseInfo.timing}</div>` : ''}
-          ${doseInfo.duration ? `<div><strong>Duration:</strong> ${doseInfo.duration}</div>` : ''}
-          ${doseInfo.instructions ? `<div style="font-weight:bold;color:#d97706;"><strong>Instructions:</strong> ${doseInfo.instructions}</div>` : ''}
-          ${doseInfo.pharmacistNotes ? `<div><strong>Notes:</strong> ${doseInfo.pharmacistNotes}</div>` : ''}
+          ${item.quantity ? `<div>${(item.quantity || 0) - (item.quantitydispensed || 0)} pcs</div>` : ''}
+          ${doseInfo.route ? `<div>${doseInfo.route}</div>` : ''}
+          ${doseInfo.timing ? `<div>${doseInfo.timing}</div>` : ''}
+          ${doseInfo.duration ? `<div>${doseInfo.duration}</div>` : ''}
+          ${doseInfo.usage ? `<div>${doseInfo.usage}</div>` : ''}
+          ${doseInfo.instructions ? `<div style="font-weight:bold;color:#d97706;">${doseInfo.instructions}</div>` : ''}
+          ${doseInfo.pharmacistNotes ? `<div>${doseInfo.pharmacistNotes}</div>` : ''}
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 7px; color: #666; border-top: 0.5px solid #ccc; padding-top: 1mm; margin-top: 3mm; line-height: 1.4;">
           <span>Pharmacy Management System</span>
@@ -197,19 +200,20 @@ export default function MedicationCardPrintPreview({
     
     card.innerHTML = `
       <div style="font-size: 8px; color: #666; line-height: 1.3; margin-bottom: 1mm;">
-        <strong>Order:</strong> ${orderid.slice(0, 8)}... | ${new Date().toLocaleDateString()}
+        ${orderid.slice(0, 8)} | ${doctorName || ''} | ${new Date().toLocaleDateString()}
       </div>
       <div style="font-size: 10px; font-weight: bold; color: #000; margin: 1mm 0 0.5mm; line-height: 1.3;">
         ${item.drugname}
       </div>
       ${doseInfo.dose ? `<div style="font-size: 9px; font-weight: bold; color: #1a56db; margin-bottom: 1mm;">${doseInfo.dose}</div>` : ''}
       <div style="font-size: 7.5px; line-height: 1.5;">
-        ${item.quantity ? `<div><strong>Qty:</strong> ${(item.quantity || 0) - (item.quantitydispensed || 0)}</div>` : ''}
-        ${doseInfo.route ? `<div><strong>Route:</strong> ${doseInfo.route}</div>` : ''}
-        ${doseInfo.timing ? `<div><strong>Timing:</strong> ${doseInfo.timing}</div>` : ''}
-        ${doseInfo.duration ? `<div><strong>Duration:</strong> ${doseInfo.duration}</div>` : ''}
-        ${doseInfo.instructions ? `<div style="font-weight:bold;color:#d97706;"><strong>Instructions:</strong> ${doseInfo.instructions}</div>` : ''}
-        ${doseInfo.pharmacistNotes ? `<div><strong>Notes:</strong> ${doseInfo.pharmacistNotes}</div>` : ''}
+        ${item.quantity ? `<div>${(item.quantity || 0) - (item.quantitydispensed || 0)} pcs</div>` : ''}
+        ${doseInfo.route ? `<div>${doseInfo.route}</div>` : ''}
+        ${doseInfo.timing ? `<div>${doseInfo.timing}</div>` : ''}
+        ${doseInfo.duration ? `<div>${doseInfo.duration}</div>` : ''}
+        ${doseInfo.usage ? `<div>${doseInfo.usage}</div>` : ''}
+        ${doseInfo.instructions ? `<div style="font-weight:bold;color:#d97706;">${doseInfo.instructions}</div>` : ''}
+        ${doseInfo.pharmacistNotes ? `<div>${doseInfo.pharmacistNotes}</div>` : ''}
       </div>
       <div style="display: flex; justify-content: space-between; font-size: 7px; color: #666; border-top: 0.5px solid #ccc; padding-top: 1mm; margin-top: 3mm; line-height: 1.4;">
         <span>Pharmacy Management System</span>
@@ -314,7 +318,7 @@ export default function MedicationCardPrintPreview({
                   >
                     {/* Order Info */}
                     <div className="text-xs text-gray-500 mb-1">
-                      <span className="font-medium">Order:</span> {orderid.slice(0, 8)}... | {new Date().toLocaleDateString()}
+                      {orderid.slice(0, 8)} | {doctorName || ''} | {new Date().toLocaleDateString()}
                     </div>
 
                     {/* Medication Name */}
@@ -330,24 +334,27 @@ export default function MedicationCardPrintPreview({
                     {/* Details */}
                     <div className="text-xs space-y-0.5 text-gray-700">
                       {item.quantity && (
-                        <div><span className="font-medium">Qty:</span> {item.quantity}</div>
+                        <div>{item.quantity} pcs</div>
                       )}
                       {doseInfo.route && (
-                        <div><span className="font-medium">Route:</span> {doseInfo.route}</div>
+                        <div>{doseInfo.route}</div>
                       )}
                       {doseInfo.timing && (
-                        <div><span className="font-medium">Timing:</span> {doseInfo.timing}</div>
+                        <div>{doseInfo.timing}</div>
                       )}
                       {doseInfo.duration && (
-                        <div><span className="font-medium">Duration:</span> {doseInfo.duration}</div>
+                        <div>{doseInfo.duration}</div>
+                      )}
+                      {doseInfo.usage && (
+                        <div>{doseInfo.usage}</div>
                       )}
                       {doseInfo.instructions && (
-                        <div className="font-semibold text-amber-600">
-                          <span className="font-bold">Instructions:</span> {doseInfo.instructions}
+                        <div className="font-semibold text-black">
+                          {doseInfo.instructions}
                         </div>
                       )}
                       {doseInfo.pharmacistNotes && (
-                        <div><span className="font-medium">Notes:</span> {doseInfo.pharmacistNotes}</div>
+                        <div>{doseInfo.pharmacistNotes}</div>
                       )}
                     </div>
 

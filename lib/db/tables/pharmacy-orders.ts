@@ -57,6 +57,7 @@ export const pharmacyOrders = pgTable(
     patientid: uuid("patientid")
       .references(() => patients.patientid, { onDelete: "set null" }),
     prescriberid: uuid("prescriberid"), // doctor who prescribed
+    prescribername: text("prescribername"), // prescribing doctor name (free text)
     status: text("status").notNull().$type<PharmacyOrderStatus>().default("PENDING"),
     source: text("source").notNull().default("manual"), // "openehr" | "manual"
     openehrorderid: text("openehrorderid"), // external openEHR composition UID (INSTRUCTION.medication_order)

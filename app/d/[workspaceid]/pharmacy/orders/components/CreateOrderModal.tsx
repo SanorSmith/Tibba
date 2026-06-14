@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DrugAutocomplete } from "@/components/ui/drug-autocomplete";
-import { Loader2, Plus, Trash2, User, Search, ArrowLeft, Phone, Shield, RefreshCw, AlertCircle } from "lucide-react";
+import { Loader2, Plus, Trash2, Pencil, User, Search, ArrowLeft, Phone, Shield, RefreshCw, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import PatientSearchModal from "../../../../../components/PatientSearchModal";
 
@@ -31,6 +31,10 @@ interface Patient {
   lastname: string;
   nationalid: string | null;
   dateofbirth: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  gender: string | null;
 }
 
 interface OrderItem {
@@ -53,13 +57,37 @@ interface OrderItem {
   pharmacistNotes?: string;
 }
 
+interface EditOrderData {
+  orderid: string;
+  patientid: string;
+  patientfirst: string;
+  patientlast: string;
+  middlename?: string | null;
+  nationalid?: string | null;
+  dateofbirth?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  gender?: string | null;
+  priority: string;
+  notes: string | null;
+  prescribername?: string | null;
+  items: {
+    drugid?: string;
+    drugname: string;
+    quantity: number;
+    dosage?: string;
+  }[];
+}
+
 interface CreateOrderModalProps {
   workspaceid: string;
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (orderId?: string) => void;
   userName: string;
   userId: string;
+  editOrder?: EditOrderData | null;
 }
 
 export default function CreateOrderModal({
@@ -69,7 +97,9 @@ export default function CreateOrderModal({
   onSuccess,
   userName,
   userId,
+  editOrder,
 }: CreateOrderModalProps) {
+  const isEditMode = !!editOrder;
   const [loading, setLoading] = useState(false);
   const [searchingPatient, setSearchingPatient] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -77,6 +107,11 @@ export default function CreateOrderModal({
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showPatientSearchModal, setShowPatientSearchModal] = useState(false);
   const [showInlinePatientForm, setShowInlinePatientForm] = useState(false);
+  const [prescriberName, setPrescriberName] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderDate, setReminderDate] = useState("");
+  const [showPatientContact, setShowPatientContact] = useState(false);
   const [insuranceCompanies, setInsuranceCompanies] = useState<any[]>([]);
   const [newPatientForm, setNewPatientForm] = useState({
     first_name_ar: '',
@@ -108,6 +143,83 @@ export default function CreateOrderModal({
       loadInsuranceCompanies();
     }
   }, [open]);
+
+  // Pre-fill form when editing
+  useEffect(() => {
+    if (open && editOrder) {
+      setShowPatientContact(false);
+      setSelectedPatient({
+        patientid: editOrder.patientid,
+        firstname: editOrder.patientfirst,
+        middlename: editOrder.middlename || null,
+        lastname: editOrder.patientlast,
+        nationalid: editOrder.nationalid || null,
+        dateofbirth: editOrder.dateofbirth || null,
+        phone: editOrder.phone || null,
+        email: editOrder.email || null,
+        address: editOrder.address || null,
+        gender: editOrder.gender || null,
+      });
+      setPatientSearch(`${editOrder.patientfirst} ${editOrder.patientlast}`);
+
+      // Parse items from the existing order
+      const parsedItems: OrderItem[] = (editOrder.items || []).map((item) => {
+        const parsed: OrderItem = {
+          drugid: item.drugid || "",
+          drugname: item.drugname,
+          quantity: item.quantity,
+          additionalInstruction: "",
+        };
+        // Parse dosage string back to fields
+        if (item.dosage) {
+          const parts = item.dosage.split(" | ");
+          for (const part of parts) {
+            const [key, ...rest] = part.split(": ");
+            const val = rest.join(": ");
+            if (key === "Dose") {
+              const doseMatch = val.match(/^(\S+)\s+(\S+)$/);
+              if (doseMatch) {
+                parsed.doseAmount = doseMatch[1];
+                parsed.doseUnit = doseMatch[2];
+              }
+            } else if (key === "Route") parsed.route = val;
+            else if (key === "Timing") parsed.timingDirections = val;
+            else if (key === "Duration") parsed.directionDuration = val;
+            else if (key === "Instructions") parsed.additionalInstruction = val;
+            else if (key === "Usage") parsed.usage = val;
+            else if (key === "Valid Until") parsed.validUntil = val;
+            else if (key === "Pharmacist Notes") parsed.pharmacistNotes = val;
+          }
+        }
+        return parsed;
+      });
+      setOrderItems(parsedItems);
+      // Pre-fill prescriber name if available
+      if (editOrder.prescribername) {
+        setPrescriberName(editOrder.prescribername);
+      }
+
+      // Check for existing reminder linked to this order
+      if (editOrder.orderid) {
+        fetch(`/api/d/${workspaceid}/patient-reminders?all=true`)
+          .then(r => r.json())
+          .then(data => {
+            const reminder = data.reminders?.find((r: any) => r.orderid === editOrder.orderid);
+            if (reminder) {
+              setReminderEnabled(true);
+              setReminderDate(reminder.reminderdate ? reminder.reminderdate.slice(0, 10) : "");
+            } else {
+              setReminderEnabled(false);
+              setReminderDate("");
+            }
+          })
+          .catch(() => {
+            setReminderEnabled(false);
+            setReminderDate("");
+          });
+      }
+    }
+  }, [open, editOrder, workspaceid]);
 
   const loadInsuranceCompanies = async () => {
     try {
@@ -171,7 +283,7 @@ export default function CreateOrderModal({
   }, [patientSearch, workspaceid]);
 
   const handleAddItem = () => {
-    if (!currentItem.drugname || currentItem.quantity < 1 || !currentItem.additionalInstruction?.trim()) {
+    if (!currentItem.drugname || currentItem.quantity < 1 || (editingIndex === null && !currentItem.additionalInstruction?.trim())) {
       return;
     }
 
@@ -195,7 +307,16 @@ export default function CreateOrderModal({
       pharmacistNotes: currentItem.pharmacistNotes,
     };
 
-    setOrderItems([...orderItems, newItem]);
+    if (editingIndex !== null) {
+      // Update existing item
+      const updated = [...orderItems];
+      updated[editingIndex] = newItem;
+      setOrderItems(updated);
+      setEditingIndex(null);
+    } else {
+      // Add new item
+      setOrderItems([...orderItems, newItem]);
+    }
     setCurrentItem({
       drugid: "",
       drugname: "",
@@ -217,6 +338,30 @@ export default function CreateOrderModal({
     });
   };
 
+  const handleEditItem = (index: number) => {
+    const item = orderItems[index];
+    setCurrentItem({
+      drugid: item.drugid || "",
+      drugname: item.drugname,
+      form: item.form || "",
+      strength: item.strength || "",
+      quantity: item.quantity,
+      doseAmount: item.doseAmount || "",
+      doseUnit: item.doseUnit || "mg",
+      route: item.route || "",
+      timingDirections: item.timingDirections || "Once daily",
+      directionDuration: item.directionDuration || "",
+      validUntil: item.validUntil || "",
+      usage: item.usage || "",
+      asRequired: item.asRequired || false,
+      asRequiredCriterion: item.asRequiredCriterion || "",
+      additionalInstruction: item.additionalInstruction || "",
+      clinicalIndication: item.clinicalIndication || "",
+      pharmacistNotes: item.pharmacistNotes || "",
+    });
+    setEditingIndex(index);
+  };
+
   const handleRemoveItem = (index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
   };
@@ -225,9 +370,14 @@ export default function CreateOrderModal({
     const formattedPatient: Patient = {
       patientid: patient.patientid,
       firstname: patient.firstname,
+      middlename: patient.middlename || null,
       lastname: patient.lastname,
       nationalid: patient.nationalid,
       dateofbirth: patient.dateofbirth,
+      phone: patient.phone || null,
+      email: patient.email || null,
+      address: patient.address || null,
+      gender: patient.gender || null,
     };
     setSelectedPatient(formattedPatient);
     setPatientSearch(`${patient.firstname} ${patient.lastname}`);
@@ -326,15 +476,20 @@ export default function CreateOrderModal({
 
       if (res.ok) {
         const result = await res.json();
-        
+
         const formattedPatient: Patient = {
           patientid: result.patient.patientid,
           firstname: result.patient.firstname,
+          middlename: result.patient.middlename || null,
           lastname: result.patient.lastname,
           nationalid: result.patient.nationalid,
           dateofbirth: result.patient.dateofbirth,
+          phone: result.patient.phone || null,
+          email: result.patient.email || null,
+          address: result.patient.address || null,
+          gender: result.patient.gender || null,
         };
-        
+
         setSelectedPatient(formattedPatient);
         setPatientSearch(`${result.patient.firstname} ${result.patient.lastname}`);
         setShowInlinePatientForm(false);
@@ -356,13 +511,18 @@ export default function CreateOrderModal({
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/d/${workspaceid}/pharmacy-orders`, {
-        method: "POST",
+      const url = isEditMode
+        ? `/api/d/${workspaceid}/pharmacy-orders/${editOrder!.orderid}`
+        : `/api/d/${workspaceid}/pharmacy-orders`;
+      const method = isEditMode ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientid: selectedPatient.patientid,
-          prescriberid: userId, // Use logged-in user's ID
-          prescriberName: userName, // Use logged-in user's name
+          prescriberid: userId,
+          prescriberName: prescriberName ? (prescriberName.toLowerCase().startsWith('dr.') ? prescriberName : `Dr. ${prescriberName}`) : userName,
           items: orderItems,
           source: "PHARMACY",
         }),
@@ -370,8 +530,57 @@ export default function CreateOrderModal({
 
       if (res.ok) {
         const data = await res.json();
-        console.log("Order created successfully:", data.order?.orderid);
-        onSuccess();
+        console.log(isEditMode ? "Order updated successfully:" : "Order created successfully:", data.order?.orderid);
+
+        // Handle reminder: create, update, or delete
+        if (data.order?.orderid) {
+          try {
+            // First, check if a reminder already exists for this order
+            const remindersRes = await fetch(`/api/d/${workspaceid}/patient-reminders?all=true`);
+            const remindersData = await remindersRes.json();
+            const existingReminder = remindersData.reminders?.find((r: any) => r.orderid === data.order.orderid);
+
+            if (reminderEnabled) {
+              // Create or update reminder
+              if (existingReminder) {
+                // Update existing reminder
+                await fetch(`/api/d/${workspaceid}/patient-reminders/${existingReminder.reminderid}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    reminderdate: reminderDate || null,
+                    title: `Order follow-up: ${selectedPatient?.firstname || ""} ${selectedPatient?.lastname || ""}`,
+                    patientname: `${selectedPatient?.firstname || ""} ${selectedPatient?.lastname || ""}`.trim(),
+                  }),
+                });
+              } else {
+                // Create new reminder
+                await fetch(`/api/d/${workspaceid}/patient-reminders`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    title: `Order follow-up: ${selectedPatient?.firstname || ""} ${selectedPatient?.lastname || ""}`,
+                    description: `Prescription order reminder`,
+                    patientid: selectedPatient?.patientid || null,
+                    patientname: `${selectedPatient?.firstname || ""} ${selectedPatient?.lastname || ""}`.trim(),
+                    reminderdate: reminderDate || null,
+                    priority: "medium",
+                    orderid: data.order.orderid,
+                  }),
+                });
+              }
+            } else if (existingReminder) {
+              // Delete existing reminder if checkbox is unchecked
+              await fetch(`/api/d/${workspaceid}/patient-reminders/${existingReminder.reminderid}`, {
+                method: "DELETE",
+              });
+            }
+          } catch (e) {
+            console.error("Failed to handle reminder:", e);
+          }
+        }
+
+        onSuccess(data.order?.orderid);
         // B4: Keep patient selected — only reset the medication list
         setOrderItems([]);
         setCurrentItem({
@@ -393,15 +602,17 @@ export default function CreateOrderModal({
           clinicalIndication: "",
           pharmacistNotes: "",
         });
+        setReminderEnabled(false);
+        setReminderDate("");
         setLoading(false);
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to create order");
+        alert(data.error || (isEditMode ? "Failed to update order" : "Failed to create order"));
         setLoading(false);
       }
     } catch (error) {
-      console.error("Error creating order:", error);
-      alert("Failed to create order");
+      console.error(isEditMode ? "Error updating order:" : "Error creating order:", error);
+      alert(isEditMode ? "Failed to update order" : "Failed to create order");
       setLoading(false);
     }
   };
@@ -462,9 +673,11 @@ export default function CreateOrderModal({
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="w-[90vw] max-w-[1400px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add an Order</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Order" : "Prescription Order"}</DialogTitle>
           <DialogDescription>
-            Create a new pharmacy order with patient information and medications
+            {isEditMode
+              ? `Update order ${editOrder!.orderid.slice(0, 8)}… — modify patient, medications, or dosage details`
+              : "Create a new pharmacy order with patient information and medications"}
           </DialogDescription>
         </DialogHeader>
 
@@ -920,22 +1133,33 @@ export default function CreateOrderModal({
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-md">
-                <div>
-                  <div className="font-semibold text-blue-900">
-                    {selectedPatient.firstname} {selectedPatient.middlename ? `${selectedPatient.middlename} ` : ''}{selectedPatient.lastname}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 cursor-pointer" onClick={() => setShowPatientContact(!showPatientContact)}>
+                    <div className="font-semibold text-blue-900">
+                      {selectedPatient.firstname} {selectedPatient.middlename ? `${selectedPatient.middlename} ` : ''}{selectedPatient.lastname}
+                    </div>
+                    <div className="text-sm text-blue-700">
+                      {selectedPatient.nationalid && `ID: ${selectedPatient.nationalid}`}
+                    </div>
                   </div>
-                  <div className="text-sm text-blue-700">
-                    {selectedPatient.nationalid && `ID: ${selectedPatient.nationalid}`}
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedPatient(null)}
+                  >
+                    Change Patient
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedPatient(null)}
-                >
-                  Change Patient
-                </Button>
+                {showPatientContact && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 text-sm text-blue-800 space-y-1">
+                    {selectedPatient.phone && <div>Phone: {selectedPatient.phone}</div>}
+                    {selectedPatient.email && <div>Email: {selectedPatient.email}</div>}
+                    {selectedPatient.address && <div>Address: {selectedPatient.address}</div>}
+                    {selectedPatient.dateofbirth && <div>DOB: {new Date(selectedPatient.dateofbirth).toLocaleDateString()}</div>}
+                    {selectedPatient.gender && <div>Gender: {selectedPatient.gender}</div>}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -946,8 +1170,8 @@ export default function CreateOrderModal({
             <Label className="text-base font-semibold">Add Medications</Label>
             
             <div className="space-y-3">
-              {/* Single Row: Medication Name, Quantity, Dose Amount, Dose Unit */}
-              <div className="grid grid-cols-5 gap-2">
+              {/* Single Row: Medication Name, Quantity, Dose Amount, Dose Unit, Instructions */}
+              <div className="grid grid-cols-6 gap-2">
                 <div className="col-span-2">
                   <Label className="text-xs">Medication Name *</Label>
                   <DrugAutocomplete
@@ -958,10 +1182,10 @@ export default function CreateOrderModal({
                     }
                     onSelect={(drug) => {
                       console.log("Selected drug:", drug); // Debug log
-                      
+
                       // Handle different route data formats
                       let route = "";
-                      
+
                       if (drug.route) {
                         if (typeof drug.route === 'string') {
                           // If route is already a simple string like "oral"
@@ -974,11 +1198,11 @@ export default function CreateOrderModal({
                           }
                         }
                       }
-                      
+
                       // Map route names to dropdown values
                       const routeMapping: { [key: string]: string } = {
                         'oral': 'Oral',
-                        'parenteral': 'Parenteral', 
+                        'parenteral': 'Parenteral',
                         'nasal': 'Nasal',
                         'rectal': 'Rectal',
                         'vaginal': 'Vaginal',
@@ -994,10 +1218,10 @@ export default function CreateOrderModal({
                         'subcutaneous': 'Parenteral',
                         'topical': 'Transdermal'
                       };
-                      
+
                       const formattedRoute = routeMapping[route] || route.charAt(0).toUpperCase() + route.slice(1);
                       const strengthMatch = drug.strength?.match(/^(\d+)/);
-                      
+
                       // Improved dose unit logic
                       let doseUnit = "mg"; // default
                       if (drug.unit) {
@@ -1014,9 +1238,9 @@ export default function CreateOrderModal({
                           doseUnit = 'g';
                         }
                       }
-                      
+
                       console.log("Setting doseUnit to:", doseUnit); // Debug log
-                      
+
                       setCurrentItem({
                         ...currentItem,
                         drugid: drug.drugid,
@@ -1081,10 +1305,35 @@ export default function CreateOrderModal({
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label className="text-xs">Instructions *</Label>
+                  <Select
+                    value={currentItem.additionalInstruction}
+                    onValueChange={(value) =>
+                      setCurrentItem({ ...currentItem, additionalInstruction: value })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Instructions..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Take with food">Take with food</SelectItem>
+                      <SelectItem value="Take before meals">Take before meals</SelectItem>
+                      <SelectItem value="Take after meals">Take after meals</SelectItem>
+                      <SelectItem value="Take with plenty of water">Take with plenty of water</SelectItem>
+                      <SelectItem value="Swallow whole, do not crush">Swallow whole, do not crush</SelectItem>
+                      <SelectItem value="Chew well before swallowing">Chew well before swallowing</SelectItem>
+                      <SelectItem value="Dissolve under tongue">Dissolve under tongue</SelectItem>
+                      <SelectItem value="Shake well before use">Shake well before use</SelectItem>
+                      <SelectItem value="Avoid driving after taking">Avoid driving after taking</SelectItem>
+                      <SelectItem value="Avoid alcohol during treatment">Avoid alcohol during treatment</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Single Row: Route, Timing, Duration, Instructions, Usage, Valid Until */}
-              <div className="grid grid-cols-6 gap-2">
+              {/* Route, Timing, Duration, Usage, Valid Until */}
+              <div className="grid grid-cols-5 gap-2">
                 <div>
                   <Label className="text-xs">Route *</Label>
                   <Select
@@ -1135,7 +1384,7 @@ export default function CreateOrderModal({
                       <SelectItem value="Before sleep">Before sleep</SelectItem>
                       <SelectItem value="After meals">After meals</SelectItem>
                       <SelectItem value="Before meals">Before meals</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -1157,32 +1406,7 @@ export default function CreateOrderModal({
                       <SelectItem value="2 weeks">2 weeks</SelectItem>
                       <SelectItem value="1 month">1 month</SelectItem>
                       <SelectItem value="Until finished">Until finished</SelectItem>
-                  </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Instructions *</Label>
-                  <Select
-                    value={currentItem.additionalInstruction}
-                    onValueChange={(value) =>
-                      setCurrentItem({ ...currentItem, additionalInstruction: value })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Instructions..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Take with food">Take with food</SelectItem>
-                      <SelectItem value="Take before meals">Take before meals</SelectItem>
-                      <SelectItem value="Take after meals">Take after meals</SelectItem>
-                      <SelectItem value="Take with plenty of water">Take with plenty of water</SelectItem>
-                      <SelectItem value="Swallow whole, do not crush">Swallow whole, do not crush</SelectItem>
-                      <SelectItem value="Chew well before swallowing">Chew well before swallowing</SelectItem>
-                      <SelectItem value="Dissolve under tongue">Dissolve under tongue</SelectItem>
-                      <SelectItem value="Shake well before use">Shake well before use</SelectItem>
-                      <SelectItem value="Avoid driving after taking">Avoid driving after taking</SelectItem>
-                      <SelectItem value="Avoid alcohol during treatment">Avoid alcohol during treatment</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -1209,7 +1433,7 @@ export default function CreateOrderModal({
                       <SelectItem value="For anxiety">For anxiety</SelectItem>
                       <SelectItem value="For anemia">For anemia</SelectItem>
                       <SelectItem value="For vitamin deficiency">For vitamin deficiency</SelectItem>
-                  </SelectContent>
+                    </SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -1226,72 +1450,75 @@ export default function CreateOrderModal({
               </div>
             </div>
 
-            
-            {/* PRN & Clinical Indication */}
-            <div className="space-y-3">
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="asRequired"
-                  checked={currentItem.asRequired}
-                  onChange={(e) =>
-                    setCurrentItem({ ...currentItem, asRequired: e.target.checked })
-                  }
-                />
-                <Label htmlFor="asRequired">As Required (PRN)</Label>
-              </div>
-
-              {currentItem.asRequired && (
-                <div>
-                  <Label>PRN Criterion</Label>
-                  <Input
-                    placeholder="e.g., for pain"
-                    value={currentItem.asRequiredCriterion}
-                    onChange={(e) =>
-                      setCurrentItem({ ...currentItem, asRequiredCriterion: e.target.value })
-                    }
-                  />
-                </div>
-              )}
-
-              <div>
-                <Label className="text-xs">Instructions *</Label>
-                <Input
-                  placeholder="e.g., Take with food, avoid sunlight"
-                  value={currentItem.additionalInstruction}
-                  onChange={(e) =>
-                    setCurrentItem({ ...currentItem, additionalInstruction: e.target.value })
-                  }
-                  className="h-8 text-xs"
-                />
-              </div>
-
-              {/* Pharmacist Notes */}
-              <div>
-                <Label className="text-xs">Pharmacist Notes</Label>
-                <Input
-                  placeholder="Add pharmacist notes for this medication..."
-                  value={currentItem.pharmacistNotes}
-                  onChange={(e) =>
-                    setCurrentItem({ ...currentItem, pharmacistNotes: e.target.value })
-                  }
-                  className="h-8 text-xs"
-                />
-              </div>
+            {/* Instructions (free-form) */}
+            <div>
+              <Label className="text-xs">Instructions *</Label>
+              <Input
+                placeholder="e.g., Take with food, avoid sunlight"
+                value={currentItem.additionalInstruction}
+                onChange={(e) =>
+                  setCurrentItem({ ...currentItem, additionalInstruction: e.target.value })
+                }
+                className="h-8 text-xs"
+              />
             </div>
 
-            
+            {/* Prescriber Doctor Name */}
+            <div>
+              <Label className="text-xs">Dr.</Label>
+              <Input
+                placeholder="Enter prescribing doctor's name..."
+                value={prescriberName}
+                onChange={(e) => setPrescriberName(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+
+            {/* Pharmacist Notes */}
+            <div>
+              <Label className="text-xs">Pharmacist Notes</Label>
+              <Input
+                placeholder="Add pharmacist notes for this medication..."
+                value={currentItem.pharmacistNotes}
+                onChange={(e) =>
+                  setCurrentItem({ ...currentItem, pharmacistNotes: e.target.value })
+                }
+                className="h-8 text-xs"
+              />
+            </div>
+
+            {/* Reminder Checkbox + Date */}
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={reminderEnabled}
+                  onChange={(e) => setReminderEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-xs font-medium">Reminder</span>
+              </label>
+              {reminderEnabled && (
+                <Input
+                  type="date"
+                  value={reminderDate}
+                  onChange={(e) => setReminderDate(e.target.value)}
+                  className="h-8 text-xs w-40"
+                />
+              )}
+            </div>
+
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleAddItem}
-              disabled={!currentItem.drugname || currentItem.quantity < 1 || !currentItem.additionalInstruction?.trim()}
-              className=" w-full bg-gray-100 hover:bg-green-300 text-gray-900 gap-2"
+              disabled={!currentItem.drugname || currentItem.quantity < 1 || (editingIndex === null && !currentItem.additionalInstruction?.trim())}
+              className="w-full bg-green-600 hover:bg-green-700 !text-black gap-2 disabled:opacity-100 disabled:bg-green-300 disabled:cursor-not-allowed"
+              style={{ color: '#000000' }}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Medication to Order
+              {editingIndex !== null ? "Update Medication" : "Add Medication to Order"}
             </Button>
           </div>
           )}
@@ -1314,14 +1541,24 @@ export default function CreateOrderModal({
                         </div>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(index)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditItem(index)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveItem(index)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1341,7 +1578,7 @@ export default function CreateOrderModal({
               disabled={loading || !selectedPatient || orderItems.length === 0}
             >
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create Order
+              {isEditMode ? "Update Order" : "Create Order"}
             </Button>
           </div>
           )}

@@ -14,6 +14,7 @@ export const patientReminders = pgTable("patient_reminders", {
   completed:   boolean("completed").notNull().default(false),
   isread:      boolean("isread").notNull().default(false), // notification "read" status, separate from completed
   priority:    text("priority").notNull().default("medium"), // low | medium | high
+  orderid:     text("orderid"), // linked pharmacy order ID
   createdby:   text("createdby"),
   createdat:   timestamp("createdat", { withTimezone: true }).notNull().defaultNow(),
   updatedat:   timestamp("updatedat", { withTimezone: true }).notNull().defaultNow(),

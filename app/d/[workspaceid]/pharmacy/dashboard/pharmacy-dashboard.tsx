@@ -28,6 +28,7 @@ import {
   AlertCircle,
   ShoppingCart,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { PharmacyNav } from "@/components/pharmacy/PharmacyNav";
 import PharmacyOrdersPage from "../orders/orders-list";
 import DrugRegistration from "./components/DrugRegistration";
@@ -46,6 +47,12 @@ interface DashboardStats {
   notifications: { count: number; items: { orderid: string; priority: string; status: string; notes: string | null; createdat: string; source: string }[] };
   topSellers?: { drugid: string; drugname: string; genericname: string | null; strength: string; form: string; totalquantity: number }[];
   budget?: { todayRevenue: number; paymentBreakdown: { cash: number; card: number; insurance: number; credit: number }; transactionCount: number };
+  salesComparison?: {
+    current: number;
+    lastYear: number;
+    twoYearsAgo: number;
+    labels: { current: string; lastYear: string; twoYearsAgo: string };
+  };
 }
 
 export default function PharmacyDashboard({
@@ -87,18 +94,6 @@ export default function PharmacyDashboard({
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>
-          {activeTab === "dashboard" ? "Pharmacy Dashboard" :
-           activeTab === "orders" ? "Pharmacy Orders" :
-           activeTab === "pos" ? "Point of Sale" :
-           activeTab === "drug-registration" ? "Drug Registration" :
-           activeTab === "inventory" ? "Pharmacy Inventory" :
-           activeTab === "todo" ? "To Do" : "Pharmacy Dashboard"}
-        </span>
-      </div>
-
       <PharmacyNav workspaceid={workspaceid} activeTab={activeTab} />
 
       {/* Dashboard Tab */}
@@ -111,7 +106,7 @@ export default function PharmacyDashboard({
         ) : (
           <div className="space-y-4">
                 {/* Top summary cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="shadow-sm">
                     <CardContent className="pt-4 pb-3 px-4">
                       <div className="flex items-center justify-between">
@@ -310,6 +305,44 @@ export default function PharmacyDashboard({
                     </CardContent>
                   </Card>
 
+                  {/* Sales Comparison: today vs same day 1yr/2yrs ago */}
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2 pt-4 px-4">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-[#618FF5]" />
+                        Sales Comparison (Same Day)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-4">
+                      {!stats?.salesComparison ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No sales data available</p>
+                      ) : (
+                        <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={[
+                                { name: stats.salesComparison.labels.twoYearsAgo, sales: stats.salesComparison.twoYearsAgo },
+                                { name: stats.salesComparison.labels.lastYear, sales: stats.salesComparison.lastYear },
+                                { name: stats.salesComparison.labels.current, sales: stats.salesComparison.current },
+                              ]}
+                              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+                              <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, "Sales"]} />
+                              <Bar dataKey="sales" radius={[4, 4, 0, 0]}>
+                                <Cell fill="#94a3b8" />
+                                <Cell fill="#94a3b8" />
+                                <Cell fill="#618FF5" />
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
                 </div>
               </div>
             )}
@@ -325,6 +358,7 @@ export default function PharmacyDashboard({
                 workspaceid={workspaceid}
                 userName={userName}
                 userId={userId}
+                orderidFromUrl={searchParams.get("orderid")}
               />
             </div>
           )}

@@ -13,6 +13,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   Table,
   TableBody,
   TableCell,
@@ -609,157 +615,192 @@ export default function OrderDetailsModal({
                   `${Math.floor((new Date().getTime() - new Date(patient.dateofbirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))}y` : 
                   "N/A"} | {patient?.gender || "N/A"}
               </div>
-              <div className="text-muted-foreground">Prescriber: {order.prescribername || order.doctorname || order.prescribingdoctor || order.orderedby || order.createdby || "N/A"}</div>
-              <div className="text-muted-foreground">Priority: <Badge variant={order.priority === "HIGH" ? "destructive" : "secondary"} className="text-xs">{order.priority}</Badge></div>
+              <div className="text-muted-foreground">Prescribed by: <Badge variant="secondary" className="text-xs">{order.prescribername || order.doctorname || order.prescribingdoctor || order.orderedby || order.createdby || "N/A"}</Badge></div>
             </div>
           </div>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
-          {/* Left Column: Medications */}
+          {/* Left Column: Tabs */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-lg">Medications</h3>
-            </div>
-            <div className="flex flex-col gap-3 overflow-y-auto max-h-[600px]">
-              {items.map((item: any) => {
-                    // Parse labeled pipe-separated dosage string:
-                    // "Dose: 500mg | Route: Oral | Timing: Twice daily | Instructions: ..."
-                    const parseDosageDetails = (dosageStr: string): Record<string, string> => {
-                      if (!dosageStr) return {};
-                      const details: Record<string, string> = {};
-                      dosageStr.split('|').map(p => p.trim()).forEach(part => {
-                        const idx = part.indexOf(':');
-                        if (idx === -1) return;
-                        const key = part.slice(0, idx).trim().toLowerCase().replace(/\s+/g, '');
-                        const val = part.slice(idx + 1).trim();
-                        if (!val) return;
-                        if (key === 'dose') details.dose = val;
-                        else if (key === 'route') details.route = val;
-                        else if (key === 'timing') details.timing = val;
-                        else if (key === 'instructions') details.instructions = val;
-                        else if (key === 'duration') details.duration = val;
-                        else if (key === 'usage') details.usage = val;
-                        else if (key === 'pharmacistnotes') details.pharmacistNotes = val;
-                      });
-                      return details;
-                    };
+            <Tabs defaultValue="medications" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 gap-2">
+                <TabsTrigger value="medications" className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-4 py-2.5 text-[17.5px]">Medications</TabsTrigger>
+                <TabsTrigger value="interaction" className="rounded-md data-[state=active]:bg-[#4a6fd4] data-[state=active]:text-white bg-[#618FF5] text-white border-0 font-semibold px-4 py-2.5 text-[17.5px]">Interaction</TabsTrigger>
+              </TabsList>
+              <TabsContent value="medications" className="mt-4">
+                <div className="flex flex-col gap-3 overflow-y-auto max-h-[600px]">
+                  {items.map((item: any) => {
+                        // Parse labeled pipe-separated dosage string:
+                        // "Dose: 500mg | Route: Oral | Timing: Twice daily | Instructions: ..."
+                        const parseDosageDetails = (dosageStr: string): Record<string, string> => {
+                          if (!dosageStr) return {};
+                          const details: Record<string, string> = {};
+                          dosageStr.split('|').map(p => p.trim()).forEach(part => {
+                            const idx = part.indexOf(':');
+                            if (idx === -1) return;
+                            const key = part.slice(0, idx).trim().toLowerCase().replace(/\s+/g, '');
+                            const val = part.slice(idx + 1).trim();
+                            if (!val) return;
+                            if (key === 'dose') details.dose = val;
+                            else if (key === 'route') details.route = val;
+                            else if (key === 'timing') details.timing = val;
+                            else if (key === 'instructions') details.instructions = val;
+                            else if (key === 'duration') details.duration = val;
+                            else if (key === 'usage') details.usage = val;
+                            else if (key === 'pharmacistnotes') details.pharmacistNotes = val;
+                          });
+                          return details;
+                        };
 
-                    const doseInfo = parseDosageDetails(item.dosage || '');
-                    
-                    return (
-                <Card key={item.itemid} className="p-3 min-w-[320px] flex-shrink-0">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1">
-                        <h4
-                          className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
-                          onClick={() => handleDrugClick(item.drugid, item.drugname)}
-                        >
-                          {item.drugname}
-                        </h4>
-                        {(item.interaction && item.interaction !== "None") || item.warning ? (
-                          <span
-                            title={[item.interaction, item.warning].filter(Boolean).join(" | ")}
-                            className="cursor-help"
-                          >
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                          </span>
-                        ) : null}
+                        const doseInfo = parseDosageDetails(item.dosage || '');
+
+                        return (
+                    <Card key={item.itemid} className="p-3 min-w-[320px] flex-shrink-0">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <h4
+                              className="font-medium cursor-pointer hover:text-blue-600 hover:underline"
+                              onClick={() => handleDrugClick(item.drugid, item.drugname)}
+                            >
+                              {item.drugname}
+                            </h4>
+                            {doseInfo.dose && (
+                              <Badge variant="outline" className="text-xs font-bold text-blue-700 border-blue-300">
+                                {doseInfo.dose}
+                              </Badge>
+                            )}
+                            {(item.interaction && item.interaction !== "None") || item.warning ? (
+                              <span
+                                title={[item.interaction, item.warning].filter(Boolean).join(" | ")}
+                                className="cursor-help"
+                              >
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-sm text-muted-foreground">{item.quantity ? `x${(item.quantity || 0) - (item.quantitydispensed || 0)}` : ""}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePrintMedicationCard(item)}
+                              className="h-7 px-2 text-xs"
+                              title="Print medication card"
+                            >
+                              <Printer className="h-3 w-3" />
+                            </Button>
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                statusColor[item.status] || statusColor.PENDING
+                              }`}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                          {(() => {
+                            const price = parseFloat(item.bestBatchPrice || '0') > 0
+                              ? parseFloat(item.bestBatchPrice)
+                              : parseFloat(item.unitprice || '0') > 0
+                                ? parseFloat(item.unitprice)
+                                : parseFloat(item.nameBasedPrice || '0') > 0
+                                  ? parseFloat(item.nameBasedPrice)
+                                  : parseFloat(item.inventorySellingPrice || '0') > 0
+                                    ? parseFloat(item.inventorySellingPrice)
+                                    : 0;
+                            return price > 0 ? (
+                              <div className="text-right">
+                                <div className="text-xs text-muted-foreground">
+                                  Price per pcs: {price.toLocaleString()} IQD
+                                </div>
+                                <div className="text-sm font-bold text-green-600">
+                                  Total: {(price * (item.quantity || 1)).toLocaleString()} IQD
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-sm text-muted-foreground">{item.quantity ? `x${(item.quantity || 0) - (item.quantitydispensed || 0)}` : ""}</p>
-                        {(() => {
-                          const price = parseFloat(item.bestBatchPrice || '0') > 0
-                            ? parseFloat(item.bestBatchPrice)
-                            : parseFloat(item.unitprice || '0') > 0
-                              ? parseFloat(item.unitprice)
-                              : parseFloat(item.nameBasedPrice || '0') > 0
-                                ? parseFloat(item.nameBasedPrice)
-                                : parseFloat(item.inventorySellingPrice || '0') > 0
-                                  ? parseFloat(item.inventorySellingPrice)
-                                  : 0;
-                          return price > 0 ? (
-                            <div className="text-right">
-                              <span className="text-sm font-bold text-green-600">
-                                {(price * (item.quantity || 1)).toLocaleString()} IQD
-                              </span>
-                              <span className="text-xs text-muted-foreground ml-1">
-                                @ {price.toLocaleString()}
-                              </span>
+
+                      {/* Dose Information */}
+                      {Object.keys(doseInfo).length > 0 && (
+                        <div className="space-y-1 text-sm mb-2 mt-1">
+                          {doseInfo.instructions && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-black text-xs">Instructions:</span>
+                              <span className="text-xs font-medium text-black">{doseInfo.instructions}</span>
                             </div>
-                          ) : null;
-                        })()}
-                      </div>
+                          )}
+                          {doseInfo.route && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-muted-foreground text-xs">Route:</span>
+                              <Badge variant="secondary" className="text-xs">{doseInfo.route}</Badge>
+                            </div>
+                          )}
+                          {doseInfo.timing && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-muted-foreground text-xs">Timing:</span>
+                              <span className="text-xs">{doseInfo.timing}</span>
+                            </div>
+                          )}
+                          {doseInfo.duration && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-muted-foreground text-xs">Duration:</span>
+                              <span className="text-xs">{doseInfo.duration}</span>
+                            </div>
+                          )}
+                          {doseInfo.usage && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-muted-foreground text-xs">Usage:</span>
+                              <span className="text-xs">{doseInfo.usage}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {item.notes && <div className="text-sm text-muted-foreground"><strong>Notes:</strong> {item.notes}</div>}
+                      {item.alternativemedicine && <div className="text-sm text-muted-foreground"><strong>Alternative:</strong> {item.alternativemedicine}</div>}
+                    </Card>
+                        );
+                      })}
+                </div>
+              </TabsContent>
+              <TabsContent value="interaction" className="mt-4">
+                <div className="flex flex-col gap-3 overflow-y-auto max-h-[600px]">
+                  {items.filter((item: any) => (item.interaction && item.interaction !== "None") || item.warning).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No drug interactions detected
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePrintMedicationCard(item)}
-                        className="h-7 px-2 text-xs"
-                        title="Print medication card"
-                      >
-                        <Printer className="h-3 w-3" />
-                      </Button>
-                      <span
-                        className={`px-2 py-1 rounded text-xs ${
-                          statusColor[item.status] || statusColor.PENDING
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Dose Information */}
-                  {Object.keys(doseInfo).length > 0 && (
-                    <div className="space-y-1 text-sm mb-2 mt-1">
-                      {doseInfo.dose && (
-                        <Badge variant="outline" className="text-xs font-bold text-blue-700 border-blue-300">
-                          {doseInfo.dose}
-                        </Badge>
-                      )}
-                      {doseInfo.route && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-muted-foreground text-xs">Route:</span>
-                          <Badge variant="secondary" className="text-xs">{doseInfo.route}</Badge>
+                  ) : (
+                    items.filter((item: any) => (item.interaction && item.interaction !== "None") || item.warning).map((item: any) => (
+                      <Card key={item.itemid} className="p-3 border-amber-200 bg-amber-50">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{item.drugname}</h4>
+                            {item.interaction && item.interaction !== "None" && (
+                              <div className="text-sm text-red-600 mt-1">
+                                <strong>Interaction:</strong> {item.interaction}
+                              </div>
+                            )}
+                            {item.warning && (
+                              <div className="text-sm text-amber-700 mt-1">
+                                <strong>Warning:</strong> {item.warning}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      {doseInfo.timing && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-muted-foreground text-xs">Timing:</span>
-                          <span className="text-xs">{doseInfo.timing}</span>
-                        </div>
-                      )}
-                      {doseInfo.duration && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-muted-foreground text-xs">Duration:</span>
-                          <span className="text-xs">{doseInfo.duration}</span>
-                        </div>
-                      )}
-                      {doseInfo.instructions && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-amber-600 text-xs">Instructions:</span>
-                          <span className="text-xs font-medium text-amber-700">{doseInfo.instructions}</span>
-                        </div>
-                      )}
-                      {doseInfo.usage && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-muted-foreground text-xs">Usage:</span>
-                          <span className="text-xs">{doseInfo.usage}</span>
-                        </div>
-                      )}
-                    </div>
+                      </Card>
+                    ))
                   )}
-                  
-                  {item.notes && <div className="text-sm text-muted-foreground"><strong>Notes:</strong> {item.notes}</div>}
-                  {item.alternativemedicine && <div className="text-sm text-muted-foreground"><strong>Alternative:</strong> {item.alternativemedicine}</div>}
-                  {item.interaction && item.interaction !== "None" && <div className="text-sm text-red-600"><strong>Interaction:</strong> {item.interaction}</div>}
-                </Card>
-                    );
-                  })}
-            </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Right Column */}
@@ -835,41 +876,6 @@ export default function OrderDetailsModal({
             </CardContent>
           </Card>
 
-          {/* Dosage Instructions Section */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Dosage Instructions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {order.notes ? (
-                  (() => {
-                    const orderNotes = order.notes;
-                    const usageMatch = orderNotes.match(/Usage:\s*(.*?)(?=\s*\|\s*Valid until:|$|\s*\|\s*Instructions:)/i);
-                    const instructionsMatch = orderNotes.match(/Instructions:\s*(.*?)(?=\s*\|\s*Issued from:|$)/i);
-
-                    return (
-                      <div className="border-l-4 border-blue-500 pl-2">
-                        {usageMatch && (
-                          <div className="text-sm">
-                            <strong>Usage:</strong> {usageMatch[1]}
-                          </div>
-                        )}
-                        {instructionsMatch && (
-                          <div className="text-sm">
-                            <strong>Instructions:</strong> {instructionsMatch[1]}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <p className="text-sm text-muted-foreground">No order notes available for dosage instructions.</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Pharmacist Notes Card */}
           <Card>
             <CardHeader className="pb-2">
@@ -879,40 +885,23 @@ export default function OrderDetailsModal({
               <textarea
                 className="w-full h-16 p-1 text-sm border rounded resize-none"
                 placeholder="Add pharmacist notes..."
-                value={order.pharmacistnotes || ""}
-                onChange={(e) => {
-                  console.log("Pharmacist notes updated:", e.target.value);
+                value={data?.order?.pharmacistnotes || ""}
+                onChange={async (e) => {
+                  const newValue = e.target.value;
+                  setData({ ...data, order: { ...data.order, pharmacistnotes: newValue } } as OrderDetail);
+                  try {
+                    await fetch(`/api/d/${workspaceid}/pharmacy-orders/${orderid}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ pharmacistnotes: newValue }),
+                    });
+                  } catch (error) {
+                    console.error('Failed to save pharmacist notes:', error);
+                  }
                 }}
               />
             </CardContent>
           </Card>
-
-          {/* Indication and Drug Interactions Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Indication</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {order.notes?.match(/Indication:\s*(.*?)(?=\s*\||$)/i)?.[1] || "No indication specified"}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Drug Interactions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {items.some((item: any) => item.interaction && item.interaction !== "None") 
-                    ? "⚠️ Drug interactions detected - review required" 
-                    : "✅ No drug interactions detected"}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
 
           {/* Dispensing Information Card */}
           {order.status === "DISPENSED" && (
@@ -1196,6 +1185,7 @@ export default function OrderDetailsModal({
       orderid={orderid}
       items={items}
       workspaceid={workspaceid}
+      doctorName={order.prescribername || order.prescribingdoctor || order.doctorname || order.orderedby || ""}
     />
   </>
   );

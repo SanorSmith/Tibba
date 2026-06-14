@@ -41,6 +41,23 @@ export async function GET(
 
     const overdueThreshold = new Date(nowUtc - OVERDUE_HOURS * 60 * 60 * 1000);
 
+    // Day ranges for sales comparison: today, same day 1 year ago, same day 2 years ago
+    const todayEnd = new Date(todayStart.getTime() + 86_400_000);
+    const lastYearStart = new Date(todayStart);
+    lastYearStart.setUTCFullYear(lastYearStart.getUTCFullYear() - 1);
+    const lastYearEnd = new Date(lastYearStart.getTime() + 86_400_000);
+    const twoYearsAgoStart = new Date(todayStart);
+    twoYearsAgoStart.setUTCFullYear(twoYearsAgoStart.getUTCFullYear() - 2);
+    const twoYearsAgoEnd = new Date(twoYearsAgoStart.getTime() + 86_400_000);
+
+    const dayLabel = (d: Date) =>
+      new Date(d.getTime() + BAGHDAD_OFFSET_MS).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+
     const monthStart = new Date(
       Math.floor((nowUtc + BAGHDAD_OFFSET_MS) / 86_400_000) * 86_400_000 - BAGHDAD_OFFSET_MS
     );
@@ -63,6 +80,8 @@ export async function GET(
       doctorNotifications,
       todayPaymentBreakdown,
       topSellers,
+      invoiceSalesComparison,
+      posSalesComparison,
     ] = await Promise.all([
       // 1. Low stock medicines
       db
@@ -228,6 +247,27 @@ export async function GET(
         .groupBy(drugs.drugid, drugs.name, drugs.genericname, drugs.strength, drugs.form)
         .orderBy(sql`SUM(${pharmacyOrderItems.quantity}) DESC`)
         .limit(10),
+
+      // 9. Sales comparison (invoices): today vs same day 1yr ago vs same day 2yrs ago
+      db
+        .select({
+          current: sql<string>`COALESCE(SUM(CASE WHEN ${invoices.createdat} >= ${todayStart.toISOString()}::timestamptz AND ${invoices.createdat} < ${todayEnd.toISOString()}::timestamptz THEN ${invoices.total}::numeric ELSE 0 END), 0)`,
+          lastYear: sql<string>`COALESCE(SUM(CASE WHEN ${invoices.createdat} >= ${lastYearStart.toISOString()}::timestamptz AND ${invoices.createdat} < ${lastYearEnd.toISOString()}::timestamptz THEN ${invoices.total}::numeric ELSE 0 END), 0)`,
+          twoYearsAgo: sql<string>`COALESCE(SUM(CASE WHEN ${invoices.createdat} >= ${twoYearsAgoStart.toISOString()}::timestamptz AND ${invoices.createdat} < ${twoYearsAgoEnd.toISOString()}::timestamptz THEN ${invoices.total}::numeric ELSE 0 END), 0)`,
+        })
+        .from(invoices)
+        .innerJoin(pharmacyOrders, eq(invoices.orderid, pharmacyOrders.orderid))
+        .where(eq(pharmacyOrders.workspaceid, workspaceid)),
+
+      // 10. Sales comparison (POS): today vs same day 1yr ago vs same day 2yrs ago
+      db
+        .select({
+          current: sql<string>`COALESCE(SUM(CASE WHEN ${posSales.createdat} >= ${todayStart.toISOString()}::timestamptz AND ${posSales.createdat} < ${todayEnd.toISOString()}::timestamptz THEN ${posSales.totalamount}::numeric ELSE 0 END), 0)`,
+          lastYear: sql<string>`COALESCE(SUM(CASE WHEN ${posSales.createdat} >= ${lastYearStart.toISOString()}::timestamptz AND ${posSales.createdat} < ${lastYearEnd.toISOString()}::timestamptz THEN ${posSales.totalamount}::numeric ELSE 0 END), 0)`,
+          twoYearsAgo: sql<string>`COALESCE(SUM(CASE WHEN ${posSales.createdat} >= ${twoYearsAgoStart.toISOString()}::timestamptz AND ${posSales.createdat} < ${twoYearsAgoEnd.toISOString()}::timestamptz THEN ${posSales.totalamount}::numeric ELSE 0 END), 0)`,
+        })
+        .from(posSales)
+        .where(eq(posSales.workspaceid, workspaceid)),
     ]);
 
     // Process order stats
@@ -269,6 +309,16 @@ export async function GET(
         items: doctorNotifications,
       },
       topSellers: topSellers,
+      salesComparison: {
+        current: parseFloat(invoiceSalesComparison?.[0]?.current || "0") + parseFloat(posSalesComparison?.[0]?.current || "0"),
+        lastYear: parseFloat(invoiceSalesComparison?.[0]?.lastYear || "0") + parseFloat(posSalesComparison?.[0]?.lastYear || "0"),
+        twoYearsAgo: parseFloat(invoiceSalesComparison?.[0]?.twoYearsAgo || "0") + parseFloat(posSalesComparison?.[0]?.twoYearsAgo || "0"),
+        labels: {
+          current: dayLabel(todayStart),
+          lastYear: dayLabel(lastYearStart),
+          twoYearsAgo: dayLabel(twoYearsAgoStart),
+        },
+      },
       budget: {
         todayRevenue: parseFloat(todaySales?.[0]?.total || "0") + parseFloat(todayPosSales?.[0]?.total || "0"),
         paymentBreakdown: {

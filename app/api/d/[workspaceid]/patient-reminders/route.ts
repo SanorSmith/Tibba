@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patientReminders } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lte, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 
-// GET — list reminders for workspace
+// GET — list reminders for workspace (only due: reminderdate <= tomorrow)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceid: string }> }
@@ -14,11 +14,25 @@ export async function GET(
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { searchParams } = new URL(request.url);
+    const showAll = searchParams.get("all") === "true";
+
+    // Tomorrow end of day
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(23, 59, 59, 999);
+
+    const conditions = [eq(patientReminders.workspaceid, workspaceid)];
+
+    if (!showAll) {
+      conditions.push(lte(patientReminders.reminderdate, tomorrow));
+    }
+
     const rows = await db
       .select()
       .from(patientReminders)
-      .where(eq(patientReminders.workspaceid, workspaceid))
-      .orderBy(desc(patientReminders.createdat));
+      .where(and(...conditions))
+      .orderBy(desc(patientReminders.reminderdate));
 
     return NextResponse.json({ reminders: rows });
   } catch (err) {
@@ -38,7 +52,7 @@ export async function POST(
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { title, description, patientid, patientname, reminderdate, priority } = body;
+    const { title, description, patientid, patientname, reminderdate, priority, orderid } = body;
 
     if (!title) return NextResponse.json({ error: "Title is required" }, { status: 400 });
 
@@ -52,6 +66,7 @@ export async function POST(
         patientname: patientname || null,
         reminderdate: reminderdate ? new Date(reminderdate) : null,
         priority: priority || "medium",
+        orderid: orderid || null,
         createdby: user.name || user.email || null,
         completed: false,
       })

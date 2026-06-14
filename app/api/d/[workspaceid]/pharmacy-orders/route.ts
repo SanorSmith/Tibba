@@ -146,7 +146,9 @@ export async function GET(
       db
         .select({
           orderid: pharmacyOrderItems.orderid,
+          drugid: pharmacyOrderItems.drugid,
           drugname: pharmacyOrderItems.drugname,
+          dosage: pharmacyOrderItems.dosage,
           quantity: pharmacyOrderItems.quantity,
           unitprice: pharmacyOrderItems.unitprice,
         })
@@ -305,6 +307,7 @@ export async function POST(
         workspaceid,
         patientid: data.patientid || null,
         prescriberid: data.prescriberid || null,
+        prescribername: data.prescriberName || null,
         status: "PENDING",
         source: data.source,
         openehrorderid: data.openehrorderid || null,
@@ -326,8 +329,22 @@ export async function POST(
       // Select optimal batch using FIFO/expiry logic
       let unitprice: string | null = null;
       let selectedBatchId: string | null = null;
-      const drugid = item.drugid && item.drugid !== "" ? item.drugid : null;
-      
+      let drugid: string | null = null;
+
+      // Validate drugid actually exists in the drugs table before using it
+      if (item.drugid && item.drugid !== "") {
+        const [existingDrug] = await db
+          .select({ drugid: drugs.drugid })
+          .from(drugs)
+          .where(eq(drugs.drugid, item.drugid))
+          .limit(1);
+        if (existingDrug) {
+          drugid = existingDrug.drugid;
+        } else {
+          console.warn(`Drug ID ${item.drugid} not found in drugs table for ${item.drugname} - setting drugid to null`);
+        }
+      }
+
       if (drugid) {
         const optimalBatch = await selectOptimalBatch(drugid, item.quantity);
         if (optimalBatch) {

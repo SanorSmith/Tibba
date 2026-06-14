@@ -15,7 +15,10 @@ import {
   invoiceLines,
   users,
 } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
+import { stockLevels } from "@/lib/db/tables/pharmacy-stock";
+import { drugBatches } from "@/lib/db/tables/pharmacy-drugs";
+import { asc, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { Pool } from "pg";
 
@@ -33,11 +36,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const [orderData] = await db
       .select({
         order: pharmacyOrders,
-        prescribername: sql<string>`prescriber.name`.as('prescribername'),
         dispensedbyname: sql<string>`dispenser.name`.as('dispensedbyname'),
       })
       .from(pharmacyOrders)
-      .leftJoin(sql`users AS prescriber`, sql`prescriber.userid = ${pharmacyOrders.prescriberid}`)
       .leftJoin(sql`users AS dispenser`, sql`dispenser.userid = ${pharmacyOrders.dispensedby}`)
       .where(eq(pharmacyOrders.orderid, orderid))
       .limit(1);
@@ -46,9 +47,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const order = { 
-      ...orderData.order, 
-      prescribername: orderData.prescribername,
+    const order = {
+      ...orderData.order,
+      prescribername: orderData.order.prescribername,
       dispensedbyname: orderData.dispensedbyname
     };
 
@@ -82,8 +83,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         drugbarcode: drugs.barcode,
         drugform: drugs.form,
         drugstrength: drugs.strength,
-        interaction: drugs.interaction,
-        warning: drugs.warning,
+        interaction: sql<string>`COALESCE(${drugs.interaction}, (
+          SELECT d2.interaction FROM drugs d2
+          WHERE (d2.name ILIKE ${pharmacyOrderItems.drugname}
+            OR d2.name ILIKE '%' || ${pharmacyOrderItems.drugname} || '%'
+            OR d2.genericname ILIKE '%' || ${pharmacyOrderItems.drugname} || '%')
+            AND d2.interaction IS NOT NULL
+          LIMIT 1
+        ))`.as("interaction"),
+        warning: sql<string>`COALESCE(${drugs.warning}, (
+          SELECT d2.warning FROM drugs d2
+          WHERE (d2.name ILIKE ${pharmacyOrderItems.drugname}
+            OR d2.name ILIKE '%' || ${pharmacyOrderItems.drugname} || '%'
+            OR d2.genericname ILIKE '%' || ${pharmacyOrderItems.drugname} || '%')
+            AND d2.warning IS NOT NULL
+          LIMIT 1
+        ))`.as("warning"),
         // Best available batch selling price from item_batches (new system)
         bestBatchPrice: sql<string>`(
           SELECT ib.selling_price
@@ -185,11 +200,33 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { status, notes } = body;
+    const { status, notes, prescriberName, patientid, priority, items: newItems } = body;
+
+    // Fetch existing order
+    const [existingOrder] = await db
+      .select()
+      .from(pharmacyOrders)
+      .where(eq(pharmacyOrders.orderid, orderid))
+      .limit(1);
+
+    if (!existingOrder || existingOrder.workspaceid !== workspaceid) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Only allow full edit on PENDING orders
+    if (newItems && existingOrder.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Can only edit items on PENDING orders" },
+        { status: 400 }
+      );
+    }
 
     const updates: any = { updatedat: new Date() };
     if (status) updates.status = status;
     if (notes !== undefined) updates.notes = notes;
+    if (prescriberName !== undefined) updates.prescribername = prescriberName;
+    if (patientid !== undefined) updates.patientid = patientid;
+    if (priority !== undefined) updates.priority = priority;
 
     const [updated] = await db
       .update(pharmacyOrders)
@@ -197,13 +234,206 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .where(eq(pharmacyOrders.orderid, orderid))
       .returning();
 
-    if (!updated) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    // If items are provided, replace all order items
+    let allItems: any[] = [];
+    if (newItems && Array.isArray(newItems) && newItems.length > 0) {
+      // Release stock reservations for old items
+      const oldItems = await db
+        .select()
+        .from(pharmacyOrderItems)
+        .where(eq(pharmacyOrderItems.orderid, orderid));
+
+      for (const oldItem of oldItems) {
+        if (oldItem.drugid) {
+          try {
+            const [sl] = await db
+              .select()
+              .from(stockLevels)
+              .where(eq(stockLevels.drugid, oldItem.drugid))
+              .limit(1);
+            if (sl && sl.reservedquantity >= oldItem.quantity) {
+              await db
+                .update(stockLevels)
+                .set({
+                  reservedquantity: sql`${stockLevels.reservedquantity} - ${oldItem.quantity}`,
+                  updatedat: new Date(),
+                })
+                .where(eq(stockLevels.stocklevelid, sl.stocklevelid));
+            }
+          } catch (e) {
+            console.warn(`Failed to release reservation for ${oldItem.drugname}`, e);
+          }
+        }
+      }
+
+      // Delete old items
+      await db
+        .delete(pharmacyOrderItems)
+        .where(eq(pharmacyOrderItems.orderid, orderid));
+
+      // Insert new items
+      for (const item of newItems) {
+        let unitprice: string | null = null;
+        let selectedBatchId: string | null = null;
+        let drugid: string | null = null;
+
+        if (item.drugid && item.drugid !== "") {
+          const [existingDrug] = await db
+            .select({ drugid: drugs.drugid })
+            .from(drugs)
+            .where(eq(drugs.drugid, item.drugid))
+            .limit(1);
+          if (existingDrug) drugid = existingDrug.drugid;
+        }
+
+        if (drugid) {
+          const today = new Date().toISOString().split('T')[0];
+          const batches = await db
+            .select({
+              batchid: drugBatches.batchid,
+              lotnumber: drugBatches.lotnumber,
+              expirydate: drugBatches.expirydate,
+              sellingprice: drugBatches.sellingprice,
+              quantity: stockLevels.quantity,
+              reservedquantity: stockLevels.reservedquantity,
+              stocklevelid: stockLevels.stocklevelid,
+            })
+            .from(drugBatches)
+            .innerJoin(stockLevels, eq(stockLevels.batchid, drugBatches.batchid))
+            .where(and(eq(drugBatches.drugid, drugid), gt(drugBatches.expirydate, today)))
+            .orderBy(asc(drugBatches.expirydate));
+
+          for (const batch of batches) {
+            if ((batch.quantity - batch.reservedquantity) >= item.quantity) {
+              selectedBatchId = batch.batchid;
+              unitprice = batch.sellingprice;
+              break;
+            }
+          }
+        }
+
+        // Build dosage string
+        let dosageString = item.dosage || "";
+        if (!dosageString && item.doseAmount && item.doseUnit) {
+          const parts = [];
+          parts.push(`Dose: ${item.doseAmount} ${item.doseUnit}`);
+          if (item.route) parts.push(`Route: ${item.route}`);
+          if (item.timingDirections) parts.push(`Timing: ${item.timingDirections}`);
+          if (item.directionDuration) parts.push(`Duration: ${item.directionDuration}`);
+          if (item.additionalInstruction) parts.push(`Instructions: ${item.additionalInstruction}`);
+          if (item.usage) parts.push(`Usage: ${item.usage}`);
+          if (item.validUntil) parts.push(`Valid Until: ${item.validUntil}`);
+          if (item.pharmacistNotes) parts.push(`Pharmacist Notes: ${item.pharmacistNotes}`);
+          dosageString = parts.join(" | ");
+        }
+
+        const [orderItem] = await db
+          .insert(pharmacyOrderItems)
+          .values({
+            orderid,
+            drugid,
+            batchid: selectedBatchId,
+            drugname: item.drugname,
+            dosage: dosageString || null,
+            quantity: item.quantity,
+            unitprice,
+            status: "PENDING" as const,
+          })
+          .returning();
+
+        allItems.push(orderItem);
+
+        // Reserve stock
+        if (drugid) {
+          try {
+            const [sl] = await db.select().from(stockLevels).where(eq(stockLevels.drugid, drugid)).limit(1);
+            if (sl && (sl.quantity - sl.reservedquantity) >= item.quantity) {
+              await db
+                .update(stockLevels)
+                .set({
+                  reservedquantity: sql`${stockLevels.reservedquantity} + ${item.quantity}`,
+                  updatedat: new Date(),
+                })
+                .where(eq(stockLevels.stocklevelid, sl.stocklevelid));
+            }
+          } catch (e) {
+            console.warn(`Failed to reserve stock for ${item.drugname}`, e);
+          }
+        }
+      }
     }
 
-    return NextResponse.json({ order: updated });
+    return NextResponse.json({
+      order: updated,
+      items: allItems.length > 0 ? allItems : undefined,
+      message: newItems ? "Order updated with new items" : "Order updated",
+    });
   } catch (error) {
     console.error("[Pharmacy Order PATCH]", error);
     return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
+  }
+}
+
+// DELETE: remove a PENDING order entirely
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { workspaceid, orderid } = await params;
+    const user = await getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const [order] = await db
+      .select()
+      .from(pharmacyOrders)
+      .where(eq(pharmacyOrders.orderid, orderid))
+      .limit(1);
+
+    if (!order || order.workspaceid !== workspaceid) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    if (order.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Only PENDING orders can be deleted" },
+        { status: 400 }
+      );
+    }
+
+    // Release stock reservations
+    const items = await db
+      .select()
+      .from(pharmacyOrderItems)
+      .where(eq(pharmacyOrderItems.orderid, orderid));
+
+    for (const item of items) {
+      if (!item.drugid) continue;
+      try {
+        const [sl] = await db
+          .select()
+          .from(stockLevels)
+          .where(eq(stockLevels.drugid, item.drugid))
+          .limit(1);
+        if (sl && sl.reservedquantity >= item.quantity) {
+          await db
+            .update(stockLevels)
+            .set({
+              reservedquantity: sql`${stockLevels.reservedquantity} - ${item.quantity}`,
+              updatedat: new Date(),
+            })
+            .where(eq(stockLevels.stocklevelid, sl.stocklevelid));
+        }
+      } catch (e) {
+        console.warn(`Failed to release reservation for ${item.drugname}`, e);
+      }
+    }
+
+    // Delete items first (FK constraint)
+    await db.delete(pharmacyOrderItems).where(eq(pharmacyOrderItems.orderid, orderid));
+    // Delete order
+    await db.delete(pharmacyOrders).where(eq(pharmacyOrders.orderid, orderid));
+
+    return NextResponse.json({ message: "Order deleted successfully" });
+  } catch (error) {
+    console.error("[Pharmacy Order DELETE]", error);
+    return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });
   }
 }

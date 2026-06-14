@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import OrderDetailsModal from "./components/OrderDetailsModal";
 import CreateOrderModal from "./components/CreateOrderModal";
@@ -35,6 +36,7 @@ import {
   PauseCircle,
   RefreshCw,
   Edit,
+  Trash2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -53,7 +55,7 @@ type Order = {
   patientlast: string | null;
   prescriberid: string | null;
   prescribername: string | null;
-  items: { drugname: string; quantity: number; unitprice: string | null }[];
+  items: { drugid?: string; drugname: string; quantity: number; unitprice: string | null; dosage?: string; quantitydispensed?: number }[];
   totalAmount: number;
   paymentStatus: string;
 };
@@ -77,11 +79,14 @@ export default function PharmacyOrdersPage({
   workspaceid,
   userName,
   userId,
+  orderidFromUrl,
 }: {
   workspaceid: string;
   userName: string;
   userId: string;
+  orderidFromUrl?: string | null;
 }) {
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -90,8 +95,49 @@ export default function PharmacyOrdersPage({
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editOrderData, setEditOrderData] = useState<any>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Handle orderid from URL (e.g., from reminder link)
+  useEffect(() => {
+    if (orderidFromUrl) {
+      const editMode = searchParams.get("edit") === "true";
+      if (editMode) {
+        // Open CreateOrderModal in edit mode
+        fetch(`/api/d/${workspaceid}/pharmacy-orders/${orderidFromUrl}`)
+          .then(r => r.json())
+          .then(data => {
+            // Merge order, patient, and items into the format CreateOrderModal expects
+            const mergedOrder = {
+              ...data.order,
+              patientid: data.patient?.patientid || null,
+              patientfirst: data.patient?.firstname || null,
+              patientlast: data.patient?.lastname || null,
+              middlename: data.patient?.middlename || null,
+              phone: data.patient?.phone || null,
+              email: data.patient?.email || null,
+              address: data.patient?.address || null,
+              gender: data.patient?.gender || null,
+              dateofbirth: data.patient?.dateofbirth || null,
+              nationalid: data.patient?.nationalid || null,
+              items: data.items || [],
+            };
+            setEditOrderData(mergedOrder);
+            setIsCreateModalOpen(true);
+          })
+          .catch(() => {
+            setSelectedOrder(orderidFromUrl);
+            setIsModalOpen(true);
+          });
+      } else {
+        // Open OrderDetailsModal
+        setSelectedOrder(orderidFromUrl);
+        setIsModalOpen(true);
+      }
+    }
+  }, [orderidFromUrl, searchParams, workspaceid]);
 
   // Fetch order counts on mount (lightweight)
   const { data: countsData } = useQuery({
@@ -241,12 +287,7 @@ export default function PharmacyOrdersPage({
     <div className="flex flex-1 flex-col h-full overflow-hidden">
       {/* Fixed Header Section */}
       <div className="flex-shrink-0 p-4 pt-0 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage medication orders, dispensing, and billing
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-2">
             {syncMessage && (
               <span className="text-xs text-muted-foreground">{syncMessage}</span>
@@ -266,7 +307,7 @@ export default function PharmacyOrdersPage({
               onClick={() => setIsCreateModalOpen(true)}
               className="gap-2 bg-[#618FF5] border-blue-400 text-white hover:bg-[#618FF5] hover:border-blue-900"
             >
-              Add an Order
+              Prescription Order
             </Button>
           </div>
         </div>
@@ -330,9 +371,9 @@ export default function PharmacyOrdersPage({
       </div>
 
       {/* Scrollable Table Section */}
-      <div className="flex-1 min-h-0 overflow-auto px-4 pb-4">
-        <Card>
-        <CardContent className="p-0">
+      <div className="flex-1 min-h-0 flex flex-col px-4 pb-4">
+        <Card className="flex-1 min-h-0 flex flex-col">
+        <CardContent className="p-0 flex-1 min-h-0 overflow-auto">
           {!search.trim() ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Search className="h-12 w-12 text-muted-foreground mb-2" />
@@ -361,7 +402,7 @@ export default function PharmacyOrdersPage({
                   <TableHead className="bg-muted/50">Date</TableHead>
                   <TableHead className="bg-muted/50">Payment Status</TableHead>
                   <TableHead className="bg-muted/50">Order Status</TableHead>
-                  <TableHead className="text-right bg-muted/50">Edit</TableHead>
+                  <TableHead className="text-right bg-muted/50">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -433,18 +474,115 @@ export default function PharmacyOrdersPage({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedOrder(order.orderid);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {order.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              title="Edit order"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fetch(`/api/d/${workspaceid}/pharmacy-orders/${order.orderid}`)
+                                  .then(r => r.json())
+                                  .then(data => {
+                                    setEditOrderData({
+                                      ...data.order,
+                                      patientid: data.patient?.patientid || order.patientid || "",
+                                      patientfirst: data.patient?.firstname || order.patientfirst || "",
+                                      patientlast: data.patient?.lastname || order.patientlast || "",
+                                      middlename: data.patient?.middlename || null,
+                                      nationalid: data.patient?.nationalid || null,
+                                      dateofbirth: data.patient?.dateofbirth || null,
+                                      phone: data.patient?.phone || null,
+                                      email: data.patient?.email || null,
+                                      address: data.patient?.address || null,
+                                      gender: data.patient?.gender || null,
+                                      priority: data.order?.priority || order.priority,
+                                      notes: data.order?.notes || order.notes,
+                                      prescribername: data.order?.prescribername || null,
+                                      items: (data.items || []).map((item: any) => ({
+                                        drugid: item.drugid || "",
+                                        drugname: item.drugname,
+                                        quantity: item.quantity,
+                                        dosage: item.dosage || "",
+                                      })),
+                                    });
+                                    setIsCreateModalOpen(true);
+                                  })
+                                  .catch(() => {
+                                    setEditOrderData({
+                                      orderid: order.orderid,
+                                      patientid: order.patientid || "",
+                                      patientfirst: order.patientfirst || "",
+                                      patientlast: order.patientlast || "",
+                                      priority: order.priority,
+                                      notes: order.notes,
+                                      items: order.items.map((item: any) => ({
+                                        drugid: item.drugid || "",
+                                        drugname: item.drugname,
+                                        quantity: item.quantity,
+                                        dosage: item.dosage || "",
+                                      })),
+                                    });
+                                    setIsCreateModalOpen(true);
+                                  });
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {order.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Delete order"
+                              disabled={deletingOrderId === order.orderid}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) return;
+                                setDeletingOrderId(order.orderid);
+                                try {
+                                  const res = await fetch(
+                                    `/api/d/${workspaceid}/pharmacy-orders/${order.orderid}`,
+                                    { method: "DELETE" }
+                                  );
+                                  if (res.ok) {
+                                    queryClient.invalidateQueries({ queryKey: ["pharmacy-orders", workspaceid] });
+                                    queryClient.invalidateQueries({ queryKey: ["pharmacy-orders-counts", workspaceid] });
+                                  } else {
+                                    const data = await res.json();
+                                    alert(data.error || "Failed to delete order");
+                                  }
+                                } catch (err) {
+                                  alert("Failed to delete order");
+                                } finally {
+                                  setDeletingOrderId(null);
+                                }
+                              }}
+                            >
+                              {deletingOrderId === order.orderid ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0"
+                            title="View details"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOrder(order.orderid);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -452,52 +590,52 @@ export default function PharmacyOrdersPage({
               </TableBody>
             </Table>
           )}
-          
-          {/* Pagination Controls - only show when search is active and more than 50 results */}
-          {!loading && search.trim() && filtered.length > 50 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t">
-              <div className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} orders
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className={currentPage === page ? "w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700" : "w-8 h-8 p-0 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"}
-                    >
-                      {page}
-                    </Button>
-                  ))}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+        {/* Pagination Controls - fixed below the card */}
+        {!loading && search.trim() && totalPages > 1 && (
+          <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border rounded-md bg-card shadow-sm">
+            <div className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} orders
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={currentPage === page ? "w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700" : "w-8 h-8 p-0 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"}
+                  >
+                    {page}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="gap-1 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Order Details Modal */}
@@ -517,11 +655,22 @@ export default function PharmacyOrdersPage({
         userName={userName}
         userId={userId}
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ["pharmacy-orders", workspaceid] });
+        onClose={() => {
           setIsCreateModalOpen(false);
+          setEditOrderData(null);
         }}
+        onSuccess={(orderId) => {
+          queryClient.invalidateQueries({ queryKey: ["pharmacy-orders", workspaceid] });
+          queryClient.invalidateQueries({ queryKey: ["pharmacy-orders-counts", workspaceid] });
+          setIsCreateModalOpen(false);
+          const wasEditing = !!editOrderData;
+          setEditOrderData(null);
+          // Redirect to POS after creating a new order (not when editing)
+          if (!wasEditing && orderId) {
+            window.location.href = `/d/${workspaceid}/pos?orderId=${orderId}`;
+          }
+        }}
+        editOrder={editOrderData}
       />
     </div>
   );

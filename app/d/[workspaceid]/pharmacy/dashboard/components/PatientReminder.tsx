@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface Reminder {
   completed: boolean;
   isread: boolean;
   priority: string;
+  orderid: string | null;
   createdat: string;
 }
 
@@ -46,6 +48,7 @@ const priorityColors: Record<string, string> = {
 };
 
 export default function PatientReminder({ workspaceid }: Props) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -179,13 +182,13 @@ export default function PatientReminder({ workspaceid }: Props) {
         ) : (
           <div className="space-y-1.5 max-h-[320px] overflow-auto">
             {pending.map((r) => (
-              <ReminderRow key={r.reminderid} reminder={r} onToggle={toggleComplete} onToggleRead={toggleRead} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate(id)} />
+              <ReminderRow key={r.reminderid} reminder={r} onToggle={toggleComplete} onToggleRead={toggleRead} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate(id)} onOpenOrder={(oid) => router.push(`/d/${workspaceid}/pharmacy/dashboard?tab=orders&orderid=${oid}&edit=true`)} />
             ))}
             {done.length > 0 && (
               <>
                 {pending.length > 0 && <div className="border-t my-2" />}
                 {done.map((r) => (
-                  <ReminderRow key={r.reminderid} reminder={r} onToggle={toggleComplete} onToggleRead={toggleRead} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate(id)} />
+                  <ReminderRow key={r.reminderid} reminder={r} onToggle={toggleComplete} onToggleRead={toggleRead} onEdit={openEdit} onDelete={(id) => deleteMutation.mutate(id)} onOpenOrder={(oid) => router.push(`/d/${workspaceid}/pharmacy/dashboard?tab=orders&orderid=${oid}`)} />
                 ))}
               </>
             )}
@@ -274,12 +277,14 @@ function ReminderRow({
   onToggleRead,
   onEdit,
   onDelete,
+  onOpenOrder,
 }: {
   reminder: Reminder;
   onToggle: (r: Reminder) => void;
   onToggleRead: (r: Reminder) => void;
   onEdit: (r: Reminder) => void;
   onDelete: (id: string) => void;
+  onOpenOrder?: (orderid: string) => void;
 }) {
   const isOverdue =
     !reminder.completed &&
@@ -319,6 +324,14 @@ function ReminderRow({
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {reminder.description}
           </p>
+        )}
+        {reminder.orderid && onOpenOrder && (
+          <button
+            className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-0.5 font-medium"
+            onClick={() => onOpenOrder(reminder.orderid!)}
+          >
+            View Order
+          </button>
         )}
         <div className="flex items-center gap-2 mt-1">
           {reminder.reminderdate && (

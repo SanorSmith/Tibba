@@ -5,10 +5,10 @@ import { eq, and } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { workspaceid: string; orderid: string } }
+  { params }: { params: Promise<{ workspaceid: string; orderid: string }> }
 ) {
   try {
-    const { workspaceid, orderid } = params;
+    const { workspaceid, orderid } = await params;
     const { searchParams } = new URL(request.url);
     const drugid = searchParams.get("drugid");
 

@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileText, Plus, CheckCircle2 } from "lucide-react";
+import { FileText, Plus, CheckCircle2, ExternalLink } from "lucide-react";
 import type { CartItem } from "../pos-page";
 import { useState, useEffect } from "react";
 
@@ -66,9 +66,10 @@ type Props = {
   onAddToCart: (item: Omit<CartItem, "cartItemId">) => void;
   cartItems: CartItem[];
   workspaceid: string;
+  onEditOrder?: (orderId: string) => void;
 };
 
-export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid }: Props) {
+export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, onEditOrder }: Props) {
   const [itemPrices, setItemPrices] = useState<Record<string, number>>({});
 
   // Fetch prices for items when component mounts or order changes
@@ -159,53 +160,73 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid }
 
   const addItem = async (item: OrderItem) => {
     try {
-      // Fetch inventory items for the drug using items.drugid → drugs.drugid relationship
       const orderId = order?.order?.orderid;
-      if (!orderId || !item.drugid) {
-        console.error('[PrescriptionItems] Missing order ID or drug ID');
+      if (!orderId) {
+        console.error('[PrescriptionItems] Missing order ID');
         return;
       }
 
-      const inventoryResponse = await fetch(
-        `/api/d/${workspaceid}/pharmacy/orders/${orderId}/inventory-items?drugid=${item.drugid}`
-      );
-      
-      if (!inventoryResponse.ok) {
-        console.error('[PrescriptionItems] Failed to fetch inventory items');
-        return;
+      // Try to fetch inventory items if drugid is available
+      if (item.drugid) {
+        const inventoryResponse = await fetch(
+          `/api/d/${workspaceid}/pharmacy/orders/${orderId}/inventory-items?drugid=${item.drugid}`
+        );
+        
+        if (inventoryResponse.ok) {
+          const inventoryData = await inventoryResponse.json();
+          const inventoryItems = inventoryData.items || [];
+
+          if (inventoryItems.length > 0) {
+            const selectedItem = inventoryItems[0];
+            const selectedBatch = selectedItem.batches && selectedItem.batches.length > 0 
+              ? selectedItem.batches[0] 
+              : null;
+
+            if (selectedBatch) {
+              const price = selectedBatch.sellingPrice ? parseFloat(selectedBatch.sellingPrice) : resolvePrice(item);
+              const quantity = (item.quantity || 0) - (item.quantitydispensed || 0);
+
+              onAddToCart({
+                drugId: item.drugid,
+                drugName: item.drugname,
+                genericName: item.genericname,
+                form: item.form,
+                strength: item.strength,
+                batchId: selectedBatch.batchId,
+                lotNumber: selectedBatch.batchNumber,
+                expiryDate: selectedBatch.expiryDate,
+                quantity: quantity,
+                unitPrice: price,
+                discountPercent: 0,
+                discountAmount: 0,
+                taxAmount: 0,
+                totalAmount: price * quantity,
+                pharmacyOrderItemId: item.itemid,
+                prescribedQuantity: item.quantity,
+                quantitydispensed: item.quantitydispensed,
+                availableStock: selectedBatch.quantity,
+              });
+
+              console.log('[PrescriptionItems] Added item to cart:', item.drugname, 'Batch:', selectedBatch.batchNumber);
+              return;
+            }
+          }
+        }
       }
 
-      const inventoryData = await inventoryResponse.json();
-      const inventoryItems = inventoryData.items || [];
-
-      if (inventoryItems.length === 0) {
-        console.error('[PrescriptionItems] No inventory items found for drug');
-        return;
-      }
-
-      // Select the first inventory item and its first batch (FIFO)
-      const selectedItem = inventoryItems[0];
-      const selectedBatch = selectedItem.batches && selectedItem.batches.length > 0 
-        ? selectedItem.batches[0] 
-        : null;
-
-      if (!selectedBatch) {
-        console.error('[PrescriptionItems] No available batches');
-        return;
-      }
-
-      const price = selectedBatch.sellingPrice ? parseFloat(selectedBatch.sellingPrice) : resolvePrice(item);
+      // Fallback: add to cart without inventory batch info (no drugid or no inventory match)
+      const price = resolvePrice(item);
       const quantity = (item.quantity || 0) - (item.quantitydispensed || 0);
 
       onAddToCart({
-        drugId: item.drugid,
+        drugId: item.drugid || "",
         drugName: item.drugname,
         genericName: item.genericname,
         form: item.form,
         strength: item.strength,
-        batchId: selectedBatch.batchId,
-        lotNumber: selectedBatch.batchNumber,
-        expiryDate: selectedBatch.expiryDate,
+        batchId: item.batchid || undefined,
+        lotNumber: item.lotnumber || undefined,
+        expiryDate: item.expirydate || undefined,
         quantity: quantity,
         unitPrice: price,
         discountPercent: 0,
@@ -215,10 +236,10 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid }
         pharmacyOrderItemId: item.itemid,
         prescribedQuantity: item.quantity,
         quantitydispensed: item.quantitydispensed,
-        availableStock: selectedBatch.quantity,
+        availableStock: 0,
       });
 
-      console.log('[PrescriptionItems] Added item to cart:', item.drugname, 'Batch:', selectedBatch.batchNumber);
+      console.log('[PrescriptionItems] Added item to cart (fallback):', item.drugname);
     } catch (error) {
       console.error('[PrescriptionItems] Error adding item:', error);
     }
@@ -239,6 +260,16 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid }
           <Badge variant="secondary" className="text-xs ml-1">
             {items.length}
           </Badge>
+          {order.order?.orderid && (
+            <button
+              onClick={() => onEditOrder?.(order.order.orderid)}
+              className="ml-2 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+              title="Click to edit this order"
+            >
+              Edit Order
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          )}
         </CardTitle>
         <Button
           size="sm"

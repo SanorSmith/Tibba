@@ -22,6 +22,7 @@ import { ShoppingCart } from "./components/ShoppingCart";
 import { CheckoutDialog } from "./components/CheckoutDialog";
 import { PharmacyNav } from "@/components/pharmacy/PharmacyNav";
 import ReprintReceiptDialog from "./components/ReprintReceiptDialog";
+import CreateOrderModal from "../pharmacy/orders/components/CreateOrderModal";
 
 export type CartItem = {
   cartItemId: number;
@@ -70,6 +71,8 @@ export default function POSClientPage({
   const [currentShift, setCurrentShift] = useState<ShiftData | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
   const [reprintDialogOpen, setReprintDialogOpen] = useState(false);
+  const [editOrderModalOpen, setEditOrderModalOpen] = useState(false);
+  const [editOrderData, setEditOrderData] = useState<any>(null);
 
   // Load current shift on mount
   useEffect(() => {
@@ -254,6 +257,39 @@ export default function POSClientPage({
     setDispensedOrder(null);
   }, []);
 
+  // Handle edit order from PrescriptionItems
+  const handleEditOrder = useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/d/${workspaceid}/pharmacy-orders/${orderId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const order = data.order;
+      const items = data.items || [];
+      setEditOrderData({
+        orderid: order.orderid,
+        patientid: order.patientid || "",
+        patientfirst: data.patient?.firstname || "",
+        patientlast: data.patient?.lastname || "",
+        middlename: data.patient?.middlename,
+        nationalid: data.patient?.nationalid,
+        dateofbirth: data.patient?.dateofbirth,
+        phone: data.patient?.phone,
+        priority: order.priority || "routine",
+        notes: order.notes,
+        prescribername: order.prescribername,
+        items: items.map((i: any) => ({
+          drugid: i.drugid || "",
+          drugname: i.drugname,
+          quantity: i.quantity,
+          dosage: i.dosage,
+        })),
+      });
+      setEditOrderModalOpen(true);
+    } catch (err) {
+      console.error("[POS] Failed to load order for edit:", err);
+    }
+  }, [workspaceid]);
+
   // Totals
   const subtotal = cart.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
@@ -272,44 +308,12 @@ export default function POSClientPage({
 
   return (
     <div className="flex flex-1 flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <button
-            onClick={() => router.push(`/d/${workspaceid}/pharmacy/dashboard?tab=orders`)}
-            style={{display:"flex",alignItems:"center",gap:6,fontSize:14,color:"#618FF5",background:"none",border:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}}
-          >
-            <ArrowLeft style={{width:16,height:16}} />
-            Back
-          </button>
-          <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>Point of Sale</span>
-        </div>
-      </div>
-
       {/* Pharmacy Dashboard Navigation */}
       <PharmacyNav workspaceid={workspaceid} activeTab="pos" />
 
       {/* Header */}
       <div className="flex-shrink-0 p-4 pt-0 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {currentShift ? (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Shift {currentShift.shiftnumber} | Since{" "}
-                  {new Date(currentShift.openingtime).toLocaleTimeString()}
-                </span>
-              ) : shiftLoading ? (
-                "Loading shift..."
-              ) : (
-                <span className="flex items-center gap-1 text-orange-600">
-                  <AlertCircle className="h-3 w-3" />
-                  No active shift — open a shift to start selling
-                </span>
-              )}
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
               {userName}
@@ -385,6 +389,7 @@ export default function POSClientPage({
               onAddToCart={addToCart}
               cartItems={cart}
               workspaceid={workspaceid}
+              onEditOrder={handleEditOrder}
             />
             <DrugSearch onAddToCart={addToCart} />
           </div>
@@ -430,6 +435,27 @@ export default function POSClientPage({
         open={reprintDialogOpen}
         onClose={() => setReprintDialogOpen(false)}
         workspaceid={workspaceid}
+      />
+
+      {/* Edit Order Modal */}
+      <CreateOrderModal
+        workspaceid={workspaceid}
+        open={editOrderModalOpen}
+        onClose={() => {
+          setEditOrderModalOpen(false);
+          setEditOrderData(null);
+        }}
+        onSuccess={async (orderId) => {
+          setEditOrderModalOpen(false);
+          setEditOrderData(null);
+          // Reload the order to reflect changes
+          if (orderId) {
+            await handleOrderSelect(orderId);
+          }
+        }}
+        userName={userName}
+        userId={userId}
+        editOrder={editOrderData}
       />
     </div>
   );
