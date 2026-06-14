@@ -1011,15 +1011,6 @@ export default function PharmacyProcurementPage() {
       {/* Toast */}
       {toast && <div style={{ position: "fixed", top: 16, right: 16, background: "#16a34a", color: "#fff", padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, zIndex: 100, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>{toast}</div>}
 
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>
-          {tab === "orders" ? "Purchase Orders" :
-           tab === "gr" ? "Goods Receipt" :
-           tab === "correction" ? "Correction" : "Pharmacy Procurement"}
-        </span>
-      </div>
-
       {/* Pharmacy Navigation */}
       <PharmacyNav workspaceid={workspaceid} activeTab="inventory" />
 

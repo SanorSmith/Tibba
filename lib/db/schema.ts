@@ -130,7 +130,7 @@ export const drugs = pgTable("drugs", {
   strength:             text("strength"),
   unit:                 text("unit"),
   manufacturer:         text("manufacturer"),
-  route:                text("route"),
+  description:          text("route"), // Route of administration (DB column is "route")
   indication:           text("indication"),
   interaction:          text("interaction"),
   warning:              text("warning"),
@@ -912,6 +912,7 @@ export * from "./tables/lab";
 export * from "./tables/pharmacy";
 export * from "./tables/operation";
 export * from "./tables/todo";
+export * from "./tables/patient-reminders";
 export * from "./tables/sample";
 export * from "./tables/test-result";
 export * from "./tables/validation-state";
@@ -932,15 +933,11 @@ export * from "./tables/global-drugs";
 export * from "./tables/pharmacy-drugs";
 export * from "./tables/pharmacy-stock";
 export * from "./tables/pharmacy-orders";
-export * from "./tables/invoices";
-export * from "./tables/pharmacy-invoices";
 export * from "./tables/pharmacy-insurance";
-export * from "./tables/pos-schema";
+export * from "./tables/pharmacy-invoices";
 export * from "./tables/pharmacy-substitutions";
-export * from "./tables/insurance-reports";
 export * from "./schema/test-reference-ranges";
 export * from "./schema/test-reference-audit-log";
-export * from "./schema/test-packages";
 
 // ─── Finance Module ──────────────────────────────────────────────────────────
 export * from "./tables/finance-enums";

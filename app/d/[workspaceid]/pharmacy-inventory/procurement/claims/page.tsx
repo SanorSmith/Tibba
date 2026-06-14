@@ -185,11 +185,6 @@ export default function SupplierClaimsPage() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', marginTop: '8px' }}>
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10,marginLeft:"-24px",marginRight:"-24px"}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>Supplier Claims</span>
-      </div>
-
       {/* Pharmacy Navigation */}
       <PharmacyNav workspaceid={workspaceid} activeTab="inventory" />
 

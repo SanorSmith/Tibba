@@ -20,7 +20,7 @@ import { drugBatches } from "@/lib/db/tables/pharmacy-drugs";
 import { eq, and, desc, ilike, sql, inArray, asc, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
-import { getOpenEHREHRBySubjectId, createOpenEHRComposition, getOpenEHRPrescriptions } from "@/lib/openehr/openehr";
+import { getOpenEHREHRBySubjectId, createOpenEHRComposition } from "@/lib/openehr/openehr";
 
 // ── Helper: Select optimal batch using FIFO/expiry logic ──────────────
 async function selectOptimalBatch(drugid: string, requiredQty: number) {
@@ -146,7 +146,9 @@ export async function GET(
       db
         .select({
           orderid: pharmacyOrderItems.orderid,
+          drugid: pharmacyOrderItems.drugid,
           drugname: pharmacyOrderItems.drugname,
+          dosage: pharmacyOrderItems.dosage,
           quantity: pharmacyOrderItems.quantity,
           unitprice: pharmacyOrderItems.unitprice,
         })
@@ -191,11 +193,6 @@ export async function GET(
       return acc;
     }, {} as Record<string, { status: string; total: string }>);
 
-    console.log(`[Pharmacy Orders] Fetched ${invoicesData.length} invoices`);
-    if (invoicesData.length > 0) {
-      console.log('[Pharmacy Orders] Sample invoice:', invoicesData[0]);
-    }
-
     // Group POS sales by order and calculate cumulative payments
     const paymentsByOrder = posSalesData.reduce((acc, sale) => {
       if (!sale.pharmacyorderid) return acc;
@@ -217,50 +214,27 @@ export async function GET(
       const cumulativePayments = paymentsByOrder[order.orderid] || 0;
       let paymentStatus: string;
       
-      // Debug logging for payment status calculation
-      if (order.status === "DISPENSED" && invoice) {
-        console.log(`[Payment Status Debug] Order ${order.orderid}:`, {
-          orderStatus: order.status,
-          invoiceStatus: invoice?.status,
-          invoiceTotal: invoice?.total,
-          cumulativePayments,
-          hasInvoice: !!invoice
-        });
-      }
-      
       // If order is partially dispensed, payment status should be PARTIALLY_PAID
       // even if the invoice for dispensed items is fully paid
       if (order.status === "PARTIALLY_DISPENSED" || order.status === "IN_PROGRESS") {
         paymentStatus = "PARTIALLY_PAID";
       } else if (invoice) {
-        // First check invoice status directly (from billing system)
-        if (invoice.status === "PAID") {
+        // Calculate payment status based on cumulative payments vs invoice total
+        const invoiceTotal = parseFloat(invoice.total || "0");
+        const TOLERANCE = 0.01;
+        
+        if (cumulativePayments >= (invoiceTotal - TOLERANCE)) {
           paymentStatus = "PAID";
-        } else if (invoice.status === "PARTIAL") {
+        } else if (cumulativePayments > 0) {
           paymentStatus = "PARTIALLY_PAID";
         } else {
-          // Fallback: Calculate payment status based on cumulative POS payments vs invoice total
-          const invoiceTotal = parseFloat(invoice.total || "0");
-          const TOLERANCE = 0.01;
-          
-          if (cumulativePayments >= (invoiceTotal - TOLERANCE)) {
-            paymentStatus = "PAID";
-          } else if (cumulativePayments > 0) {
-            paymentStatus = "PARTIALLY_PAID";
-          } else {
-            paymentStatus = "UNPAID";
-          }
+          paymentStatus = "UNPAID";
         }
       } else if (order.status === "DISPENSED") {
         // Dispensed but no invoice - show as unpaid
         paymentStatus = "UNPAID";
       } else {
         paymentStatus = "UNPAID";
-      }
-      
-      // Log final payment status for dispensed orders
-      if (order.status === "DISPENSED") {
-        console.log(`[Payment Status Final] Order ${order.orderid}: ${paymentStatus}`);
       }
       
       return {
@@ -271,113 +245,7 @@ export async function GET(
       };
     });
 
-    // ═══ FETCH OPENEHR PRESCRIPTIONS FOR SEARCHED PATIENTS ═══
-    // If search is active, also fetch OpenEHR prescriptions for matching patients
-    let openEHROrders: any[] = [];
-    if (search && search.trim()) {
-      console.log(`[Pharmacy Orders] Searching OpenEHR for patients matching: ${search}`);
-      
-      // Get unique patient IDs from the search results
-      const uniquePatientIds = [...new Set(orders.map(o => o.patientid).filter(Boolean))];
-      
-      // Get existing OpenEHR order IDs to avoid duplicates
-      const existingOpenEHRIds = new Set(
-        ordersWithDetails
-          .map(o => o.openehrorderid)
-          .filter(Boolean)
-      );
-
-      // Fetch OpenEHR prescriptions for each patient
-      for (const patientId of uniquePatientIds) {
-        try {
-          // Skip if patientId is null
-          if (!patientId) continue;
-
-          const [patient] = await db
-            .select()
-            .from(patients)
-            .where(eq(patients.patientid, patientId))
-            .limit(1);
-
-          if (!patient) continue;
-
-          // Get EHR ID
-          let ehrId: string | null = null;
-          if (patient.ehrid) {
-            ehrId = patient.ehrid;
-          } else if (patient.nationalid) {
-            ehrId = await getOpenEHREHRBySubjectId(patient.nationalid);
-          }
-          if (!ehrId && patientId) {
-            ehrId = await getOpenEHREHRBySubjectId(patientId);
-          }
-          if (!ehrId) continue;
-
-          // Fetch prescriptions from OpenEHR
-          const prescriptions = await getOpenEHRPrescriptions(ehrId);
-
-          // Convert OpenEHR prescriptions to order format
-          for (const rx of prescriptions) {
-            // Skip if already in database
-            if (existingOpenEHRIds.has(rx.composition_uid)) continue;
-
-            // Build dosage string
-            const dosageParts: string[] = [];
-            if (rx.dose_amount) dosageParts.push(`${rx.dose_amount}${rx.dose_unit ? ` ${rx.dose_unit}` : ""}`);
-            if (rx.route) dosageParts.push(rx.route);
-            if (rx.timing_directions) dosageParts.push(rx.timing_directions);
-            const dosage = dosageParts.join(", ") || null;
-
-            openEHROrders.push({
-              orderid: `openehr-${rx.composition_uid}`, // Temporary ID
-              patientid: patientId,
-              status: "PENDING",
-              source: "openehr",
-              priority: rx.clinical_indication?.toLowerCase().includes("urgent") ? "urgent" : "routine",
-              notes: [
-                rx.clinical_indication && `Indication: ${rx.clinical_indication}`,
-                rx.comment,
-                rx.prescribed_by && `Prescribed by: ${rx.prescribed_by}`,
-              ].filter(Boolean).join(" | ") || null,
-              openehrorderid: rx.composition_uid,
-              dispensedby: null,
-              dispensedat: null,
-              createdat: rx.recorded_time || new Date().toISOString(),
-              updatedat: rx.recorded_time || new Date().toISOString(),
-              patientfirst: patient.firstname,
-              patientlast: patient.lastname,
-              prescriberid: null,
-              prescribername: rx.prescribed_by || "Unknown",
-              metadata: {
-                composition_uid: rx.composition_uid,
-                recorded_time: rx.recorded_time,
-                prescribed_by: rx.prescribed_by,
-                issued_from: rx.issued_from,
-                fromOpenEHR: true, // Flag to indicate this is not yet synced to DB
-              },
-              items: [{
-                orderid: `openehr-${rx.composition_uid}`,
-                drugname: rx.medication_item || rx.product_name || "Unknown medication",
-                quantity: 1,
-                unitprice: null,
-              }],
-              totalAmount: 0,
-              paymentStatus: "UNPAID",
-            });
-          }
-        } catch (error) {
-          console.error(`[Pharmacy Orders] Error fetching OpenEHR prescriptions for patient ${patientId}:`, error);
-          // Continue with other patients
-        }
-      }
-
-      console.log(`[Pharmacy Orders] Found ${openEHROrders.length} additional orders from OpenEHR`);
-    }
-
-    // Merge database orders with OpenEHR orders
-    const allOrders = [...ordersWithDetails, ...openEHROrders];
-
-    return NextResponse.json({ orders: allOrders });
+    return NextResponse.json({ orders: ordersWithDetails });
   } catch (error) {
     console.error("[Pharmacy Orders GET]", error);
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
@@ -439,6 +307,7 @@ export async function POST(
         workspaceid,
         patientid: data.patientid || null,
         prescriberid: data.prescriberid || null,
+        prescribername: data.prescriberName || null,
         status: "PENDING",
         source: data.source,
         openehrorderid: data.openehrorderid || null,
@@ -460,25 +329,22 @@ export async function POST(
       // Select optimal batch using FIFO/expiry logic
       let unitprice: string | null = null;
       let selectedBatchId: string | null = null;
-      const drugid = item.drugid && item.drugid !== "" ? item.drugid : null;
-      
-      // Validate drug exists if drugid is provided
-      if (drugid) {
-        const [drugExists] = await db
+      let drugid: string | null = null;
+
+      // Validate drugid actually exists in the drugs table before using it
+      if (item.drugid && item.drugid !== "") {
+        const [existingDrug] = await db
           .select({ drugid: drugs.drugid })
           .from(drugs)
-          .where(eq(drugs.drugid, drugid))
+          .where(eq(drugs.drugid, item.drugid))
           .limit(1);
-        
-        if (!drugExists) {
-          console.error(`[Pharmacy Orders POST] Drug ID ${drugid} not found in drugs table for item: ${item.drugname}`);
-          return NextResponse.json(
-            { error: `Drug not found: ${item.drugname} (ID: ${drugid})` },
-            { status: 400 }
-          );
+        if (existingDrug) {
+          drugid = existingDrug.drugid;
+        } else {
+          console.warn(`Drug ID ${item.drugid} not found in drugs table for ${item.drugname} - setting drugid to null`);
         }
       }
-      
+
       if (drugid) {
         const optimalBatch = await selectOptimalBatch(drugid, item.quantity);
         if (optimalBatch) {
@@ -521,9 +387,6 @@ export async function POST(
         if (item.asRequired) {
           parts.push(`As Required (PRN): Yes${item.asRequiredCriterion ? ` - ${item.asRequiredCriterion}` : ''}`);
         }
-        
-        // Clinical Indication
-        if (item.clinicalIndication) parts.push(`Clinical Indication: ${item.clinicalIndication}`);
         
         // Pharmacist Notes
         if (item.pharmacistNotes) parts.push(`Pharmacist Notes: ${item.pharmacistNotes}`);
@@ -687,10 +550,13 @@ export async function POST(
       message: `Successfully created order with ${allItems.length} medication(s)`
     }, { status: 201 });
   } catch (error) {
-    console.error("[Pharmacy Orders POST]", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
+    console.error("[Pharmacy Orders POST] Error:", errMsg);
+    if (errStack) console.error("[Pharmacy Orders POST] Stack:", errStack);
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create order", detail: errMsg }, { status: 500 });
   }
 }

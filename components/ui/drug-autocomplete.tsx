@@ -141,7 +141,7 @@ export function DrugAutocomplete({
         <input
           ref={inputRef}
           type="text"
-          className={`w-full px-3 py-2 border rounded-md pr-10 ${className}`}
+          className={`w-full px-3 py-1 border rounded-md pr-10 h-8 text-xs ${className}`}
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}

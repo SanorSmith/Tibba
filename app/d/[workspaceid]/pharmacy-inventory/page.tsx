@@ -246,7 +246,7 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
   }, []);
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.itemcode.trim()) { setError("Name and item code are required"); return; }
+    if (!form.name.trim() || (!isEdit && !form.itemcode.trim())) { setError("Name and item code are required"); return; }
     if (!form.manufacturer.trim()) { setError("Manufacturer is required — please select from the list"); return; }
     setLoading(true);
     try {
@@ -1045,19 +1045,6 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
   return (
     <div style={s.page}>
       <style>{`* { box-sizing: border-box; } input, select { color: #111827 !important; } tr:hover td { background: #f9fafb; }`}</style>
-
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>
-          {tab === "items" ? "Items" :
-           tab === "shoplist" ? "Shop List" :
-           tab === "reports" ? "Reports" :
-           tab === "suppliers" ? "Suppliers" :
-           tab === "manufacturers" ? "Manufacturers" :
-           tab === "storage" ? "Storage" :
-           tab === "uom" ? "Unit of Measure" : "Pharmacy Inventory"}
-        </span>
-      </div>
 
       {/* Pharmacy Navigation */}
       <PharmacyNav workspaceid={workspaceid} activeTab="inventory" />

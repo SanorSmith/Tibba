@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +12,7 @@ import {
   AlertCircle,
   RotateCcw,
   FileText,
+  ArrowLeft,
 } from "lucide-react";
 import { SearchBar } from "./components/SearchBar";
 import { PatientInfo } from "./components/PatientInfo";
@@ -21,6 +22,7 @@ import { ShoppingCart } from "./components/ShoppingCart";
 import { CheckoutDialog } from "./components/CheckoutDialog";
 import { PharmacyNav } from "@/components/pharmacy/PharmacyNav";
 import ReprintReceiptDialog from "./components/ReprintReceiptDialog";
+import CreateOrderModal from "../pharmacy/orders/components/CreateOrderModal";
 
 export type CartItem = {
   cartItemId: number;
@@ -61,6 +63,7 @@ export default function POSClientPage({
   userId: string;
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [patient, setPatient] = useState<any>(null);
   const [dispensedOrder, setDispensedOrder] = useState<any>(null);
@@ -68,6 +71,8 @@ export default function POSClientPage({
   const [currentShift, setCurrentShift] = useState<ShiftData | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
   const [reprintDialogOpen, setReprintDialogOpen] = useState(false);
+  const [editOrderModalOpen, setEditOrderModalOpen] = useState(false);
+  const [editOrderData, setEditOrderData] = useState<any>(null);
 
   // Load current shift on mount
   useEffect(() => {
@@ -227,6 +232,21 @@ export default function POSClientPage({
     []
   );
 
+  const updateCartDiscount = useCallback(
+    (cartItemId: number, discountPercent: number) => {
+      const pct = Math.max(0, Math.min(100, discountPercent));
+      setCart((prev) =>
+        prev.map((item) => {
+          if (item.cartItemId !== cartItemId) return item;
+          const lineTotal = item.quantity * item.unitPrice;
+          const discountAmount = parseFloat(((pct / 100) * lineTotal).toFixed(2));
+          return { ...item, discountPercent: pct, discountAmount, totalAmount: lineTotal - discountAmount };
+        })
+      );
+    },
+    []
+  );
+
   const removeFromCart = useCallback((cartItemId: number) => {
     setCart((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
   }, []);
@@ -236,6 +256,39 @@ export default function POSClientPage({
     setPatient(null);
     setDispensedOrder(null);
   }, []);
+
+  // Handle edit order from PrescriptionItems
+  const handleEditOrder = useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/d/${workspaceid}/pharmacy-orders/${orderId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const order = data.order;
+      const items = data.items || [];
+      setEditOrderData({
+        orderid: order.orderid,
+        patientid: order.patientid || "",
+        patientfirst: data.patient?.firstname || "",
+        patientlast: data.patient?.lastname || "",
+        middlename: data.patient?.middlename,
+        nationalid: data.patient?.nationalid,
+        dateofbirth: data.patient?.dateofbirth,
+        phone: data.patient?.phone,
+        priority: order.priority || "routine",
+        notes: order.notes,
+        prescribername: order.prescribername,
+        items: items.map((i: any) => ({
+          drugid: i.drugid || "",
+          drugname: i.drugname,
+          quantity: i.quantity,
+          dosage: i.dosage,
+        })),
+      });
+      setEditOrderModalOpen(true);
+    } catch (err) {
+      console.error("[POS] Failed to load order for edit:", err);
+    }
+  }, [workspaceid]);
 
   // Totals
   const subtotal = cart.reduce(
@@ -255,35 +308,12 @@ export default function POSClientPage({
 
   return (
     <div className="flex flex-1 flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>Point of Sale</span>
-      </div>
-
       {/* Pharmacy Dashboard Navigation */}
       <PharmacyNav workspaceid={workspaceid} activeTab="pos" />
 
       {/* Header */}
       <div className="flex-shrink-0 p-4 pt-0 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {currentShift ? (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Shift {currentShift.shiftnumber} | Since{" "}
-                  {new Date(currentShift.openingtime).toLocaleTimeString()}
-                </span>
-              ) : shiftLoading ? (
-                "Loading shift..."
-              ) : (
-                <span className="flex items-center gap-1 text-orange-600">
-                  <AlertCircle className="h-3 w-3" />
-                  No active shift — open a shift to start selling
-                </span>
-              )}
-            </p>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
               {userName}
@@ -359,6 +389,7 @@ export default function POSClientPage({
               onAddToCart={addToCart}
               cartItems={cart}
               workspaceid={workspaceid}
+              onEditOrder={handleEditOrder}
             />
             <DrugSearch onAddToCart={addToCart} />
           </div>
@@ -368,6 +399,7 @@ export default function POSClientPage({
             <ShoppingCart
               items={cart}
               onUpdateQuantity={updateCartQuantity}
+              onUpdateDiscount={updateCartDiscount}
               onRemove={removeFromCart}
               onClear={clearAll}
               subtotal={subtotal}
@@ -403,6 +435,27 @@ export default function POSClientPage({
         open={reprintDialogOpen}
         onClose={() => setReprintDialogOpen(false)}
         workspaceid={workspaceid}
+      />
+
+      {/* Edit Order Modal */}
+      <CreateOrderModal
+        workspaceid={workspaceid}
+        open={editOrderModalOpen}
+        onClose={() => {
+          setEditOrderModalOpen(false);
+          setEditOrderData(null);
+        }}
+        onSuccess={async (orderId) => {
+          setEditOrderModalOpen(false);
+          setEditOrderData(null);
+          // Reload the order to reflect changes
+          if (orderId) {
+            await handleOrderSelect(orderId);
+          }
+        }}
+        userName={userName}
+        userId={userId}
+        editOrder={editOrderData}
       />
     </div>
   );

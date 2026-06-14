@@ -136,11 +136,6 @@ export default function ShiftsClientPage({
 
   return (
     <div className="flex flex-1 flex-col h-full overflow-auto">
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>Shift Management</span>
-      </div>
-
       <PharmacyNav workspaceid={workspaceid} activeTab="pos" />
       <div className="p-4 pt-0 space-y-4">
         {/* Header */}

@@ -16,11 +16,9 @@ import {
   Pill,
   ListTodo,
   BarChart3,
-  PackageSearch,
   BellRing,
   AlertTriangle,
   TrendingUp,
-  Clock,
   UserCheck,
   DollarSign,
   Loader2,
@@ -30,12 +28,13 @@ import {
   AlertCircle,
   ShoppingCart,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { PharmacyNav } from "@/components/pharmacy/PharmacyNav";
 import PharmacyOrdersPage from "../orders/orders-list";
 import DrugRegistration from "./components/DrugRegistration";
 import DrugInteractions from "./components/DrugInteractions";
 import PharmacyInventoryPage from "../../pharmacy-inventory/page";
-import PharmacyTodos from "./components/PharmacyTodos";
+import PatientReminder from "./components/PatientReminder";
 
 const PRIMARY = "#618FF5";
 
@@ -43,10 +42,17 @@ interface DashboardStats {
   lowStock: { count: number; threshold: number; items: { drugid: string; drugname: string; strength: string; form: string; totalQuantity: number }[] };
   orders: { total: number; pending: number; inProgress: number; dispensed: number; todayCount: number };
   customers: { todayVisits: number };
-  sales: { totalRevenue: number; todayRevenue: number; monthlyRevenue: number; totalInvoices: number; paidInvoices: number };
+  sales: { totalRevenue: number; todayRevenue: number; totalInvoices: number; paidInvoices: number };
   overdue: { count: number; orders: { orderid: string; priority: string; createdat: string }[] };
   notifications: { count: number; items: { orderid: string; priority: string; status: string; notes: string | null; createdat: string; source: string }[] };
   topSellers?: { drugid: string; drugname: string; genericname: string | null; strength: string; form: string; totalquantity: number }[];
+  budget?: { todayRevenue: number; paymentBreakdown: { cash: number; card: number; insurance: number; credit: number }; transactionCount: number };
+  salesComparison?: {
+    current: number;
+    lastYear: number;
+    twoYearsAgo: number;
+    labels: { current: string; lastYear: string; twoYearsAgo: string };
+  };
 }
 
 export default function PharmacyDashboard({
@@ -63,40 +69,11 @@ export default function PharmacyDashboard({
   const [activeTab, setActiveTab] = useState(tabParam);
   const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set([tabParam]));
   const [inventoryStockFilter, setInventoryStockFilter] = useState<"all" | "instock" | "lowstock" | "outofstock">("all");
-  const [pharmacyStats, setPharmacyStats] = useState({
-    totalItems: 0,
-    lowStock: 0,
-    outOfStock: 0,
-    totalValue: 0,
-    expiringSoon: 0,
-    criticalItems: 0
-  });
-
   useEffect(() => {
     const tab = searchParams.get("tab") || "dashboard";
     setActiveTab(tab);
     setLoadedTabs((prev) => new Set(prev).add(tab));
   }, [searchParams]);
-
-  // Fetch pharmacy summary data
-  useEffect(() => {
-    const fetchPharmacyStats = async () => {
-      try {
-        console.log('[PharmacyDashboard] Fetching stats for workspace:', workspaceid);
-        const res = await fetch(`/api/pharmacy/summary?workspaceId=${workspaceid}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (!data.error) {
-            setPharmacyStats(data);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching pharmacy stats:", error);
-      }
-    };
-
-    fetchPharmacyStats();
-  }, [workspaceid]);
 
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["pharmacy-dashboard", workspaceid],
@@ -117,18 +94,6 @@ export default function PharmacyDashboard({
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      {/* Header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 24px",background:"#ffffff",borderBottom:"1px solid #e5e7eb",position:"sticky",top:0,zIndex:10}}>
-        <span style={{fontSize:24,fontWeight:700,color:"#111827"}}>
-          {activeTab === "dashboard" ? "Pharmacy Dashboard" :
-           activeTab === "orders" ? "Pharmacy Orders" :
-           activeTab === "pos" ? "Point of Sale" :
-           activeTab === "drug-registration" ? "Drug Registration" :
-           activeTab === "inventory" ? "Pharmacy Inventory" :
-           activeTab === "todo" ? "To Do" : "Pharmacy Dashboard"}
-        </span>
-      </div>
-
       <PharmacyNav workspaceid={workspaceid} activeTab={activeTab} />
 
       {/* Dashboard Tab */}
@@ -141,7 +106,7 @@ export default function PharmacyDashboard({
         ) : (
           <div className="space-y-4">
                 {/* Top summary cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="shadow-sm">
                     <CardContent className="pt-4 pb-3 px-4">
                       <div className="flex items-center justify-between">
@@ -177,11 +142,9 @@ export default function PharmacyDashboard({
                   <Card className="shadow-sm">
                     <CardContent className="pt-4 pb-3 px-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div>
                           <p className="text-xs text-muted-foreground">Today&apos;s Sales</p>
                           <p className="text-2xl font-bold">{(stats?.sales.todayRevenue ?? 0).toLocaleString()} IQD</p>
-                          <p className="text-xs text-muted-foreground mt-2">Monthly Sales</p>
-                          <p className="text-xl font-bold text-blue-600">{(stats?.sales.monthlyRevenue ?? 0).toLocaleString()} IQD</p>
                         </div>
                         <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center">
                           <DollarSign className="h-5 w-5 text-green-600" />
@@ -193,96 +156,42 @@ export default function PharmacyDashboard({
                     </CardContent>
                   </Card>
 
-                  <Card className="shadow-sm">
-                    <CardContent className="pt-4 pb-3 px-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Pending Orders</p>
-                          <p className="text-2xl font-bold">{stats?.orders.pending ?? 0}</p>
-                        </div>
-                        <div className="h-10 w-10 rounded-full bg-amber-50 flex items-center justify-center">
-                          <Clock className="h-5 w-5 text-amber-600" />
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        <span className="font-medium">{stats?.orders.inProgress ?? 0}</span> in progress
-                      </p>
-                    </CardContent>
-                  </Card>
                 </div>
+
+                {/* Daily Budget Card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2 pt-4 px-4">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                      Daily Budget
+                      <Badge className="text-[10px] px-1.5 py-0 bg-green-600">Today</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <p className="text-2xl font-bold text-green-700 mb-3">
+                      {(stats?.budget?.todayRevenue ?? 0).toLocaleString()} IQD
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { label: "Cash", value: stats?.budget?.paymentBreakdown.cash ?? 0, color: "bg-green-50 text-green-700" },
+                        { label: "Card", value: stats?.budget?.paymentBreakdown.card ?? 0, color: "bg-blue-50 text-blue-700" },
+                        { label: "Insurance", value: stats?.budget?.paymentBreakdown.insurance ?? 0, color: "bg-purple-50 text-purple-700" },
+                        { label: "Credit", value: stats?.budget?.paymentBreakdown.credit ?? 0, color: "bg-amber-50 text-amber-700" },
+                      ].map((item) => (
+                        <div key={item.label} className={`rounded-lg p-2 text-center ${item.color}`}>
+                          <p className="text-xs font-medium">{item.label}</p>
+                          <p className="text-sm font-bold">{item.value.toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      {stats?.budget?.transactionCount ?? 0} transaction{(stats?.budget?.transactionCount ?? 0) !== 1 ? "s" : ""} today
+                    </p>
+                  </CardContent>
+                </Card>
 
                 {/* Bottom detail cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Low Stock Medicines - HIDDEN */}
-                  {/* <Card className="shadow-sm">
-                    <CardHeader className="pb-2 pt-4 px-4">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <PackageSearch className="h-4 w-4 text-orange-500" />
-                        Low Stock Medicines
-                        {(stats?.lowStock.count ?? 0) > 0 && (
-                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                            {stats?.lowStock.count}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                      <div className="grid grid-cols-3 gap-2 mb-4">
-                        <div 
-                          className="text-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
-                          onClick={() => {
-                            setInventoryStockFilter("all");
-                            setActiveTab("inventory");
-                            setLoadedTabs((prev) => new Set(prev).add("inventory"));
-                          }}
-                        >
-                          <p className="text-lg font-bold text-blue-600">{pharmacyStats.totalItems}</p>
-                          <p className="text-xs text-muted-foreground">Total Items</p>
-                        </div>
-                        <div 
-                          className="text-center p-2 bg-gray-50 rounded-lg cursor-pointer hover:bg-amber-100 transition-colors"
-                          onClick={() => {
-                            setInventoryStockFilter("lowstock");
-                            setActiveTab("inventory");
-                            setLoadedTabs((prev) => new Set(prev).add("inventory"));
-                          }}
-                        >
-                          <p className="text-lg font-bold text-amber-600">{pharmacyStats.lowStock}</p>
-                          <p className="text-xs text-muted-foreground">Low Stock</p>
-                        </div>
-                        <div 
-                          className="text-center p-2 bg-red-50 rounded-lg cursor-pointer hover:bg-red-100 transition-colors"
-                          onClick={() => {
-                            setInventoryStockFilter("outofstock");
-                            setActiveTab("inventory");
-                            setLoadedTabs((prev) => new Set(prev).add("inventory"));
-                          }}
-                        >
-                          <p className="text-lg font-bold text-red-600">{pharmacyStats.outOfStock}</p>
-                          <p className="text-xs text-muted-foreground">Out of Stock</p>
-                        </div>
-                      </div>
-
-                      {(stats?.lowStock.count ?? 0) === 0 ? (
-                        <p className="text-sm text-muted-foreground py-4 text-center">All medicines are in stock</p>
-                      ) : (
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {stats?.lowStock.items.map((item) => (
-                            <div key={item.drugid} className="flex items-center justify-between py-1.5 border-b last:border-0">
-                              <div>
-                                <p className="text-sm font-medium">{item.drugname}</p>
-                                <p className="text-[11px] text-muted-foreground">{item.strength} &middot; {item.form}</p>
-                              </div>
-                              <Badge variant={item.totalQuantity === 0 ? "destructive" : "outline"} className="text-xs">
-                                {item.totalQuantity} left
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card> */}
-
                   {/* Doctor Notifications & Urgent Orders */}
                   <Card className="shadow-sm">
                     <CardHeader className="pb-2 pt-4 px-4">
@@ -396,22 +305,44 @@ export default function PharmacyDashboard({
                     </CardContent>
                   </Card>
 
-                  {/* Order Status Breakdown - HIDDEN */}
-                  {/* <Card className="shadow-sm">
+                  {/* Sales Comparison: today vs same day 1yr/2yrs ago */}
+                  <Card className="shadow-sm">
                     <CardHeader className="pb-2 pt-4 px-4">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-[#618FF5]" />
-                        Order Status
+                        <BarChart3 className="h-4 w-4 text-[#618FF5]" />
+                        Sales Comparison (Same Day)
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                      <div className="space-y-3 pt-2">
-                        <StatusBar label="Pending" value={stats?.orders.pending ?? 0} total={stats?.orders.total || 1} color="bg-amber-400" />
-                        <StatusBar label="In Progress" value={stats?.orders.inProgress ?? 0} total={stats?.orders.total || 1} color="bg-blue-400" />
-                        <StatusBar label="Dispensed" value={stats?.orders.dispensed ?? 0} total={stats?.orders.total || 1} color="bg-green-400" />
-                      </div>
+                      {!stats?.salesComparison ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No sales data available</p>
+                      ) : (
+                        <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={[
+                                { name: stats.salesComparison.labels.twoYearsAgo, sales: stats.salesComparison.twoYearsAgo },
+                                { name: stats.salesComparison.labels.lastYear, sales: stats.salesComparison.lastYear },
+                                { name: stats.salesComparison.labels.current, sales: stats.salesComparison.current },
+                              ]}
+                              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
+                              <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, "Sales"]} />
+                              <Bar dataKey="sales" radius={[4, 4, 0, 0]}>
+                                <Cell fill="#94a3b8" />
+                                <Cell fill="#94a3b8" />
+                                <Cell fill="#618FF5" />
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
                     </CardContent>
-                  </Card> */}
+                  </Card>
+
                 </div>
               </div>
             )}
@@ -427,6 +358,7 @@ export default function PharmacyDashboard({
                 workspaceid={workspaceid}
                 userName={userName}
                 userId={userId}
+                orderidFromUrl={searchParams.get("orderid")}
               />
             </div>
           )}
@@ -502,7 +434,7 @@ export default function PharmacyDashboard({
       {activeTab === "todo" && (
         <div className="mt-4 px-4">
           {loadedTabs.has("todo") && (
-            <PharmacyTodos workspaceid={workspaceid} />
+            <PatientReminder workspaceid={workspaceid} />
           )}
         </div>
       )}
@@ -510,20 +442,6 @@ export default function PharmacyDashboard({
   );
 }
 
-function StatusBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between text-xs mb-1">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{value} ({pct}%)</span>
-      </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
 
 function PlaceholderTab({
   title,

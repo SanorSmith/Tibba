@@ -64,84 +64,74 @@ export async function POST(
     // Set font
     pdf.setFont("helvetica");
 
-    // Header with patient info (small card size)
-    pdf.setFontSize(8);
-    pdf.setTextColor(100);
-    if (order.patient) {
-      const patientName = `${order.patient.firstname} ${order.patient.lastname}`;
-      const patientId = order.patient.nationalid || "N/A";
-      pdf.text(`Patient: ${patientName} (${patientId})`, 0.5, 0.6);
-    } else {
-      pdf.text("Patient: Unknown", 0.5, 0.6);
+    // Header: Patient Name | Doctor Name (no date on top)
+    pdf.setFontSize(9);
+    pdf.setTextColor(0);
+    const orderDate = new Date(order.order.createdat).toLocaleDateString();
+    const doctorName = (order.order as any).prescribername || "";
+    const patientName = order.patient
+      ? `${order.patient.firstname} ${order.patient.lastname}`
+      : "Unknown";
+    pdf.setFont("helvetica", "bold");
+    pdf.text(`${patientName}  |  ${doctorName}`, 0.5, 0.6);
+
+    // Parse the labeled, pipe-separated dosage string
+    const dosageDetails: Record<string, string> = {};
+    if (body.dosage) {
+      body.dosage.split("|").forEach((segment) => {
+        const part = segment.trim();
+        const colonIdx = part.indexOf(":");
+        if (colonIdx === -1) return;
+        const key = part.slice(0, colonIdx).trim().toLowerCase();
+        const val = part.slice(colonIdx + 1).trim();
+        if (val) dosageDetails[key] = val;
+      });
     }
 
-    // Order info
-    const orderDate = new Date(order.order.createdat).toLocaleDateString();
-    const orderIdShort = order.order.orderid.slice(0, 8);
-    pdf.text(`Order: ${orderIdShort}... | ${orderDate}`, 0.5, 1.0);
-
-    // Medication name (bold/larger)
+    // Medication name + dose on the same line (bold)
     pdf.setFontSize(10);
     pdf.setTextColor(0);
     pdf.setFont("helvetica", "bold");
     const medicationName = body.itemName || "Medication";
-    
-    // Split long medication names
-    const maxNameWidth = 12; // cm (card width is 15cm)
-    const nameLines = pdf.splitTextToSize(medicationName, maxNameWidth);
-    pdf.text(nameLines, 0.5, 1.5);
+    const doseText = body.doseAmount && body.doseUnit
+      ? `${body.doseAmount} ${body.doseUnit}`
+      : dosageDetails.dose || "";
+    const medLine = doseText ? `${medicationName}  ${doseText}` : medicationName;
+    const maxNameWidth = 14;
+    const nameLines = pdf.splitTextToSize(medLine, maxNameWidth);
+    pdf.text(nameLines, 0.5, 1.3);
 
-    // Reset to normal font
+    // Usage | Instructions on the next line
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
+    let currentY = 1.3 + nameLines.length * 0.4 + 0.2;
 
-    let currentY = 2.0;
-    
-    // Quantity
-    if (body.quantity) {
-      pdf.text(`Qty: ${body.quantity}`, 0.5, currentY);
-      currentY += 0.3;
+    const usageText = dosageDetails.usage || "";
+    let instructionsText = dosageDetails.instructions || "";
+    if (!instructionsText && body.dosage && !body.dosage.includes(":")) {
+      instructionsText = body.dosage.trim();
     }
 
-    // Dosage information
-    if (body.doseAmount && body.doseUnit) {
-      pdf.text(`Dose: ${body.doseAmount} ${body.doseUnit}`, 0.5, currentY);
-      currentY += 0.3;
+    const infoParts = [usageText, instructionsText].filter(Boolean);
+    if (infoParts.length > 0) {
+      const infoLine = infoParts.join("  |  ");
+      const infoLines = pdf.splitTextToSize(infoLine, 14);
+      pdf.text(infoLines, 0.5, currentY);
+      currentY += 0.3 * infoLines.length;
     }
 
-    // Route
-    if (body.route) {
-      pdf.text(`Route: ${body.route}`, 0.5, currentY);
-      currentY += 0.3;
-    }
-
-    // Timing
-    if (body.timingDirections) {
-      pdf.text(`Timing: ${body.timingDirections}`, 0.5, currentY);
-      currentY += 0.3;
-    }
-
-    // Duration
-    if (body.directionDuration) {
-      pdf.text(`Duration: ${body.directionDuration}`, 0.5, currentY);
-      currentY += 0.3;
-    }
-
-    // Additional dosage info if available
-    if (body.dosage && body.dosage.trim()) {
-      pdf.text(`Instructions: ${body.dosage}`, 0.5, currentY);
-    }
-
-    // Footer with pharmacy info
-    pdf.setFontSize(6);
-    pdf.setTextColor(150);
-    pdf.text("Pharmacy Management System", 0.5, 3.5);
-    pdf.text(`Printed: ${new Date().toLocaleDateString()}`, 11, 3.5);
+    // Right side: Pharmacy name + date (vertical / rotated 90°)
+    pdf.setFontSize(7);
+    pdf.setTextColor(120);
+    pdf.setFont("helvetica", "normal");
+    // Rotate text 90° on the right edge
+    pdf.text("Pharmacy Management System", 14.5, 3.8, { angle: 90 });
+    pdf.text(orderDate, 14, 3.8, { angle: 90 });
 
     // Convert PDF to base64
     const pdfData = pdf.output("datauristring").split(",")[1];
     const medicationNameClean = medicationName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
-    const filename = `medication-card-${medicationNameClean}-${orderIdShort}-${Date.now()}.pdf`;
+    const filename = `medication-card-${medicationNameClean}-${order.order.orderid.slice(0, 8)}-${Date.now()}.pdf`;
 
     return NextResponse.json({
       success: true,
