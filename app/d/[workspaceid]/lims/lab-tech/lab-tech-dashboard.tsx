@@ -17,7 +17,7 @@ import {
   TestTube2, 
   Bell,
   Users,
-  ListTodo,
+  Settings,
   Home,
   ScanBarcode,
   ClipboardCheck,
@@ -29,7 +29,7 @@ import ValidationTab from "./components/ValidationTab";
 import SampleManagementTab from "./components/SampleManagementTab";
 import NotificationTab from "./components/NotificationTab";
 import ContactsTab from "./components/ContactsTab";
-import ToDoTab from "./components/ToDoTab";
+import LabManagementTab from "./components/LabManagementTab";
 import QCCalibrationTab from "./components/QCCalibrationTab";
 
 export default function LabTechDashboard({
@@ -60,13 +60,13 @@ export default function LabTechDashboard({
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden pt-3">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden pt-2">
       <Tabs
         defaultValue="orders"
-        className="w-full flex-1 flex flex-col min-h-0"
+        className="w-full flex-1 flex flex-col min-h-0 overflow-hidden"
         onValueChange={handleTabChange}
       >
-        <TabsList className="flex w-full flex-wrap gap-1 h-auto bg-transparent p-0">
+        <TabsList className="flex w-full flex-nowrap gap-1 h-auto bg-transparent p-0 overflow-x-auto flex-shrink-0">
           <TabsTrigger
             value="orders"
             className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
@@ -139,63 +139,63 @@ export default function LabTechDashboard({
           </TabsTrigger>
 
           <TabsTrigger
-            value="todo"
+            value="lab-management"
             className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
           >
-            <ListTodo className="h-4 w-4" />
-            To Do
+            <Settings className="h-4 w-4" />
+            Lab Management
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orders" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="orders" className="mt-2 flex-1 min-h-0 overflow-auto">
           <OrdersTab workspaceid={workspaceid} />
         </TabsContent>
 
-        <TabsContent value="accessioning" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="accessioning" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("accessioning") && (
             <RegisterSample workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="worklist" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="worklist" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("worklist") && (
             <WorklistsTab workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="qc" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="qc" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("qc") && (
             <QCCalibrationTab workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="validation" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="validation" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("validation") && (
             <ValidationTab workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="samplestore" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="samplestore" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("samplestore") && (
             <SampleManagementTab workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="notification" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="notification" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("notification") && (
             <NotificationTab workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="contacts" className="mt-2 flex-1 min-h-0">
+        <TabsContent value="contacts" className="mt-2 flex-1 min-h-0 overflow-auto">
           {loadedTabs.has("contacts") && (
             <ContactsTab workspaceid={workspaceid} />
           )}
         </TabsContent>
 
-        <TabsContent value="todo" className="mt-2 flex-1 min-h-0">
-          {loadedTabs.has("todo") && (
-            <ToDoTab workspaceid={workspaceid} />
+        <TabsContent value="lab-management" className="mt-2 flex-1 min-h-0 overflow-auto">
+          {loadedTabs.has("lab-management") && (
+            <LabManagementTab workspaceid={workspaceid} />
           )}
         </TabsContent>
       </Tabs>
