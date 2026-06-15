@@ -40,6 +40,7 @@ interface TestPackage {
   packageid: string;
   packagename: string;
   description?: string;
+  labtype?: string;
   price: string;
   isactive: boolean;
   tests: PackageTest[];
@@ -82,6 +83,7 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
   const [formData, setFormData] = useState({
     packagename: "",
     description: "",
+    labtype: "",
     price: "",
     tests: [] as PackageTest[],
   });
@@ -159,6 +161,7 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
       setFormData({
         packagename: pkg.packagename,
         description: pkg.description || "",
+        labtype: pkg.labtype || "",
         price: pkg.price,
         tests: pkg.tests || [],
       });
@@ -168,6 +171,7 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
       setFormData({
         packagename: "",
         description: "",
+        labtype: "",
         price: "",
         tests: [],
       });
@@ -210,7 +214,10 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          labtype: formData.labtype || selectedLab || null, // Ensure labtype is always set
+        }),
       });
 
       if (res.ok) {
@@ -454,7 +461,13 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
                 )}
                 <div>
                   <Label>Step 2: Select Laboratory *</Label>
-                  <Select value={selectedLab} onValueChange={setSelectedLab}>
+                  <Select 
+                    value={selectedLab} 
+                    onValueChange={(value) => {
+                      setSelectedLab(value);
+                      setFormData(prev => ({ ...prev, labtype: value }));
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Choose laboratory department" />
                     </SelectTrigger>
@@ -562,6 +575,9 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
                         {formData.tests.length} test{formData.tests.length !== 1 ? 's' : ''} in package
                       </p>
                       <p className="text-xs text-blue-700">
+                        Package Lab: <span className="font-semibold">{laboratories.find(l => l.value === formData.labtype)?.label || formData.labtype || 'Not set'}</span>
+                      </p>
+                      <p className="text-xs text-blue-700">
                         Current filter: {laboratories.find(l => l.value === selectedLab)?.label || 'All Labs'}
                         {selectedGroup && selectedGroup !== "all"
                           ? ` > ${testGroups.find(g => g.value === selectedGroup)?.label || selectedGroup}`
@@ -572,7 +588,7 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        // Keep current tests, reset filters, go back to add more from different lab
+                        // Keep current tests and labtype, reset filters, go back to add more from different lab
                         setSelectedLab("");
                         setSelectedGroup("all");
                         setTestSearchTerm("");

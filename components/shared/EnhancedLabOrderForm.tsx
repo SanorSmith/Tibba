@@ -157,36 +157,75 @@ export default function EnhancedLabOrderForm({
   
   // Fetch real test data from database
   useEffect(() => {
+    console.log('useEffect triggered - open:', open, 'workspaceid:', workspaceid);
     if (open && workspaceid) {
       fetchTestCatalog();
     }
   }, [open, workspaceid]);
   
   const fetchTestCatalog = async () => {
+    console.log('fetchTestCatalog called with workspaceid:', workspaceid);
     setIsLoadingTests(true);
     try {
-      const response = await fetch(`/api/test-catalog?workspaceid=${workspaceid}`);
-      if (response.ok) {
-        const data = await response.json();
+      // Fetch both catalog packages and custom packages
+      console.log('Fetching from:', `/api/test-catalog?workspaceid=${workspaceid}`, 'and', `/api/d/${workspaceid}/lims/test-packages`);
+      const [catalogRes, customRes] = await Promise.all([
+        fetch(`/api/test-catalog?workspaceid=${workspaceid}`),
+        fetch(`/api/d/${workspaceid}/lims/test-packages`),
+      ]);
+
+      let mergedPackages: Record<string, any> = {};
+      let catalogData: any = {};
+
+      // Process catalog data
+      if (catalogRes.ok) {
+        catalogData = await catalogRes.json();
         console.log('Test catalog API response:', {
-          success: data.success,
-          totalTests: data.totalTests,
-          packagesCount: Object.keys(data.testPackages || {}).length,
-          laboratoriesCount: Object.keys(data.laboratories || {}).length,
-          laboratories: Object.keys(data.laboratories || {}),
-          samplePackages: Object.keys(data.testPackages || {}).slice(0, 5),
+          success: catalogData.success,
+          totalTests: catalogData.totalTests,
+          packagesCount: Object.keys(catalogData.testPackages || {}).length,
+          laboratoriesCount: Object.keys(catalogData.laboratories || {}).length,
+          laboratories: Object.keys(catalogData.laboratories || {}),
+          samplePackages: Object.keys(catalogData.testPackages || {}).slice(0, 5),
         });
-        
-        if (data.success) {
-          setTestCatalog({
-            testPackages: data.testPackages,
-            individualTests: data.individualTests,
-            laboratories: data.laboratories,
-            testsByLabType: data.testsByLabType,
-          });
+
+        if (catalogData.success) {
+          mergedPackages = { ...catalogData.testPackages };
         }
       } else {
-        console.error('Failed to fetch test catalog:', response.status, response.statusText);
+        console.error('Failed to fetch test catalog:', catalogRes.status, catalogRes.statusText);
+      }
+
+      // Process custom packages and merge
+      if (customRes.ok) {
+        const customPackages = await customRes.json();
+        console.log('Custom packages fetched:', customPackages.length, customPackages.map((p: any) => ({ id: p.packageid, name: p.packagename, labtype: p.labtype, isactive: p.isactive })));
+
+        // Convert custom packages to same format as catalog
+        customPackages.forEach((pkg: any) => {
+          if (pkg.isactive) {
+            mergedPackages[pkg.packageid] = {
+              id: pkg.packageid,
+              name: pkg.packagename,
+              category: pkg.labtype || 'Custom',
+              labtype: pkg.labtype, // Preserve labtype for filtering
+              description: pkg.description || '',
+              tests: pkg.tests?.map((t: any) => t.testcode) || [],
+              price: pkg.price,
+              isCustom: true,
+            };
+          }
+        });
+        console.log('Merged custom packages:', Object.values(mergedPackages).filter((p: any) => p.isCustom).map((p: any) => ({ id: p.id, name: p.name, labtype: p.labtype, category: p.category })));
+      }
+
+      if (catalogData.success || Object.keys(mergedPackages).length > 0) {
+        setTestCatalog({
+          testPackages: mergedPackages,
+          individualTests: catalogData.individualTests || INDIVIDUAL_TESTS,
+          laboratories: catalogData.laboratories || LABORATORIES,
+          testsByLabType: catalogData.testsByLabType || {},
+        });
       }
     } catch (error) {
       console.error("Error fetching test catalog:", error);
@@ -265,18 +304,44 @@ export default function EnhancedLabOrderForm({
   const availablePackages = useMemo(() => {
     if (!formState.target_lab) return [];
     const category = getLabCategory(formState.target_lab);
+    const selectedLab = testCatalog.laboratories[formState.target_lab];
+    
+    console.log('Filtering packages:', {
+      targetLab: formState.target_lab,
+      category,
+      selectedLabName: selectedLab?.name,
+      totalPackages: Object.keys(testCatalog.testPackages).length,
+      customPackages: Object.values(testCatalog.testPackages).filter((p: any) => p.isCustom).map((p: any) => ({ id: p.id, name: p.name, category: p.category, labtype: p.labtype }))
+    });
     
     const packages = Object.values(testCatalog.testPackages).filter(
-      (pkg) => pkg.category === category
+      (pkg: any) => {
+        // Match by category (for catalog packages)
+        if (pkg.category === category) {
+          console.log('Matched by category:', pkg.name, pkg.category, '===', category);
+          return true;
+        }
+        // Match custom packages by labtype (case-insensitive)
+        if (pkg.isCustom && pkg.labtype) {
+          const pkgLab = pkg.labtype.toLowerCase();
+          const selectedLabId = formState.target_lab.toLowerCase();
+          const selectedLabName = (selectedLab?.name || '').toLowerCase();
+          const categoryLower = category.toLowerCase();
+          
+          const match1 = pkgLab === selectedLabId;
+          const match2 = pkgLab === selectedLabName;
+          const match3 = categoryLower.includes(pkgLab);
+          const match4 = pkgLab.includes(categoryLower);
+          
+          console.log('Custom package check:', pkg.name, { pkgLab, selectedLabId, selectedLabName, categoryLower, match1, match2, match3, match4 });
+          
+          return match1 || match2 || match3 || match4;
+        }
+        return false;
+      }
     );
     
-    console.log('Available packages:', {
-      selectedLab: formState.target_lab,
-      category,
-      totalPackages: Object.keys(testCatalog.testPackages).length,
-      filteredPackages: packages.length,
-      packages: packages.map(p => ({ id: p.id, name: p.name, category: p.category }))
-    });
+    console.log('Available packages result:', packages.length, packages.map((p: any) => ({ id: p.id, name: p.name })));
     
     return packages;
   }, [formState.target_lab, testCatalog.testPackages, testCatalog.laboratories]);
@@ -294,8 +359,28 @@ export default function EnhancedLabOrderForm({
     });
     
     // Remove duplicates and get test details
+    // Try lookup by ID first, then by code (case-insensitive)
     const uniqueTestIds = [...new Set(allTests)];
-    return uniqueTestIds.map((testId) => testCatalog.individualTests[testId]).filter(Boolean);
+    const allTestsCatalog = { ...INDIVIDUAL_TESTS, ...testCatalog.individualTests };
+    
+    return uniqueTestIds.map((testId) => {
+      // Try direct lookup first
+      let test = testCatalog.individualTests[testId] || INDIVIDUAL_TESTS[testId];
+      if (test) return test;
+      
+      // Try case-insensitive ID match
+      const lowerId = testId.toLowerCase();
+      for (const [key, t] of Object.entries(allTestsCatalog)) {
+        if (key.toLowerCase() === lowerId) return t;
+      }
+      
+      // Try matching by code (case-insensitive)
+      for (const t of Object.values(allTestsCatalog)) {
+        if (t.code?.toLowerCase() === lowerId) return t;
+      }
+      
+      return null;
+    }).filter(Boolean);
   }, [formState.selectedPackages, testCatalog.testPackages, testCatalog.individualTests]);
 
   // Get tests to display (from selected packages)
@@ -396,42 +481,125 @@ export default function EnhancedLabOrderForm({
         <div className="grid grid-cols-2 gap-4 py-4">
           {/* Column 1: Step 1 + Step 2 */}
           <div className="border-r pr-4 space-y-6">
-          {/* Step 1: Select Laboratory */}
+          {/* Step 1: Select Laboratory or Package */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="h-5 w-5" />
               <Label className="text-base font-semibold">
-                Step 1: Laboratory
+                Step 1: Laboratory or Package
               </Label>
             </div>
-            <Select
-              value={formState.target_lab}
-              onValueChange={(value) => {
-                dispatch({ type: "SET_FIELD", field: "target_lab", value });
-                dispatch({ type: "SET_FIELD", field: "selectedPackage", value: "" });
-                dispatch({ type: "SET_FIELD", field: "selectedPackages", value: [] });
-                dispatch({ type: "SET_FIELD", field: "selectedTests", value: [] });
-                setCurrentStep(2);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a laboratory department" />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingTests ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span className="text-sm">Loading laboratories...</span>
-                  </div>
-                ) : (
-                  Object.values(testCatalog.laboratories).map((lab) => (
-                    <SelectItem key={lab.id} value={lab.id}>
-                      {lab.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+
+            {/* Laboratory Selection */}
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground mb-1 block">Select Laboratory Department</Label>
+              <Select
+                value={formState.target_lab}
+                onValueChange={(value) => {
+                  dispatch({ type: "SET_FIELD", field: "target_lab", value });
+                  dispatch({ type: "SET_FIELD", field: "selectedPackage", value: "" });
+                  dispatch({ type: "SET_FIELD", field: "selectedPackages", value: [] });
+                  dispatch({ type: "SET_FIELD", field: "selectedTests", value: [] });
+                  setCurrentStep(2);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a laboratory..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingTests ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-sm">Loading laboratories...</span>
+                    </div>
+                  ) : (
+                    Object.values(testCatalog.laboratories).map((lab) => (
+                      <SelectItem key={lab.id} value={lab.id}>
+                        {lab.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center gap-2 my-3">
+              <div className="flex-1 h-px bg-gray-200"></div>
+              <span className="text-xs text-muted-foreground">OR select a package directly</span>
+              <div className="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            {/* Package Selection */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Select Test Package</Label>
+              <Select
+                value=""
+                onValueChange={(value: string) => {
+                  if (value.startsWith('pkg:')) {
+                    const packageId = value.replace('pkg:', '');
+                    const pkg = testCatalog.testPackages[packageId];
+                    if (pkg) {
+                      // Determine lab from package
+                      let targetLabId = '';
+                      if (pkg.labtype) {
+                        targetLabId = Object.values(testCatalog.laboratories).find((l: any) =>
+                          l.id.toLowerCase() === pkg.labtype?.toLowerCase() ||
+                          l.name.toLowerCase() === pkg.labtype?.toLowerCase()
+                        )?.id || '';
+                      }
+                      if (!targetLabId && pkg.category) {
+                        targetLabId = Object.values(testCatalog.laboratories).find((l: any) =>
+                          l.id.toLowerCase() === pkg.category.toLowerCase() ||
+                          l.name.toLowerCase() === pkg.category.toLowerCase()
+                        )?.id || '';
+                      }
+
+                      // Get all test codes from the package
+                      const packageTestCodes = pkg.tests || [];
+                      
+                      // Set lab, package, and auto-select all tests
+                      dispatch({ type: "SET_FIELD", field: "target_lab", value: targetLabId || 'biochemistry' });
+                      dispatch({ type: "SET_FIELD", field: "selectedPackages", value: [packageId] });
+                      dispatch({ type: "SET_FIELD", field: "selectedPackage", value: packageId });
+                      dispatch({ type: "SET_FIELD", field: "selectedTests", value: packageTestCodes });
+                      setCurrentStep(3); // Skip to review since all tests are selected
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a test package..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {(() => {
+                    const customPackages = Object.values(testCatalog.testPackages).filter((p: any) => p.isCustom);
+                    
+                    if (isLoadingTests) {
+                      return <SelectItem value="_loading" disabled>Loading...</SelectItem>;
+                    }
+                    if (customPackages.length === 0) {
+                      return <SelectItem value="_none" disabled>No custom packages available. Create packages in Lab Management.</SelectItem>;
+                    }
+                    return (
+                      <>
+                        {customPackages.map((pkg: any) => (
+                          <SelectItem key={pkg.id} value={`pkg:${pkg.id}`}>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-3 w-3 text-green-600" />
+                              <span className="font-medium">{pkg.name}</span>
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                ({pkg.tests?.length || 0} tests)
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </SelectContent>
+              </Select>
+            </div>
 
             {selectedLab && (
               <div className="mt-3 p-3 bg-gray-50 rounded-md text-sm">
@@ -477,7 +645,7 @@ export default function EnhancedLabOrderForm({
                             <Badge
                               key={packageId}
                               variant="secondary"
-                              className="mr-1 shrink-0"
+                              className={`mr-1 shrink-0 ${pkg.isCustom ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}`}
                             >
                               {pkg.name}
                               <span
@@ -546,7 +714,15 @@ export default function EnhancedLabOrderForm({
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium leading-none">
-                            {pkg.name} <span className="text-xs text-muted-foreground font-normal">• {pkg.tests.length} test{pkg.tests.length > 1 ? 's' : ''}</span>
+                            {pkg.name}{' '}
+                            {pkg.isCustom && (
+                              <Badge variant="outline" className="text-xs ml-1 bg-green-100 text-green-800 border-green-300">
+                                Custom
+                              </Badge>
+                            )}{' '}
+                            <span className="text-xs text-muted-foreground font-normal">
+                              • {pkg.tests.length} test{pkg.tests.length > 1 ? 's' : ''}
+                            </span>
                           </p>
                         </div>
                       </div>

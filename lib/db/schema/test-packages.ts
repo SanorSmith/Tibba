@@ -8,6 +8,7 @@ export const testPackages = pgTable(
     workspaceid: uuid("workspaceid").notNull(),
     packagename: varchar("packagename", { length: 255 }).notNull(),
     description: text("description"),
+    labtype: varchar("labtype", { length: 100 }), // Laboratory department (Biochemistry, Microbiology, etc.)
     price: numeric("price", { precision: 10, scale: 2 }).notNull(),
     isactive: boolean("isactive").notNull().default(true),
     

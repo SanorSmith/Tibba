@@ -157,26 +157,58 @@ export default function EnhancedLabOrderFormMultiple({
   // Fetch dynamic test catalog from DB when dialog opens
   // In edit mode, merge with static catalog so reverse-matched IDs still resolve
   useEffect(() => {
+    console.log('EnhancedLabOrderFormMultiple useEffect - open:', open, 'workspaceid:', workspaceid);
     if (open && workspaceid) {
       setIsLoadingCatalog(true);
-      fetch(`/api/test-catalog?workspaceid=${workspaceid}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.totalTests > 0) {
-            if (editMode) {
-              // Merge: static catalog first, then dynamic on top — static IDs preserved
-              setTestCatalog({
-                testPackages: { ...TEST_PACKAGES, ...data.testPackages },
-                individualTests: { ...INDIVIDUAL_TESTS, ...data.individualTests },
-                laboratories: { ...LABORATORIES, ...data.laboratories },
-              });
-            } else {
-              setTestCatalog({
-                testPackages: data.testPackages,
-                individualTests: data.individualTests,
-                laboratories: data.laboratories,
-              });
-            }
+
+      // Fetch both catalog and custom packages
+      console.log('Fetching from:', `/api/test-catalog?workspaceid=${workspaceid}`, 'and', `/api/d/${workspaceid}/lims/test-packages`);
+      Promise.all([
+        fetch(`/api/test-catalog?workspaceid=${workspaceid}`),
+        fetch(`/api/d/${workspaceid}/lims/test-packages`),
+      ])
+        .then(async ([catalogRes, customRes]) => {
+          const catalogData = await catalogRes.json();
+          let mergedPackages: Record<string, any> = {};
+
+          if (catalogData.success && catalogData.totalTests > 0) {
+            mergedPackages = { ...catalogData.testPackages };
+          }
+
+          // Fetch and merge custom packages
+          if (customRes.ok) {
+            const customPackages = await customRes.json();
+            console.log('EnhancedLabOrderFormMultiple - Custom packages fetched:', customPackages.length, customPackages.map((p: any) => ({ id: p.packageid, name: p.packagename, labtype: p.labtype, isactive: p.isactive })));
+            customPackages.forEach((pkg: any) => {
+              if (pkg.isactive) {
+                mergedPackages[pkg.packageid] = {
+                  id: pkg.packageid,
+                  name: pkg.packagename,
+                  category: pkg.labtype || 'Custom',
+                  labtype: pkg.labtype, // Preserve labtype for filtering
+                  description: pkg.description || '',
+                  tests: pkg.tests?.map((t: any) => t.testcode) || [],
+                  price: pkg.price,
+                  isCustom: true,
+                };
+              }
+            });
+            console.log('EnhancedLabOrderFormMultiple - Merged custom packages:', Object.values(mergedPackages).filter((p: any) => p.isCustom).map((p: any) => ({ id: p.id, name: p.name, labtype: p.labtype, category: p.category })));
+          }
+
+          if (editMode) {
+            // Merge: static catalog first, then dynamic on top — static IDs preserved
+            setTestCatalog({
+              testPackages: { ...TEST_PACKAGES, ...mergedPackages },
+              individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
+              laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
+            });
+          } else {
+            setTestCatalog({
+              testPackages: mergedPackages,
+              individualTests: catalogData.individualTests || INDIVIDUAL_TESTS,
+              laboratories: catalogData.laboratories || LABORATORIES,
+            });
           }
         })
         .catch(err => console.error("Failed to fetch test catalog, using fallback:", err))
@@ -236,8 +268,27 @@ export default function EnhancedLabOrderFormMultiple({
   }, [formState.selectedPackages, formState.selectedTests, currentStep]);
 
   // Helper: resolve a test ID from dynamic catalog first, then static catalog as fallback
+  // Also tries matching by code (case-insensitive) if ID lookup fails
   const resolveTest = useCallback((id: string) => {
-    return testCatalog.individualTests[id] || INDIVIDUAL_TESTS[id] || null;
+    // Try direct ID lookup first
+    const byId = testCatalog.individualTests[id] || INDIVIDUAL_TESTS[id];
+    if (byId) return byId;
+    
+    // Try case-insensitive ID match
+    const lowerId = id.toLowerCase();
+    const allTests = { ...INDIVIDUAL_TESTS, ...testCatalog.individualTests };
+    
+    // Look for matching ID (case-insensitive)
+    for (const [key, test] of Object.entries(allTests)) {
+      if (key.toLowerCase() === lowerId) return test;
+    }
+    
+    // Look for matching code (case-insensitive)
+    for (const test of Object.values(allTests)) {
+      if (test.code?.toLowerCase() === lowerId) return test;
+    }
+    
+    return null;
   }, [testCatalog.individualTests]);
 
   // Helper: resolve a package ID from dynamic catalog first, then static catalog as fallback
@@ -343,9 +394,44 @@ export default function EnhancedLabOrderFormMultiple({
   const availablePackages = useMemo(() => {
     if (!formState.target_lab) return [];
     const category = getLabCategory(formState.target_lab);
-    return Object.values(testCatalog.testPackages).filter(
-      (pkg: any) => pkg.category === category
+    const selectedLab = testCatalog.laboratories[formState.target_lab];
+    
+    console.log('EnhancedLabOrderFormMultiple - Filtering packages:', {
+      targetLab: formState.target_lab,
+      category,
+      selectedLabName: selectedLab?.name,
+      totalPackages: Object.keys(testCatalog.testPackages).length,
+      customPackages: Object.values(testCatalog.testPackages).filter((p: any) => p.isCustom).map((p: any) => ({ id: p.id, name: p.name, category: p.category, labtype: p.labtype }))
+    });
+    
+    const packages = Object.values(testCatalog.testPackages).filter(
+      (pkg: any) => {
+        // Match by category (for catalog packages)
+        if (pkg.category === category) {
+          console.log('Matched by category:', pkg.name);
+          return true;
+        }
+        // Match custom packages by labtype (case-insensitive)
+        if (pkg.isCustom && pkg.labtype) {
+          const pkgLab = pkg.labtype.toLowerCase();
+          const selectedLabId = formState.target_lab.toLowerCase();
+          const selectedLabName = (selectedLab?.name || '').toLowerCase();
+          const categoryLower = category.toLowerCase();
+          
+          const match = pkgLab === selectedLabId || pkgLab === selectedLabName || 
+                 categoryLower.includes(pkgLab) || pkgLab.includes(categoryLower);
+          
+          console.log('Custom package check:', pkg.name, { pkgLab, selectedLabId, selectedLabName, categoryLower, match });
+          
+          return match;
+        }
+        return false;
+      }
     );
+    
+    console.log('EnhancedLabOrderFormMultiple - Available packages result:', packages.length, packages.map((p: any) => p.name));
+    
+    return packages;
   }, [formState.target_lab, testCatalog.testPackages, testCatalog.laboratories]);
 
   // Filter packages by search term
@@ -421,7 +507,13 @@ export default function EnhancedLabOrderFormMultiple({
 
   // Get added test objects
   const addedTestObjects = useMemo(() => {
-    return addedTests.map(id => resolveTest(id)).filter(Boolean);
+    const resolved = addedTests.map(id => {
+      const test = resolveTest(id);
+      console.log('Resolving test:', id, '->', test?.name || 'NOT FOUND');
+      return test;
+    }).filter(Boolean);
+    console.log('addedTestObjects:', resolved.map(t => ({ id: t.id, name: t.name, code: t.code })));
+    return resolved;
   }, [addedTests, resolveTest]);
 
   const handleSubmit = async () => {
@@ -455,26 +547,49 @@ export default function EnhancedLabOrderFormMultiple({
       const selectedLab = testCatalog.laboratories[formState.target_lab];
       
       // Build detailed description with test information
+      // Use allTestsCatalog for consistent lookup
+      const allTestsCatalog = { ...INDIVIDUAL_TESTS, ...testCatalog.individualTests };
+      
+      // Helper to resolve test by ID or code
+      const getTestById = (testId: string) => {
+        // Try direct ID lookup first
+        let test = testCatalog.individualTests[testId] || INDIVIDUAL_TESTS[testId];
+        if (test) return test;
+        // Try case-insensitive ID match
+        const lowerId = testId.toLowerCase();
+        for (const [key, t] of Object.entries(allTestsCatalog)) {
+          if (key.toLowerCase() === lowerId) return t;
+        }
+        // Try matching by code
+        for (const t of Object.values(allTestsCatalog)) {
+          if (t.code?.toLowerCase() === lowerId) return t;
+        }
+        return null;
+      };
+      
       const selectedTestDetails = addedTests
-        .map(testId => testCatalog.individualTests[testId])
+        .map(testId => getTestById(testId))
         .filter(Boolean);
       
-      const testNames = selectedTestDetails.map(test => test.name).join(", ");
+      const testNames = selectedTestDetails.map(test => test?.name).join(", ");
       
-      // Build per-group test mapping using ALL catalog packages (not just selected ones)
+      // Build per-group test mapping using ONLY selected packages
       const groupTestMap: Record<string, string[]> = {};
       const assignedTestIds = new Set<string>();
       
-      // Check every package in the catalog to find which group each added test belongs to
+      // Check only SELECTED packages to find which group each added test belongs to
       // Also collect specimen info (sampleType + containerType) per group from individual tests
       const groupSpecimenMap: Record<string, string> = {};
-      Object.values(testCatalog.testPackages).forEach((pkg: any) => {
+      (formState.selectedPackages || []).forEach((pkgId: string) => {
+        const pkg = testCatalog.testPackages[pkgId];
+        if (!pkg) return;
+        
         const groupName = pkg.name;
         const groupTests = (pkg.tests || [])
           .filter((tid: string) => addedTests.includes(tid))
           .map((tid: string) => {
             assignedTestIds.add(tid);
-            return testCatalog.individualTests[tid]?.name;
+            return getTestById(tid)?.name;
           })
           .filter(Boolean);
         if (groupTests.length > 0) {
@@ -484,7 +599,7 @@ export default function EnhancedLabOrderFormMultiple({
           (pkg.tests || [])
             .filter((tid: string) => addedTests.includes(tid))
             .forEach((tid: string) => {
-              const t = testCatalog.individualTests[tid];
+              const t = getTestById(tid);
               if (t) {
                 const parts: string[] = [];
                 if (t.sampleType) parts.push(t.sampleType);
@@ -500,13 +615,13 @@ export default function EnhancedLabOrderFormMultiple({
       // Add tests not found in any package as "Individual Tests"
       const individualOnly = addedTests.filter(tid => !assignedTestIds.has(tid));
       if (individualOnly.length > 0) {
-        const indivNames = individualOnly.map(tid => testCatalog.individualTests[tid]?.name).filter(Boolean);
+        const indivNames = individualOnly.map(tid => getTestById(tid)?.name).filter(Boolean);
         if (indivNames.length > 0) {
           groupTestMap["Individual Tests"] = indivNames;
           // Collect specimen info for individual tests
           const specimens = new Set<string>();
           individualOnly.forEach((tid: string) => {
-            const t = testCatalog.individualTests[tid];
+            const t = getTestById(tid);
             if (t) {
               const parts: string[] = [];
               if (t.sampleType) parts.push(t.sampleType);
@@ -619,39 +734,124 @@ export default function EnhancedLabOrderFormMultiple({
         <div className="grid gap-4 py-2" style={{ gridTemplateColumns: '1fr 2fr 1fr' }}>
           {/* Column 1: Step 1 + Step 2 */}
           <div className="border-r pr-4 space-y-6">
-          {/* Step 1: Select Laboratory */}
+          {/* Step 1: Select Laboratory or Package */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="h-5 w-5" />
               <Label className="text-base font-semibold">
-                Step 1: Laboratory
+                Step 1: Laboratory or Package
               </Label>
             </div>
-            <Select
-              value={formState.target_lab}
-              onValueChange={(value: string) => {
-                dispatch({ type: "SET_FIELD", field: "target_lab", value });
-                dispatch({ type: "SET_FIELD", field: "selectedPackages", value: [] });
-                dispatch({ type: "SET_FIELD", field: "selectedTests", value: [] });
-                setAddedTests([]);
-                setCurrentStep(2);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a laboratory department" />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingCatalog ? (
-                  <SelectItem value="_loading" disabled>
-                    <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading...</span>
-                  </SelectItem>
-                ) : Object.values(testCatalog.laboratories).map((lab: any) => (
-                  <SelectItem key={lab.id} value={lab.id}>
-                    {lab.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            
+            {/* Laboratory Selection */}
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground mb-1 block">Select Laboratory Department</Label>
+              <Select
+                value={formState.target_lab}
+                onValueChange={(value: string) => {
+                  dispatch({ type: "SET_FIELD", field: "target_lab", value });
+                  dispatch({ type: "SET_FIELD", field: "selectedPackages", value: [] });
+                  dispatch({ type: "SET_FIELD", field: "selectedTests", value: [] });
+                  setAddedTests([]);
+                  setCurrentStep(2);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a laboratory..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingCatalog ? (
+                    <SelectItem value="_loading" disabled>
+                      <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading...</span>
+                    </SelectItem>
+                  ) : Object.values(testCatalog.laboratories).map((lab: any) => (
+                    <SelectItem key={lab.id} value={lab.id}>
+                      {lab.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center gap-2 my-3">
+              <div className="flex-1 h-px bg-gray-200"></div>
+              <span className="text-xs text-muted-foreground">OR select a package directly</span>
+              <div className="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            {/* Package Selection */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Select Test Package</Label>
+              <Select
+                value=""
+                onValueChange={(value: string) => {
+                  if (value.startsWith('pkg:')) {
+                    const packageId = value.replace('pkg:', '');
+                    const pkg = testCatalog.testPackages[packageId];
+                    if (pkg) {
+                      // Determine lab from package
+                      let targetLabId = '';
+                      if (pkg.labtype) {
+                        // Find lab that matches package labtype
+                        targetLabId = Object.values(testCatalog.laboratories).find((l: any) => 
+                          l.id.toLowerCase() === pkg.labtype?.toLowerCase() || 
+                          l.name.toLowerCase() === pkg.labtype?.toLowerCase()
+                        )?.id || '';
+                      }
+                      if (!targetLabId && pkg.category) {
+                        // Fallback to category matching
+                        targetLabId = Object.values(testCatalog.laboratories).find((l: any) => 
+                          l.id.toLowerCase() === pkg.category.toLowerCase() || 
+                          l.name.toLowerCase() === pkg.category.toLowerCase()
+                        )?.id || '';
+                      }
+                      
+                      // Get all test codes from the package
+                      const packageTestCodes = pkg.tests || [];
+                      
+                      // Set lab, package, and auto-select all tests
+                      dispatch({ type: "SET_FIELD", field: "target_lab", value: targetLabId || 'biochemistry' });
+                      dispatch({ type: "SET_FIELD", field: "selectedPackages", value: [packageId] });
+                      dispatch({ type: "SET_FIELD", field: "selectedTests", value: packageTestCodes });
+                      setAddedTests(packageTestCodes); // Add all test codes to the order
+                      setCurrentStep(3); // Skip to review since all tests are selected
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a test package..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {(() => {
+                    const customPackages = Object.values(testCatalog.testPackages).filter((p: any) => p.isCustom);
+                    
+                    if (isLoadingCatalog) {
+                      return <SelectItem value="_loading" disabled>Loading...</SelectItem>;
+                    }
+                    if (customPackages.length === 0) {
+                      return <SelectItem value="_none" disabled>No custom packages available. Create packages in Lab Management.</SelectItem>;
+                    }
+                    return (
+                      <>
+                        {customPackages.map((pkg: any) => (
+                          <SelectItem key={pkg.id} value={`pkg:${pkg.id}`}>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-3 w-3 text-green-600" />
+                              <span className="font-medium">{pkg.name}</span>
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                ({pkg.tests?.length || 0} tests)
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Step 2: Select Test Groups (Multiple Selection) */}

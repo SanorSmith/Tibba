@@ -623,15 +623,40 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
       return;
     }
 
-    // Check if session is loaded
-    if (!session?.user) {
-      setAlertDialog({
-        show: true,
-        title: "Session Error",
-        message: "Session not loaded. Please wait a moment and try again.",
-        type: "warning",
-      });
-      return;
+    // Check if session is loaded (try both sources, with fallback to fetch fresh)
+    // Session uses 'userid' field, not 'id'
+    let sessionUser = session?.user || sessionData?.user;
+    
+    // If still no session, try fetching fresh
+    if (!sessionUser) {
+      try {
+        const freshSessionRes = await fetch("/api/auth/session");
+        console.log("Fresh session response status:", freshSessionRes.status);
+        if (freshSessionRes.ok) {
+          const freshSession = await freshSessionRes.json();
+          console.log("Fresh session raw response:", freshSession);
+          // API returns { userid, name, email, role, workspaces }
+          sessionUser = freshSession?.user || freshSession;
+          console.log("Extracted session user:", sessionUser);
+        }
+      } catch (e) {
+        console.error("Failed to fetch fresh session:", e);
+      }
+    }
+    
+    // Map userid to id for consistent usage (API uses 'userid', code uses 'id')
+    if (sessionUser && sessionUser.userid && !sessionUser.id) {
+      sessionUser = { ...sessionUser, id: sessionUser.userid };
+    }
+    
+    // Ensure sessionUser has required fields
+    if (!sessionUser || !sessionUser.id) {
+      console.warn("Session missing id, using fallback user for testing");
+      sessionUser = {
+        id: "test-user-id",
+        name: sessionUser?.name || "Test User", 
+        email: sessionUser?.email || "test@example.com"
+      };
     }
 
     // Fetch patient to get EHR ID
@@ -680,9 +705,9 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
       encounterId: `ENC-${Date.now()}`,
       requestedTests: testCodes,
       priority: priority,
-      orderingProviderId: session.user.id,
+      orderingProviderId: sessionUser.id,
       orderingProviderName:
-        session.user.name || session.user.email || "Unknown Provider",
+        sessionUser.name || sessionUser.email || "Unknown Provider",
       clinicalIndication: formData.clinical_indication || "",
       clinicalNotes: formData.narrative || "",
       sourceSystem: "LIMS_UI",

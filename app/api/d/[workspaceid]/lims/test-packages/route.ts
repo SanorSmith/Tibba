@@ -21,6 +21,7 @@ export async function GET(
         packageid: testPackages.packageid,
         packagename: testPackages.packagename,
         description: testPackages.description,
+        labtype: testPackages.labtype,
         price: testPackages.price,
         isactive: testPackages.isactive,
         createdat: testPackages.createdat,
@@ -68,7 +69,7 @@ export async function POST(
 
   try {
     const body = await req.json();
-    const { packagename, description, price, tests } = body;
+    const { packagename, description, labtype, price, tests } = body;
 
     if (!packagename || !price || !tests || tests.length === 0) {
       return NextResponse.json(
@@ -84,6 +85,7 @@ export async function POST(
         workspaceid,
         packagename,
         description: description || null,
+        labtype: labtype || null,
         price,
         createdby: user.userid,
       })

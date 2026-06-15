@@ -15,7 +15,7 @@ export async function PUT(
 
   try {
     const body = await req.json();
-    const { packagename, description, price, tests } = body;
+    const { packagename, description, labtype, price, tests } = body;
 
     if (!packagename || !price || !tests || tests.length === 0) {
       return NextResponse.json(
@@ -30,6 +30,7 @@ export async function PUT(
       .set({
         packagename,
         description: description || null,
+        labtype: labtype || null,
         price,
         updatedby: user.userid,
         updatedat: new Date(),
