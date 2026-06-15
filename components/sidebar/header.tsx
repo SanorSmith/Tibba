@@ -32,7 +32,7 @@ export function Header({
       : `/d/${workspaceid}/doctor`;
 
   return (
-    <header className={`flex h-16 shrink-0 items-center ${headerBg} text-white justify-between mt-8 gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12`}>
+    <header className={`flex h-16 shrink-0 items-center ${headerBg} text-white justify-between gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12`}>
       <div className="flex items-center flex-1 min-w-0">
         {/* <SidebarTrigger className="-ml-1" /> */}
         <Link href={dashboardPath} className="cursor-pointer hover:opacity-80 transition-opacity">

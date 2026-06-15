@@ -113,7 +113,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 15;
 
   // Combo-box dropdown states
   const [showLabTypeDropdown, setShowLabTypeDropdown] = useState(false);
@@ -238,13 +238,34 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
 
   const handleOpenDialog = (range?: TestReferenceRange) => {
     if (range) {
+      console.log("Editing range data:", JSON.stringify(range, null, 2));
       setEditingRange(range);
+      // Convert case for Select components
+      const normalizedAgeGroup = range.agegroup?.toUpperCase() || "ALL";
+      
+      // Handle sex conversion with specific mapping
+      let normalizedSex = "ANY";
+      if (range.sex) {
+        const sexLower = range.sex.toLowerCase();
+        if (sexLower === 'm' || sexLower === 'male') {
+          normalizedSex = "M";
+        } else if (sexLower === 'f' || sexLower === 'female') {
+          normalizedSex = "F";
+        } else if (sexLower === 'any' || sexLower === 'all') {
+          normalizedSex = "ANY";
+        } else {
+          normalizedSex = range.sex.toUpperCase(); // fallback
+        }
+      }
+      
+      console.log(`Sex conversion in form: "${range.sex}" -> "${normalizedSex}"`);
+      
       setFormData({
         testcode: range.testcode,
         testname: range.testname,
         unit: range.unit,
-        agegroup: range.agegroup,
-        sex: range.sex,
+        agegroup: normalizedAgeGroup,
+        sex: normalizedSex,
         referencemin: range.referencemin || "",
         referencemax: range.referencemax || "",
         referencetext: range.referencetext || "",
@@ -261,6 +282,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
         notes: range.notes || "",
         price: range.price || "",
       });
+      console.log("Form data set:", JSON.stringify(formData, null, 2));
     } else {
       setEditingRange(null);
       setFormData({
@@ -403,17 +425,89 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
   };
 
   return (
-    <Card className="flex flex-col" style={{ height: 'calc(100vh - 10rem)' }}>
+    <Card className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-1.5 border-b">
         <span className="text-sm font-semibold">Test Reference Ranges</span>
-        <Button size="sm" className="h-7 text-xs" onClick={() => handleOpenDialog()}>
+        <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleOpenDialog()}>
           <Plus className="h-3 w-3 mr-1" />
           Add Test Reference
         </Button>
       </div>
-      <CardContent className="flex-1 flex flex-col overflow-hidden px-3 pt-1.5 pb-1">
+      
+      {/* Pagination Row */}
+      {!loading && filteredRanges.length > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 border-b bg-gray-50">
+          <span className="text-xs text-muted-foreground">
+            Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredRanges.length)} to {Math.min(currentPage * PAGE_SIZE, filteredRanges.length)} of {filteredRanges.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            {(() => {
+              const totalPages = Math.max(1, Math.ceil(filteredRanges.length / PAGE_SIZE));
+              return Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(
+                  (p) =>
+                    p === 1 ||
+                    p === totalPages ||
+                    Math.abs(p - currentPage) <= 1
+                )
+                .reduce<(number | "...")[]>((acc, p, i, arr) => {
+                  if (i > 0 && (p as number) - (arr[i - 1] as number) > 1)
+                    acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, i) =>
+                  p === "..." ? (
+                    <span
+                      key={`ellipsis-${i}`}
+                      className="text-xs px-1 text-muted-foreground"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={currentPage === p ? "default" : "outline"}
+                      size="sm"
+                      className={`h-6 w-6 p-0 text-xs ${
+                        currentPage === p
+                          ? "bg-[#618FF5] text-white hover:bg-[#618FF5]"
+                          : ""
+                      }`}
+                      onClick={() => setCurrentPage(p as number)}
+                    >
+                      {p}
+                    </Button>
+                  )
+                );
+            })()}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => {
+                const totalPages = Math.max(1, Math.ceil(filteredRanges.length / PAGE_SIZE));
+                setCurrentPage((p) => Math.min(totalPages, p + 1));
+              }}
+              disabled={currentPage >= Math.ceil(filteredRanges.length / PAGE_SIZE)}
+            >
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+      <CardContent className="flex-1 flex flex-col overflow-hidden px-3 pt-1.5 pb-1 min-h-0">
         {/* Filters */}
-        <div className="mb-1 flex items-center gap-2 flex-shrink-0">
+        <div className="mb-1 flex items-center gap-2 flex-shrink-0 bg-white z-10">
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <Input
@@ -483,7 +577,7 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
             No reference ranges found. Click "Add Test Reference" to create one.
           </div>
         ) : (
-          <div className="flex-1 border rounded-lg overflow-auto">
+          <div className="flex-1 border rounded-lg overflow-auto min-h-0">
               <table className="w-full caption-bottom text-sm">
                 <thead className="sticky top-0 z-10 [&_tr]:border-b">
                   <tr className="text-xs border-b">
@@ -498,8 +592,8 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                     <th className="font-semibold px-1 py-2 w-10 bg-gray-50 text-center text-foreground align-middle">Sex</th>
                     <th className="font-semibold px-1 py-2 w-24 bg-gray-50 text-left text-foreground align-middle">Reference</th>
                     <th className="font-semibold px-1 py-2 w-14 bg-gray-50 text-left text-foreground align-middle">Unit</th>
-                    <th className="font-semibold px-1 py-2 w-14 bg-gray-50 text-right text-foreground align-middle">Price</th>
-                    <th className="font-semibold px-1 py-2 w-16 bg-gray-50 text-left text-red-600 align-middle">Panic</th>
+                    <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-foreground align-middle">Price</th>
+                    <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-red-600 align-middle">Panic</th>
                     <th className="font-semibold px-1 py-2 w-28 bg-gray-50 text-left text-foreground align-middle">Clinical</th>
                     <th className="font-semibold px-1 py-2 w-20 bg-gray-50 text-center text-foreground align-middle">Actions</th>
                   </tr>
@@ -564,13 +658,11 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
                           {range.unit}
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold px-1 py-1.5 text-right">
+                      <TableCell className="font-semibold px-1 py-1.5 text-center">
                         {range.price ? `$${range.price}` : "—"}
                       </TableCell>
-                      <TableCell className="text-red-600 font-medium px-1 py-1.5">
-                        <div className="truncate max-w-[60px]" title={getPanicDisplay(range)}>
-                          {getPanicDisplay(range)}
-                        </div>
+                      <TableCell className="text-red-600 font-medium px-1 py-1.5 text-center" title={getPanicDisplay(range)}>
+                        {getPanicDisplay(range)}
                       </TableCell>
                       <TableCell className="px-1 py-1.5">
                         <div className="truncate max-w-[100px]" title={range.clinicalindication || ""}>
@@ -630,88 +722,16 @@ export default function TestReferenceManager({ workspaceid }: TestReferenceManag
           </div>
         )}
 
-        {/* Pagination */}
-        {!loading && filteredRanges.length > PAGE_SIZE && (
-          <div className="flex items-center justify-between px-2 py-1.5 border-t flex-shrink-0">
-            <div className="text-[11px] text-muted-foreground">
-              Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredRanges.length)} to {Math.min(currentPage * PAGE_SIZE, filteredRanges.length)} of {filteredRanges.length}
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              {(() => {
-                const totalPages = Math.max(1, Math.ceil(filteredRanges.length / PAGE_SIZE));
-                return Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(
-                    (p) =>
-                      p === 1 ||
-                      p === totalPages ||
-                      Math.abs(p - currentPage) <= 1
-                  )
-                  .reduce<(number | "...")[]>((acc, p, i, arr) => {
-                    if (i > 0 && (p as number) - (arr[i - 1] as number) > 1)
-                      acc.push("...");
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((p, i) =>
-                    p === "..." ? (
-                      <span
-                        key={`ellipsis-${i}`}
-                        className="text-xs px-1 text-muted-foreground"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <Button
-                        key={p}
-                        variant={currentPage === p ? "default" : "outline"}
-                        size="sm"
-                        className={`h-7 w-7 p-0 text-xs ${
-                          currentPage === p
-                            ? "bg-[#618FF5] text-white hover:bg-[#618FF5]"
-                            : ""
-                        }`}
-                        onClick={() => setCurrentPage(p as number)}
-                      >
-                        {p}
-                      </Button>
-                    )
-                  );
-              })()}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => {
-                  const totalPages = Math.max(1, Math.ceil(filteredRanges.length / PAGE_SIZE));
-                  setCurrentPage((p) => Math.min(totalPages, p + 1));
-                }}
-                disabled={currentPage >= Math.ceil(filteredRanges.length / PAGE_SIZE)}
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Add/Edit Dialog */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-[75vw] max-h-[85vh] overflow-y-auto p-4">
-            <DialogHeader className="pb-0 mb-1">
+          <DialogContent className="max-w-[75vw] max-h-[85vh] overflow-y-auto p-4 flex flex-col">
+            <DialogHeader className="pb-4 flex-shrink-0">
               <DialogTitle className="text-sm">
                 {editingRange ? "Edit Test Reference Range" : "Add Test Reference Range"}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="grid grid-cols-6 gap-x-2 gap-y-1">
+            <div className="grid grid-cols-6 gap-x-2 gap-y-1 flex-1">
               {/* Row 1: Test Code, Test Name, Unit, Age Group, Sex */}
               <div>
                 <Label className="text-[10px]">Test Code *</Label>
