@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, X, Search } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Search, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ interface TestReference {
   testcode: string;
   testname: string;
   labtype?: string;
+  grouptests?: string;
 }
 
 interface TestPackageManagerProps {
@@ -65,6 +67,7 @@ interface TestPackageManagerProps {
 export default function TestPackageManager({ workspaceid }: TestPackageManagerProps) {
   const [packages, setPackages] = useState<TestPackage[]>([]);
   const [availableTests, setAvailableTests] = useState<TestReference[]>([]);
+  const [laboratories, setLaboratories] = useState<{value: string; label: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -72,6 +75,9 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
   const [deletePackageId, setDeletePackageId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [testSearchTerm, setTestSearchTerm] = useState("");
+  const [selectedLab, setSelectedLab] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("");
+  const [currentStep, setCurrentStep] = useState(1);
 
   const [formData, setFormData] = useState({
     packagename: "",
@@ -79,6 +85,15 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
     price: "",
     tests: [] as PackageTest[],
   });
+
+  // Get unique test groups (panels) from available tests based on selected lab
+  const testGroups = availableTests
+    .filter(test => !selectedLab || test.labtype?.toLowerCase() === selectedLab.toLowerCase())
+    .map(test => test.grouptests)
+    .filter((value): value is string => !!value && value.trim() !== '')
+    .filter((value, index, self) => self.indexOf(value) === index)
+    .sort()
+    .map(group => ({ value: group, label: group }));
 
   useEffect(() => {
     fetchPackages();
@@ -101,10 +116,37 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
 
   const fetchAvailableTests = async () => {
     try {
-      const res = await fetch(`/api/d/${workspaceid}/lims/reference-ranges`);
+      // Use the same test catalog API as the lab order form
+      const res = await fetch(`/api/test-catalog?workspaceid=${workspaceid}`);
       if (res.ok) {
         const data = await res.json();
-        setAvailableTests(data);
+        if (data.success) {
+          // Build a map of test ID -> panel name from testPackages
+          const testToPanelMap: Record<string, string> = {};
+          Object.values(data.testPackages || {}).forEach((pkg: any) => {
+            if (pkg.tests && pkg.name) {
+              pkg.tests.forEach((testId: string) => {
+                testToPanelMap[testId] = pkg.name;
+              });
+            }
+          });
+
+          // Convert individualTests record to array with panel info
+          const tests = Object.values(data.individualTests || {}).map((test: any) => ({
+            testcode: test.code,
+            testname: test.name,
+            labtype: test.category,
+            grouptests: testToPanelMap[test.id] || '', // Get panel from package mapping
+          }));
+          setAvailableTests(tests);
+
+          // Extract laboratories from API response (same as lab order form)
+          const labs = Object.values(data.laboratories || {}).map((lab: any) => ({
+            value: lab.id,
+            label: lab.name,
+          }));
+          setLaboratories(labs);
+        }
       }
     } catch (error) {
       console.error("Error fetching tests:", error);
@@ -120,6 +162,7 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
         price: pkg.price,
         tests: pkg.tests || [],
       });
+      setCurrentStep(4); // Skip to test selection for editing
     } else {
       setEditingPackage(null);
       setFormData({
@@ -128,6 +171,8 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
         price: "",
         tests: [],
       });
+      setSelectedLab("");
+      setCurrentStep(1);
     }
     setShowDialog(true);
   };
@@ -206,11 +251,22 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
     pkg.packagename.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredTests = availableTests.filter(test =>
-    (test.testname.toLowerCase().includes(testSearchTerm.toLowerCase()) ||
-     test.testcode.toLowerCase().includes(testSearchTerm.toLowerCase())) &&
-    !formData.tests.find(t => t.testcode === test.testcode)
-  );
+  // Get test codes already in the package
+  const selectedTestCodes = formData.tests.map(t => t.testcode);
+
+  // Filter tests for display - show all matching tests including already selected ones
+  const filteredTests = availableTests.filter(test => {
+    // Always show tests that are already in the package (from any lab)
+    const isAlreadySelected = selectedTestCodes.includes(test.testcode);
+    // For new tests, filter by selected lab and group
+    const matchesLab = !selectedLab || test.labtype?.toLowerCase() === selectedLab.toLowerCase();
+    // For group filtering, do exact match on panel name
+    const matchesGroup = !selectedGroup ||
+                        selectedGroup === "all" ||
+                        (test.grouptests && test.grouptests.toLowerCase() === selectedGroup.toLowerCase());
+    // Show if: already selected OR matches current filters
+    return isAlreadySelected || (matchesLab && matchesGroup);
+  });
 
   return (
     <Card>
@@ -312,120 +368,366 @@ export default function TestPackageManager({ workspaceid }: TestPackageManagerPr
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Package Name */}
-            <div>
-              <Label htmlFor="packagename">Package Name *</Label>
-              <Input
-                id="packagename"
-                value={formData.packagename}
-                onChange={(e) => setFormData({ ...formData, packagename: e.target.value })}
-                placeholder="e.g., Basic Health Checkup"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the package..."
-                rows={2}
-              />
-            </div>
-
-            {/* Price */}
-            <div>
-              <Label htmlFor="price">Package Price *</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-
-            {/* Tests in Package */}
-            <div>
-              <Label>Tests in Package *</Label>
-              <div className="mt-2 space-y-2">
-                {formData.tests.length === 0 ? (
-                  <div className="text-sm text-muted-foreground border rounded p-3">
-                    No tests added yet. Search and add tests below.
-                  </div>
-                ) : (
-                  <div className="border rounded-md">
-                    {formData.tests.map((test) => (
-                      <div
-                        key={test.testcode}
-                        className="flex items-center justify-between p-2 border-b last:border-b-0"
-                      >
-                        <div>
-                          <span className="font-medium text-sm">{test.testcode}</span>
-                          <span className="text-sm text-muted-foreground ml-2">- {test.testname}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveTest(test.testcode)}
-                        >
-                          <X className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {[1, 2, 3, 4].map((step) => (
+              <div key={step} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    currentStep >= step
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  {step}
+                </div>
+                {step < 4 && (
+                  <div
+                    className={`w-12 h-1 ${
+                      currentStep > step ? "bg-blue-600" : "bg-gray-200"
+                    }`}
+                  />
                 )}
               </div>
-            </div>
-
-            {/* Add Tests */}
-            <div>
-              <Label>Add Tests</Label>
-              <div className="relative mt-2">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search tests to add..."
-                  value={testSearchTerm}
-                  onChange={(e) => setTestSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              {testSearchTerm && filteredTests.length > 0 && (
-                <div className="mt-2 border rounded-md max-h-48 overflow-y-auto">
-                  {filteredTests.slice(0, 10).map((test) => (
-                    <button
-                      key={test.testcode}
-                      type="button"
-                      className="w-full text-left p-2 hover:bg-blue-50 border-b last:border-b-0 flex items-center justify-between"
-                      onClick={() => handleAddTest(test)}
-                    >
-                      <div>
-                        <span className="font-medium text-sm">{test.testcode}</span>
-                        <span className="text-sm text-muted-foreground ml-2">- {test.testname}</span>
-                        {test.labtype && (
-                          <Badge variant="outline" className="ml-2 text-xs">{test.labtype}</Badge>
-                        )}
-                      </div>
-                      <Plus className="h-4 w-4 text-blue-600" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            ))}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-              {editingPackage ? "Update" : "Create"} Package
-            </Button>
-          </DialogFooter>
+          <div className="space-y-4 py-4">
+            {/* Step 1: Package Details */}
+            {currentStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="packagename">Step 1: Package Name *</Label>
+                  <Input
+                    id="packagename"
+                    value={formData.packagename}
+                    onChange={(e) => setFormData({ ...formData, packagename: e.target.value })}
+                    placeholder="e.g., Basic Health Checkup"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Brief description of the package..."
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="price">Package Price *</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <Button
+                  onClick={() => setCurrentStep(2)}
+                  disabled={!formData.packagename || !formData.price}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  Next: Select Laboratory
+                </Button>
+              </div>
+            )}
+
+            {/* Step 2: Select Laboratory */}
+            {currentStep === 2 && (
+              <div className="space-y-4">
+                {formData.tests.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <p className="text-sm font-medium text-green-900">
+                      {formData.tests.length} test{formData.tests.length !== 1 ? 's' : ''} already selected
+                    </p>
+                    <p className="text-xs text-green-700">
+                      You can add more tests from another laboratory
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <Label>Step 2: Select Laboratory *</Label>
+                  <Select value={selectedLab} onValueChange={setSelectedLab}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose laboratory department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {laboratories.map((lab) => (
+                        <SelectItem key={lab.value} value={lab.value}>
+                          {lab.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(1)}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentStep(3)}
+                    disabled={!selectedLab}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Next: Select Test Group
+                  </Button>
+                </div>
+                {formData.tests.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentStep(4)}
+                    className="w-full text-sm"
+                  >
+                    Skip to Review ({formData.tests.length} tests selected)
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Select Test Group */}
+            {currentStep === 3 && (
+              <div className="space-y-4">
+                {formData.tests.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                    <p className="text-sm font-medium text-green-900">
+                      {formData.tests.length} test{formData.tests.length !== 1 ? 's' : ''} already selected
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <Label>Step 3: Select Test Group (Optional)</Label>
+                  <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a test group or skip to select individual tests" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tests</SelectItem>
+                      {testGroups.map((group) => (
+                        <SelectItem key={group.value} value={group.value}>
+                          {group.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Select a specific test group or choose "All Tests" to see all available tests
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(2)}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentStep(4)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Next: Select Tests
+                  </Button>
+                </div>
+                {formData.tests.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCurrentStep(4)}
+                    className="w-full text-sm"
+                  >
+                    Skip to Review ({formData.tests.length} tests selected)
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Step 4: Select Tests */}
+            {currentStep === 4 && (
+              <div className="space-y-4">
+                {/* Current Selection Summary */}
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">
+                        {formData.tests.length} test{formData.tests.length !== 1 ? 's' : ''} in package
+                      </p>
+                      <p className="text-xs text-blue-700">
+                        Current filter: {laboratories.find(l => l.value === selectedLab)?.label || 'All Labs'}
+                        {selectedGroup && selectedGroup !== "all"
+                          ? ` > ${testGroups.find(g => g.value === selectedGroup)?.label || selectedGroup}`
+                          : ' > All Groups'}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Keep current tests, reset filters, go back to add more from different lab
+                        setSelectedLab("");
+                        setSelectedGroup("all");
+                        setTestSearchTerm("");
+                        setCurrentStep(2);
+                      }}
+                      className="text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add from Another Lab
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Tests in Package */}
+                {formData.tests.length > 0 && (
+                  <div>
+                    <Label className="text-sm">Tests Already in Package</Label>
+                    <div className="mt-2 border rounded-md max-h-32 overflow-y-auto">
+                      {formData.tests.map((test) => (
+                        <div
+                          key={test.testcode}
+                          className="flex items-center justify-between p-2 border-b last:border-b-0 hover:bg-gray-50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Check className="h-4 w-4 text-green-600" />
+                            <span className="font-medium text-sm">{test.testcode}</span>
+                            <span className="text-sm text-muted-foreground">- {test.testname}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveTest(test.testcode)}
+                          >
+                            <X className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Select More Tests */}
+                <div>
+                  <Label className="text-sm mb-2 block">
+                    Add Tests from {selectedGroup && selectedGroup !== "all"
+                      ? testGroups.find(g => g.value === selectedGroup)?.label || selectedGroup
+                      : `${laboratories.find(l => l.value === selectedLab)?.label || 'Selected Lab'} - All Groups`}
+                  </Label>
+
+                  {/* Test Dropdown */}
+                  <div className="space-y-2">
+                    <Select
+                      value=""
+                      onValueChange={(value) => {
+                        if (value && value !== "_none_") {
+                          const test = availableTests.find(t => t.testcode === value);
+                          if (test) handleAddTest(test);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a test to add..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {filteredTests.filter(t => !selectedTestCodes.includes(t.testcode)).length === 0 ? (
+                          <SelectItem value="_none_" disabled>
+                            No tests available in this group
+                          </SelectItem>
+                        ) : (
+                          filteredTests
+                            .filter(test => !selectedTestCodes.includes(test.testcode))
+                            .map((test) => (
+                              <SelectItem key={test.testcode} value={test.testcode}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="font-medium">{test.testcode}</span>
+                                  <span className="text-muted-foreground ml-2">- {test.testname}</span>
+                                </div>
+                              </SelectItem>
+                            ))
+                        )}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Quick Add Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs h-8"
+                        onClick={() => {
+                          // Add all visible filtered tests
+                          const newTests = filteredTests
+                            .filter(t => !selectedTestCodes.includes(t.testcode))
+                            .map(t => ({ testcode: t.testcode, testname: t.testname }));
+                          setFormData({ ...formData, tests: [...formData.tests, ...newTests] });
+                        }}
+                        disabled={filteredTests.filter(t => !selectedTestCodes.includes(t.testcode)).length === 0}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add All ({filteredTests.filter(t => !selectedTestCodes.includes(t.testcode)).length})
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs h-8"
+                        onClick={() => {
+                          // Remove all visible filtered tests
+                          const visibleTestCodes = filteredTests.map(t => t.testcode);
+                          setFormData({
+                            ...formData,
+                            tests: formData.tests.filter(t => !visibleTestCodes.includes(t.testcode))
+                          });
+                        }}
+                        disabled={filteredTests.filter(t => selectedTestCodes.includes(t.testcode)).length === 0}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Remove All ({filteredTests.filter(t => selectedTestCodes.includes(t.testcode)).length})
+                      </Button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {filteredTests.filter(t => !selectedTestCodes.includes(t.testcode)).length} tests available from selected group
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(3)}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={formData.tests.length === 0}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  >
+                    {editingPackage ? "Update" : "Create"} Package
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {currentStep !== 4 && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
