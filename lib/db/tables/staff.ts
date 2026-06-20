@@ -13,7 +13,8 @@ export type StaffRole =
   | "lab_technician"
   | "pharmacist"
   | "receptionist"
-  | "administrator";
+  | "administrator"
+  | "plastic_surgeon";
 
 export const staff = pgTable("staff", {
   staffid: uuid("staffid").primaryKey().defaultRandom(),

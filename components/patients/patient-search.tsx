@@ -15,9 +15,10 @@ interface Patient {
 
 interface PatientSearchProps {
   workspaceid: string;
+  patientBasePath?: string;
 }
 
-export function PatientSearch({ workspaceid }: PatientSearchProps) {
+export function PatientSearch({ workspaceid, patientBasePath }: PatientSearchProps) {
   const [query, setQuery] = useState("");
   const [allPatients, setAllPatients] = useState<Patient[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -125,7 +126,8 @@ export function PatientSearch({ workspaceid }: PatientSearchProps) {
                   className="w-full text-left flex flex-col items-start px-3 py-2 
                      text-black text-sm hover:bg-gray-100"
                   onClick={() => {
-                    window.location.href = `/d/${workspaceid}/patients/${p.patientid}`;
+                    const base = patientBasePath ?? `/d/${workspaceid}/patients`;
+                    window.location.href = `${base}/${p.patientid}`;
                   }}
                 >
                   <span className="font-medium">{fullName}</span>

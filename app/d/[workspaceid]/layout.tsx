@@ -43,7 +43,12 @@ export default async function HomeLayout({
           {/*  <AppSidebar user={user} /> */}
           <SidebarInset>
             <Header
-              middleSlot={workspace.role !== 'lab_technician' && workspace.role !== 'pharmacist' ? <PatientSearch workspaceid={workspaceid} /> : null}
+              middleSlot={workspace.role !== 'lab_technician' && workspace.role !== 'pharmacist' ? (
+                <PatientSearch
+                  workspaceid={workspaceid}
+                  patientBasePath={workspace.role === 'plastic_surgeon' ? `/d/${workspaceid}/plastic-surgery/patients` : undefined}
+                />
+              ) : null}
               rightSlot={
                 <>
                   <HeaderActions />

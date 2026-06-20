@@ -102,7 +102,7 @@ export const workspaceusers = pgTable("workspaceusers", {
   createdat: timestamp("createdat", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export type WorkspaceUserRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator";
+export type WorkspaceUserRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator" | "plastic_surgeon";
 
 // ─── Drug Categories ──────────────────────────────────────────────────────────
 

@@ -47,7 +47,7 @@ import { usePathname } from "next/navigation";
 
 // Define types for workspace and role combinations
 type WorkspaceType = "hospital" | "laboratory" | "pharmacy";
-type WorkspaceRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator";
+type WorkspaceRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator" | "plastic_surgeon";
 
 type MenuItem = {
   title: string;
@@ -59,7 +59,7 @@ type MenuItem = {
 
 type NavigationConfig = {
   [K in WorkspaceType]: {
-    [R in WorkspaceRole]: MenuItem[];
+    [R in WorkspaceRole]?: MenuItem[];
   };
 };
 
@@ -449,6 +449,29 @@ export function NavMain() {
           title: ttt("Settings"),
           url: "/d/settings",
           icon: Settings,
+        },
+      ],
+      plastic_surgeon: [
+        {
+          title: "Dashboard",
+          url: `${base}/plastic-surgery`,
+          icon: Home,
+          isActive: true,
+        },
+        {
+          title: "Patients",
+          url: `${base}/patients`,
+          icon: Users,
+        },
+        {
+          title: "Operations",
+          url: `${base}/operations`,
+          icon: Scissors,
+        },
+        {
+          title: "Appointments",
+          url: `${base}/schedule`,
+          icon: Calendar,
         },
       ],
     },
