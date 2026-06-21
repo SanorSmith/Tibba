@@ -10,6 +10,7 @@ import {
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { patients } from "./tables/patient";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -957,3 +958,20 @@ export * from "./tables/pos-returns-schema";
 
 // ─── Pharmacy Procurement Module ────────────────────────────────────────────
 export * from "./tables/pharmacy-procurement";
+
+// ─── Operation Prices ────────────────────────────────────────────────────────
+
+export const operationPrices = pgTable("operation_prices", {
+  id:            uuid("id").primaryKey().defaultRandom(),
+  patientid:     uuid("patientid").notNull().references(() => patients.patientid, { onDelete: "cascade" }),
+  workspaceid:   uuid("workspaceid").notNull().references(() => workspaces.workspaceid, { onDelete: "cascade" }),
+  compositionuid: text("composition_uid"),
+  operationname: text("operationname").notNull(),
+  price:         decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency:      text("currency").default("IQD"),
+  notes:         text("notes"),
+  createdat:     timestamp("createdat", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type OperationPrice = typeof operationPrices.$inferSelect;
+export type NewOperationPrice = typeof operationPrices.$inferInsert;
