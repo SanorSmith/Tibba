@@ -55,6 +55,7 @@ const roleColors = {
   pharmacist: "bg-orange-100 text-orange-800",
   receptionist: "bg-yellow-100 text-yellow-800",
   administrator: "bg-red-100 text-red-800",
+  plastic_surgeon: "bg-pink-100 text-pink-800",
 };
 
 type UserWorkspaceWithDetails = WorkspaceUser & { workspace: Workspace };
@@ -286,6 +287,7 @@ export function UserDetailModal({
                   <SelectItem value="pharmacist">Pharmacist</SelectItem>
                   <SelectItem value="receptionist">Receptionist</SelectItem>
                   <SelectItem value="administrator">Administrator</SelectItem>
+                  <SelectItem value="plastic_surgeon">Plastic Surgeon</SelectItem>
                 </SelectContent>
               </Select>
 

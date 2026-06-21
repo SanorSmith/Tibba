@@ -22,6 +22,8 @@ export function Header({
       ? "Tibbna-LIMs"
       : userRole === "pharmacist"
       ? "Tibbna-PIs"
+      : userRole === "plastic_surgeon"
+      ? "Tibbna-PS"
       : "Tibbna-EHR";
 
   const dashboardPath = 
@@ -29,6 +31,8 @@ export function Header({
       ? `/d/${workspaceid}/lims`
       : userRole === "pharmacist"
       ? `/d/${workspaceid}/pharmacy`
+      : userRole === "plastic_surgeon"
+      ? `/d/${workspaceid}/plastic-surgery`
       : `/d/${workspaceid}/doctor`;
 
   return (
