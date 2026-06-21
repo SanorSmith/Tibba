@@ -67,12 +67,45 @@ export interface Procedure {
 /**
  * Parse a procedure composition from OpenEHR
  */
+function parseNarrativePart(narrative: string, key: string): string | undefined {
+  const parts = narrative.split("|").map((p) => p.trim());
+  for (const part of parts) {
+    const prefix = key + ":";
+    if (part.toLowerCase().startsWith(prefix.toLowerCase())) {
+      const value = part.slice(prefix.length).trim();
+      return value && value !== "none" ? value : undefined;
+    }
+  }
+  return undefined;
+}
+
 export function parseProcedureComposition(
   composition: Record<string, unknown>,
   compositionUid: string,
   recordedTime: string
 ): Procedure {
   const content = (composition.content || composition) as Record<string, unknown>;
+
+  const narrative = (content["template_clinical_encounter_v1/service_request/narrative"] as string) || "";
+
+  // Extract structured fields packed into the narrative
+  const urgency = parseNarrativePart(narrative, "Urgency");
+  const anesthesiaType = parseNarrativePart(narrative, "Anesthesia");
+  const theaterLocation = parseNarrativePart(narrative, "Theater");
+  const estimatedDuration = parseNarrativePart(narrative, "Duration");
+
+  // Pre-operative assessment and operation details are stored separately in narrative
+  // after the structured prefix parts — extract free-text comment if present
+  const structuredPrefixes = ["Urgency", "Anesthesia", "Theater", "Duration"];
+  const freeParts = narrative
+    .split("|")
+    .map((p) => p.trim())
+    .filter((p) => !structuredPrefixes.some((prefix) => p.toLowerCase().startsWith(prefix.toLowerCase() + ":")));
+  const freeText = freeParts.join(" | ").trim() || undefined;
+
+  // description field holds the PROCEDURE_REQUEST marker — use operationdetails from body instead
+  const rawDescription = content["template_clinical_encounter_v1/service_request/request/description"] as string | undefined;
+  const operationDetails = rawDescription === "PROCEDURE_REQUEST" ? undefined : rawDescription;
 
   return {
     composition_uid: compositionUid,
@@ -84,24 +117,24 @@ export function parseProcedureComposition(
     body_site: undefined,
     laterality: undefined,
     method: undefined,
-    description: content["template_clinical_encounter_v1/service_request/request/description"] as string | undefined,
+    description: operationDetails,
     scheduled_date_time:
       content["template_clinical_encounter_v1/service_request/request/requested_date"] as string | undefined,
-    duration: undefined,
-    urgency: undefined,
+    duration: estimatedDuration,
+    urgency: urgency,
     indication: content["template_clinical_encounter_v1/service_request/request/clinical_indication"] as string | undefined,
     outcome: undefined,
     complications: undefined,
     performer_name:
       content["template_clinical_encounter_v1/service_request/request/requesting_provider"] as string | undefined,
     performer_role: "Surgeon",
-    anesthesia_type: undefined,
-    theater_location: undefined,
-    estimated_duration: undefined,
-    preoperative_assessment: content["template_clinical_encounter_v1/service_request/narrative"] as string | undefined,
+    anesthesia_type: anesthesiaType,
+    theater_location: theaterLocation,
+    estimated_duration: estimatedDuration,
+    preoperative_assessment: freeText,
     current_state: "planned",
     careflow_step: "procedure_scheduled",
-    comment: content["template_clinical_encounter_v1/service_request/narrative"] as string | undefined,
+    comment: freeText,
   };
 }
 

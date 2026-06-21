@@ -435,20 +435,6 @@ export default function PatientDashboard({
             </TabsTrigger>
 
             <TabsTrigger
-              value="notes"
-              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4684c2] text-white border-[0.5px] border-gray-400 font-bold"
-            >
-              Notes
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="appointments"
-              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4684c2] text-white border-[0.5px] border-gray-400 font-bold"
-            >
-              Appointments
-            </TabsTrigger>
-
-            <TabsTrigger
               value="imaging"
               className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4684c2] text-white border-[0.5px] border-gray-400 font-bold"
             >
@@ -472,20 +458,6 @@ export default function PatientDashboard({
               loadingLabs={loadingLabResults || loadingLabOrders}
               loadingImaging={loadingImaging}
               loadingCarePlans={loadingCarePlans} // Now tracking care plans loading state
-            />
-          </TabsContent>
-
-          {/* Appointments Tab */}
-          <TabsContent value="appointments" className="space-y-4">
-            <AppointmentsTab
-              appointments={appointments}
-              loading={loading}
-              workspaceid={workspaceid}
-              patientid={patient.patientid}
-              onAppointmentAdded={() => {
-                // Invalidate appointments query to refresh the list
-                queryClient.invalidateQueries({ queryKey: ["appointments", workspaceid, patient.patientid] });
-              }}
             />
           </TabsContent>
 
@@ -687,15 +659,6 @@ export default function PatientDashboard({
             )}
           </TabsContent>
 
-          {/* Notes Tab - Now using NotesTab component */}
-          <TabsContent value="notes" className="space-y-4">
-            {loadedTabs.has("notes") && (
-              <NotesTab
-                workspaceid={workspaceid}
-                patientid={patient.patientid}
-              />
-            )}
-          </TabsContent>
         </Tabs>
       </div>
     </div>

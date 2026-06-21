@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/tables/patient";
 import { operationPrices } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or, isNull } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import {
@@ -49,7 +49,7 @@ export async function GET(
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
   const role = membership?.role;
   
-  if (role !== "doctor" && role !== "administrator") {
+  if (role !== "doctor" && role !== "administrator" && role !== "plastic_surgeon") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -59,27 +59,30 @@ export async function GET(
     const to = searchParams.get("to");
     const surgeonid = searchParams.get("surgeonid");
 
-    // Fetch from OpenEHR for all patients in this workspace
-    // Get all patients in workspace
-    const workspacePatients = await db.query.patients.findMany({
-      where: eq(patients.workspaceid, workspaceid),
-    });
+    // Fetch from OpenEHR for all patients in this workspace (including global patients with null workspaceid)
+    const workspacePatients = await db.select().from(patients).where(
+      or(eq(patients.workspaceid, workspaceid), isNull(patients.workspaceid))
+    );
 
     // Fetch procedures for all patients in parallel for better performance
     const procedurePromises = workspacePatients.map(async (patient) => {
       try {
-        let ehrId = null;
+        // Collect all distinct EHR IDs for this patient (nationalid + patientid based)
+        const ehrIds: string[] = [];
         if (patient.nationalid) {
-          ehrId = await getOpenEHREHRBySubjectId(patient.nationalid);
+          const id = await getOpenEHREHRBySubjectId(patient.nationalid);
+          if (id) ehrIds.push(id);
         }
-        if (!ehrId) {
-          ehrId = await getOpenEHREHRBySubjectId(patient.patientid);
-        }
+        const idByPatientid = await getOpenEHREHRBySubjectId(patient.patientid);
+        if (idByPatientid && !ehrIds.includes(idByPatientid)) ehrIds.push(idByPatientid);
 
-        if (ehrId) {
-          const procedures = await getOpenEHRProcedures(ehrId);
-          // Transform OpenEHR procedures to match operation format
-          return procedures.map((proc: Procedure) => ({
+        if (ehrIds.length === 0) return [];
+
+        // Fetch procedures from all EHR IDs and merge
+        const allProcedures = (await Promise.all(ehrIds.map(id => getOpenEHRProcedures(id)))).flat();
+
+        // Transform OpenEHR procedures to match operation format
+        return allProcedures.map((proc: Procedure) => ({
             operationid: proc.composition_uid,
             patientid: patient.patientid,
             surgeonid: proc.performer_name || "Unknown",
@@ -107,8 +110,6 @@ export async function GET(
               nationalid: patient.nationalid,
             },
           }));
-        }
-        return [];
       } catch (error) {
         console.error(`Error fetching procedures for patient ${patient.patientid}:`, error);
         return [];
@@ -119,8 +120,25 @@ export async function GET(
     const allProcedureResults = await Promise.all(procedurePromises);
     const openEHROperations = allProcedureResults.flat();
 
+    // Fetch all operation_prices for this workspace and index by compositionuid
+    const priceRows = await db
+      .select()
+      .from(operationPrices)
+      .where(eq(operationPrices.workspaceid, workspaceid));
+    const priceByCompositionUid = new Map(
+      priceRows
+        .filter((r) => r.compositionuid)
+        .map((r) => [r.compositionuid!, { price: r.price, currency: r.currency }])
+    );
+
+    // Attach price to each operation
+    const openEHROperationsWithPrice = openEHROperations.map((op) => {
+      const priceData = priceByCompositionUid.get(op.operationid);
+      return { ...op, price: priceData?.price ?? null, currency: priceData?.currency ?? null };
+    });
+
     // Filter by date range if provided
-    let filteredOperations = openEHROperations;
+    let filteredOperations = openEHROperationsWithPrice;
     if (from) {
       const fromDate = new Date(from);
       filteredOperations = filteredOperations.filter(
@@ -134,22 +152,9 @@ export async function GET(
       );
     }
 
-    // Filter by surgeon if provided (unless "all")
-    if (surgeonid && surgeonid !== "all") {
-      // For database operations: filter by surgeon UUID
-      const dbOps = filteredOperations.filter(
-        (op) => op.source !== "openehr" && op.surgeonid === surgeonid
-      );
-      
-      // For OpenEHR operations: filter by surgeon name (performer_name)
-      // Get the current user's name to match against OpenEHR performer_name
-      const currentUserName = user.name || user.email || "";
-      const openEHROps = openEHROperations.filter(
-        (op) => op.source === "openehr" && op.surgeonname === currentUserName
-      );
-      
-      filteredOperations = [...dbOps, ...openEHROps];
-    }
+    // For OpenEHR operations, do not filter by surgeon — all ops are workspace-scoped
+    // and performer_name string matching is unreliable (name format differences).
+    // DB operations (non-openehr source) can still be filtered by surgeonid UUID if needed.
 
     // Sort by scheduled date
     filteredOperations.sort(
@@ -175,7 +180,7 @@ export async function POST(
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
   const role = membership?.role;
   
-  if (role !== "doctor" && role !== "administrator") {
+  if (role !== "doctor" && role !== "administrator" && role !== "plastic_surgeon") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
