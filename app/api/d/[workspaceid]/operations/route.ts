@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/tables/patient";
+import { operationPrices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
@@ -234,10 +235,21 @@ export async function POST(
         current_state: "planned",
         careflow_step: "procedure_scheduled",
         comment: body.comment,
-        price: body.price,
       },
       composerName
     );
+
+    if (body.price && !isNaN(parseFloat(body.price))) {
+      await db.insert(operationPrices).values({
+        patientid,
+        workspaceid,
+        compositionuid: compositionUid ?? null,
+        operationname: body.operationname,
+        price: parseFloat(body.price).toFixed(2),
+        currency: body.currency ?? "IQD",
+        notes: body.comment ?? null,
+      });
+    }
 
     return NextResponse.json(
       {

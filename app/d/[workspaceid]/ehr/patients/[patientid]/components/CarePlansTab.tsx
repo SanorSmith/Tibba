@@ -563,17 +563,20 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="price" className="text-sm">Price</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  placeholder="e.g., 5000"
-                  value={operationFormData.price}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, price: e.target.value })
-                  }
-                  className="h-9"
-                />
+                <Label htmlFor="price" className="text-sm">Price (IQD)</Label>
+                <div className="relative">
+                  <Input
+                    id="price"
+                    type="number"
+                    placeholder="e.g., 50000"
+                    value={operationFormData.price}
+                    onChange={(e) =>
+                      setOperationFormData({ ...operationFormData, price: e.target.value })
+                    }
+                    className="h-9 pr-14"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">IQD</span>
+                </div>
               </div>
             </div>
 
