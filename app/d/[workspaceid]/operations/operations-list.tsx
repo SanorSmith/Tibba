@@ -169,8 +169,12 @@ export default function OperationsList({
 
       if (!res.ok) throw new Error("Failed to book operation");
 
-      const data = await res.json();
-      setOperations([data.operation, ...operations]);
+      // Re-fetch operations from API (saved in OpenEHR, not returned in POST response)
+      const opsRes = await fetch(`/api/d/${workspaceid}/operations`, { cache: "no-store" });
+      if (opsRes.ok) {
+        const opsData = await opsRes.json();
+        setOperations(opsData.operations || []);
+      }
       setBookingOpen(false);
       resetForm();
     } catch (error) {
@@ -360,145 +364,21 @@ export default function OperationsList({
         </Dialog>
       </div>
 
-      {/* Dummy Operative Procedures */}
-      <div className="grid gap-4">
-        {/* Dummy Procedure 1 - Emergency Appendectomy */}
-        <Card className="border-l-4 border-l-red-500 bg-red-50/30">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Scissors className="h-5 w-5" />
-                  Emergency Appendectomy
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Sarah Johnson (MRN-2024-001)
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Badge className="bg-red-500 text-white">Emergency</Badge>
-                <Badge className="bg-yellow-100 text-yellow-800">In Preparation</Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{format(new Date(), "PPP")} - 14:00</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>60-90 minutes</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">Theater:</span> OR-3
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">Anesthesia:</span> General
-              </div>
-            </div>
-
-            <div className="text-sm">
-              <span className="font-medium">Diagnosis:</span> Acute appendicitis with peritonitis
-            </div>
-
-            <div className="text-sm">
-              <span className="font-medium">Assessment:</span> Patient presented with RLQ pain, fever (38.5°C), elevated WBC (15,000). CT scan confirms inflamed appendix with fluid collection.
-            </div>
-
-            <div className="text-sm">
-              <span className="font-medium">Details:</span> Laparoscopic appendectomy via 3-port technique. Prophylactic antibiotics administered.
-            </div>
-
-            <div className="mt-3 p-3 bg-white rounded border">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Pre-op Checklist:</div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ Consent Signed</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ NPO 8hrs</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ Labs Complete</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ IV Access</span>
-                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">⏳ Pending: Anesthesia Review</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Dummy Procedure 2 - Total Knee Replacement */}
-        <Card className="border-l-4 border-l-blue-500 bg-blue-50/30">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2">
-                  <Scissors className="h-5 w-5" />
-                  Total Knee Replacement
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Robert Martinez (MRN-2024-002)
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Badge className="bg-blue-500 text-white">Elective</Badge>
-                <Badge className="bg-blue-100 text-blue-800">Scheduled</Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{format(new Date(Date.now() + 86400000), "PPP")} - 08:00</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>120-150 minutes</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">Theater:</span> OR-1 (Orthopedic Suite)
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">Anesthesia:</span> Spinal + Sedation
-              </div>
-            </div>
-
-            <div className="text-sm">
-              <span className="font-medium">Diagnosis:</span> Severe osteoarthritis of right knee, Grade IV
-            </div>
-
-            <div className="text-sm">
-              <span className="font-medium">Assessment:</span> Conservative management failed. Patient reports severe pain (8/10) limiting mobility and ADLs. X-ray shows complete joint space narrowing with bone-on-bone contact.
-            </div>
-
-            <div className="text-sm">
-              <span className="font-medium">Details:</span> Right total knee arthroplasty using cemented prosthesis. Posterior stabilized design. Tourniquet control planned.
-            </div>
-
-            <div className="mt-3 p-3 bg-white rounded border">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Pre-op Checklist:</div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ Consent Signed</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ Pre-op Assessment</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ Blood Typed & Crossmatched</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ ECG Normal</span>
-                <span className="px-2 py-1 bg-green-100 text-green-700 rounded">✓ Implant Ready</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Operations List */}
-      {operations.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-4">Database Operations</h3>
-          <div className="grid gap-4">
-            {operations.map((op) => {
+      {operations.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Scissors className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm">No operations found. Book the first one above.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {operations.map((op) => {
             const patient = patients.find((p) => p.patientid === op.patientid);
             const patientName = patient
               ? `${patient.firstname} ${patient.middlename || ""} ${patient.lastname}`.trim()
               : "Unknown Patient";
+            const opType = op.operationtype in typeConfig ? op.operationtype : "elective";
+            const opStatus = op.status in statusConfig ? op.status : "scheduled";
 
             return (
               <Card key={op.operationid}>
@@ -515,11 +395,11 @@ export default function OperationsList({
                       </CardDescription>
                     </div>
                     <div className="flex gap-2">
-                      <Badge className={typeConfig[op.operationtype].color}>
-                        {typeConfig[op.operationtype].label}
+                      <Badge className={typeConfig[opType].color}>
+                        {typeConfig[opType].label}
                       </Badge>
-                      <Badge className={statusConfig[op.status].color}>
-                        {statusConfig[op.status].label}
+                      <Badge className={statusConfig[opStatus].color}>
+                        {statusConfig[opStatus].label}
                       </Badge>
                     </div>
                   </div>
@@ -584,7 +464,6 @@ export default function OperationsList({
               </Card>
             );
           })}
-          </div>
         </div>
       )}
     </div>

@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Scissors, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 
 // Care Plans interfaces (openEHR compliant)
 export interface CarePlan {
@@ -90,22 +90,6 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [savingCarePlan, setSavingCarePlan] = useState(false);
   
-  // Operation-related state
-  const [showOperationDialog, setShowOperationDialog] = useState(false);
-  const [savingOperation, setSavingOperation] = useState(false);
-  const [operationFormData, setOperationFormData] = useState({
-    operationname: "",
-    scheduleddate: "",
-    estimatedduration: "",
-    operationtype: "elective" as "emergency" | "elective" | "urgent",
-    theater: "",
-    anesthesiatype: "",
-    operationdiagnosis: "",
-    preoperativeassessment: "",
-    operationdetails: "",
-    price: "",
-  });
-
   // Use React Query for caching
   const { data: carePlans = [], isLoading: loadingCarePlans, refetch: loadCarePlans } = useQuery({
     queryKey: ["care-plans", workspaceid, patientid],
@@ -118,54 +102,6 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
       return (data.carePlans || []) as CarePlan[];
     },
   });
-
-  const handleAddOperation = async () => {
-    if (
-      !operationFormData.operationname ||
-      !operationFormData.scheduleddate
-    ) {
-      alert(
-        "Please fill in required fields: Operation Name and Scheduled Date"
-      );
-      return;
-    }
-
-    try {
-      setSavingOperation(true);
-      const response = await fetch(`/api/d/${workspaceid}/operations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...operationFormData,
-          patientid,
-          workspaceid,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create operation");
-      }
-
-      setShowOperationDialog(false);
-      setOperationFormData({
-        operationname: "",
-        scheduleddate: "",
-        estimatedduration: "",
-        operationtype: "elective",
-        theater: "",
-        anesthesiatype: "",
-        operationdiagnosis: "",
-        preoperativeassessment: "",
-        operationdetails: "",
-        price: "",
-      });
-    } catch (error) {
-      console.error("Error creating operation:", error);
-      alert("Failed to create operation");
-    } finally {
-      setSavingOperation(false);
-    }
-  };
 
   return (
     <>
@@ -182,10 +118,6 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
               >
                 <RefreshCw className={`h-4 w-4 mr-1 ${loadingCarePlans ? 'animate-spin' : ''}`} />
                 Refresh
-              </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white" size="sm" onClick={() => setShowOperationDialog(true)}>
-                <Scissors className="h-4 w-4 mr-1" />
-                Schedule Operation
               </Button>
               <Button className="bg-blue-600 hover:bg-blue-700 text-white" size="sm" onClick={() => setShowCarePlanForm(true)}>
                 <Plus className="h-4 w-4 mr-1" />
@@ -450,196 +382,6 @@ export function CarePlansTab({ workspaceid, patientid }: CarePlansTabProps) {
               disabled={savingCarePlan}
             >
               {savingCarePlan ? "Creating..." : "Create Care Plan"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Schedule Operation Dialog */}
-      <Dialog open={showOperationDialog} onOpenChange={setShowOperationDialog}>
-        <DialogContent className="max-w-[65vw] max-h-[85vh] overflow-y-auto">
-          <DialogHeader className="pb-2">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Scissors className="h-4 w-4" />
-              Schedule Operation
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="operationname" className="text-sm">Operation Name *</Label>
-                <Select
-                  value={operationFormData.operationname}
-                  onValueChange={(value) =>
-                    setOperationFormData({ ...operationFormData, operationname: value })
-                  }
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select operation" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Appendectomy">Appendectomy</SelectItem>
-                    <SelectItem value="Cholecystectomy">Cholecystectomy</SelectItem>
-                    <SelectItem value="Hernia Repair">Hernia Repair</SelectItem>
-                    <SelectItem value="Cesarean Section">Cesarean Section</SelectItem>
-                    <SelectItem value="Hysterectomy">Hysterectomy</SelectItem>
-                    <SelectItem value="Knee Arthroscopy">Knee Arthroscopy</SelectItem>
-                    <SelectItem value="Hip Replacement">Hip Replacement</SelectItem>
-                    <SelectItem value="Knee Replacement">Knee Replacement</SelectItem>
-                    <SelectItem value="Cataract Surgery">Cataract Surgery</SelectItem>
-                    <SelectItem value="Tonsillectomy">Tonsillectomy</SelectItem>
-                    <SelectItem value="Coronary Artery Bypass">Coronary Artery Bypass</SelectItem>
-                    <SelectItem value="Mastectomy">Mastectomy</SelectItem>
-                    <SelectItem value="Prostatectomy">Prostatectomy</SelectItem>
-                    <SelectItem value="Thyroidectomy">Thyroidectomy</SelectItem>
-                    <SelectItem value="Spinal Fusion">Spinal Fusion</SelectItem>
-                    <SelectItem value="Gastric Bypass">Gastric Bypass</SelectItem>
-                    <SelectItem value="Colectomy">Colectomy</SelectItem>
-                    <SelectItem value="Craniotomy">Craniotomy</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="scheduleddate" className="text-sm">Scheduled Date & Time *</Label>
-                <Input
-                  id="scheduleddate"
-                  type="datetime-local"
-                  value={operationFormData.scheduleddate}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, scheduleddate: e.target.value })
-                  }
-                  className="h-9"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="operationtype" className="text-sm">Operation Type</Label>
-                <Select
-                  value={operationFormData.operationtype}
-                  onValueChange={(value: "emergency" | "elective" | "urgent") =>
-                    setOperationFormData({ ...operationFormData, operationtype: value })
-                  }
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="elective">Elective</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="emergency">Emergency</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="theater" className="text-sm">Theater</Label>
-                <Input
-                  id="theater"
-                  placeholder="e.g., Theater 1"
-                  value={operationFormData.theater}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, theater: e.target.value })
-                  }
-                  className="h-9"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="anesthesiatype" className="text-sm">Anesthesia Type</Label>
-                <Input
-                  id="anesthesiatype"
-                  placeholder="e.g., General"
-                  value={operationFormData.anesthesiatype}
-                  onChange={(e) =>
-                    setOperationFormData({ ...operationFormData, anesthesiatype: e.target.value })
-                  }
-                  className="h-9"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="price" className="text-sm">Price (IQD)</Label>
-                <div className="relative">
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="e.g., 50000"
-                    value={operationFormData.price}
-                    onChange={(e) =>
-                      setOperationFormData({ ...operationFormData, price: e.target.value })
-                    }
-                    className="h-9 pr-14"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">IQD</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="operationdiagnosis" className="text-sm">Diagnosis</Label>
-              <Textarea
-                id="operationdiagnosis"
-                placeholder="Enter diagnosis..."
-                rows={2}
-                value={operationFormData.operationdiagnosis}
-                onChange={(e) =>
-                  setOperationFormData({
-                    ...operationFormData,
-                    operationdiagnosis: e.target.value,
-                  })
-                }
-                className="text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="preoperativeassessment" className="text-sm">
-                Pre-operative Assessment
-              </Label>
-              <Textarea
-                id="preoperativeassessment"
-                placeholder="Enter pre-operative assessment..."
-                rows={2}
-                value={operationFormData.preoperativeassessment}
-                onChange={(e) =>
-                  setOperationFormData({
-                    ...operationFormData,
-                    preoperativeassessment: e.target.value,
-                  })
-                }
-                className="text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="operationdetails" className="text-sm">Operation Details</Label>
-              <Textarea
-                id="operationdetails"
-                placeholder="Enter operation details..."
-                rows={2}
-                value={operationFormData.operationdetails}
-                onChange={(e) => setOperationFormData({ ...operationFormData, operationdetails: e.target.value })}
-                className="text-sm"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowOperationDialog(false)}
-              disabled={savingOperation}
-              className="h-9"
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleAddOperation} disabled={savingOperation} className="bg-[#4684c2] hover:bg-[#3a6fa0] h-9">
-              {savingOperation ? "Scheduling..." : "Schedule Operation"}
             </Button>
           </DialogFooter>
         </DialogContent>
