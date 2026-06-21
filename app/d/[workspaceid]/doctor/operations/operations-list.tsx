@@ -485,39 +485,40 @@ export default function OperationsList({ workspaceid, userid }: Props) {
             </div>
           )}
 
-          {/* Pagination */}
-          {!loading && filteredOperations.length > PAGE_SIZE && (
-            <div className="flex items-center justify-between pt-4 border-t">
-              <p className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOperations.length)} of {filteredOperations.length}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <span className="text-sm font-medium">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {!loading && filteredOperations.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <p className="text-sm text-muted-foreground">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOperations.length)} of {filteredOperations.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm font-medium">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Schedule Operation Dialog */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
