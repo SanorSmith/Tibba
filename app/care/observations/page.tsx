@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { patients, visits, type TriageLevel } from "@/lib/care/mock-data";
 import { AlertTriangle } from "lucide-react";
+import { CareHeader } from "@/components/care/care-header";
 
 interface Observation {
   id: string;
@@ -35,10 +36,10 @@ export default function ObservationsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Observation Schedule</h1>
-        <p className="text-muted-foreground">Due, overdue, and upcoming monitoring</p>
-      </div>
+      <CareHeader
+        title="Observation Schedule"
+        description="Due, overdue, and upcoming monitoring"
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

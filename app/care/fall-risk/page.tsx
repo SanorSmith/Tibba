@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patients } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 
 const riskFactors = [
   "History of falls",
@@ -42,10 +43,10 @@ export default function FallRiskPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Fall Risk Assessment</h1>
-        <p className="text-muted-foreground">Risk level and interventions</p>
-      </div>
+      <CareHeader
+        title="Fall Risk Assessment"
+        description={patient ? `${patient.name} — risk level and interventions` : "Risk level and interventions"}
+      />
 
       <Card>
         <CardHeader>

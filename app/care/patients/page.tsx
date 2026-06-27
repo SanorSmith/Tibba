@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
+import { CareHeader } from "@/components/care/care-header";
 
 function triageClasses(level: string) {
   switch (level) {
@@ -21,10 +22,10 @@ function triageClasses(level: string) {
 export default function PatientsListPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Patients</h1>
-        <p className="text-muted-foreground">All assigned and waiting patients</p>
-      </div>
+      <CareHeader
+        title="Patients"
+        description="All assigned and waiting patients"
+      />
 
       <div className="grid gap-4">
         {patients.map((patient) => {

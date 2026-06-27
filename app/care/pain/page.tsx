@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { patients } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 import { Frown, Smile } from "lucide-react";
 
 export default function PainPage() {
@@ -44,10 +45,10 @@ export default function PainPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Pain Assessment</h1>
-        <p className="text-muted-foreground">Quick pain scale and history</p>
-      </div>
+      <CareHeader
+        title="Pain Assessment"
+        description={patient ? `Quick pain scale and history for ${patient.name}` : "Quick pain scale and history"}
+      />
 
       <Card>
         <CardHeader>

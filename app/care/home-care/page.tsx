@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { patients } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 import { Bath, Utensils, Pill, ShieldCheck, GraduationCap, Home, Stethoscope } from "lucide-react";
 
 const checklistItems = [
@@ -25,6 +26,7 @@ export default function HomeCarePage() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [note, setNote] = useState("");
 
+  const patient = patients.find((p) => p.id === patientId);
   const completed = Object.values(done).filter(Boolean).length;
 
   function toggle(id: string) {
@@ -33,10 +35,10 @@ export default function HomeCarePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Home Care / Bedridden Checklist</h1>
-        <p className="text-muted-foreground">Daily care for home and bedridden patients</p>
-      </div>
+      <CareHeader
+        title="Home Care / Bedridden Checklist"
+        description={patient ? `${patient.name} — daily care for home and bedridden patients` : "Daily care for home and bedridden patients"}
+      />
 
       <Card>
         <CardHeader>

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { medications, patients, visits, type MedicationOrder } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 
 function statusBadge(status: MedicationOrder["status"]) {
   switch (status) {
@@ -39,10 +40,10 @@ export default function MarPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Medication Administration</h1>
-        <p className="text-muted-foreground">MAR - record time, route, dose, site, comments</p>
-      </div>
+      <CareHeader
+        title="Medication Administration"
+        description="MAR - record time, route, dose, site, comments"
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         {items.map((med) => {

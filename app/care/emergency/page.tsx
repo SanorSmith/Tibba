@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CareHeader } from "@/components/care/care-header";
 import { AlertTriangle, HeartPulse, Brain, Droplet, Users } from "lucide-react";
 
 const actions = [
@@ -20,11 +21,10 @@ export default function EmergencyPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Emergency Actions</h1>
-        <p className="text-muted-foreground">One-tap alerts for critical events</p>
-      </div>
-
+      <CareHeader
+        title="Emergency Actions"
+        description="One-tap alerts for critical events"
+      />
       <div className="grid gap-4 md:grid-cols-2">
         {actions.map((action) => (
           <Card key={action.id} className="overflow-hidden">

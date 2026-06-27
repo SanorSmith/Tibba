@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { tasks, patients, visits, type Task, type TriageLevel } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 import { Clock, AlertTriangle } from "lucide-react";
 
 function priorityClasses(p: TriageLevel) {
@@ -43,13 +44,11 @@ export default function TasksPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">My Tasks</h1>
-          <p className="text-muted-foreground">Priority, due time, and status</p>
-        </div>
-        <Button>Add Task</Button>
-      </div>
+      <CareHeader
+        title="My Tasks"
+        description="Priority, due time, and status"
+        action={<Button>Add Task</Button>}
+      />
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>

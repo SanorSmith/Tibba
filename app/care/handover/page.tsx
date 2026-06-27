@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { patients, visits } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 
 interface HandoverEntry {
   id: string;
@@ -51,10 +52,10 @@ export default function HandoverPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Shift Handover</h1>
-        <p className="text-muted-foreground">Outgoing notes and incoming acknowledgments</p>
-      </div>
+      <CareHeader
+        title="Shift Handover"
+        description="Outgoing notes and incoming acknowledgments"
+      />
 
       <div className="grid gap-4">
         {entries.map((entry) => {

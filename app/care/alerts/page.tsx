@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Activity, Thermometer, Wind, Droplets } from "lucide-react";
+import { CareHeader } from "@/components/care/care-header";
 
 const alerts = [
   { id: "a1", patient: "Ali Hassan", type: "SpO₂ < 90%", value: "88%", icon: Wind, priority: "critical" },
@@ -13,10 +14,10 @@ const alerts = [
 export default function AlertsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Clinical Alerts</h1>
-        <p className="text-muted-foreground">Critical thresholds and sepsis alerts</p>
-      </div>
+      <CareHeader
+        title="Clinical Alerts"
+        description="Critical thresholds and sepsis alerts"
+      />
       <div className="grid gap-4">
         {alerts.map((alert) => (
           <Card key={alert.id} className="border-red-200 bg-red-50">

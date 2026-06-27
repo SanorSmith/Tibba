@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { patients } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 
 interface Wound {
   id: string;
@@ -43,6 +44,7 @@ export default function WoundPage() {
   const [drainage, setDrainage] = useState("None");
   const [note, setNote] = useState("");
 
+  const patient = patients.find((p) => p.id === patientId);
   const filtered = wounds.filter((w) => w.patientId === patientId);
 
   function add() {
@@ -66,10 +68,10 @@ export default function WoundPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Wound Care</h1>
-        <p className="text-muted-foreground">Location, stage, dressing, drainage, progress</p>
-      </div>
+      <CareHeader
+        title="Wound Care"
+        description={patient ? `${patient.name} — location, stage, dressing, drainage, progress` : "Location, stage, dressing, drainage, progress"}
+      />
 
       <Card>
         <CardHeader>

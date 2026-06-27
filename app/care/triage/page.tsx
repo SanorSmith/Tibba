@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { CareHeader } from "@/components/care/care-header";
 import { AlertTriangle } from "lucide-react";
 
 type TriageLevel = "red" | "yellow" | "green";
@@ -50,17 +51,17 @@ export default function TriagePage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Triage</h1>
-          <p className="text-muted-foreground">Record arrival and initial assessment</p>
-        </div>
-        {level === "red" && (
-          <Badge variant="destructive" className="gap-1">
-            <AlertTriangle className="size-3" /> Critical
-          </Badge>
-        )}
-      </div>
+      <CareHeader
+        title="Triage"
+        description="Record arrival and initial assessment"
+        action={
+          level === "red" ? (
+            <Badge variant="destructive" className="gap-1">
+              <AlertTriangle className="size-3" /> Critical
+            </Badge>
+          ) : undefined
+        }
+      />
 
       <Card>
         <CardHeader>

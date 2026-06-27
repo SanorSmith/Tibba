@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Link from "next/link";
 import { AlertTriangle, Clock, Activity } from "lucide-react";
+import { CareHeader } from "@/components/care/care-header";
 
 function triageClasses(level: string) {
   switch (level) {
@@ -32,21 +33,21 @@ export default function PatientOverviewPage({ params }: { params: { id: string }
 
   return (
     <div className="space-y-6">
+      <CareHeader
+        title={patient.name}
+        description={`${patient.age} yrs • ${patient.gender === "male" ? "Male" : "Female"} • MRN ${patient.mrn}`}
+      />
       <div className="rounded-xl border p-4 bg-card">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">{patient.name}</h1>
-            <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
-              <span>{patient.age} years</span>
-              <span>{patient.gender === "male" ? "Male" : "Female"}</span>
-              <span>MRN: {patient.mrn}</span>
-              <span className="font-semibold text-foreground">{patient.bed}</span>
-              {visit && (
-                <Badge variant="outline" className={triageClasses(visit.triageLevel)}>
-                  {visit.triageLevel.toUpperCase()}
-                </Badge>
-              )}
-            </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{patient.bed}</span>
+            <span>Fall risk: {patient.fallRisk}</span>
+            <span>Isolation: {patient.isolation || "None"}</span>
+            {visit && (
+              <Badge variant="outline" className={triageClasses(visit.triageLevel)}>
+                {visit.triageLevel.toUpperCase()}
+              </Badge>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>

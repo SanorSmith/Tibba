@@ -43,6 +43,10 @@ const items = [
 
 export function CareSidebar() {
   const pathname = usePathname();
+  const activeItem =
+    [...items].sort((a, b) => b.href.length - a.href.length).find(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+    ) || null;
 
   return (
     <aside className="w-64 h-screen border-r bg-card flex flex-col">
@@ -52,7 +56,7 @@ export function CareSidebar() {
       </div>
       <nav className="flex-1 overflow-y-auto p-2 space-y-1">
         {items.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = item.href === activeItem?.href;
           return (
             <Link
               key={item.href}
@@ -63,6 +67,7 @@ export function CareSidebar() {
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
+              aria-current={active ? "page" : undefined}
             >
               <item.icon className="size-4" />
               {item.label}

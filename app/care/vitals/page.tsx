@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CareHeader } from "@/components/care/care-header";
 import { patients, visits, vitals, getVisitVitals } from "@/lib/care/mock-data";
 
 export default function VitalsPage() {
@@ -43,12 +44,10 @@ export default function VitalsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Vital Signs</h1>
-        <p className="text-muted-foreground">
-          {patient?.name} • {patient?.bed} • {visit?.triageLevel.toUpperCase()}
-        </p>
-      </div>
+      <CareHeader
+        title="Vital Signs"
+        description={`${patient?.name} • ${patient?.bed} • ${visit?.triageLevel.toUpperCase()}`}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

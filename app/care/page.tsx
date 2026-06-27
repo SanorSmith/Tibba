@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CareHeader } from "@/components/care/care-header";
 import Link from "next/link";
 import {
   Clock,
@@ -56,15 +57,15 @@ export default function CareDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Nurse Dashboard</h1>
-          <p className="text-muted-foreground">My shift at a glance</p>
-        </div>
-        <Button asChild>
-          <Link href="/care/triage">New Triage</Link>
-        </Button>
-      </div>
+      <CareHeader
+        title="Nurse Dashboard"
+        description="My shift at a glance"
+        action={
+          <Button asChild>
+            <Link href="/care/triage">New Triage</Link>
+          </Button>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>

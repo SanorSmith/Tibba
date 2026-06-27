@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { patients } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 import { ArrowDown, ArrowUp } from "lucide-react";
 
 type IOType = "input" | "output";
@@ -63,10 +64,10 @@ export default function IntakeOutputPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Intake & Output</h1>
-        <p className="text-muted-foreground">Fluid balance and drainage tracking</p>
-      </div>
+      <CareHeader
+        title="Intake & Output"
+        description="Fluid balance and drainage tracking"
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

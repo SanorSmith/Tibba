@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patients } from "@/lib/care/mock-data";
+import { CareHeader } from "@/components/care/care-header";
 
 export default function NotesPage() {
   const [note, setNote] = useState("");
@@ -20,10 +21,10 @@ export default function NotesPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Nursing Notes</h1>
-        <p className="text-muted-foreground">Progress and visit notes</p>
-      </div>
+      <CareHeader
+        title="Nursing Notes"
+        description="Progress and visit notes"
+      />
 
       <Card>
         <CardHeader>
