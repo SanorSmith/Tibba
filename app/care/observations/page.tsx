@@ -46,7 +46,7 @@ export default function ObservationsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Due Now</CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-bold text-orange-600">
+          <CardContent className="text-2xl font-bold text-[#ffae04]">
             {obs.filter((o) => o.status === "due").length}
           </CardContent>
         </Card>
@@ -54,7 +54,7 @@ export default function ObservationsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Overdue</CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-bold text-red-600">
+          <CardContent className="text-2xl font-bold text-[#e54b4f]">
             {obs.filter((o) => o.status === "overdue").length}
           </CardContent>
         </Card>
@@ -84,9 +84,9 @@ export default function ObservationsPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-2xl font-bold w-16 text-center">
                     {o.status === "overdue" ? (
-                      <span className="text-red-600">{Math.abs(o.dueInMinutes)}</span>
+                      <span className="text-[#e54b4f]">{Math.abs(o.dueInMinutes)}</span>
                     ) : (
-                      <span className={o.status === "due" ? "text-orange-600" : "text-foreground"}>
+                      <span className={o.status === "due" ? "text-[#ffae04]" : "text-foreground"}>
                         {o.dueInMinutes}
                       </span>
                     )}

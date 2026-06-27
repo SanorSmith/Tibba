@@ -24,7 +24,7 @@ export default async function CareLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="care-theme flex h-screen overflow-hidden">
       <CareSidebar />
       <div className="flex-1 flex flex-col min-w-0 bg-background">
         <CareTopBar userName={user.name} />

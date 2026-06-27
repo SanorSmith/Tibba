@@ -75,16 +75,20 @@ export default function FallRiskPage() {
               {(["high", "medium", "low"] as const).map((l) => (
                 <Button
                   key={l}
-                  variant={level === l ? "default" : "outline"}
+                  variant="outline"
                   onClick={() => setLevel(l)}
                   className={
-                    level === l
-                      ? l === "high"
-                        ? "bg-red-600"
-                        : l === "medium"
-                        ? "bg-yellow-500"
-                        : "bg-green-600"
-                      : ""
+                    l === "high"
+                      ? level === l
+                        ? "bg-[#e54b4f] text-white border-[#e54b4f] hover:bg-[#e54b4f]"
+                        : "border-[#e54b4f] text-[#e54b4f] hover:bg-[#e54b4f]/10"
+                      : l === "medium"
+                      ? level === l
+                        ? "bg-[#ffae04] text-white border-[#ffae04] hover:bg-[#ffae04]"
+                        : "border-[#ffae04] text-[#c78100] hover:bg-[#ffae04]/10"
+                      : level === l
+                      ? "bg-[#22c55e] text-white border-[#22c55e] hover:bg-[#22c55e]"
+                      : "border-[#22c55e] text-[#15803d] hover:bg-[#22c55e]/10"
                   }
                 >
                   {l.charAt(0).toUpperCase() + l.slice(1)}

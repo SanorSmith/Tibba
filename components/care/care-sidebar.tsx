@@ -50,9 +50,9 @@ export function CareSidebar() {
 
   return (
     <aside className="w-64 h-screen border-r bg-card flex flex-col">
-      <div className="p-4 border-b">
-        <div className="text-lg font-bold text-primary">Tibbna Care</div>
-        <div className="text-xs text-muted-foreground">Nursing & Emergency</div>
+      <div className="p-4 border-b bg-primary text-primary-foreground">
+        <div className="text-lg font-bold">Tibbna Care</div>
+        <div className="text-xs text-primary-foreground/80">Nursing & Emergency</div>
       </div>
       <nav className="flex-1 overflow-y-auto p-2 space-y-1">
         {items.map((item) => {
@@ -69,7 +69,7 @@ export function CareSidebar() {
               )}
               aria-current={active ? "page" : undefined}
             >
-              <item.icon className="size-4" />
+              <item.icon className={cn("size-4", active ? "text-primary-foreground" : "text-muted-foreground")} />
               {item.label}
             </Link>
           );

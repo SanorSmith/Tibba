@@ -73,14 +73,14 @@ export default function PainPage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-green-600">
+              <div className="flex items-center gap-2 text-[#22c55e]">
                 <Smile className="size-6" /> 0
               </div>
               <div className="text-center">
                 <div className="text-4xl font-bold">{score}</div>
                 <div className="text-sm text-muted-foreground">{painLabel(score)}</div>
               </div>
-              <div className="flex items-center gap-2 text-red-600">
+              <div className="flex items-center gap-2 text-[#e54b4f]">
                 10 <Frown className="size-6" />
               </div>
             </div>

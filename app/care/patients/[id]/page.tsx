@@ -12,11 +12,11 @@ import { CareHeader } from "@/components/care/care-header";
 function triageClasses(level: string) {
   switch (level) {
     case "red":
-      return "bg-red-100 text-red-700 border-red-200";
+      return "bg-[#e54b4f]/10 text-[#e54b4f] border-[#e54b4f]/20";
     case "yellow":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      return "bg-[#ffae04]/10 text-[#c78100] border-[#ffae04]/20";
     case "green":
-      return "bg-green-100 text-green-700 border-green-200";
+      return "bg-[#22c55e]/10 text-[#15803d] border-[#22c55e]/20";
     default:
       return "";
   }
@@ -79,7 +79,7 @@ export default function PatientOverviewPage({ params }: { params: { id: string }
         </div>
 
         {visit?.triageLevel === "red" && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+          <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#e54b4f]/10 border border-[#e54b4f]/20 p-3 text-sm text-[#e54b4f]">
             <AlertTriangle className="size-4" />
             Critical patient. Red flags: {visit.chiefComplaint}. ESI {visit.esi}, NEWS2 {visit.news2}.
           </div>

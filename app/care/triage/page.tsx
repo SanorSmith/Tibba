@@ -116,13 +116,19 @@ export default function TriagePage() {
                 <Button
                   key={l}
                   type="button"
-                  variant={level === l ? "default" : "outline"}
+                  variant="outline"
                   className={
                     l === "red"
-                      ? "border-red-500 text-red-700 hover:bg-red-50"
+                      ? level === l
+                        ? "bg-[#e54b4f]/25 text-[#e54b4f] border-[#e54b4f]/40 hover:bg-[#e54b4f]/30"
+                        : "border-[#e54b4f]/50 text-[#e54b4f] hover:bg-[#e54b4f]/15"
                       : l === "yellow"
-                      ? "border-yellow-500 text-yellow-700 hover:bg-yellow-50"
-                      : "border-green-500 text-green-700 hover:bg-green-50"
+                      ? level === l
+                        ? "bg-[#ffae04]/25 text-[#c78100] border-[#ffae04]/40 hover:bg-[#ffae04]/30"
+                        : "border-[#ffae04]/50 text-[#c78100] hover:bg-[#ffae04]/15"
+                      : level === l
+                      ? "bg-[#22c55e]/25 text-[#15803d] border-[#22c55e]/40 hover:bg-[#22c55e]/30"
+                      : "border-[#22c55e]/50 text-[#15803d] hover:bg-[#22c55e]/15"
                   }
                   onClick={() => setLevel(l)}
                 >
@@ -169,7 +175,7 @@ export default function TriagePage() {
             </div>
           </div>
           {redFlags > 0 && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+            <div className="rounded-lg bg-[#e54b4f]/10 border border-[#e54b4f]/20 p-3 text-sm text-[#e54b4f]">
               <AlertTriangle className="inline size-4 mr-1" />
               {redFlags} red flag(s) detected. Consider ESI 1/2 and immediate review.
             </div>

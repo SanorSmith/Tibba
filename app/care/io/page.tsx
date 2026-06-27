@@ -73,24 +73,24 @@ export default function IntakeOutputPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <ArrowDown className="size-4 text-blue-500" /> Input
+              <ArrowDown className="size-4 text-primary" /> Input
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-bold text-blue-600">{totalInput} ml</CardContent>
+          <CardContent className="text-2xl font-bold text-primary">{totalInput} ml</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <ArrowUp className="size-4 text-amber-500" /> Output
+              <ArrowUp className="size-4 text-[#ffae04]" /> Output
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-bold text-amber-600">{totalOutput} ml</CardContent>
+          <CardContent className="text-2xl font-bold text-[#ffae04]">{totalOutput} ml</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Balance</CardTitle>
           </CardHeader>
-          <CardContent className={`text-2xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+          <CardContent className={`text-2xl font-bold ${balance >= 0 ? "text-[#22c55e]" : "text-[#e54b4f]"}`}>
             {balance >= 0 ? "+" : ""}{balance} ml
           </CardContent>
         </Card>

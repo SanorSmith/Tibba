@@ -12,11 +12,11 @@ import { Clock, AlertTriangle } from "lucide-react";
 function priorityClasses(p: TriageLevel) {
   switch (p) {
     case "red":
-      return "bg-red-100 text-red-700 border-red-200";
+      return "bg-[#e54b4f]/10 text-[#e54b4f] border-[#e54b4f]/20";
     case "yellow":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      return "bg-[#ffae04]/10 text-[#c78100] border-[#ffae04]/20";
     case "green":
-      return "bg-green-100 text-green-700 border-green-200";
+      return "bg-[#22c55e]/10 text-[#15803d] border-[#22c55e]/20";
   }
 }
 
@@ -63,7 +63,7 @@ export default function TasksPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Overdue</CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-bold text-red-600">
+          <CardContent className="text-2xl font-bold text-[#e54b4f]">
             {items.filter((t) => t.status !== "completed" && isOverdue(t.dueTime)).length}
           </CardContent>
         </Card>

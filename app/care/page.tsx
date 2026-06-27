@@ -21,11 +21,11 @@ import {
 function triageClasses(level: TriageLevel) {
   switch (level) {
     case "red":
-      return "bg-red-100 text-red-700 border-red-200";
+      return "bg-[#e54b4f]/10 text-[#e54b4f] border-[#e54b4f]/20";
     case "yellow":
-      return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      return "bg-[#ffae04]/10 text-[#c78100] border-[#ffae04]/20";
     case "green":
-      return "bg-green-100 text-green-700 border-green-200";
+      return "bg-[#22c55e]/10 text-[#15803d] border-[#22c55e]/20";
   }
 }
 
@@ -71,7 +71,7 @@ export default function CareDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Assigned Patients</CardTitle>
-            <UsersIcon className="size-4 text-muted-foreground" />
+            <UsersIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{visits.length}</div>
@@ -80,7 +80,7 @@ export default function CareDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-            <CheckCircle2 className="size-4 text-muted-foreground" />
+            <CheckCircle2 className="size-4 text-[#ffae04]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingTasks.length}</div>
@@ -92,7 +92,7 @@ export default function CareDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Medications Due</CardTitle>
-            <Pill className="size-4 text-muted-foreground" />
+            <Pill className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{dueMeds.length}</div>
@@ -101,7 +101,7 @@ export default function CareDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Critical Alerts</CardTitle>
-            <AlertTriangle className="size-4 text-muted-foreground" />
+            <AlertTriangle className="size-4 text-destructive" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{criticalAlerts.length}</div>

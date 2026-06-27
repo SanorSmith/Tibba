@@ -20,11 +20,11 @@ export default function AlertsPage() {
       />
       <div className="grid gap-4">
         {alerts.map((alert) => (
-          <Card key={alert.id} className="border-red-200 bg-red-50">
+          <Card key={alert.id} className="border-[#e54b4f]/30 bg-[#e54b4f]/10">
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
-                <div className="rounded-full bg-red-100 p-2">
-                  <alert.icon className="size-5 text-red-700" />
+                <div className="rounded-full bg-[#e54b4f]/20 p-2">
+                  <alert.icon className="size-5 text-[#e54b4f]" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -35,7 +35,7 @@ export default function AlertsPage() {
                     {alert.patient} • Value: {alert.value}
                   </div>
                 </div>
-                <AlertTriangle className="size-5 text-red-700" />
+                <AlertTriangle className="size-5 text-[#e54b4f]" />
               </div>
             </CardContent>
           </Card>

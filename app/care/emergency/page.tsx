@@ -6,12 +6,12 @@ import { CareHeader } from "@/components/care/care-header";
 import { AlertTriangle, HeartPulse, Brain, Droplet, Users } from "lucide-react";
 
 const actions = [
-  { id: "code-blue", label: "Code Blue", icon: HeartPulse, color: "bg-blue-600 hover:bg-blue-700" },
-  { id: "rapid", label: "Rapid Response", icon: AlertTriangle, color: "bg-orange-500 hover:bg-orange-600" },
-  { id: "stroke", label: "Stroke Alert", icon: Brain, color: "bg-purple-600 hover:bg-purple-700" },
-  { id: "stemi", label: "STEMI Alert", icon: HeartPulse, color: "bg-red-600 hover:bg-red-700" },
-  { id: "hemorrhage", label: "Massive Hemorrhage", icon: Droplet, color: "bg-red-800 hover:bg-red-900" },
-  { id: "security", label: "Security / Code Gray", icon: Users, color: "bg-gray-600 hover:bg-gray-700" },
+  { id: "code-blue", label: "Code Blue", icon: HeartPulse, color: "bg-primary hover:bg-primary/90" },
+  { id: "rapid", label: "Rapid Response", icon: AlertTriangle, color: "bg-[#ffae04] hover:bg-[#e69c00]" },
+  { id: "stroke", label: "Stroke Alert", icon: Brain, color: "bg-[#2d62ef] hover:bg-[#204fc7]" },
+  { id: "stemi", label: "STEMI Alert", icon: HeartPulse, color: "bg-[#e54b4f] hover:bg-[#c93c40]" },
+  { id: "hemorrhage", label: "Massive Hemorrhage", icon: Droplet, color: "bg-[#b91c1c] hover:bg-[#991b1b]" },
+  { id: "security", label: "Security / Code Gray", icon: Users, color: "bg-[#747474] hover:bg-[#5a5a5a]" },
 ];
 
 export default function EmergencyPage() {
