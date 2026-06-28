@@ -16,21 +16,64 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { CareHeader } from "@/components/care/care-header";
-import { AlertTriangle } from "lucide-react";
+import { useCareWorkspace } from "@/components/care/care-workspace-context";
+import PatientSearchModal from "@/app/components/PatientSearchModal";
+import { AlertTriangle, Search } from "lucide-react";
 
 type TriageLevel = "red" | "yellow" | "green";
 
+interface Patient {
+  patientid: string;
+  patient_number?: string;
+  firstname: string;
+  middlename?: string;
+  lastname: string;
+  dateofbirth?: string;
+  gender?: string;
+  phone?: string;
+  nationalid?: string;
+}
+
 export default function TriagePage() {
   const router = useRouter();
+  const { workspaceId } = useCareWorkspace();
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [showPatientModal, setShowPatientModal] = useState(false);
   const [level, setLevel] = useState<TriageLevel>("green");
+  const [esi, setEsi] = useState("");
   const [pain, setPain] = useState(0);
   const [bp, setBp] = useState("");
   const [hr, setHr] = useState("");
   const [rr, setRr] = useState("");
   const [temp, setTemp] = useState("");
   const [spo2, setSpo2] = useState("");
-  const [gcs, setGcs] = useState(15);
+  const [weight, setWeight] = useState("");
   const [complaint, setComplaint] = useState("");
+  const [allergies, setAllergies] = useState("");
+  const [notes, setNotes] = useState("");
+  const [painkiller, setPainkiller] = useState("");
+  const [medsGiven, setMedsGiven] = useState<string[]>([]);
+  const [procedures, setProcedures] = useState("");
+  const [arrivalMode, setArrivalMode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const painkillers = [
+    { value: "paracetamol", label: "Paracetamol (Acetaminophen)" },
+    { value: "ibuprofen", label: "Ibuprofen" },
+    { value: "aspirin", label: "Aspirin" },
+    { value: "tramadol", label: "Tramadol" },
+    { value: "morphine", label: "Morphine" },
+    { value: "diclofenac", label: "Diclofenac" },
+    { value: "ketorolac", label: "Ketorolac" },
+  ];
+
+  const addPainkiller = () => {
+    if (!painkiller) return;
+    const label = painkillers.find((p) => p.value === painkiller)?.label || painkiller;
+    setMedsGiven((prev) => [...prev, label]);
+    setNotes((prev) => (prev ? prev + "\n" : "") + `Painkiller given: ${label}`);
+    setPainkiller("");
+  };
 
   const redFlags = [
     bp && parseInt(bp.split("/")[0] || "0") < 90,
@@ -39,14 +82,45 @@ export default function TriagePage() {
     rr && parseInt(rr) > 30,
     temp && parseFloat(temp) > 39,
     spo2 && parseInt(spo2) < 92,
-    gcs < 13,
     pain >= 8,
   ].filter(Boolean).length;
 
-  function submit() {
-    // TODO: connect to API
-    alert("Triage recorded. (mock)");
-    router.push("/care");
+  async function submit() {
+    if (!patient || !workspaceId) {
+      alert("Please select a patient first.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/d/${workspaceId}/patients/${patient.patientid}/triage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            triageLevel: level,
+            esi,
+            chiefComplaint: complaint,
+            allergies,
+            arrivalMode,
+            notes,
+            pain,
+            medsGiven,
+            procedures,
+            vitals: { bp, hr, rr, temp, spo2, weight },
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save triage record");
+      }
+      router.push("/care");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to save triage record");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -68,21 +142,35 @@ export default function TriagePage() {
           <CardTitle>Patient & Arrival</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Patient Name</Label>
-            <Input placeholder="Full name" />
-          </div>
-          <div className="space-y-2">
-            <Label>Age</Label>
-            <Input type="number" placeholder="Years" />
-          </div>
-          <div className="space-y-2">
-            <Label>MRN / ID</Label>
-            <Input placeholder="Medical record number" />
+          <div className="space-y-2 md:col-span-2">
+            <Label>Patient</Label>
+            {patient ? (
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <div className="font-medium">
+                    {patient.firstname} {patient.middlename} {patient.lastname}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    National ID: {patient.nationalid || patient.patient_number || patient.patientid}
+                    {patient.gender && ` · ${patient.gender}`}
+                    {patient.dateofbirth && ` · DOB: ${new Date(patient.dateofbirth).toLocaleDateString()}`}
+                    {patient.phone && ` · ${patient.phone}`}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setShowPatientModal(true)}>
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setShowPatientModal(true)}>
+                <Search className="size-4" />
+                Search or register patient
+              </Button>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Arrival Mode</Label>
-            <Select>
+            <Select value={arrivalMode} onValueChange={setArrivalMode}>
               <SelectTrigger>
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
@@ -90,6 +178,38 @@ export default function TriagePage() {
                 <SelectItem value="ambulance">Ambulance</SelectItem>
                 <SelectItem value="walk-in">Walk-in</SelectItem>
                 <SelectItem value="referral">Referral</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Allergies</Label>
+            <Select value={allergies} onValueChange={setAllergies}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select allergy" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="penicillin">Penicillin</SelectItem>
+                <SelectItem value="sulfa-drugs">Sulfa Drugs</SelectItem>
+                <SelectItem value="nsaids">NSAIDs (Ibuprofen, Diclofenac, Aspirin)</SelectItem>
+                <SelectItem value="latex">Latex</SelectItem>
+                <SelectItem value="contrast-dye">Contrast Dye</SelectItem>
+                <SelectItem value="peanuts">Peanuts</SelectItem>
+                <SelectItem value="tree-nuts">Tree Nuts</SelectItem>
+                <SelectItem value="sesame">Sesame</SelectItem>
+                <SelectItem value="eggs">Eggs</SelectItem>
+                <SelectItem value="milk">Milk</SelectItem>
+                <SelectItem value="seafood">Seafood</SelectItem>
+                <SelectItem value="fish">Fish</SelectItem>
+                <SelectItem value="wheat-gluten">Wheat/Gluten</SelectItem>
+                <SelectItem value="dust-mites">Dust Mites</SelectItem>
+                <SelectItem value="pollen">Pollen</SelectItem>
+                <SelectItem value="mold">Mold</SelectItem>
+                <SelectItem value="cat-dog-dander">Cat/Dog Dander</SelectItem>
+                <SelectItem value="bee-wasp-sting">Bee/Wasp Sting</SelectItem>
+                <SelectItem value="nickel">Nickel</SelectItem>
+                <SelectItem value="adhesive-tape">Adhesive Tape</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -137,30 +257,25 @@ export default function TriagePage() {
               ))}
             </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Pain Score (0-10)</Label>
-              <Input
-                type="number"
+              <div className="flex items-center justify-between">
+                <Label>Pain Score (0-10)</Label>
+                <span className="text-sm font-medium">{pain}</span>
+              </div>
+              <input
+                type="range"
                 min={0}
                 max={10}
+                step={1}
                 value={pain}
                 onChange={(e) => setPain(Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>GCS</Label>
-              <Input
-                type="number"
-                min={3}
-                max={15}
-                value={gcs}
-                onChange={(e) => setGcs(Number(e.target.value))}
+                className="w-full accent-[#618FF5]"
               />
             </div>
             <div className="space-y-2">
               <Label>ESI</Label>
-              <Select>
+              <Select value={esi} onValueChange={setEsi}>
                 <SelectTrigger>
                   <SelectValue placeholder="ESI" />
                 </SelectTrigger>
@@ -180,6 +295,23 @@ export default function TriagePage() {
               {redFlags} red flag(s) detected. Consider ESI 1/2 and immediate review.
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Triage Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="space-y-2">
+            <Label>Nurse Notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Observations, precautions, handover notes..."
+              rows={4}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -210,7 +342,56 @@ export default function TriagePage() {
           </div>
           <div className="space-y-2">
             <Label>Weight</Label>
-            <Input placeholder="kg" />
+            <Input value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="kg" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Meds Given & Procedures</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="space-y-2">
+            <Label>Painkiller</Label>
+            <div className="flex gap-2">
+              <Select value={painkiller} onValueChange={setPainkiller}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select painkiller" />
+                </SelectTrigger>
+                <SelectContent>
+                  {painkillers.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="secondary" onClick={addPainkiller} disabled={!painkiller}>
+                Add to notes
+              </Button>
+            </div>
+          </div>
+          {medsGiven.length > 0 && (
+            <div className="space-y-2">
+              <Label>Meds Given</Label>
+              <div className="flex flex-wrap gap-2">
+                {medsGiven.map((med, i) => (
+                  <Badge key={i} variant="secondary">
+                    {med}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Procedures Done</Label>
+            <Textarea
+              value={procedures}
+              onChange={(e) => setProcedures(e.target.value)}
+              placeholder="e.g. IV access, oxygen, splinting"
+              rows={3}
+            />
           </div>
         </CardContent>
       </Card>
@@ -219,8 +400,20 @@ export default function TriagePage() {
         <Button variant="outline" onClick={() => router.push("/care")}>
           Cancel
         </Button>
-        <Button onClick={submit}>Save Triage</Button>
+        <Button onClick={submit} disabled={submitting}>
+          {submitting ? "Saving..." : "Save Triage"}
+        </Button>
       </div>
+
+      <PatientSearchModal
+        isOpen={showPatientModal}
+        onClose={() => setShowPatientModal(false)}
+        onPatientSelect={(selected) => {
+          setPatient(selected);
+          setShowPatientModal(false);
+        }}
+        workspaceId={workspaceId}
+      />
     </div>
   );
 }
