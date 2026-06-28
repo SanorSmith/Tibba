@@ -4,11 +4,9 @@ import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import {
-  getOpenEHREHRBySubjectId,
-  createOpenEHRComposition,
-} from "@/lib/openehr/openehr";
-import { buildTriageComposition } from "@/lib/openehr/triage";
+import { getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
+import { createTriageComposition } from "@/lib/openehr/triage";
+import { createVitalSignsComposition } from "@/lib/openehr/vitals";
 
 /**
  * POST /api/d/[workspaceid]/patients/[patientid]/triage
@@ -78,7 +76,8 @@ export async function POST(
       );
     }
 
-    const composition = buildTriageComposition(
+    const triageCompositionUid = await createTriageComposition(
+      ehrId,
       {
         patientId: patientid,
         triageLevel,
@@ -88,24 +87,39 @@ export async function POST(
         arrivalMode,
         notes,
         pain,
+        weight: vitals?.weight || "",
         medsGiven,
         procedures,
-        vitals,
       },
       user.name || "Unknown"
     );
 
-    const compositionUid = await createOpenEHRComposition(
-      ehrId,
-      "template_triage_v1",
-      composition
-    );
+    let vitalsCompositionUid: string | undefined;
+    const hasVitals =
+      vitals &&
+      (vitals.bp || vitals.hr || vitals.rr || vitals.temp || vitals.spo2);
+
+    if (hasVitals) {
+      vitalsCompositionUid = await createVitalSignsComposition(
+        ehrId,
+        {
+          bp: vitals.bp || "",
+          hr: vitals.hr || "",
+          rr: vitals.rr || "",
+          temp: vitals.temp || "",
+          spo2: vitals.spo2 || "",
+          weight: "",
+        },
+        user.name || "Unknown"
+      );
+    }
 
     return NextResponse.json(
       {
         success: true,
-        composition_uid: compositionUid,
-        message: "Triage record saved to openEHR",
+        triage_composition_uid: triageCompositionUid,
+        vitals_composition_uid: vitalsCompositionUid,
+        message: "Triage and vitals saved to openEHR",
       },
       { status: 201 }
     );
