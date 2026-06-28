@@ -9,7 +9,6 @@ export interface TriageRecord {
   arrivalMode: string;
   notes: string;
   pain: number;
-  weight: string;
   medsGiven: string[];
   procedures: string;
 }
@@ -26,15 +25,20 @@ export function buildTriageComposition(
     record.arrivalMode && `Arrival mode: ${record.arrivalMode}`,
     record.allergies && `Allergies: ${record.allergies}`,
     record.pain !== undefined && `Pain score: ${record.pain}/10`,
-    record.weight && `Weight: ${record.weight} kg`,
   ]
     .filter(Boolean)
     .join(" | ");
 
-  const comment = [
-    record.notes && `Notes: ${record.notes}`,
-    record.medsGiven.length > 0 && `Meds given: ${record.medsGiven.join(", ")}`,
+  const notesText = [
+    record.notes,
     record.procedures && `Procedures: ${record.procedures}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const comment = [
+    notesText && `Notes: ${notesText}`,
+    record.medsGiven.length > 0 && `Meds given: ${record.medsGiven.join(", ")}`,
   ]
     .filter(Boolean)
     .join(" | ");
@@ -46,7 +50,7 @@ export function buildTriageComposition(
     "template_triage_v1/territory|terminology": "ISO_3166-1",
     "template_triage_v1/composer|name": composerName,
     "template_triage_v1/context/start_time": eventTime,
-    "template_triage_v1/context/setting|code": "225",
+    "template_triage_v1/context/setting|code": "227",
     "template_triage_v1/context/setting|value": "emergency care",
     "template_triage_v1/context/setting|terminology": "openehr",
     "template_triage_v1/category|code": "433",

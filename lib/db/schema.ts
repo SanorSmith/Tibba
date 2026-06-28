@@ -975,3 +975,4 @@ export const operationPrices = pgTable("operation_prices", {
 
 export type OperationPrice = typeof operationPrices.$inferSelect;
 export type NewOperationPrice = typeof operationPrices.$inferInsert;
+

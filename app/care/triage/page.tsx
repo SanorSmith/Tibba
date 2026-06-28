@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { CareHeader } from "@/components/care/care-header";
 import { useCareWorkspace } from "@/components/care/care-workspace-context";
 import PatientSearchModal from "@/app/components/PatientSearchModal";
-import { AlertTriangle, Search } from "lucide-react";
+import { AlertTriangle, Search, Thermometer, Heart, Activity, Wind, Droplets } from "lucide-react";
 
 type TriageLevel = "red" | "yellow" | "green";
 
@@ -42,18 +42,19 @@ export default function TriagePage() {
   const [level, setLevel] = useState<TriageLevel>("green");
   const [esi, setEsi] = useState("");
   const [pain, setPain] = useState(0);
-  const [bp, setBp] = useState("");
-  const [hr, setHr] = useState("");
-  const [rr, setRr] = useState("");
-  const [temp, setTemp] = useState("");
-  const [spo2, setSpo2] = useState("");
-  const [weight, setWeight] = useState("");
+  const [temperature, setTemperature] = useState("");
+  const [systolic, setSystolic] = useState("");
+  const [diastolic, setDiastolic] = useState("");
+  const [heartRate, setHeartRate] = useState("");
+  const [respiratoryRate, setRespiratoryRate] = useState("");
+  const [spO2, setSpO2] = useState("");
   const [complaint, setComplaint] = useState("");
   const [allergies, setAllergies] = useState("");
   const [notes, setNotes] = useState("");
   const [painkiller, setPainkiller] = useState("");
   const [medsGiven, setMedsGiven] = useState<string[]>([]);
-  const [procedures, setProcedures] = useState("");
+  const [procedure, setProcedure] = useState("");
+  const [procedures, setProcedures] = useState<string[]>([]);
   const [arrivalMode, setArrivalMode] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -75,13 +76,38 @@ export default function TriagePage() {
     setPainkiller("");
   };
 
+  const procedureOptions = [
+    { value: "iv-access", label: "IV access" },
+    { value: "oxygen", label: "Oxygen" },
+    { value: "cannulation", label: "Cannulation" },
+    { value: "splinting", label: "Splinting" },
+    { value: "wound-dressing", label: "Wound dressing" },
+    { value: "urinary-catheter", label: "Urinary catheter" },
+    { value: "ryles-tube", label: "Ryles tube" },
+    { value: "ecg", label: "ECG" },
+    { value: "nebulization", label: "Nebulization" },
+    { value: "blood-glucose", label: "Blood glucose check" },
+    { value: "tetanus", label: "Tetanus toxoid" },
+    { value: "suturing", label: "Suturing" },
+    { value: "cpr", label: "CPR" },
+    { value: "defibrillation", label: "Defibrillation" },
+  ];
+
+  const addProcedure = () => {
+    if (!procedure) return;
+    const label = procedureOptions.find((p) => p.value === procedure)?.label || procedure;
+    setProcedures((prev) => [...prev, label]);
+    setNotes((prev) => (prev ? prev + "\n" : "") + `Procedure done: ${label}`);
+    setProcedure("");
+  };
+
   const redFlags = [
-    bp && parseInt(bp.split("/")[0] || "0") < 90,
-    bp && parseInt(bp.split("/")[1] || "0") < 60,
-    hr && parseInt(hr) > 120,
-    rr && parseInt(rr) > 30,
-    temp && parseFloat(temp) > 39,
-    spo2 && parseInt(spo2) < 92,
+    systolic && parseInt(systolic) < 90,
+    diastolic && parseInt(diastolic) < 60,
+    heartRate && parseInt(heartRate) > 120,
+    respiratoryRate && parseInt(respiratoryRate) > 30,
+    temperature && parseFloat(temperature) > 39,
+    spO2 && parseInt(spO2) < 92,
     pain >= 8,
   ].filter(Boolean).length;
 
@@ -106,36 +132,46 @@ export default function TriagePage() {
             notes,
             pain,
             medsGiven,
-            procedures,
-            vitals: { bp, hr, rr, temp, spo2, weight },
+            procedures: procedures.join(", "),
+            vitals: {
+              temperature,
+              systolic,
+              diastolic,
+              heartRate,
+              respiratoryRate,
+              spO2,
+            },
           }),
         }
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to save triage record");
+        throw new Error(data.error || "Failed to save initial patient assessment record");
       }
       router.push("/care");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save triage record");
+      alert(err instanceof Error ? err.message : "Failed to save initial patient assessment record");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <CareHeader
-        title="Triage"
-        description="Record arrival and initial assessment"
-        action={
-          level === "red" ? (
-            <Badge variant="destructive" className="gap-1">
-              <AlertTriangle className="size-3" /> Critical
-            </Badge>
-          ) : undefined
-        }
-      />
+    <>
+      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="col-span-full">
+        <CareHeader
+          title="Initial Patient Assessment"
+          description="Record arrival and initial assessment"
+          action={
+            level === "red" ? (
+              <Badge variant="destructive" className="gap-1">
+                <AlertTriangle className="size-3" /> Critical
+              </Badge>
+            ) : undefined
+          }
+        />
+      </div>
 
       <Card>
         <CardHeader>
@@ -218,7 +254,7 @@ export default function TriagePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Chief Complaint & Triage Level</CardTitle>
+          <CardTitle>Chief Complaint & Assessment Level</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="space-y-2">
@@ -230,7 +266,7 @@ export default function TriagePage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Triage Level</Label>
+            <Label>Assessment Level</Label>
             <div className="flex gap-2">
               {(["red", "yellow", "green"] as TriageLevel[]).map((l) => (
                 <Button
@@ -300,7 +336,7 @@ export default function TriagePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Triage Notes</CardTitle>
+          <CardTitle>Initial Patient Assessment Notes</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="space-y-2">
@@ -319,37 +355,81 @@ export default function TriagePage() {
         <CardHeader>
           <CardTitle>Vitals</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
+        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label>BP</Label>
-            <Input value={bp} onChange={(e) => setBp(e.target.value)} placeholder="120/80" />
+            <Label className="flex items-center gap-1">
+              <Thermometer className="size-4" /> Temperature (°C)
+            </Label>
+            <Input
+              type="number"
+              step="0.1"
+              value={temperature}
+              onChange={(e) => setTemperature(e.target.value)}
+              placeholder="36.5"
+            />
           </div>
           <div className="space-y-2">
-            <Label>HR</Label>
-            <Input value={hr} onChange={(e) => setHr(e.target.value)} placeholder="bpm" />
+            <Label className="flex items-center gap-1">
+              <Heart className="size-4" /> Systolic BP (mmHg)
+            </Label>
+            <Input
+              type="number"
+              value={systolic}
+              onChange={(e) => setSystolic(e.target.value)}
+              placeholder="120"
+            />
           </div>
           <div className="space-y-2">
-            <Label>RR</Label>
-            <Input value={rr} onChange={(e) => setRr(e.target.value)} placeholder="/min" />
+            <Label className="flex items-center gap-1">
+              <Heart className="size-4" /> Diastolic BP (mmHg)
+            </Label>
+            <Input
+              type="number"
+              value={diastolic}
+              onChange={(e) => setDiastolic(e.target.value)}
+              placeholder="80"
+            />
           </div>
           <div className="space-y-2">
-            <Label>Temperature</Label>
-            <Input value={temp} onChange={(e) => setTemp(e.target.value)} placeholder="°C" />
+            <Label className="flex items-center gap-1">
+              <Activity className="size-4" /> Heart Rate (bpm)
+            </Label>
+            <Input
+              type="number"
+              value={heartRate}
+              onChange={(e) => setHeartRate(e.target.value)}
+              placeholder="72"
+            />
           </div>
           <div className="space-y-2">
-            <Label>SpO₂</Label>
-            <Input value={spo2} onChange={(e) => setSpo2(e.target.value)} placeholder="%" />
+            <Label className="flex items-center gap-1">
+              <Wind className="size-4" /> Respiratory Rate (/min)
+            </Label>
+            <Input
+              type="number"
+              value={respiratoryRate}
+              onChange={(e) => setRespiratoryRate(e.target.value)}
+              placeholder="16"
+            />
           </div>
           <div className="space-y-2">
-            <Label>Weight</Label>
-            <Input value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="kg" />
+            <Label className="flex items-center gap-1">
+              <Droplets className="size-4" /> SpO2 (%)
+            </Label>
+            <Input
+              type="number"
+              step="0.1"
+              value={spO2}
+              onChange={(e) => setSpO2(e.target.value)}
+              placeholder="98"
+            />
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Meds Given & Procedures</CardTitle>
+          <CardTitle>Meds Given</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="space-y-2">
@@ -384,36 +464,67 @@ export default function TriagePage() {
               </div>
             </div>
           )}
-          <div className="space-y-2">
-            <Label>Procedures Done</Label>
-            <Textarea
-              value={procedures}
-              onChange={(e) => setProcedures(e.target.value)}
-              placeholder="e.g. IV access, oxygen, splinting"
-              rows={3}
-            />
-          </div>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Procedures Done</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="space-y-2">
+            <Label>Procedure</Label>
+            <div className="flex gap-2">
+              <Select value={procedure} onValueChange={setProcedure}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select procedure" />
+                </SelectTrigger>
+                <SelectContent>
+                  {procedureOptions.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="secondary" onClick={addProcedure} disabled={!procedure}>
+                Add to notes
+              </Button>
+            </div>
+          </div>
+          {procedures.length > 0 && (
+            <div className="space-y-2">
+              <Label>Procedures Done</Label>
+              <div className="flex flex-wrap gap-2">
+                {procedures.map((proc, i) => (
+                  <Badge key={i} variant="secondary">
+                    {proc}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="col-span-full flex justify-end gap-2">
         <Button variant="outline" onClick={() => router.push("/care")}>
           Cancel
         </Button>
         <Button onClick={submit} disabled={submitting}>
-          {submitting ? "Saving..." : "Save Triage"}
+          {submitting ? "Saving..." : "Save Initial Patient Assessment"}
         </Button>
       </div>
-
-      <PatientSearchModal
-        isOpen={showPatientModal}
-        onClose={() => setShowPatientModal(false)}
-        onPatientSelect={(selected) => {
-          setPatient(selected);
-          setShowPatientModal(false);
-        }}
-        workspaceId={workspaceId}
-      />
     </div>
-  );
+
+    <PatientSearchModal
+      isOpen={showPatientModal}
+      onClose={() => setShowPatientModal(false)}
+      onPatientSelect={(selected) => {
+        setPatient(selected);
+        setShowPatientModal(false);
+      }}
+      workspaceId={workspaceId}
+    />
+  </>);
 }

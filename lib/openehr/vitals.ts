@@ -1,12 +1,14 @@
 import { createOpenEHRComposition } from "@/lib/openehr/openehr";
 
+export const VITALS_TEMPLATE_ID = "template_clinical_encounter_v1";
+
 export interface VitalSigns {
-  bp: string;
-  hr: string;
-  rr: string;
-  temp: string;
-  spo2: string;
-  weight: string;
+  temperature: string;
+  systolic: string;
+  diastolic: string;
+  heartRate: string;
+  respiratoryRate: string;
+  spO2: string;
 }
 
 export function buildVitalSignsComposition(
@@ -31,43 +33,41 @@ export function buildVitalSignsComposition(
     "template_clinical_encounter_v1/vital_signs/any_event:0/time": eventTime,
   };
 
-  if (vitals.temp) {
+  if (vitals.temperature) {
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/body_temperature|magnitude"] =
-      parseFloat(vitals.temp);
-    composition["template_clinical_encounter_v1/vital_signs/any_event:0/body_temperature|unit"] =
-      "°C";
+      parseFloat(vitals.temperature);
+    composition["template_clinical_encounter_v1/vital_signs/any_event:0/body_temperature|unit"] = "°C";
   }
 
-  const bp = vitals.bp;
-  if (bp && bp.includes("/")) {
-    const [systolic, diastolic] = bp.split("/");
-    if (systolic && diastolic) {
-      composition["template_clinical_encounter_v1/vital_signs/any_event:0/systolic_blood_pressure|magnitude"] =
-        parseFloat(systolic.trim());
-      composition["template_clinical_encounter_v1/vital_signs/any_event:0/systolic_blood_pressure|unit"] =
-        "mm[Hg]";
-      composition["template_clinical_encounter_v1/vital_signs/any_event:0/diastolic_blood_pressure|magnitude"] =
-        parseFloat(diastolic.trim());
-      composition["template_clinical_encounter_v1/vital_signs/any_event:0/diastolic_blood_pressure|unit"] =
-        "mm[Hg]";
-    }
+  if (vitals.systolic) {
+    composition["template_clinical_encounter_v1/vital_signs/any_event:0/systolic_blood_pressure|magnitude"] =
+      parseFloat(vitals.systolic);
+    composition["template_clinical_encounter_v1/vital_signs/any_event:0/systolic_blood_pressure|unit"] =
+      "mm[Hg]";
   }
 
-  if (vitals.hr) {
+  if (vitals.diastolic) {
+    composition["template_clinical_encounter_v1/vital_signs/any_event:0/diastolic_blood_pressure|magnitude"] =
+      parseFloat(vitals.diastolic);
+    composition["template_clinical_encounter_v1/vital_signs/any_event:0/diastolic_blood_pressure|unit"] =
+      "mm[Hg]";
+  }
+
+  if (vitals.heartRate) {
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/heart_rate|magnitude"] =
-      parseFloat(vitals.hr);
+      parseFloat(vitals.heartRate);
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/heart_rate|unit"] = "/min";
   }
 
-  if (vitals.rr) {
+  if (vitals.respiratoryRate) {
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/respiratory_rate|magnitude"] =
-      parseFloat(vitals.rr);
+      parseFloat(vitals.respiratoryRate);
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/respiratory_rate|unit"] = "/min";
   }
 
-  if (vitals.spo2) {
+  if (vitals.spO2) {
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/oxygen_saturation_spo2|magnitude"] =
-      parseFloat(vitals.spo2);
+      parseFloat(vitals.spO2);
     composition["template_clinical_encounter_v1/vital_signs/any_event:0/oxygen_saturation_spo2|unit"] = "%";
   }
 
@@ -80,5 +80,5 @@ export async function createVitalSignsComposition(
   composerName: string
 ): Promise<string> {
   const composition = buildVitalSignsComposition(vitals, composerName);
-  return createOpenEHRComposition(ehrId, "template_clinical_encounter_v1", composition);
+  return createOpenEHRComposition(ehrId, VITALS_TEMPLATE_ID, composition);
 }

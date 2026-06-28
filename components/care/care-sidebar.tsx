@@ -24,8 +24,8 @@ import {
 
 const items = [
   { href: "/care", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/care/triage", label: "Triage", icon: Stethoscope },
-  { href: "/care/vitals", label: "Vitals", icon: Activity },
+  { href: "/care/triage", label: "Initial Patient Assessment", icon: Stethoscope },
+  { href: "/care/vitals", label: "Lab/ECG order", icon: Activity },
   { href: "/care/tasks", label: "Tasks", icon: ClipboardList },
   { href: "/care/mar", label: "MAR", icon: Pill },
   { href: "/care/observations", label: "Obs Schedule", icon: Clock },

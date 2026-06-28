@@ -87,7 +87,6 @@ export async function POST(
         arrivalMode,
         notes,
         pain,
-        weight: vitals?.weight || "",
         medsGiven,
         procedures,
       },
@@ -97,18 +96,23 @@ export async function POST(
     let vitalsCompositionUid: string | undefined;
     const hasVitals =
       vitals &&
-      (vitals.bp || vitals.hr || vitals.rr || vitals.temp || vitals.spo2);
+      (vitals.temperature ||
+        vitals.systolic ||
+        vitals.diastolic ||
+        vitals.heartRate ||
+        vitals.respiratoryRate ||
+        vitals.spO2);
 
     if (hasVitals) {
       vitalsCompositionUid = await createVitalSignsComposition(
         ehrId,
         {
-          bp: vitals.bp || "",
-          hr: vitals.hr || "",
-          rr: vitals.rr || "",
-          temp: vitals.temp || "",
-          spo2: vitals.spo2 || "",
-          weight: "",
+          temperature: vitals.temperature || "",
+          systolic: vitals.systolic || "",
+          diastolic: vitals.diastolic || "",
+          heartRate: vitals.heartRate || "",
+          respiratoryRate: vitals.respiratoryRate || "",
+          spO2: vitals.spO2 || "",
         },
         user.name || "Unknown"
       );
