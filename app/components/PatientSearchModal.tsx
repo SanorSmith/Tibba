@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Plus, X, User, Phone, Calendar, MapPin, ArrowLeft, Shield, RefreshCw, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Plus, X, User, Phone, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Patient {
@@ -45,7 +45,6 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
   const [editMode, setEditMode] = useState(false);
   const [editablePatient, setEditablePatient] = useState<Patient | null>(null);
   const [showInlineForm, setShowInlineForm] = useState(false);
-  const [insuranceCompanies, setInsuranceCompanies] = useState<any[]>([]);
   const [newPatientForm, setNewPatientForm] = useState({
     first_name_ar: '',
     last_name_ar: '',
@@ -63,6 +62,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
     medical_history: '',
     insurance_company: '',
     insurance_number: '',
+    insurance_state: 'Not Available',
     emergency_contact: '',
     emergency_phone: '',
     allergies: '',
@@ -70,31 +70,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
     current_medications: '',
   });
 
-  useEffect(() => {
-    loadInsuranceCompanies();
-  }, []);
-
-  const loadInsuranceCompanies = async () => {
-    try {
-      const res = await fetch(`/api/d/${workspaceId}/insurance-companies`);
-      if (res.ok) {
-        const data = await res.json();
-        setInsuranceCompanies(data.companies || []);
-      }
-    } catch (error) {
-      console.error('Failed to load insurance companies:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen && search.length >= 2) {
-      searchPatients();
-    } else {
-      setSearchResults([]);
-    }
-  }, [search, isOpen]);
-
-  const searchPatients = async () => {
+  const searchPatients = useCallback(async () => {
     if (search.length < 2) return;
 
     setLoading(true);
@@ -119,7 +95,15 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, workspaceId]);
+
+  useEffect(() => {
+    if (isOpen && search.length >= 2) {
+      searchPatients();
+    } else {
+      setSearchResults([]);
+    }
+  }, [search, isOpen, searchPatients]);
 
   const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -155,6 +139,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
       medical_history: '',
       insurance_company: '',
       insurance_number: '',
+      insurance_state: 'Not Available',
       emergency_contact: '',
       emergency_phone: '',
       allergies: '',
@@ -258,7 +243,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
     if (!phone) return 'Not specified';
     
     // Remove all non-digit characters
-    let digits = phone.replace(/\D/g, '');
+    const digits = phone.replace(/\D/g, '');
     
     // Handle different formats
     if (digits.startsWith('00964')) {
@@ -341,11 +326,11 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-white rounded-xl max-w-4xl xl:max-w-6xl 2xl:max-w-[1400px] w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-blue-100">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="text-left">
               <h2 className="text-xl font-bold text-gray-800">Patient Search</h2>
               <p className="text-sm text-gray-600 mt-1">Search for patients by name, ID, or phone number</p>
             </div>
@@ -400,7 +385,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                         </span>
                       </div>
                       <div className="mt-1 text-sm text-gray-500">
-                        ID: {patient.patient_number || patient.patientid}
+                        National ID: {patient.nationalid || patient.patient_number || patient.patientid}
                       </div>
                       {patient.phone && (
                         <div className="mt-1 text-sm text-gray-500 flex items-center gap-1">
@@ -432,7 +417,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <div>
                   <p className="text-sm font-medium text-gray-700">Patient Not Found</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    No patient found matching "{search}"
+                    No patient found matching &quot;{search}&quot;
                   </p>
                 </div>
                 <button
@@ -471,8 +456,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <label className="block text-xs font-medium text-gray-600 mb-1">First Name *</label>
                 <input
                   type="text"
-                  value={newPatientForm.firstname}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, firstname: e.target.value})}
+                  value={newPatientForm.first_name_en}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, first_name_en: e.target.value, first_name_ar: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   placeholder="First name"
                 />
@@ -481,8 +466,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <label className="block text-xs font-medium text-gray-600 mb-1">Middle Name</label>
                 <input
                   type="text"
-                  value={newPatientForm.middlename}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, middlename: e.target.value})}
+                  value={newPatientForm.middle_name}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, middle_name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   placeholder="Middle name"
                 />
@@ -491,8 +476,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <label className="block text-xs font-medium text-gray-600 mb-1">Last Name *</label>
                 <input
                   type="text"
-                  value={newPatientForm.lastname}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, lastname: e.target.value})}
+                  value={newPatientForm.last_name_en}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, last_name_en: e.target.value, last_name_ar: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   placeholder="Last name"
                 />
@@ -504,8 +489,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <label className="block text-xs font-medium text-gray-600 mb-1">Date of Birth</label>
                 <input
                   type="date"
-                  value={newPatientForm.dateofbirth}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, dateofbirth: e.target.value})}
+                  value={newPatientForm.date_of_birth}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, date_of_birth: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                 />
               </div>
@@ -523,8 +508,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Blood Group</label>
                 <select
-                  value={newPatientForm.bloodgroup}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, bloodgroup: e.target.value})}
+                  value={newPatientForm.blood_group}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, blood_group: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                 >
                   <option value="">Select</option>
@@ -542,8 +527,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <label className="block text-xs font-medium text-gray-600 mb-1">National ID</label>
                 <input
                   type="text"
-                  value={newPatientForm.nationalid}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, nationalid: e.target.value})}
+                  value={newPatientForm.national_id}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, national_id: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono"
                   placeholder="National ID"
                 />
@@ -634,8 +619,8 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
                 <label className="block text-xs font-medium text-gray-600 mb-1">Emergency Contact Phone</label>
                 <input
                   type="text"
-                  value={newPatientForm.emergency_contact_phone}
-                  onChange={(e) => setNewPatientForm({...newPatientForm, emergency_contact_phone: e.target.value})}
+                  value={newPatientForm.emergency_phone}
+                  onChange={(e) => setNewPatientForm({...newPatientForm, emergency_phone: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                   placeholder="Emergency contact phone"
                 />

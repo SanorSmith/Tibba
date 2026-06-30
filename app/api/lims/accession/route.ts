@@ -363,6 +363,7 @@ export async function GET(request: NextRequest) {
     const workspaceId = searchParams.get("workspaceid");
     const status = searchParams.get("status");
     const orderId = searchParams.get("orderid");
+    const patientId = searchParams.get("patientid");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -375,7 +376,10 @@ export async function GET(request: NextRequest) {
     if (status) {
       conditions.push(eq(accessionSamples.currentstatus, status));
     }
-    
+    if (patientId) {
+      conditions.push(eq(accessionSamples.patientid, patientId));
+    }
+
     // Filter by order ID if provided (supports both LIMS and OpenEHR orders)
     if (orderId) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -24,15 +24,19 @@ export function Header({
       ? "Tibbna-PIs"
       : userRole === "plastic_surgeon"
       ? "Tibbna-PS"
+      : userRole === "nurse"
+      ? "Tibbna-Care"
       : "Tibbna-EHR";
 
-  const dashboardPath = 
+  const dashboardPath =
     userRole === "lab_technician"
       ? `/d/${workspaceid}/lims`
       : userRole === "pharmacist"
       ? `/d/${workspaceid}/pharmacy`
       : userRole === "plastic_surgeon"
       ? `/d/${workspaceid}/plastic-surgery`
+      : userRole === "nurse"
+      ? `/d/${workspaceid}/nurse`
       : `/d/${workspaceid}/doctor`;
 
   return (

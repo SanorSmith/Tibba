@@ -199,6 +199,22 @@ a {
   color: #e5ecff;
 }
 
+.care-theme {
+  --primary: #618ff5;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf1fe;
+  --secondary-foreground: #1a2b4d;
+  --accent: #eaf1fe;
+  --accent-foreground: #1a2b4d;
+  --ring: #618ff5;
+  --sidebar-primary: #618ff5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eaf1fe;
+  --sidebar-accent-foreground: #1a2b4d;
+  --card-smtext: #618ff5;
+  --chart-2: #618ff5;
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

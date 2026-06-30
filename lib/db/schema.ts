@@ -908,6 +908,7 @@ export const unitConversionsRelations = relations(unitConversions, ({ one }) => 
 export * from "./tables/patient";
 export * from "./tables/appointment";
 export * from "./tables/staff";
+export * from "./tables/emergency-doctors";
 export * from "./tables/department";
 export * from "./tables/lab";
 export * from "./tables/pharmacy";
@@ -975,3 +976,4 @@ export const operationPrices = pgTable("operation_prices", {
 
 export type OperationPrice = typeof operationPrices.$inferSelect;
 export type NewOperationPrice = typeof operationPrices.$inferInsert;
+
