@@ -3,8 +3,7 @@ import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { db } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
-import { testResults, accessionSamples, users, workspaces } from "@/lib/db/schema";
-import { sql } from "drizzle-orm";
+import { testResults, accessionSamples } from "@/lib/db/schema";
 
 // In-memory storage for lab results (dummy data)
 // In production, this would be stored in EHRbase or a database
@@ -375,6 +374,136 @@ const labResultsStore: Record<string, LabTestResult[]> = {
       verified_by: "Dr. Mark Anderson, MD",
       report_date: "2024-11-11T14:00:00.000Z"
     }
+  ],
+  // Khalid Hassan - NID-1014 (Male, 34 yrs)
+  "78fc988b-941b-46ec-aa9c-44493179345c": [
+    {
+      composition_uid: "lab-result-khalid-cbc-001",
+      recorded_time: "2024-11-16T08:15:00.000Z",
+      test_name: "Complete Blood Count (CBC)",
+      test_name_code: "58410-2",
+      protocol: "LAB-2024-002456",
+      specimen_type: "Blood (EDTA tube)",
+      specimen_collection_time: "2024-11-16T07:00:00.000Z",
+      specimen_received_time: "2024-11-16T07:30:00.000Z",
+      specimen_id: "SPEC-2024-002456",
+      overall_test_status: "final",
+      clinical_information_provided: "Patient presents with fatigue and pallor. Rule out anemia.",
+      test_results: [
+        {
+          analyte_name: "Hemoglobin",
+          analyte_code: "718-7",
+          result_value: 11.2,
+          result_unit: "g/dL",
+          reference_range: "13.0 - 17.0",
+          result_status: "low",
+          result_flag: "L"
+        },
+        {
+          analyte_name: "White Blood Cell Count",
+          analyte_code: "6690-2",
+          result_value: 6.5,
+          result_unit: "×10³/μL",
+          reference_range: "4.0 - 11.0",
+          result_status: "normal",
+          result_flag: "N"
+        },
+        {
+          analyte_name: "Platelet Count",
+          analyte_code: "777-3",
+          result_value: 180,
+          result_unit: "×10³/μL",
+          reference_range: "150 - 400",
+          result_status: "normal",
+          result_flag: "N"
+        },
+        {
+          analyte_name: "Hematocrit",
+          analyte_code: "4544-3",
+          result_value: 34.5,
+          result_unit: "%",
+          reference_range: "38.0 - 50.0",
+          result_status: "low",
+          result_flag: "L"
+        },
+        {
+          analyte_name: "MCV (Mean Corpuscular Volume)",
+          analyte_code: "787-2",
+          result_value: 72,
+          result_unit: "fL",
+          reference_range: "80 - 100",
+          result_status: "low",
+          result_flag: "L"
+        }
+      ],
+      conclusion: "Microcytic anemia detected. Low hemoglobin, hematocrit, and MCV suggest iron deficiency anemia.",
+      test_diagnosis: "Iron deficiency anemia - recommend iron studies (serum iron, TIBC, ferritin) and further evaluation for source of blood loss.",
+      laboratory_name: "Central Haematology Laboratory",
+      reported_by: "Dr. Fatima Al-Rashid, MD",
+      verified_by: "Dr. Ahmed Khalil, MD",
+      report_date: "2024-11-16T09:00:00.000Z",
+      price: 55,
+      currency: "USD"
+    },
+    {
+      composition_uid: "lab-result-khalid-iron-002",
+      recorded_time: "2024-11-16T10:30:00.000Z",
+      test_name: "Iron Studies Panel",
+      test_name_code: "24352-6",
+      protocol: "LAB-2024-002457",
+      specimen_type: "Blood (Serum)",
+      specimen_collection_time: "2024-11-16T07:00:00.000Z",
+      specimen_received_time: "2024-11-16T07:30:00.000Z",
+      specimen_id: "SPEC-2024-002457",
+      overall_test_status: "final",
+      clinical_information_provided: "Follow-up to CBC showing microcytic anemia.",
+      test_results: [
+        {
+          analyte_name: "Serum Iron",
+          analyte_code: "2498-4",
+          result_value: 25,
+          result_unit: "μg/dL",
+          reference_range: "60 - 170",
+          result_status: "low",
+          result_flag: "L"
+        },
+        {
+          analyte_name: "TIBC (Total Iron Binding Capacity)",
+          analyte_code: "2500-7",
+          result_value: 450,
+          result_unit: "μg/dL",
+          reference_range: "250 - 450",
+          result_status: "high",
+          result_flag: "H"
+        },
+        {
+          analyte_name: "Transferrin Saturation",
+          analyte_code: "2502-3",
+          result_value: 5.6,
+          result_unit: "%",
+          reference_range: "20 - 50",
+          result_status: "low",
+          result_flag: "L"
+        },
+        {
+          analyte_name: "Ferritin",
+          analyte_code: "2276-4",
+          result_value: 8,
+          result_unit: "ng/mL",
+          reference_range: "15 - 150",
+          result_status: "low",
+          result_flag: "L"
+        }
+      ],
+      conclusion: "Severe iron deficiency confirmed. Low serum iron, low ferritin, high TIBC, and low transferrin saturation.",
+      test_diagnosis: "Iron deficiency anemia confirmed - recommend oral iron supplementation and investigation for source of iron loss (GI evaluation for occult bleeding, dietary assessment).",
+      laboratory_name: "Clinical Chemistry Laboratory",
+      reported_by: "Dr. Omar Youssef, PhD",
+      verified_by: "Dr. Layla Ibrahim, MD",
+      report_date: "2024-11-16T11:00:00.000Z",
+      price: 65,
+      currency: "USD"
+    }
   ]
 };
 
@@ -398,6 +527,27 @@ const imagingResultsStore: Record<string, ImagingResult[]> = {
       ],
     },
   ],
+  // Khalid Hassan - NID-1014 (Male, 34 yrs)
+  "78fc988b-941b-46ec-aa9c-44493179345c": [
+    {
+      composition_uid: "img-result-khalid-abdomen-001",
+      recorded_time: "2024-11-16T11:45:00.000Z",
+      study_name: "Abdominal Ultrasound",
+      modality: "Ultrasound",
+      body_part: "Abdomen",
+      finding_summary: "Liver and spleen normal in size and echotexture. Gallbladder shows no stones. Kidneys normal. No free fluid in abdomen.",
+      impression: "Normal abdominal ultrasound. No evidence of organomegaly or masses.",
+      radiologist: "Dr. Nadia Mansour",
+      report_date: "2024-11-16T12:15:00.000Z",
+      overall_status: "final",
+      price: 85,
+      currency: "USD",
+      images: [
+        { image_uid: "img-khalid-001", description: "Liver view" },
+        { image_uid: "img-khalid-002", description: "Spleen view" },
+      ],
+    },
+  ],
 };
 
 const ecgResultsStore: Record<string, ECGResult[]> = {
@@ -416,6 +566,104 @@ const ecgResultsStore: Record<string, ECGResult[]> = {
       interpretation: "Normal ECG. No evidence of ischemia or arrhythmia.",
       reported_by: "Dr. E. Jones, Cardiology",
       report_date: "2024-11-15T09:45:00.000Z",
+      overall_status: "final",
+      price: 45,
+      currency: "USD",
+      ecg_image: "/mock-ecg-waveform.svg",
+    },
+    {
+      composition_uid: "ecg-result-1731760800000-002",
+      recorded_time: "2024-11-14T14:15:00.000Z",
+      test_name: "12-Lead ECG",
+      heart_rate: 58,
+      rhythm: "Sinus bradycardia",
+      pr_interval: "180 ms",
+      qrs_duration: "92 ms",
+      qt_interval: "420 ms",
+      axis: "Normal",
+      findings: "Sinus bradycardia with heart rate of 58 bpm. No ST-T wave abnormalities. No conduction defects.",
+      interpretation: "Sinus bradycardia. May be normal variant in athletic individuals. Clinical correlation recommended.",
+      reported_by: "Dr. M. Hassan, Cardiology",
+      report_date: "2024-11-14T14:30:00.000Z",
+      overall_status: "final",
+      price: 45,
+      currency: "USD",
+      ecg_image: "/mock-ecg-waveform.svg",
+    },
+    {
+      composition_uid: "ecg-result-1731674400000-003",
+      recorded_time: "2024-11-13T10:20:00.000Z",
+      test_name: "12-Lead ECG",
+      heart_rate: 105,
+      rhythm: "Sinus tachycardia",
+      pr_interval: "140 ms",
+      qrs_duration: "86 ms",
+      qt_interval: "360 ms",
+      axis: "Normal",
+      findings: "Sinus tachycardia with heart rate of 105 bpm. No acute ST-T changes. No ectopy noted.",
+      interpretation: "Sinus tachycardia. Consider underlying causes such as anxiety, pain, fever, or hypovolemia.",
+      reported_by: "Dr. S. Ahmed, Emergency Medicine",
+      report_date: "2024-11-13T10:35:00.000Z",
+      overall_status: "final",
+      price: 45,
+      currency: "USD",
+      ecg_image: "/mock-ecg-waveform.svg",
+    },
+    {
+      composition_uid: "ecg-result-1731588000000-004",
+      recorded_time: "2024-11-12T16:45:00.000Z",
+      test_name: "12-Lead ECG",
+      heart_rate: 88,
+      rhythm: "Atrial fibrillation",
+      pr_interval: "Variable",
+      qrs_duration: "90 ms",
+      qt_interval: "380 ms",
+      axis: "Normal",
+      findings: "Irregularly irregular rhythm consistent with atrial fibrillation. Ventricular rate approximately 88 bpm. No acute ST changes.",
+      interpretation: "Atrial fibrillation with controlled ventricular response. Recommend anticoagulation assessment and rate control optimization.",
+      reported_by: "Dr. R. Patel, Cardiology",
+      report_date: "2024-11-12T17:00:00.000Z",
+      overall_status: "final",
+      price: 45,
+      currency: "USD",
+      ecg_image: "/mock-ecg-waveform.svg",
+    },
+    {
+      composition_uid: "ecg-result-1731501600000-005",
+      recorded_time: "2024-11-11T08:30:00.000Z",
+      test_name: "12-Lead ECG",
+      heart_rate: 76,
+      rhythm: "Sinus rhythm",
+      pr_interval: "200 ms",
+      qrs_duration: "120 ms",
+      qt_interval: "440 ms",
+      axis: "Left axis deviation",
+      findings: "Sinus rhythm with first-degree AV block (PR 200 ms). Left bundle branch block pattern (QRS 120 ms). Left axis deviation.",
+      interpretation: "First-degree AV block with complete left bundle branch block. Recommend echocardiography to assess left ventricular function.",
+      reported_by: "Dr. L. Chen, Cardiology",
+      report_date: "2024-11-11T08:50:00.000Z",
+      overall_status: "final",
+      price: 45,
+      currency: "USD",
+      ecg_image: "/mock-ecg-waveform.svg",
+    },
+  ],
+  // Khalid Hassan - NID-1014 (Male, 34 yrs)
+  "78fc988b-941b-46ec-aa9c-44493179345c": [
+    {
+      composition_uid: "ecg-result-khalid-001",
+      recorded_time: "2024-11-16T09:15:00.000Z",
+      test_name: "12-Lead ECG",
+      heart_rate: 68,
+      rhythm: "Sinus rhythm",
+      pr_interval: "155 ms",
+      qrs_duration: "85 ms",
+      qt_interval: "395 ms",
+      axis: "Normal",
+      findings: "Normal sinus rhythm. No ST-T wave abnormalities. No conduction defects. QT interval within normal limits.",
+      interpretation: "Normal ECG. No acute cardiac abnormalities detected.",
+      reported_by: "Dr. Hassan Mahmoud, Cardiology",
+      report_date: "2024-11-16T09:30:00.000Z",
       overall_status: "final",
       price: 45,
       currency: "USD",
@@ -501,7 +749,26 @@ export async function GET(
 
     // Group LIMS results by openehrrequestid (= order ID)
     // Samples that belong to the same order share the same openehrrequestid
-    const orderMap = new Map<string, any>();
+    interface OrderMapValue {
+      composition_uid: string;
+      recorded_time: string;
+      test_name: string;
+      protocol: string;
+      specimen_type: string | null;
+      specimen_collection_time: string | undefined;
+      specimen_id: string;
+      overall_test_status: string;
+      test_results: LabTestAnalyte[];
+      laboratory_name: string;
+      report_date: string;
+      source: string;
+      sampleid: string;
+      orderid: string;
+      price: number;
+      currency: string;
+      samples: { sampleid: string; samplenumber: string; sampletype: string; collectiondate: string | null; barcode: string | null; labcategory: string | null }[];
+    }
+    const orderMap = new Map<string, OrderMapValue>();
     
     for (const r of limsResults) {
       // Use openehrrequestid as group key; fall back to sampleid if no order link
@@ -529,10 +796,10 @@ export async function GET(
         });
       }
 
-      const order = orderMap.get(orderKey);
+      const order = orderMap.get(orderKey)!;
       
       // Track unique samples within this order
-      if (!order.samples.find((s: any) => s.sampleid === r.sampleid)) {
+      if (!order.samples.find((s) => s.sampleid === r.sampleid)) {
         order.samples.push({
           sampleid: r.sampleid,
           samplenumber: r.samplenumber,
@@ -576,8 +843,6 @@ export async function GET(
         reference_range: refRange,
         result_status: resultStatus,
         result_flag: resultFlag,
-        specimen_type: r.sampletype,
-        samplenumber: r.samplenumber,
       });
     }
 
