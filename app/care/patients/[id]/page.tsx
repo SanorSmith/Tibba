@@ -916,7 +916,7 @@ export default function EmergencyPatientDashboardPage() {
         title={patientName}
         description={`${age} yrs • ${patient.gender === "male" ? "Male" : "Female"} • MRN ${mrn}`}
         action={
-          <Button variant="outline" asChild>
+          <Button variant="outline" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" asChild>
             <Link href="/care">Back to Dashboard</Link>
           </Button>
         }
@@ -1011,7 +1011,7 @@ export default function EmergencyPatientDashboardPage() {
               <CardTitle className="flex items-center gap-2">
                 <Activity className="size-4" /> Vital History
               </CardTitle>
-              <Button size="sm" onClick={() => setVitalsModalOpen(true)}>
+              <Button size="sm" onClick={() => setVitalsModalOpen(true)} className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white">
                 Record Vitals
               </Button>
             </CardHeader>
@@ -1377,7 +1377,7 @@ export default function EmergencyPatientDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Lab Orders</CardTitle>
-              <Button size="sm" onClick={() => setLabOrderModalOpen(true)}>
+              <Button size="sm" onClick={() => setLabOrderModalOpen(true)} className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white">
                 Add Lab Order
               </Button>
             </CardHeader>
@@ -1422,7 +1422,7 @@ export default function EmergencyPatientDashboardPage() {
                                 setSampleCollectionModalOpen(true);
                               }}
                               disabled={collected}
-                              className={collected ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-green-600 hover:bg-green-700 text-white"}
+                              className={collected ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-[#4684c2] hover:bg-[#3a6fa8] text-white"}
                             >
                               {collected ? (
                                 <>
@@ -1669,7 +1669,7 @@ export default function EmergencyPatientDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Patient Disposition</CardTitle>
-              <Button size="sm" onClick={() => setDispositionModalOpen(true)}>
+              <Button size="sm" onClick={() => setDispositionModalOpen(true)} className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white">
                 {disposition.type ? "Update Disposition" : "Set Disposition"}
               </Button>
             </CardHeader>
@@ -1843,7 +1843,7 @@ export default function EmergencyPatientDashboardPage() {
                   spO2: "",
                 });
               }}
-              className="bg-blue-200/90 hover:bg-blue-300"
+              className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10"
             >
               Cancel
             </Button>
@@ -1851,7 +1851,7 @@ export default function EmergencyPatientDashboardPage() {
               size="sm"
               onClick={submitVitals}
               disabled={vitalsSubmitting}
-              className="bg-blue-600/90 hover:bg-blue-800"
+              className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
             >
               {vitalsSubmitting ? "Saving..." : "Save"}
             </Button>
@@ -2031,7 +2031,7 @@ export default function EmergencyPatientDashboardPage() {
                                 key={specimen}
                                 type="button"
                                 size="sm"
-                                className="w-full h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                                className="w-full h-8 text-xs bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
                                 disabled={sampleCollectionSubmitting}
                                 onClick={() => submitSampleCollection(specimen)}
                               >
@@ -2074,6 +2074,7 @@ export default function EmergencyPatientDashboardPage() {
                 <>
                   <Button
                     variant="outline"
+                    className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10"
                     onClick={() => {
                       setSampleCollectionModalOpen(false);
                       setSelectedOrder(null);
@@ -2087,7 +2088,7 @@ export default function EmergencyPatientDashboardPage() {
                     <Button
                       onClick={() => submitSampleCollection()}
                       disabled={sampleCollectionSubmitting || selectedOrder?.request_status === "CANCELLED"}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
                     >
                       <FlaskConical className="size-4 mr-2" />
                       {sampleCollectionSubmitting ? "Processing..." : "Collect & Register Sample"}
@@ -2121,7 +2122,7 @@ export default function EmergencyPatientDashboardPage() {
           <AlertDialogFooter>
             <AlertDialogAction
               onClick={() => setAlertDialog({ show: false, title: "", message: "", type: "success" })}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-[#4684c2] hover:bg-[#3a6fa8]"
             >
               OK
             </AlertDialogAction>
@@ -2403,7 +2404,7 @@ export default function EmergencyPatientDashboardPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPrintPreviewOpen(false)}>Close</Button>
+            <Button variant="outline" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => setPrintPreviewOpen(false)}>Close</Button>
             <Button
               onClick={() => { printEmergencyReport(); setPrintPreviewOpen(false); }}
               className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
@@ -2430,7 +2431,7 @@ export default function EmergencyPatientDashboardPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setDisposition({ ...disposition, type: "admit" })}
-                  className={`w-full ${disposition.type === "admit" ? "bg-[#4684c2] text-white border-[#4684c2] hover:bg-[#3a6fa8]" : "hover:bg-gray-100"}`}
+                  className={`w-full border-[#4684c2] ${disposition.type === "admit" ? "bg-[#4684c2] text-white hover:bg-[#3a6fa8]" : "text-[#4684c2] hover:bg-[#4684c2]/10"}`}
                 >
                   Admit
                 </Button>
@@ -2438,7 +2439,7 @@ export default function EmergencyPatientDashboardPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setDisposition({ ...disposition, type: "transfer" })}
-                  className={`w-full ${disposition.type === "transfer" ? "bg-orange-500 text-white border-orange-500 hover:bg-orange-600" : "hover:bg-gray-100"}`}
+                  className={`w-full border-orange-500 ${disposition.type === "transfer" ? "bg-orange-500 text-white hover:bg-orange-600" : "text-orange-500 hover:bg-orange-500/10"}`}
                 >
                   Transfer
                 </Button>
@@ -2446,7 +2447,7 @@ export default function EmergencyPatientDashboardPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setDisposition({ ...disposition, type: "discharge" })}
-                  className={`w-full ${disposition.type === "discharge" ? "bg-[#4684c2] text-white border-[#4684c2] hover:bg-[#3a6fa8]" : "hover:bg-gray-100"}`}
+                  className={`w-full border-[#4684c2] ${disposition.type === "discharge" ? "bg-[#4684c2] text-white hover:bg-[#3a6fa8]" : "text-[#4684c2] hover:bg-[#4684c2]/10"}`}
                 >
                   Discharge
                 </Button>
@@ -2552,7 +2553,7 @@ export default function EmergencyPatientDashboardPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDispositionModalOpen(false)}>
+            <Button variant="outline" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => setDispositionModalOpen(false)}>
               Cancel
             </Button>
             <Button 

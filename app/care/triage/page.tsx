@@ -193,12 +193,12 @@ export default function TriagePage() {
                     {patient.phone && ` · ${patient.phone}`}
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setShowPatientModal(true)}>
+                <Button variant="outline" size="sm" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => setShowPatientModal(true)}>
                   Change
                 </Button>
               </div>
             ) : (
-              <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setShowPatientModal(true)}>
+              <Button variant="outline" className="w-full justify-start gap-2 border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => setShowPatientModal(true)}>
                 <Search className="size-4" />
                 Search or register patient
               </Button>
@@ -447,7 +447,7 @@ export default function TriagePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="secondary" onClick={addPainkiller} disabled={!painkiller}>
+              <Button type="button" variant="secondary" className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white" onClick={addPainkiller} disabled={!painkiller}>
                 Add to notes
               </Button>
             </div>
@@ -487,7 +487,7 @@ export default function TriagePage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="secondary" onClick={addProcedure} disabled={!procedure}>
+              <Button type="button" variant="secondary" className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white" onClick={addProcedure} disabled={!procedure}>
                 Add to notes
               </Button>
             </div>
@@ -508,10 +508,10 @@ export default function TriagePage() {
       </Card>
 
       <div className="col-span-full flex justify-end gap-2">
-        <Button variant="outline" onClick={() => router.push("/care")}>
+        <Button variant="outline" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => router.push("/care")}>
           Cancel
         </Button>
-        <Button onClick={submit} disabled={submitting}>
+        <Button onClick={submit} disabled={submitting} className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white">
           {submitting ? "Saving..." : "Save Initial Patient Assessment"}
         </Button>
       </div>

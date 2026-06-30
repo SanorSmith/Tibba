@@ -34,9 +34,9 @@ type DispositionStatus = "admit" | "transfer" | "discharge";
 
 function dispositionClasses(status: DispositionStatus) {
   switch (status) {
-    case "admit": return "bg-blue-50 text-blue-700 border-blue-200";
-    case "transfer": return "bg-purple-50 text-purple-700 border-purple-200";
-    case "discharge": return "bg-green-50 text-green-700 border-green-200";
+    case "admit": return "bg-[#4684c2] text-white border-[#4684c2]";
+    case "transfer": return "bg-orange-500 text-white border-orange-500";
+    case "discharge": return "bg-[#4684c2] text-white border-[#4684c2]";
   }
 }
 
@@ -185,7 +185,7 @@ export default function CareDashboardPage() {
         title="Nurse Dashboard"
         description="My shift at a glance"
         action={
-          <Button asChild>
+          <Button asChild className="!bg-[#4684c2] !hover:bg-[#3a6fa8] !text-white">
             <Link href="/care/triage">New Initial Patient Assessment</Link>
           </Button>
         }
@@ -295,13 +295,13 @@ export default function CareDashboardPage() {
                 </div>
 
                 <div className="border-t p-4 flex gap-2 mt-auto">
-                  <Button size="sm" variant="outline" className="flex-1" asChild>
+                  <Button size="sm" variant="outline" className="flex-1 border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" asChild>
                     <Link href={`/care/patients/${visit.patientId}`}>View</Link>
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10"
                     onClick={() => openAssignDoctor(visit)}
                   >
                     Assign Doctor
@@ -354,7 +354,7 @@ export default function CareDashboardPage() {
                         </div>
                       </div>
                       <div className="border-t p-4 mt-auto">
-                        <Button size="sm" variant="outline" className="w-full" asChild>
+                        <Button size="sm" variant="outline" className="w-full border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" asChild>
                           <Link href={`/care/patients/${visit.patientId}`}>View Record</Link>
                         </Button>
                       </div>
@@ -402,6 +402,7 @@ export default function CareDashboardPage() {
                     size="sm"
                     onClick={() => assignDoctor(doctor.doctorid)}
                     disabled={assigning}
+                    className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
                   >
                     {assigning ? "Assigning..." : "Assign"}
                   </Button>
@@ -410,7 +411,7 @@ export default function CareDashboardPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignOpen(false)}>
+            <Button variant="outline" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => setAssignOpen(false)}>
               Close
             </Button>
           </DialogFooter>
