@@ -25,6 +25,7 @@ import { CarePlansTab } from "../../ehr/patients/[patientid]/components/CarePlan
 import { ReferralsTab } from "./components/ReferralsTab";
 import { VaccinationsTab } from "./components/VaccinationsTab";
 import { NotesTab } from "./components/NotesTab";
+import { JournalTab } from "./components/JournalTab";
 import * as DashboardTypes from "./components/DashboardTab";
 import AppointmentsTab from "./components/AppointmentsTab";
 import ImagingTab from "./components/ImagingTab";
@@ -440,6 +441,13 @@ export default function PatientDashboard({
             >
               Imaging
             </TabsTrigger>
+
+            <TabsTrigger
+              value="journal"
+              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4684c2] text-white border-[0.5px] border-gray-400 font-bold"
+            >
+              Journal
+            </TabsTrigger>
           </TabsList>
 
           {/* Dashboard Tab */}
@@ -653,6 +661,16 @@ export default function PatientDashboard({
           <TabsContent value="careplans" className="space-y-4">
             {loadedTabs.has("careplans") && (
               <CarePlansTab
+                workspaceid={workspaceid}
+                patientid={patient.patientid}
+              />
+            )}
+          </TabsContent>
+
+          {/* Journal Tab - Services and Results */}
+          <TabsContent value="journal" className="space-y-4">
+            {loadedTabs.has("journal") && (
+              <JournalTab
                 workspaceid={workspaceid}
                 patientid={patient.patientid}
               />

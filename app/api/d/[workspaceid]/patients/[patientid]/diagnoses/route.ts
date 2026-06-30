@@ -93,12 +93,22 @@ export async function GET(
       }, { status: 200 });
     }
 
+    // Filter out disposition compositions from the results
+    const filteredDiagnoses = validDiagnoses.filter((diagnosis: any) => {
+      // Filter out disposition compositions (they start with "DISPOSITION_")
+      if (diagnosis.problem_diagnosis?.startsWith("DISPOSITION_")) {
+        console.log("API: Filtering out disposition:", diagnosis.problem_diagnosis);
+        return false;
+      }
+      return true;
+    });
+
     // Apply pagination to the filtered results
-    const totalFilteredCount = validDiagnoses.length;
+    const totalFilteredCount = filteredDiagnoses.length;
     const hasMore = offset + limit < totalFilteredCount;
 
     // Apply pagination to the filtered results
-    const paginatedResults = validDiagnoses.slice(offset, offset + limit);
+    const paginatedResults = filteredDiagnoses.slice(offset, offset + limit);
 
     return NextResponse.json({
       diagnoses: paginatedResults,
@@ -152,6 +162,7 @@ export async function POST(
       clinicalDescription,
       bodySite,
       comment,
+      isChronicDisease,
     } = body;
 
     // Validate required fields
@@ -258,6 +269,18 @@ export async function POST(
       compositionData[
         "template_clinical_encounter_v1/problem_diagnosis/comment"
       ] = comment;
+    }
+
+    // Chronic Disease (stored in comment for now, can be moved to dedicated field later)
+    if (isChronicDisease) {
+      const existingComment = compositionData[
+        "template_clinical_encounter_v1/problem_diagnosis/comment"
+      ] as string || "";
+      compositionData[
+        "template_clinical_encounter_v1/problem_diagnosis/comment"
+      ] = existingComment
+        ? `${existingComment} | Chronic Disease: ${isChronicDisease}`
+        : `Chronic Disease: ${isChronicDisease}`;
     }
 
     // Set language and encoding for diagnosis
@@ -403,6 +426,7 @@ export async function PUT(
       clinicalDescription,
       bodySite,
       comment,
+      isChronicDisease,
     } = body;
 
     // Validate required fields
@@ -551,6 +575,18 @@ export async function PUT(
       compositionData[
         "template_clinical_encounter_v1/problem_diagnosis/comment"
       ] = comment;
+    }
+
+    // Chronic Disease (stored in comment for now, can be moved to dedicated field later)
+    if (isChronicDisease) {
+      const existingComment = compositionData[
+        "template_clinical_encounter_v1/problem_diagnosis/comment"
+      ] as string || "";
+      compositionData[
+        "template_clinical_encounter_v1/problem_diagnosis/comment"
+      ] = existingComment
+        ? `${existingComment} | Chronic Disease: ${isChronicDisease}`
+        : `Chronic Disease: ${isChronicDisease}`;
     }
 
     // Set language and encoding for diagnosis
