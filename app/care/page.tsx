@@ -13,13 +13,21 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { CareHeader } from "@/components/care/care-header";
 import { useCareWorkspace } from "@/components/care/care-workspace-context";
 import type { TriageDashboardRecord } from "@/app/api/d/[workspaceid]/triage/route";
-import type { VitalSignsRecord } from "@/lib/openehr/openehr";
 import Link from "next/link";
-import { Clock, AlertTriangle, CheckCircle2, Pill, Wind, Activity, Heart, Droplets, Thermometer } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle2, Pill } from "lucide-react";
+
+interface Doctor {
+  availabilityid: string;
+  doctorid: string;
+  name: string | null;
+  email: string | null;
+  isavailable: boolean;
+  shiftstart: string | null;
+  shiftend: string | null;
+}
 
 type TriageLevel = "red" | "yellow" | "green";
 
@@ -52,12 +60,11 @@ export default function CareDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedVisit, setSelectedVisit] = useState<TriageDashboardRecord | null>(null);
-  const [viewOpen, setViewOpen] = useState(false);
-  const [vitalsOpen, setVitalsOpen] = useState(false);
-
-  const [vitals, setVitals] = useState<VitalSignsRecord | null>(null);
-  const [vitalsLoading, setVitalsLoading] = useState(false);
-  const [vitalsError, setVitalsError] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(false);
+  const [doctorsError, setDoctorsError] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -81,46 +88,70 @@ export default function CareDashboardPage() {
   }, [workspaceId]);
 
   useEffect(() => {
-    if (!vitalsOpen || !selectedVisit || !workspaceId) {
-      setVitals(null);
-      setVitalsError(null);
+    if (!assignOpen || !workspaceId) {
+      setDoctors([]);
+      setDoctorsError(null);
       return;
     }
 
-    const patientId = selectedVisit.patientId;
-
-    async function loadVitals() {
-      setVitalsLoading(true);
-      setVitalsError(null);
+    async function loadDoctors() {
+      setDoctorsLoading(true);
+      setDoctorsError(null);
       try {
-        const res = await fetch(
-          `/api/d/${workspaceId}/patients/${patientId}/vital-signs?limit=1`
-        );
+        const res = await fetch(`/api/d/${workspaceId}/emergency-doctors/available`);
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Failed to load vitals");
+          throw new Error(data.error || "Failed to load available doctors");
         }
-        setVitals(data.vitalSigns?.[0] || null);
+        setDoctors(data.doctors || []);
       } catch (err) {
-        setVitalsError(err instanceof Error ? err.message : "Failed to load vitals");
+        setDoctorsError(err instanceof Error ? err.message : "Failed to load doctors");
       } finally {
-        setVitalsLoading(false);
+        setDoctorsLoading(false);
       }
     }
 
-    loadVitals();
-  }, [vitalsOpen, selectedVisit, workspaceId]);
+    loadDoctors();
+  }, [assignOpen, workspaceId]);
 
   const criticalAlerts = records.filter((v) => v.triageLevel === "red" && v.status !== "discharged");
 
-  function openView(visit: TriageDashboardRecord) {
+  function openAssignDoctor(visit: TriageDashboardRecord) {
     setSelectedVisit(visit);
-    setViewOpen(true);
+    setAssignOpen(true);
   }
 
-  function openVitals(visit: TriageDashboardRecord) {
-    setSelectedVisit(visit);
-    setVitalsOpen(true);
+  async function assignDoctor(doctorId: string) {
+    if (!selectedVisit || !workspaceId) return;
+    setAssigning(true);
+    setDoctorsError(null);
+    try {
+      const res = await fetch(`/api/d/${workspaceId}/emergency-doctors/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitId: selectedVisit.visitId,
+          patientId: selectedVisit.patientId,
+          doctorId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to assign doctor");
+
+      const doctor = doctors.find((d) => d.doctorid === doctorId);
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.visitId === selectedVisit.visitId
+            ? { ...r, doctor: doctor?.name || "Assigned" }
+            : r
+        )
+      );
+      setAssignOpen(false);
+    } catch (err) {
+      setDoctorsError(err instanceof Error ? err.message : "Failed to assign doctor");
+    } finally {
+      setAssigning(false);
+    }
   }
 
   return (
@@ -236,21 +267,16 @@ export default function CareDashboardPage() {
                 </div>
 
                 <div className="border-t p-4 flex gap-2 mt-auto">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => openView(visit)}
-                  >
-                    View
+                  <Button size="sm" variant="outline" className="flex-1" asChild>
+                    <Link href={`/care/patients/${visit.patientId}`}>View</Link>
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => openVitals(visit)}
+                    onClick={() => openAssignDoctor(visit)}
                   >
-                    Vitals
+                    Assign Doctor
                   </Button>
                 </div>
               </div>
@@ -259,161 +285,55 @@ export default function CareDashboardPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {selectedVisit?.patientName}
-              {selectedVisit && (
-                <Badge variant="outline" className={triageClasses(selectedVisit.triageLevel)}>
-                  {triageDot(selectedVisit.triageLevel)} {selectedVisit.triageLevel.toUpperCase()}
-                </Badge>
-              )}
-            </DialogTitle>
+            <DialogTitle>Assign Doctor</DialogTitle>
             <DialogDescription>
-              Initial patient assessment details and services received
+              Select an available emergency doctor for {selectedVisit?.patientName}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedVisit && (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <Detail label="MRN" value={selectedVisit.mrn} />
-                <Detail label="Age / Gender" value={`${selectedVisit.age} yrs / ${selectedVisit.gender}`} />
-                <Detail label="Arrival mode" value={selectedVisit.arrivalMode} />
-                <Detail label="Waiting time" value={`${selectedVisit.waiting} min`} />
-                <Detail label="ESI" value={selectedVisit.esi} />
-                <Detail label="Pain score" value={selectedVisit.painScore ? `${selectedVisit.painScore}/10` : "-"} />
-                <Detail label="Allergies" value={selectedVisit.allergies || "None recorded"} />
-                <Detail label="Doctor" value={selectedVisit.doctor || "Unassigned"} />
-              </div>
-
-              <Separator />
-
-              <div>
-                <div className="text-xs font-medium text-muted-foreground uppercase">Chief complaint</div>
-                <div className="mt-1">{selectedVisit.chiefComplaint || "-"}</div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-muted-foreground uppercase">Services received</div>
-                <div className="mt-1 space-y-1">
+          {doctorsLoading && (
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading available doctors...</div>
+          )}
+          {doctorsError && (
+            <div className="py-8 text-center text-sm text-destructive">{doctorsError}</div>
+          )}
+          {!doctorsLoading && !doctorsError && doctors.length === 0 && (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No emergency doctors available. Add doctors to emergency availability.
+            </div>
+          )}
+          {!doctorsLoading && !doctorsError && doctors.length > 0 && (
+            <div className="space-y-2">
+              {doctors.map((doctor) => (
+                <div
+                  key={doctor.doctorid}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
                   <div>
-                    <span className="text-muted-foreground">Meds given:</span>{" "}
-                    {selectedVisit.medsGiven.length > 0
-                      ? selectedVisit.medsGiven.join(", ")
-                      : "None"}
+                    <div className="font-medium">{doctor.name || "Unknown"}</div>
+                    <div className="text-xs text-muted-foreground">{doctor.email}</div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Procedures:</span>{" "}
-                    {selectedVisit.procedures || "None"}
-                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => assignDoctor(doctor.doctorid)}
+                    disabled={assigning}
+                  >
+                    {assigning ? "Assigning..." : "Assign"}
+                  </Button>
                 </div>
-              </div>
-
-              {selectedVisit.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <div className="text-xs font-medium text-muted-foreground uppercase">Notes</div>
-                    <div className="mt-1 whitespace-pre-wrap">{selectedVisit.notes}</div>
-                  </div>
-                </>
-              )}
+              ))}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewOpen(false)}>
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={vitalsOpen} onOpenChange={setVitalsOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{selectedVisit?.patientName} — Vitals</DialogTitle>
-            <DialogDescription>
-              Latest recorded vital signs from OpenEHR
-            </DialogDescription>
-          </DialogHeader>
-
-          {vitalsLoading && (
-            <div className="py-8 text-center text-sm text-muted-foreground">Loading vitals...</div>
-          )}
-          {vitalsError && (
-            <div className="py-8 text-center text-sm text-destructive">{vitalsError}</div>
-          )}
-          {!vitalsLoading && !vitalsError && !vitals && (
-            <div className="py-8 text-center text-sm text-muted-foreground">No vitals recorded yet.</div>
-          )}
-          {vitals && (
-            <div className="grid grid-cols-2 gap-4">
-              <VitalCard
-                icon={<Thermometer className="size-4" />}
-                label="Temperature"
-                value={vitals.temperature ? `${vitals.temperature} °C` : "-"}
-              />
-              <VitalCard
-                icon={<Heart className="size-4" />}
-                label="Blood pressure"
-                value={
-                  vitals.systolic || vitals.diastolic
-                    ? `${vitals.systolic ?? "-"}/${vitals.diastolic ?? "-"} mmHg`
-                    : "-"
-                }
-              />
-              <VitalCard
-                icon={<Activity className="size-4" />}
-                label="Heart rate"
-                value={vitals.heart_rate ? `${vitals.heart_rate} bpm` : "-"}
-              />
-              <VitalCard
-                icon={<Wind className="size-4" />}
-                label="Respiratory rate"
-                value={vitals.respiratory_rate ? `${vitals.respiratory_rate} /min` : "-"}
-              />
-              <VitalCard
-                icon={<Droplets className="size-4" />}
-                label="SpO2"
-                value={vitals.spo2 ? `${vitals.spo2} %` : "-"}
-              />
-              <VitalCard
-                icon={<Clock className="size-4" />}
-                label="Recorded"
-                value={vitals.recorded_time ? new Date(vitals.recorded_time).toLocaleString() : "-"}
-              />
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setVitalsOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="font-medium">{value || "-"}</div>
-    </div>
-  );
-}
-
-function VitalCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-lg border p-3">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        {icon}
-        <span className="text-xs">{label}</span>
-      </div>
-      <div className="mt-1 text-lg font-semibold">{value}</div>
     </div>
   );
 }

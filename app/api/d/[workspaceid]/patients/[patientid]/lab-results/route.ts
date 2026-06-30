@@ -53,6 +53,46 @@ interface LabTestResult {
   reported_by?: string;
   verified_by?: string;
   report_date: string;
+
+  // Pricing
+  price?: number;
+  currency?: string;
+}
+
+interface ImagingResult {
+  composition_uid: string;
+  recorded_time: string;
+  study_name: string;
+  modality: string;
+  body_part: string;
+  finding_summary: string;
+  impression: string;
+  radiologist: string;
+  report_date: string;
+  overall_status: string;
+  price: number;
+  currency?: string;
+  images?: { image_uid: string; description: string }[];
+}
+
+interface ECGResult {
+  composition_uid: string;
+  recorded_time: string;
+  test_name: string;
+  heart_rate: number;
+  rhythm: string;
+  pr_interval: string;
+  qrs_duration: string;
+  qt_interval: string;
+  axis: string;
+  findings: string;
+  interpretation: string;
+  reported_by: string;
+  report_date: string;
+  overall_status: string;
+  price: number;
+  currency?: string;
+  ecg_image?: string;
 }
 
 // Initialize with dummy data for demonstration
@@ -338,6 +378,52 @@ const labResultsStore: Record<string, LabTestResult[]> = {
   ]
 };
 
+const imagingResultsStore: Record<string, ImagingResult[]> = {
+  "eaf012cb-359a-4ed4-8679-124cbdf7465a": [
+    {
+      composition_uid: "img-result-1731847200000-chest-xray",
+      recorded_time: "2024-11-15T09:45:00.000Z",
+      study_name: "Chest X-Ray",
+      modality: "X-ray",
+      body_part: "Chest",
+      finding_summary: "Lungs are clear. No pleural effusion or pneumothorax. Cardiac silhouette normal.",
+      impression: "Normal chest X-ray.",
+      radiologist: "Dr. A. Smith",
+      report_date: "2024-11-15T10:15:00.000Z",
+      overall_status: "final",
+      price: 75,
+      currency: "USD",
+      images: [
+        { image_uid: "img-001", description: "PA chest view" },
+      ],
+    },
+  ],
+};
+
+const ecgResultsStore: Record<string, ECGResult[]> = {
+  "eaf012cb-359a-4ed4-8679-124cbdf7465a": [
+    {
+      composition_uid: "ecg-result-1731847200000-001",
+      recorded_time: "2024-11-15T09:30:00.000Z",
+      test_name: "12-Lead ECG",
+      heart_rate: 72,
+      rhythm: "Sinus rhythm",
+      pr_interval: "160 ms",
+      qrs_duration: "88 ms",
+      qt_interval: "400 ms",
+      axis: "Normal",
+      findings: "Normal sinus rhythm. No ST elevation or depression. No pathological Q waves.",
+      interpretation: "Normal ECG. No evidence of ischemia or arrhythmia.",
+      reported_by: "Dr. E. Jones, Cardiology",
+      report_date: "2024-11-15T09:45:00.000Z",
+      overall_status: "final",
+      price: 45,
+      currency: "USD",
+      ecg_image: "/mock-ecg-waveform.svg",
+    },
+  ],
+};
+
 /**
  * GET /api/d/[workspaceid]/patients/[patientid]/lab-results
  * Retrieve lab results for a patient (from dummy data)
@@ -437,6 +523,8 @@ export async function GET(
           source: "lims",
           sampleid: r.sampleid,
           orderid: orderKey,
+          price: 50,
+          currency: "USD",
           samples: [] as { sampleid: string; samplenumber: string; sampletype: string; collectiondate: string | null; barcode: string | null; labcategory: string | null }[],
         });
       }
@@ -504,7 +592,15 @@ export async function GET(
     // Merge: LIMS results first (real data), then dummy data
     const allResults = [...limsLabResults, ...patientLabResults];
 
-    return NextResponse.json({ labResults: allResults });
+    return NextResponse.json({
+      labResults: allResults.map((r) => ({
+        ...r,
+        price: r.price ?? 50,
+        currency: r.currency ?? "USD",
+      })),
+      imagingResults: imagingResultsStore[patientid] || [],
+      ecgResults: ecgResultsStore[patientid] || [],
+    });
   } catch (error) {
     console.error("Error fetching lab results:", error);
     return NextResponse.json(

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { patients } from "@/lib/db/schema";
-import { eq, or, isNull } from "drizzle-orm";
+import { patients, emergencyDoctorAssignments, users } from "@/lib/db/schema";
+import { eq, or, isNull, inArray, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { queryOpenEHR, getOpenEHRComposition } from "@/lib/openehr/openehr";
@@ -170,6 +170,33 @@ export async function GET(
         procedures,
         notes,
       });
+    }
+
+    if (records.length > 0) {
+      const visitIds = records.map((r) => r.visitId);
+      const assignments = await db
+        .select({
+          visitid: emergencyDoctorAssignments.visitid,
+          name: users.name,
+        })
+        .from(emergencyDoctorAssignments)
+        .innerJoin(users, eq(emergencyDoctorAssignments.doctorid, users.userid))
+        .where(
+          and(
+            eq(emergencyDoctorAssignments.workspaceid, workspaceid),
+            inArray(emergencyDoctorAssignments.visitid, visitIds)
+          )
+        );
+
+      const assignmentMap = new Map<string, string>();
+      for (const a of assignments) {
+        assignmentMap.set(a.visitid, a.name || "Unknown");
+      }
+      for (const r of records) {
+        if (assignmentMap.has(r.visitId)) {
+          r.doctor = assignmentMap.get(r.visitId)!;
+        }
+      }
     }
 
     const latestByPatient = new Map<string, TriageDashboardRecord>();

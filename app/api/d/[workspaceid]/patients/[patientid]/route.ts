@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or, isNull } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { getOpenEHREHRBySubjectId, deleteOpenEHREHR } from "@/lib/openehr/openehr";
@@ -33,13 +33,18 @@ export async function GET(
     const [patient] = await db
       .select()
       .from(patients)
-      .where(and(eq(patients.workspaceid, workspaceid), eq(patients.patientid, patientid)))
+      .where(
+        and(
+          eq(patients.patientid, patientid),
+          or(eq(patients.workspaceid, workspaceid), isNull(patients.workspaceid))
+        )
+      )
       .limit(1);
-      
+
     if (!patient) {
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
-    
+
     return NextResponse.json({ patient });
   } catch (e) {
     console.error("[patients][GET] error:", e);
