@@ -322,6 +322,30 @@ export default function EmergencyPatientDashboardPage() {
     type: "success" | "error" | "warning";
   }>({ show: false, title: "", message: "", type: "success" });
 
+  // Disposition state
+  const [dispositionModalOpen, setDispositionModalOpen] = useState(false);
+  const [disposition, setDisposition] = useState<{
+    type: "admit" | "transfer" | "discharge" | null;
+    ward?: string;
+    bedNumber?: string;
+    days?: number;
+    transferTo?: string;
+    dischargeSummary?: string;
+    prescription?: string;
+    followUp?: string;
+    admissionPrice?: number;
+    wardPrice?: number;
+    totalPrice?: number;
+  }>({ type: null });
+
+  // Emergency services pricing (IQD - Iraqi Dinar)
+  const emergencyServices = [
+    { name: "Emergency Room Visit", price: 200000, category: "ER Visit" },
+    { name: "Triage Assessment", price: 75000, category: "Assessment" },
+    { name: "Physician Consultation", price: 250000, category: "Consultation" },
+    { name: "Nursing Care", price: 125000, category: "Nursing" },
+  ];
+
   const [vitalsForm, setVitalsForm] = useState({
     temperature: "",
     systolic: "",
@@ -378,6 +402,15 @@ export default function EmergencyPatientDashboardPage() {
         setEcgResults(labResultsData.ecgResults || []);
         setLabOrders(labOrdersData.labOrders || []);
         setAccessionSamples(samplesData.samples || []);
+
+        // Fetch disposition
+        const dispositionResponse = await fetch(`/api/d/${workspaceId}/patients/${params.id}/disposition`);
+        if (dispositionResponse.ok) {
+          const dispositionData = await dispositionResponse.json();
+          if (dispositionData.disposition) {
+            setDisposition(dispositionData.disposition);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load patient dashboard");
       } finally {
@@ -417,6 +450,39 @@ export default function EmergencyPatientDashboardPage() {
     } catch (err) {
       console.error("Failed to create lab order:", err);
       throw err;
+    }
+  }
+
+  async function saveDisposition() {
+    if (!workspaceId || !params.id || !disposition.type) return;
+
+    try {
+      const response = await fetch(`/api/d/${workspaceId}/patients/${params.id}/disposition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(disposition),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save disposition");
+      }
+
+      setDispositionModalOpen(false);
+      setAlertDialog({
+        show: true,
+        title: "Disposition Saved",
+        message: `Patient disposition has been saved to openEHR as ${disposition.type?.toUpperCase()}.`,
+        type: "success"
+      });
+    } catch (error) {
+      setAlertDialog({
+        show: true,
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to save disposition",
+        type: "error"
+      });
     }
   }
 
@@ -1203,10 +1269,11 @@ export default function EmergencyPatientDashboardPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="emergency-report" className="mt-4">
+        <TabsContent value="emergency-report" className="mt-4 space-y-4">
+          {/* Patient Summary Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Emergency Report</CardTitle>
+              <CardTitle>Emergency Visit Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -1269,15 +1336,159 @@ export default function EmergencyPatientDashboardPage() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
 
-              <div className="rounded-lg bg-muted p-3">
-                <div className="text-muted-foreground">Assessment</div>
-                <div className="font-medium">
-                  {latestTriage
-                    ? `Patient triaged as ${latestTriage.triageLevel.toUpperCase()}. ESI ${latestTriage.esi}. Pain ${latestTriage.painScore}/10. Waiting ${latestTriage.waiting} min.`
-                    : "No triage assessment available."}
+          {/* Services & Pricing Summary */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Services & Pricing</CardTitle>
+              <Badge variant="outline" className="text-lg bg-green-50 text-green-700 border-green-200">
+                Total: {
+                  (emergencyServices.reduce((sum, s) => sum + s.price, 0) +
+                  labResults.reduce((sum, r) => sum + ((r.price || 0) * 1300), 0) +
+                  imagingResults.reduce((sum, r) => sum + (r.price * 1300), 0) +
+                  ecgResults.reduce((sum, r) => sum + (r.price * 1300), 0) +
+                  (disposition.admissionPrice || 0) +
+                  (disposition.wardPrice || 0)).toLocaleString()
+                } IQD
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {emergencyServices.map((service, index) => (
+                    <TableRow key={`emergency-${index}`}>
+                      <TableCell>{service.name}</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Emergency</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date().toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{service.price.toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  ))}
+                  {labResults.map((result) => (
+                    <TableRow key={result.composition_uid}>
+                      <TableCell>{result.test_name}</TableCell>
+                      <TableCell><Badge variant="outline">Lab Test</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(result.report_date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{((result.price || 0) * 1300).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  ))}
+                  {imagingResults.map((result) => (
+                    <TableRow key={result.composition_uid}>
+                      <TableCell>{result.study_name}</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-blue-50">Imaging</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(result.report_date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{(result.price * 1300).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  ))}
+                  {ecgResults.map((result) => (
+                    <TableRow key={result.composition_uid}>
+                      <TableCell>{result.test_name}</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-purple-50">ECG</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(result.report_date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{(result.price * 1300).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  ))}
+                  {disposition.admissionPrice && (
+                    <TableRow>
+                      <TableCell>Emergency Admission</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-orange-50">Admission</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date().toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{(disposition.admissionPrice || 0).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  )}
+                  {disposition.wardPrice && disposition.days && (
+                    <TableRow>
+                      <TableCell>Ward Stay ({disposition.ward} - {disposition.days} days)</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-yellow-50">Ward</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date().toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{(disposition.wardPrice || 0).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Disposition Card */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Patient Disposition</CardTitle>
+              <Button size="sm" onClick={() => setDispositionModalOpen(true)}>
+                {disposition.type ? "Update Disposition" : "Set Disposition"}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {!disposition.type ? (
+                <div className="text-sm text-muted-foreground">No disposition set yet.</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={
+                      disposition.type === "admit" ? "bg-[#4684c2] text-white border-[#4684c2]" :
+                      disposition.type === "transfer" ? "bg-orange-500 text-white border-orange-500" :
+                      "bg-[#4684c2] text-white border-[#4684c2]"
+                    }>
+                      {disposition.type.toUpperCase()}
+                    </Badge>
+                    <span className="text-sm font-medium">
+                      {disposition.type === "admit" && `Admitted to ${disposition.ward || "Ward"} - Bed ${disposition.bedNumber || "TBD"}`}
+                      {disposition.type === "transfer" && `Transferred to ${disposition.transferTo}`}
+                      {disposition.type === "discharge" && "Discharged"}
+                    </span>
+                  </div>
+
+                  {disposition.type === "admit" && disposition.days && (
+                    <div className="rounded-lg bg-muted p-3">
+                      <div className="text-muted-foreground text-sm">Estimated Stay</div>
+                      <div className="font-medium">{disposition.days} days</div>
+                    </div>
+                  )}
+
+                  {disposition.type === "discharge" && (
+                    <>
+                      {disposition.dischargeSummary && (
+                        <div className="rounded-lg border p-3">
+                          <div className="text-muted-foreground text-sm mb-2">Discharge Summary</div>
+                          <div className="text-sm whitespace-pre-wrap">{disposition.dischargeSummary}</div>
+                        </div>
+                      )}
+                      {disposition.prescription && (
+                        <div className="rounded-lg border p-3">
+                          <div className="text-muted-foreground text-sm mb-2">Prescription</div>
+                          <div className="text-sm whitespace-pre-wrap">{disposition.prescription}</div>
+                        </div>
+                      )}
+                      {disposition.followUp && (
+                        <div className="rounded-lg border p-3">
+                          <div className="text-muted-foreground text-sm mb-2">Follow-up Instructions</div>
+                          <div className="text-sm whitespace-pre-wrap">{disposition.followUp}</div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1682,6 +1893,156 @@ export default function EmergencyPatientDashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Disposition Modal */}
+      <Dialog open={dispositionModalOpen} onOpenChange={setDispositionModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Set Patient Disposition</DialogTitle>
+            <DialogDescription>Choose the patient&apos;s disposition and provide relevant details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Disposition Type *</Label>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisposition({ ...disposition, type: "admit" })}
+                  className={`w-full ${disposition.type === "admit" ? "bg-[#4684c2] text-white border-[#4684c2] hover:bg-[#3a6fa8]" : "hover:bg-gray-100"}`}
+                >
+                  Admit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisposition({ ...disposition, type: "transfer" })}
+                  className={`w-full ${disposition.type === "transfer" ? "bg-orange-500 text-white border-orange-500 hover:bg-orange-600" : "hover:bg-gray-100"}`}
+                >
+                  Transfer
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisposition({ ...disposition, type: "discharge" })}
+                  className={`w-full ${disposition.type === "discharge" ? "bg-[#4684c2] text-white border-[#4684c2] hover:bg-[#3a6fa8]" : "hover:bg-gray-100"}`}
+                >
+                  Discharge
+                </Button>
+              </div>
+            </div>
+
+            {disposition.type === "admit" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Ward/Unit *</Label>
+                    <Input
+                      value={disposition.ward || ""}
+                      onChange={(e) => setDisposition({ ...disposition, ward: e.target.value })}
+                      placeholder="e.g., ICU, General Ward"
+                    />
+                  </div>
+                  <div>
+                    <Label>Bed Number *</Label>
+                    <Input
+                      value={disposition.bedNumber || ""}
+                      onChange={(e) => setDisposition({ ...disposition, bedNumber: e.target.value })}
+                      placeholder="e.g., A-101"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Estimated Days *</Label>
+                    <Input
+                      type="number"
+                      value={disposition.days || ""}
+                      onChange={(e) => setDisposition({ ...disposition, days: parseInt(e.target.value) || 0 })}
+                      placeholder="Number of days"
+                    />
+                  </div>
+                  <div>
+                    <Label>Admission Fee (IQD)</Label>
+                    <Input
+                      type="number"
+                      value={disposition.admissionPrice || ""}
+                      onChange={(e) => setDisposition({ ...disposition, admissionPrice: parseFloat(e.target.value) || 0 })}
+                      placeholder="e.g., 650000"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Ward Cost per Day (IQD)</Label>
+                  <Input
+                    type="number"
+                    value={disposition.wardPrice || ""}
+                    onChange={(e) => setDisposition({ ...disposition, wardPrice: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g., 260000"
+                  />
+                </div>
+              </>
+            )}
+
+            {disposition.type === "transfer" && (
+              <div>
+                <Label>Transfer To *</Label>
+                <Input
+                  value={disposition.transferTo || ""}
+                  onChange={(e) => setDisposition({ ...disposition, transferTo: e.target.value })}
+                  placeholder="e.g., City General Hospital"
+                />
+              </div>
+            )}
+
+            {disposition.type === "discharge" && (
+              <>
+                <div>
+                  <Label>Discharge Summary *</Label>
+                  <textarea
+                    value={disposition.dischargeSummary || ""}
+                    onChange={(e) => setDisposition({ ...disposition, dischargeSummary: e.target.value })}
+                    placeholder="Summary of emergency visit, diagnosis, and treatment provided..."
+                    rows={4}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <Label>Prescription</Label>
+                  <textarea
+                    value={disposition.prescription || ""}
+                    onChange={(e) => setDisposition({ ...disposition, prescription: e.target.value })}
+                    placeholder="Medications prescribed with dosage and duration..."
+                    rows={3}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <Label>Follow-up Instructions</Label>
+                  <textarea
+                    value={disposition.followUp || ""}
+                    onChange={(e) => setDisposition({ ...disposition, followUp: e.target.value })}
+                    placeholder="Follow-up appointments, warning signs, and care instructions..."
+                    rows={3}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDispositionModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={saveDisposition}
+              className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
+            >
+              Save Disposition
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
