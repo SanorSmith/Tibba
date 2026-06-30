@@ -31,6 +31,7 @@ export interface VaccinationRecord {
   next_vaccine_due?: string;
   additional_details?: string;
   comment?: string;
+  price?: number;
 }
 
 interface VaccinationsTabProps {
@@ -51,7 +52,32 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
     nextVaccineDue: "",
     additionalDetails: "",
     comment: "",
+    price: "",
   });
+
+  const vaccines = [
+    { name: "BCG Vaccine", disease: "Tuberculosis", price: 15000 },
+    { name: "Hepatitis B Vaccine", disease: "Hepatitis B", price: 25000 },
+    { name: "Polio Vaccine (IPV)", disease: "Polio", price: 20000 },
+    { name: "Polio Vaccine (OPV)", disease: "Polio", price: 15000 },
+    { name: "DTP Vaccine", disease: "Diphtheria, Tetanus, Pertussis", price: 30000 },
+    { name: "Hib Vaccine", disease: "Haemophilus influenzae type b", price: 35000 },
+    { name: "Pneumococcal Vaccine (PCV)", disease: "Pneumococcal disease", price: 45000 },
+    { name: "Rotavirus Vaccine", disease: "Rotavirus gastroenteritis", price: 40000 },
+    { name: "MMR Vaccine", disease: "Measles, Mumps, Rubella", price: 35000 },
+    { name: "Varicella Vaccine", disease: "Chickenpox", price: 40000 },
+    { name: "Hepatitis A Vaccine", disease: "Hepatitis A", price: 30000 },
+    { name: "Typhoid Vaccine", disease: "Typhoid fever", price: 25000 },
+    { name: "Influenza Vaccine", disease: "Influenza", price: 20000 },
+    { name: "COVID-19 mRNA Vaccine", disease: "COVID-19", price: 50000 },
+    { name: "COVID-19 Viral Vector Vaccine", disease: "COVID-19", price: 45000 },
+    { name: "Meningococcal Vaccine", disease: "Meningococcal disease", price: 50000 },
+    { name: "HPV Vaccine", disease: "Human Papillomavirus", price: 60000 },
+    { name: "Japanese Encephalitis Vaccine", disease: "Japanese Encephalitis", price: 55000 },
+    { name: "Rabies Vaccine", disease: "Rabies", price: 70000 },
+    { name: "Cholera Vaccine", disease: "Cholera", price: 30000 },
+    { name: "Yellow Fever Vaccine", disease: "Yellow Fever", price: 40000 },
+  ];
 
   // Use React Query for caching
   const { data: vaccinations = [], isLoading: loadingVaccinations, refetch: loadVaccinations } = useQuery({
@@ -118,6 +144,7 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
                   <TableRow>
                     <TableHead>Vaccine Name</TableHead>
                     <TableHead>Targeted Disease</TableHead>
+                    <TableHead>Price (IQD)</TableHead>
                     <TableHead>Last Administered</TableHead>
                     <TableHead>Next Due</TableHead>
                     <TableHead>Total Doses</TableHead>
@@ -131,6 +158,9 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
                         {record.vaccine_name || "Vaccination Record"}
                       </TableCell>
                       <TableCell>{record.targeted_disease || "-"}</TableCell>
+                      <TableCell className="font-medium">
+                        {record.price ? record.price.toLocaleString() : "-"}
+                      </TableCell>
                       <TableCell>
                         {record.last_vaccine_date
                           ? new Date(record.last_vaccine_date).toLocaleDateString(
@@ -197,22 +227,32 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">
-                  Vaccine Name *
+                  Vaccine *
                 </label>
-                <input
-                  type="text"
+                <select
                   className="w-full mt-1 px-3 py-2 border rounded-md"
-                  placeholder="e.g., COVID-19 mRNA Vaccine"
                   value={vaccinationForm.vaccineName}
-                  onChange={(e) =>
-                    setVaccinationForm({
-                      ...vaccinationForm,
-                      vaccineName: e.target.value,
-                    })
-                  }
-                  aria-label="Vaccine name"
-                  title="Enter the vaccine name"
-                />
+                  onChange={(e) => {
+                    const selectedVaccine = vaccines.find(v => v.name === e.target.value);
+                    if (selectedVaccine) {
+                      setVaccinationForm({
+                        ...vaccinationForm,
+                        vaccineName: selectedVaccine.name,
+                        targetedDisease: selectedVaccine.disease,
+                        price: selectedVaccine.price.toString(),
+                      });
+                    }
+                  }}
+                  aria-label="Select vaccine"
+                  title="Select a vaccine from the list"
+                >
+                  <option value="">-- Select Vaccine --</option>
+                  {vaccines.map((vaccine) => (
+                    <option key={vaccine.name} value={vaccine.name}>
+                      {vaccine.name} - {vaccine.price.toLocaleString()} IQD
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-sm font-medium">
@@ -220,19 +260,29 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
                 </label>
                 <input
                   type="text"
-                  className="w-full mt-1 px-3 py-2 border rounded-md"
-                  placeholder="e.g., COVID-19"
+                  className="w-full mt-1 px-3 py-2 border rounded-md bg-gray-50"
+                  placeholder="Auto-filled from vaccine selection"
                   value={vaccinationForm.targetedDisease}
-                  onChange={(e) =>
-                    setVaccinationForm({
-                      ...vaccinationForm,
-                      targetedDisease: e.target.value,
-                    })
-                  }
+                  readOnly
                   aria-label="Targeted disease or agent"
-                  title="Enter the targeted disease or agent"
+                  title="Auto-filled based on vaccine selection"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">
+                Price (IQD)
+              </label>
+              <input
+                type="text"
+                className="w-full mt-1 px-3 py-2 border rounded-md bg-gray-50"
+                placeholder="Auto-filled from vaccine selection"
+                value={vaccinationForm.price ? parseInt(vaccinationForm.price).toLocaleString() : ""}
+                readOnly
+                aria-label="Vaccine price"
+                title="Auto-filled based on vaccine selection"
+              />
             </div>
 
             <div>
@@ -363,6 +413,7 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
                     nextVaccineDue: "",
                     additionalDetails: "",
                     comment: "",
+                    price: "",
                   });
                 }}
               >
@@ -410,6 +461,7 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
                       nextVaccineDue: "",
                       additionalDetails: "",
                       comment: "",
+                      price: "",
                     });
                     loadVaccinations();
                   } catch (error) {
@@ -458,6 +510,14 @@ export function VaccinationsTab({ workspaceid, patientid }: VaccinationsTabProps
                   </label>
                   <div className="mt-1 text-md font-medium">
                     {selectedVaccination.targeted_disease || "Not specified"}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">
+                    Price (IQD)
+                  </label>
+                  <div className="mt-1 text-md font-medium">
+                    {selectedVaccination.price ? selectedVaccination.price.toLocaleString() : "Not specified"}
                   </div>
                 </div>
                 <div>
