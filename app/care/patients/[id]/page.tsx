@@ -36,7 +36,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, Activity, Thermometer, Heart, Wind, Droplets, FlaskConical, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Activity, Thermometer, Heart, Wind, Droplets, FlaskConical, CheckCircle2, Printer } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useSession } from "next-auth/react";
 import type { TriageDashboardRecord } from "@/app/api/d/[workspaceid]/triage/route";
 import type { VitalSignsRecord } from "@/lib/openehr/openehr";
@@ -321,6 +323,8 @@ export default function EmergencyPatientDashboardPage() {
     message: string;
     type: "success" | "error" | "warning";
   }>({ show: false, title: "", message: "", type: "success" });
+
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
 
   // Disposition state
   const [dispositionModalOpen, setDispositionModalOpen] = useState(false);
@@ -697,6 +701,215 @@ export default function EmergencyPatientDashboardPage() {
   const patientName = `${patient.firstname} ${patient.middlename || ""} ${patient.lastname}`.trim();
   const mrn = patient.nationalid || patient.patientid;
 
+  // Only show data from the moment the patient entered emergency
+  const emergencyEntryTime = latestTriage?.arrivalTime ? new Date(latestTriage.arrivalTime).getTime() : 0;
+  const nowMs = Date.now();
+  const inWindow = (dateStr: string | undefined) => {
+    if (!dateStr) return true;
+    const ms = new Date(dateStr).getTime();
+    return ms >= emergencyEntryTime && ms <= nowMs;
+  };
+
+  const filteredLabResults = labResults.filter((r) => inWindow(r.report_date));
+  const filteredImagingResults = imagingResults.filter((r) => inWindow(r.report_date));
+  const filteredEcgResults = ecgResults.filter((r) => inWindow(r.report_date));
+  const filteredLabOrders = labOrders.filter((o) => inWindow(o.requested_date || o.recorded_time));
+  const filteredAccessionSamples = accessionSamples.filter((s) => inWindow(s.collectiondate ?? s.accessionedat ?? undefined));
+  const filteredVitals = vitals.filter((v) => inWindow(v.recorded_time));
+
+  function printEmergencyReport() {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const now = new Date().toLocaleString();
+
+    const section = (title: string, currentY: number) => {
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(title, 14, currentY);
+      const lineY = currentY + 4;
+      doc.setDrawColor(70, 132, 194);
+      doc.line(14, lineY, pageWidth - 14, lineY);
+      return lineY + 5;
+    };
+
+    // Header
+    doc.setFillColor(70, 132, 194);
+    doc.rect(0, 0, pageWidth, 28, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Emergency Visit Report", pageWidth / 2, 12, { align: "center" });
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated: ${now}`, pageWidth / 2, 22, { align: "center" });
+    doc.setTextColor(0, 0, 0);
+
+    let y = 36;
+
+    // 1. Patient Entry
+    y = section("Patient Entry", y);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${patientName}`, 14, y);
+    doc.text(`MRN: ${mrn}`, 110, y);
+    y += 5;
+    doc.text(`Age: ${age} yrs  |  Gender: ${patient!.gender === "male" ? "Male" : "Female"}  |  Blood Group: ${patient!.bloodgroup || "-"}`, 14, y);
+    y += 5;
+    if (latestTriage) {
+      doc.text(`Arrival Mode: ${latestTriage.arrivalMode || "-"}  |  Time: ${latestTriage.arrivalTime ? new Date(latestTriage.arrivalTime).toLocaleString() : "-"}`, 14, y);
+      y += 5;
+      doc.text(`Triage Level: ${latestTriage.triageLevel.toUpperCase()}  |  ESI: ${latestTriage.esi || "-"}  |  Pain: ${latestTriage.painScore}/10`, 14, y);
+      y += 5;
+      doc.text(`Chief Complaint: ${latestTriage.chiefComplaint || "-"}`, 14, y);
+      y += 5;
+      doc.text(`Doctor: ${latestTriage.doctor || "Unassigned"}${latestTriage.allergies ? "  |  Allergies: " + latestTriage.allergies : ""}`, 14, y);
+      y += 5;
+    }
+    y += 4;
+
+    // 2. Services & Pricing
+    y = section("Services & Pricing", y);
+
+    const serviceRows: string[][] = [
+      ...emergencyServices.map((s) => [s.name, s.category, new Date().toLocaleDateString(), s.price.toLocaleString() + " IQD"]),
+      ...filteredLabResults.map((r) => [r.test_name, "Lab Result", new Date(r.report_date).toLocaleDateString(), ((r.price || 0) * 1300).toLocaleString() + " IQD"]),
+      ...filteredImagingResults.map((r) => [r.study_name, "Imaging", new Date(r.report_date).toLocaleDateString(), (r.price * 1300).toLocaleString() + " IQD"]),
+      ...filteredEcgResults.map((r) => [r.test_name, "ECG", new Date(r.report_date).toLocaleDateString(), (r.price * 1300).toLocaleString() + " IQD"]),
+    ];
+    if (disposition.admissionPrice) serviceRows.push(["Emergency Admission", "Admission", new Date().toLocaleDateString(), disposition.admissionPrice.toLocaleString() + " IQD"]);
+    if (disposition.wardPrice && disposition.days) serviceRows.push([`Ward Stay (${disposition.ward || "Ward"} - ${disposition.days} days)`, "Ward", new Date().toLocaleDateString(), disposition.wardPrice.toLocaleString() + " IQD"]);
+
+    const grandTotal =
+      emergencyServices.reduce((s, r) => s + r.price, 0) +
+      filteredLabResults.reduce((s, r) => s + ((r.price || 0) * 1300), 0) +
+      filteredImagingResults.reduce((s, r) => s + (r.price * 1300), 0) +
+      filteredEcgResults.reduce((s, r) => s + (r.price * 1300), 0) +
+      (disposition.admissionPrice || 0) +
+      (disposition.wardPrice || 0);
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Service", "Category", "Date", "Price (IQD)"]],
+      body: serviceRows,
+      theme: "striped",
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [70, 132, 194], fontStyle: "bold" },
+      columnStyles: { 3: { halign: "right" } },
+      foot: [["", "", "Grand Total", grandTotal.toLocaleString() + " IQD"]],
+      footStyles: { fillColor: [240, 246, 255], fontStyle: "bold", textColor: [70, 132, 194] },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // 3. Lab Orders
+    if (filteredLabOrders.length > 0) {
+      y = section("Lab Orders", y);
+      autoTable(doc, {
+        startY: y,
+        head: [["Test / Service", "Type", "Requested", "Urgency", "Status"]],
+        body: filteredLabOrders.map((o) => [
+          o.service_name,
+          o.service_type_value || o.service_type_code,
+          o.requested_date ? new Date(o.requested_date).toLocaleDateString() : "-",
+          o.urgency || "-",
+          o.request_status,
+        ]),
+        theme: "striped",
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [100, 100, 100], fontStyle: "bold" },
+      });
+      y = (doc as any).lastAutoTable.finalY + 8;
+    }
+
+    // 4. Lab Results
+    if (filteredLabResults.length > 0) {
+      y = section("Lab Results", y);
+      for (const r of filteredLabResults) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${r.test_name}  (${new Date(r.report_date).toLocaleDateString()})`, 14, y);
+        y += 4;
+        if (r.test_results.length > 0) {
+          autoTable(doc, {
+            startY: y,
+            head: [["Analyte", "Result", "Unit", "Reference", "Flag"]],
+            body: r.test_results.map((a) => [
+              a.analyte_name,
+              String(a.result_value),
+              a.result_unit || "-",
+              a.reference_range || "-",
+              a.result_flag || "",
+            ]),
+            theme: "plain",
+            styles: { fontSize: 7.5 },
+            headStyles: { fillColor: [230, 240, 255], textColor: [50, 50, 50], fontStyle: "bold" },
+            margin: { left: 14, right: 14 },
+          });
+          y = (doc as any).lastAutoTable.finalY + 4;
+        }
+        if (r.conclusion) {
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "italic");
+          doc.text(`Conclusion: ${r.conclusion}`, 14, y);
+          y += 5;
+        }
+      }
+      y += 4;
+    }
+
+    // 5. Disposition
+    y = section("Disposition", y);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    if (!disposition.type) {
+      doc.text("No disposition set - patient still in emergency.", 14, y);
+      y += 6;
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.text(`Status: ${disposition.type.toUpperCase()}`, 14, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      if (disposition.type === "admit") {
+        doc.text(`Ward: ${disposition.ward || "-"}   Bed: ${disposition.bedNumber || "-"}   Est. Stay: ${disposition.days || "-"} days`, 14, y);
+        y += 5;
+      } else if (disposition.type === "transfer") {
+        doc.text(`Transfer To: ${disposition.transferTo || "-"}`, 14, y);
+        y += 5;
+      } else if (disposition.type === "discharge") {
+        if (disposition.dischargeSummary) {
+          doc.setFont("helvetica", "bold"); doc.text("Discharge Summary:", 14, y); y += 4;
+          doc.setFont("helvetica", "normal");
+          const lines = doc.splitTextToSize(disposition.dischargeSummary, pageWidth - 28) as string[];
+          doc.text(lines, 14, y); y += lines.length * 4 + 3;
+        }
+        if (disposition.prescription) {
+          doc.setFont("helvetica", "bold"); doc.text("Prescription:", 14, y); y += 4;
+          doc.setFont("helvetica", "normal");
+          const lines = doc.splitTextToSize(disposition.prescription, pageWidth - 28) as string[];
+          doc.text(lines, 14, y); y += lines.length * 4 + 3;
+        }
+        if (disposition.followUp) {
+          doc.setFont("helvetica", "bold"); doc.text("Follow-up Instructions:", 14, y); y += 4;
+          doc.setFont("helvetica", "normal");
+          const lines = doc.splitTextToSize(disposition.followUp, pageWidth - 28) as string[];
+          doc.text(lines, 14, y);
+        }
+      }
+    }
+
+    // Footer on each page
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Page ${i} of ${pageCount}  |  Tibbna EHR  |  Confidential`, pageWidth / 2, doc.internal.pageSize.getHeight() - 8, { align: "center" });
+      doc.setTextColor(0);
+    }
+
+    doc.save(`emergency-report-${mrn}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
   return (
     <div className="space-y-6">
       <CareHeader
@@ -803,7 +1016,7 @@ export default function EmergencyPatientDashboardPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              {vitals.length === 0 ? (
+              {filteredVitals.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No vitals recorded yet.</div>
               ) : (
                 <Table>
@@ -818,7 +1031,7 @@ export default function EmergencyPatientDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vitals.map((v) => (
+                    {filteredVitals.map((v) => (
                       <TableRow key={v.composition_uid}>
                         <TableCell>
                           {v.recorded_time ? new Date(v.recorded_time).toLocaleString() : "-"}
@@ -908,27 +1121,41 @@ export default function EmergencyPatientDashboardPage() {
                     title: `Initial Assessment: ${t.chiefComplaint} (${t.triageLevel.toUpperCase()})`,
                     detail: undefined as string | undefined,
                   })),
-                  ...vitals.map((v) => ({
+                  ...filteredVitals.map((v) => ({
                     id: v.composition_uid,
                     time: v.recorded_time,
                     type: "vitals" as const,
                     title: "Vitals recorded",
                     detail: undefined as string | undefined,
                   })),
-                  ...labOrders.map((o) => ({
-                    id: o.composition_uid,
-                    time: o.requested_date || o.recorded_time,
-                    type: "lab-order" as const,
-                    title: `Lab order placed: ${o.service_name}`,
-                    detail: `Status: ${o.request_status}`,
-                  })),
-                  ...accessionSamples.map((s) => ({
-                    id: s.sampleid,
-                    time: s.accessionedat || s.collectiondate || undefined,
-                    type: "sample" as const,
-                    title: `Sample collected: ${s.sampletype} (${s.samplenumber})`,
-                    detail: s.accessionnumber ? `Accession: ${s.accessionnumber}` : undefined,
-                  })),
+                  ...labOrders
+                    .filter((o) => {
+                      const t = o.requested_date || o.recorded_time;
+                      if (!t) return true;
+                      const ms = new Date(t).getTime();
+                      return ms >= emergencyEntryTime && ms <= nowMs;
+                    })
+                    .map((o) => ({
+                      id: o.composition_uid,
+                      time: o.requested_date || o.recorded_time,
+                      type: "lab-order" as const,
+                      title: `Lab order placed: ${o.service_name}`,
+                      detail: `Status: ${o.request_status}`,
+                    })),
+                  ...accessionSamples
+                    .filter((s) => {
+                      const t = s.accessionedat || s.collectiondate;
+                      if (!t) return true;
+                      const ms = new Date(t).getTime();
+                      return ms >= emergencyEntryTime && ms <= nowMs;
+                    })
+                    .map((s) => ({
+                      id: s.sampleid,
+                      time: s.accessionedat || s.collectiondate || undefined,
+                      type: "sample" as const,
+                      title: `Sample collected: ${s.sampletype} (${s.samplenumber})`,
+                      detail: s.accessionnumber ? `Accession: ${s.accessionnumber}` : undefined,
+                    })),
                 ];
                 events.sort((a, b) => {
                   const aTime = a.time ? new Date(a.time).getTime() : 0;
@@ -960,24 +1187,24 @@ export default function EmergencyPatientDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Lab Results</CardTitle>
-              {labResults.length > 0 && (
+              {filteredLabResults.length > 0 && (
                 <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">
-                  Total: {labResults.reduce((sum, r) => sum + (r.price || 0), 0)} {labResults[0]?.currency || "USD"}
+                  Total: {(filteredLabResults.reduce((sum, r) => sum + (r.price || 0), 0) * 1300).toLocaleString()} IQD
                 </Badge>
               )}
             </CardHeader>
             <CardContent>
-              {labResults.length === 0 ? (
+              {filteredLabResults.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No lab results available.</div>
               ) : (
                 <div className="space-y-4">
-                  {labResults.map((result) => (
+                  {filteredLabResults.map((result) => (
                     <div key={result.composition_uid} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <div className="font-medium">{result.test_name}</div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {result.price} {result.currency}
+                            {((result.price || 0) * 1300).toLocaleString()} IQD
                           </Badge>
                           <Badge variant="outline">{result.overall_test_status}</Badge>
                         </div>
@@ -1027,24 +1254,24 @@ export default function EmergencyPatientDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Imaging Results</CardTitle>
-              {imagingResults.length > 0 && (
+              {filteredImagingResults.length > 0 && (
                 <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">
-                  Total: {imagingResults.reduce((sum, r) => sum + r.price, 0)} {imagingResults[0]?.currency || "USD"}
+                  Total: {(filteredImagingResults.reduce((sum, r) => sum + r.price, 0) * 1300).toLocaleString()} IQD
                 </Badge>
               )}
             </CardHeader>
             <CardContent>
-              {imagingResults.length === 0 ? (
+              {filteredImagingResults.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No imaging results available.</div>
               ) : (
                 <div className="space-y-4">
-                  {imagingResults.map((result) => (
+                  {filteredImagingResults.map((result) => (
                     <div key={result.composition_uid} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <div className="font-medium">{result.study_name}</div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {result.price} {result.currency}
+                            {(result.price * 1300).toLocaleString()} IQD
                           </Badge>
                           <Badge variant="outline">{result.overall_status}</Badge>
                         </div>
@@ -1070,24 +1297,24 @@ export default function EmergencyPatientDashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>ECG Results</CardTitle>
-              {ecgResults.length > 0 && (
+              {filteredEcgResults.length > 0 && (
                 <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">
-                  Total: {ecgResults.reduce((sum, r) => sum + r.price, 0)} {ecgResults[0]?.currency || "USD"}
+                  Total: {(filteredEcgResults.reduce((sum, r) => sum + r.price, 0) * 1300).toLocaleString()} IQD
                 </Badge>
               )}
             </CardHeader>
             <CardContent>
-              {ecgResults.length === 0 ? (
+              {filteredEcgResults.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No ECG results available.</div>
               ) : (
                 <div className="space-y-4">
-                  {ecgResults.map((result) => (
+                  {filteredEcgResults.map((result) => (
                     <div key={result.composition_uid} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <div className="font-medium">{result.test_name}</div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {result.price} {result.currency}
+                            {(result.price * 1300).toLocaleString()} IQD
                           </Badge>
                           <Badge variant="outline">{result.overall_status}</Badge>
                         </div>
@@ -1155,7 +1382,7 @@ export default function EmergencyPatientDashboardPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              {labOrders.length === 0 ? (
+              {filteredLabOrders.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No lab orders.</div>
               ) : (
                 <Table>
@@ -1170,8 +1397,8 @@ export default function EmergencyPatientDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {labOrders.map((order) => {
-                      const collected = accessionSamples.some(
+                    {filteredLabOrders.map((order) => {
+                      const collected = filteredAccessionSamples.some(
                         (s) =>
                           s.openehrrequestid === order.composition_uid ||
                           s.openehrrequestid === order.request_id ||
@@ -1224,7 +1451,7 @@ export default function EmergencyPatientDashboardPage() {
               <CardTitle>Collected Samples</CardTitle>
             </CardHeader>
             <CardContent>
-              {accessionSamples.length === 0 ? (
+              {filteredAccessionSamples.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No samples collected.</div>
               ) : (
                 <Table>
@@ -1240,8 +1467,8 @@ export default function EmergencyPatientDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {accessionSamples.map((s) => {
-                      const order = labOrders.find(
+                    {filteredAccessionSamples.map((s) => {
+                      const order = filteredLabOrders.find(
                         (o) =>
                           o.composition_uid === s.openehrrequestid ||
                           o.request_id === s.openehrrequestid ||
@@ -1270,6 +1497,14 @@ export default function EmergencyPatientDashboardPage() {
         </TabsContent>
 
         <TabsContent value="emergency-report" className="mt-4 space-y-4">
+          {/* Print button */}
+          <div className="flex justify-end">
+            <Button onClick={() => setPrintPreviewOpen(true)} className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white">
+              <Printer className="h-4 w-4 mr-2" />
+              Print Report
+            </Button>
+          </div>
+
           {/* Patient Summary Card */}
           <Card>
             <CardHeader>
@@ -1893,6 +2128,292 @@ export default function EmergencyPatientDashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Print Preview Modal */}
+      <Dialog open={printPreviewOpen} onOpenChange={setPrintPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Emergency Visit Report — Preview</DialogTitle>
+            <DialogDescription>Review the report before printing as PDF</DialogDescription>
+          </DialogHeader>
+
+          {/* Preview content */}
+          <div className="bg-white border rounded-lg p-6 space-y-6 text-sm font-sans">
+
+            {/* Report header */}
+            <div className="bg-[#4684c2] text-white text-center rounded-lg p-4">
+              <h1 className="text-xl font-bold">Emergency Visit Report</h1>
+              <p className="text-xs opacity-80 mt-1">Generated: {new Date().toLocaleString()}</p>
+            </div>
+
+            {/* 1. Patient Entry */}
+            <div>
+              <h2 className="font-bold text-base border-b-2 border-[#4684c2] pb-1 mb-3">Patient Entry</h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                <div><span className="text-gray-500">Name:</span> <span className="font-medium">{patientName}</span></div>
+                <div><span className="text-gray-500">MRN:</span> <span className="font-medium">{mrn}</span></div>
+                <div><span className="text-gray-500">Age / Gender:</span> {age} yrs — {patient.gender === "male" ? "Male" : "Female"}</div>
+                <div><span className="text-gray-500">Blood Group:</span> {patient.bloodgroup || "-"}</div>
+                {latestTriage && (
+                  <>
+                    <div>
+                      <span className="text-gray-500">Arrival:</span> {latestTriage.arrivalMode || "-"}
+                      {latestTriage.arrivalTime && <span className="ml-2 text-gray-400 text-xs">({new Date(latestTriage.arrivalTime).toLocaleString()})</span>}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Triage Level:</span>{" "}
+                      <span className={`font-bold uppercase px-1.5 py-0.5 rounded text-xs ${
+                        latestTriage.triageLevel === "red" ? "bg-red-100 text-red-700" :
+                        latestTriage.triageLevel === "yellow" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-green-100 text-green-700"
+                      }`}>{latestTriage.triageLevel}</span>
+                    </div>
+                    <div><span className="text-gray-500">Chief Complaint:</span> {latestTriage.chiefComplaint || "-"}</div>
+                    <div><span className="text-gray-500">Assigned Doctor:</span> {latestTriage.doctor || "Unassigned"}</div>
+                    <div><span className="text-gray-500">ESI:</span> {latestTriage.esi || "-"}</div>
+                    <div><span className="text-gray-500">Pain Score:</span> {latestTriage.painScore}/10</div>
+                    {latestTriage.allergies && <div className="col-span-2"><span className="text-gray-500">Allergies:</span> {latestTriage.allergies}</div>}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Services & Pricing */}
+            <div>
+              <h2 className="font-bold text-base border-b-2 border-[#4684c2] pb-1 mb-3">Services &amp; Pricing</h2>
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#4684c2] text-white">
+                    <th className="text-left p-2">Service</th>
+                    <th className="text-left p-2">Category</th>
+                    <th className="text-left p-2">Date</th>
+                    <th className="text-right p-2">Price (IQD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emergencyServices.map((s, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                      <td className="p-2">{s.name}</td>
+                      <td className="p-2"><span className="bg-red-100 text-red-700 px-1.5 py-0.5 rounded text-xs">Emergency</span></td>
+                      <td className="p-2 text-gray-500">{new Date().toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{s.price.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {filteredLabResults.map((r, i) => (
+                    <tr key={r.composition_uid} className={(emergencyServices.length + i) % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                      <td className="p-2">{r.test_name}</td>
+                      <td className="p-2"><span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-xs">Lab Result</span></td>
+                      <td className="p-2 text-gray-500">{new Date(r.report_date).toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{((r.price || 0) * 1300).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {filteredImagingResults.map((r, i) => (
+                    <tr key={r.composition_uid} className={(emergencyServices.length + filteredLabResults.length + i) % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                      <td className="p-2">{r.study_name}</td>
+                      <td className="p-2"><span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs">Imaging</span></td>
+                      <td className="p-2 text-gray-500">{new Date(r.report_date).toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{(r.price * 1300).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {filteredEcgResults.map((r, i) => (
+                    <tr key={r.composition_uid} className={(emergencyServices.length + filteredLabResults.length + filteredImagingResults.length + i) % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                      <td className="p-2">{r.test_name}</td>
+                      <td className="p-2"><span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs">ECG</span></td>
+                      <td className="p-2 text-gray-500">{new Date(r.report_date).toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{(r.price * 1300).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {disposition.admissionPrice && (
+                    <tr className="bg-gray-50">
+                      <td className="p-2">Emergency Admission</td>
+                      <td className="p-2"><span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-xs">Admission</span></td>
+                      <td className="p-2 text-gray-500">{new Date().toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{disposition.admissionPrice.toLocaleString()}</td>
+                    </tr>
+                  )}
+                  {disposition.wardPrice && disposition.days && (
+                    <tr className="bg-white">
+                      <td className="p-2">Ward Stay ({disposition.ward} — {disposition.days} days)</td>
+                      <td className="p-2"><span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-xs">Ward</span></td>
+                      <td className="p-2 text-gray-500">{new Date().toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{disposition.wardPrice.toLocaleString()}</td>
+                    </tr>
+                  )}
+                  <tr className="border-t-2 border-[#4684c2] bg-[#4684c2]/5">
+                    <td colSpan={3} className="p-2 font-bold text-right">Grand Total</td>
+                    <td className="p-2 text-right font-bold text-base text-[#4684c2]">
+                      {(
+                        emergencyServices.reduce((s, r) => s + r.price, 0) +
+                        labResults.reduce((s, r) => s + ((r.price || 0) * 1300), 0) +
+                        imagingResults.reduce((s, r) => s + (r.price * 1300), 0) +
+                        ecgResults.reduce((s, r) => s + (r.price * 1300), 0) +
+                        (disposition.admissionPrice || 0) +
+                        (disposition.wardPrice || 0)
+                      ).toLocaleString()} IQD
+                      {/* filtered total */}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* 3. Lab Orders */}
+            {filteredLabOrders.length > 0 && (
+              <div>
+                <h2 className="font-bold text-base border-b-2 border-[#4684c2] pb-1 mb-3">Lab Orders</h2>
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100 text-gray-700">
+                      <th className="text-left p-2">Test / Service</th>
+                      <th className="text-left p-2">Type</th>
+                      <th className="text-left p-2">Requested</th>
+                      <th className="text-left p-2">Urgency</th>
+                      <th className="text-left p-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLabOrders.map((o, i) => (
+                      <tr key={o.composition_uid} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                        <td className="p-2 font-medium">{o.service_name}</td>
+                        <td className="p-2 text-gray-600">{o.service_type_value || o.service_type_code}</td>
+                        <td className="p-2 text-gray-500">{o.requested_date ? new Date(o.requested_date).toLocaleDateString() : "-"}</td>
+                        <td className="p-2">
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${
+                            o.urgency?.toLowerCase() === "urgent" || o.urgency?.toLowerCase() === "stat"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}>{o.urgency || "-"}</span>
+                        </td>
+                        <td className="p-2">
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${
+                            o.request_status === "COMPLETED" ? "bg-green-100 text-green-700" :
+                            o.request_status === "CANCELLED" ? "bg-red-100 text-red-700" :
+                            "bg-blue-100 text-blue-700"
+                          }`}>{o.request_status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* 4. Lab Results */}
+            {filteredLabResults.length > 0 && (
+              <div>
+                <h2 className="font-bold text-base border-b-2 border-[#4684c2] pb-1 mb-3">Lab Results</h2>
+                <div className="space-y-3">
+                  {filteredLabResults.map((r) => (
+                    <div key={r.composition_uid} className="border rounded p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-sm">{r.test_name}</span>
+                        <span className="text-xs text-gray-500">{new Date(r.report_date).toLocaleDateString()}</span>
+                      </div>
+                      {r.test_results.length > 0 && (
+                        <table className="w-full text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="text-left p-1">Analyte</th>
+                              <th className="text-right p-1">Result</th>
+                              <th className="text-left p-1">Unit</th>
+                              <th className="text-left p-1">Reference</th>
+                              <th className="text-left p-1">Flag</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {r.test_results.map((a, ai) => (
+                              <tr key={ai} className={ai % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                                <td className="p-1">{a.analyte_name}</td>
+                                <td className={`p-1 text-right font-medium ${
+                                  a.result_flag === "H" || a.result_flag === "HH" ? "text-red-600" :
+                                  a.result_flag === "L" || a.result_flag === "LL" ? "text-blue-600" : ""
+                                }`}>{a.result_value}</td>
+                                <td className="p-1 text-gray-500">{a.result_unit || "-"}</td>
+                                <td className="p-1 text-gray-500">{a.reference_range || "-"}</td>
+                                <td className="p-1">{a.result_flag && <span className={`px-1 rounded text-xs ${
+                                  a.result_flag === "H" || a.result_flag === "HH" ? "bg-red-100 text-red-700" :
+                                  a.result_flag === "L" || a.result_flag === "LL" ? "bg-blue-100 text-blue-700" :
+                                  "bg-green-100 text-green-700"
+                                }`}>{a.result_flag}</span>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                      {r.conclusion && <div className="mt-2 text-xs text-gray-600"><span className="font-semibold">Conclusion:</span> {r.conclusion}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 5. Disposition */}
+            <div>
+              <h2 className="font-bold text-base border-b-2 border-[#4684c2] pb-1 mb-3">Disposition</h2>
+              {!disposition.type ? (
+                <div className="text-gray-400 italic text-xs">No disposition set — patient still in emergency.</div>
+              ) : (
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-gray-500">Status:</span>{" "}
+                    <span className={`font-bold uppercase px-2 py-0.5 rounded text-white text-xs ${
+                      disposition.type === "transfer" ? "bg-orange-500" : "bg-[#4684c2]"
+                    }`}>{disposition.type}</span>
+                  </div>
+                  {disposition.type === "admit" && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><span className="text-gray-500">Ward:</span> {disposition.ward || "-"}</div>
+                      <div><span className="text-gray-500">Bed:</span> {disposition.bedNumber || "-"}</div>
+                      <div><span className="text-gray-500">Est. Stay:</span> {disposition.days || "-"} days</div>
+                    </div>
+                  )}
+                  {disposition.type === "transfer" && (
+                    <div><span className="text-gray-500">Transfer To:</span> {disposition.transferTo || "-"}</div>
+                  )}
+                  {disposition.type === "discharge" && (
+                    <div className="space-y-2">
+                      {disposition.dischargeSummary && (
+                        <div>
+                          <div className="font-semibold text-gray-700 text-xs mb-1">Discharge Summary</div>
+                          <div className="bg-gray-50 rounded p-2 whitespace-pre-wrap text-xs">{disposition.dischargeSummary}</div>
+                        </div>
+                      )}
+                      {disposition.prescription && (
+                        <div>
+                          <div className="font-semibold text-gray-700 text-xs mb-1">Prescription</div>
+                          <div className="bg-gray-50 rounded p-2 whitespace-pre-wrap text-xs">{disposition.prescription}</div>
+                        </div>
+                      )}
+                      {disposition.followUp && (
+                        <div>
+                          <div className="font-semibold text-gray-700 text-xs mb-1">Follow-up Instructions</div>
+                          <div className="bg-gray-50 rounded p-2 whitespace-pre-wrap text-xs">{disposition.followUp}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="text-center text-xs text-gray-400 border-t pt-3">
+              Tibbna EHR — Confidential Medical Document
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintPreviewOpen(false)}>Close</Button>
+            <Button
+              onClick={() => { printEmergencyReport(); setPrintPreviewOpen(false); }}
+              className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Disposition Modal */}
       <Dialog open={dispositionModalOpen} onOpenChange={setDispositionModalOpen}>

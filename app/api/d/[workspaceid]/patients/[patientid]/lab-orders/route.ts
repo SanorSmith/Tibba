@@ -209,8 +209,11 @@ export async function GET(
             `Extracted data - serviceName: ${serviceName}, clinicalIndication: ${clinicalIndication}`
           );
 
-          // Only return if there's actual lab order data
-          if (serviceName) {
+          // Exclude procedure requests (they use the same template but have PROCEDURE_REQUEST in description)
+          const isProcedureRequest = description === "PROCEDURE_REQUEST";
+
+          // Only return if there's actual lab order data and it's not a procedure
+          if (serviceName && !isProcedureRequest) {
             console.log(
               `Composition ${comp.composition_uid} has lab order: ${serviceName}`
             );

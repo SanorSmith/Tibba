@@ -17,7 +17,7 @@ import { CareHeader } from "@/components/care/care-header";
 import { useCareWorkspace } from "@/components/care/care-workspace-context";
 import type { TriageDashboardRecord } from "@/app/api/d/[workspaceid]/triage/route";
 import Link from "next/link";
-import { Clock, AlertTriangle, CheckCircle2, Pill } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle2, Pill, ChevronDown, ChevronRight } from "lucide-react";
 
 interface Doctor {
   availabilityid: string;
@@ -30,6 +30,27 @@ interface Doctor {
 }
 
 type TriageLevel = "red" | "yellow" | "green";
+type DispositionStatus = "admit" | "transfer" | "discharge";
+
+function dispositionClasses(status: DispositionStatus) {
+  switch (status) {
+    case "admit": return "bg-blue-50 text-blue-700 border-blue-200";
+    case "transfer": return "bg-purple-50 text-purple-700 border-purple-200";
+    case "discharge": return "bg-green-50 text-green-700 border-green-200";
+  }
+}
+
+function dispositionLabel(status: DispositionStatus) {
+  switch (status) {
+    case "admit": return "Admitted";
+    case "transfer": return "Transferred";
+    case "discharge": return "Discharged";
+  }
+}
+
+function isDispensed(status: string) {
+  return ["admit", "transfer", "discharge"].includes(status);
+}
 
 function triageClasses(level: TriageLevel) {
   switch (level) {
@@ -114,7 +135,11 @@ export default function CareDashboardPage() {
     loadDoctors();
   }, [assignOpen, workspaceId]);
 
-  const criticalAlerts = records.filter((v) => v.triageLevel === "red" && v.status !== "discharged");
+  const [completedOpen, setCompletedOpen] = useState(false);
+
+  const activeRecords = records.filter((v) => !isDispensed(v.status));
+  const completedRecords = records.filter((v) => isDispensed(v.status));
+  const criticalAlerts = activeRecords.filter((v) => v.triageLevel === "red");
 
   function openAssignDoctor(visit: TriageDashboardRecord) {
     setSelectedVisit(visit);
@@ -169,11 +194,14 @@ export default function CareDashboardPage() {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Assigned Patients</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Patients</CardTitle>
             <UsersIcon className="size-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{records.length}</div>
+            <div className="text-2xl font-bold">{activeRecords.length}</div>
+            {completedRecords.length > 0 && (
+              <p className="text-xs text-muted-foreground">{completedRecords.length} dispensed today</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -227,7 +255,7 @@ export default function CareDashboardPage() {
             </div>
           )}
           <div className="grid gap-4 md:grid-cols-2">
-            {records.map((visit) => (
+            {activeRecords.map((visit) => (
               <div
                 key={visit.visitId}
                 className="rounded-xl border bg-card text-card-foreground flex flex-col hover:shadow-sm transition-shadow"
@@ -282,6 +310,60 @@ export default function CareDashboardPage() {
               </div>
             ))}
           </div>
+
+          {completedRecords.length > 0 && (
+            <div className="mt-6">
+              <button
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
+                onClick={() => setCompletedOpen((o) => !o)}
+              >
+                {completedOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                Completed Today ({completedRecords.length})
+              </button>
+              {completedOpen && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {completedRecords.map((visit) => (
+                    <div
+                      key={visit.visitId}
+                      className="rounded-xl border bg-muted/40 text-card-foreground flex flex-col opacity-70"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarFallback>
+                                {visit.patientName.split(" ").map((n) => n[0]).join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-semibold">{visit.patientName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {visit.age} yrs • {visit.gender === "male" ? "M" : "F"} • {visit.mrn}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={dispositionClasses(visit.status as DispositionStatus)}>
+                            {dispositionLabel(visit.status as DispositionStatus)}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div>Doctor: {visit.doctor || "Unassigned"}</div>
+                          <div>ESI: {visit.esi}</div>
+                          <div>{triageDot(visit.triageLevel)} {visit.triageLevel.toUpperCase()}</div>
+                          <div>{visit.chiefComplaint}</div>
+                        </div>
+                      </div>
+                      <div className="border-t p-4 mt-auto">
+                        <Button size="sm" variant="outline" className="w-full" asChild>
+                          <Link href={`/care/patients/${visit.patientId}`}>View Record</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

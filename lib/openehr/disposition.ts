@@ -1,9 +1,50 @@
 import axios from "axios";
+import fs from "fs";
+import path from "path";
 
-const username = process.env.EHRBASE_USER?.trim() || "";
-const password = process.env.EHRBASE_PASSWORD?.trim() || "";
-const credentials = `${username}:${password}`;
-const basicAuth = Buffer.from(credentials, "utf-8").toString("base64");
+function getBasicAuth(): string {
+  const username = process.env.EHRBASE_USER?.trim() || "";
+  const password = process.env.EHRBASE_PASSWORD?.trim() || "";
+  return Buffer.from(`${username}:${password}`, "utf-8").toString("base64");
+}
+
+function getHeaders(extra?: Record<string, string>) {
+  return {
+    "Content-Type": "application/json",
+    "X-API-Key": process.env.EHRBASE_API_KEY || "",
+    Authorization: `Basic ${getBasicAuth()}`,
+    ...extra,
+  };
+}
+
+async function ensureDispositionTemplate(): Promise<void> {
+  const ehrbaseUrl = process.env.EHRBASE_URL?.trim() || "";
+  const templateId = "template_patient_disposition_v1";
+  const templatesUrl = `${ehrbaseUrl}/ehrbase/rest/openehr/v1/definition/template/adl1.4`;
+
+  try {
+    // Check if template already exists
+    const listRes = await axios.get(templatesUrl, { headers: getHeaders() });
+    const templates = listRes.data as Array<{ template_id: string }>;
+    if (templates.some((t) => t.template_id === templateId)) return;
+  } catch {
+    // Ignore listing errors, attempt upload anyway
+  }
+
+  try {
+    const optPath = path.join(process.cwd(), "openehr", "templates", `${templateId}.opt`);
+    const optContent = fs.readFileSync(optPath, "utf-8");
+    await axios.post(templatesUrl, optContent, {
+      headers: {
+        ...getHeaders(),
+        "Content-Type": "application/xml",
+      },
+    });
+    console.log(`[disposition] Uploaded template: ${templateId}`);
+  } catch (err) {
+    console.error(`[disposition] Failed to upload template ${templateId}:`, err);
+  }
+}
 
 // Patient Disposition Composition - FLAT FORMAT
 export interface PatientDispositionComposition {
@@ -68,6 +109,7 @@ export interface DispositionData {
 
 /**
  * Create a Patient Disposition composition in openEHR
+ * Uses template_clinical_encounter_v1 with problem_diagnosis to store disposition data.
  */
 export async function createDispositionComposition(
   ehrId: string,
@@ -75,122 +117,93 @@ export async function createDispositionComposition(
   facilityName: string = "Emergency Department"
 ): Promise<{ compositionUid: string; data: PatientDispositionComposition }> {
   const ehrbaseUrl = process.env.EHRBASE_URL?.trim() || "";
-  
   const now = new Date().toISOString();
-  
-  const pfx = "template_patient_disposition_v1";
+  const pfx = "template_clinical_encounter_v1";
 
-  // Build the composition based on disposition type
-  const composition: PatientDispositionComposition = {
-    // Category - event
+  // Encode all disposition fields as JSON in clinical_description
+  const payload: Record<string, unknown> = {
+    ward: dispositionData.ward,
+    bedNumber: dispositionData.bedNumber,
+    days: dispositionData.days,
+    transferTo: dispositionData.transferTo,
+    dischargeSummary: dispositionData.dischargeSummary,
+    prescription: dispositionData.prescription,
+    followUp: dispositionData.followUp,
+    admissionPrice: dispositionData.admissionPrice,
+    wardPrice: dispositionData.wardPrice,
+    totalPrice: dispositionData.totalPrice,
+    facility: facilityName,
+    dateTime: now,
+  };
+
+  const composition: Record<string, unknown> = {
     [`${pfx}/category|terminology`]: "openehr",
     [`${pfx}/category|code`]: "433",
     [`${pfx}/category|value`]: "event",
-
-    // Context
     [`${pfx}/context/start_time`]: now,
     [`${pfx}/context/setting|value`]: "emergency care",
     [`${pfx}/context/setting|code`]: "227",
     [`${pfx}/context/setting|terminology`]: "openehr",
-    [`${pfx}/context/_health_care_facility|name`]: facilityName,
-
-    // Composer
     [`${pfx}/composer|name`]: dispositionData.composerName || "System",
-    [`${pfx}/composer|id`]: dispositionData.composerId || "system",
-
-    // Language & Territory
     [`${pfx}/language|code`]: "en",
     [`${pfx}/language|terminology`]: "ISO_639-1",
     [`${pfx}/territory|code`]: "IQ",
     [`${pfx}/territory|terminology`]: "ISO_3166-1",
-
-    // Disposition type (shared across all types - at0002)
-    [`${pfx}/patient_disposition/disposition_type|code`]: dispositionData.type,
-    [`${pfx}/patient_disposition/disposition_type|value`]: dispositionData.type.charAt(0).toUpperCase() + dispositionData.type.slice(1),
-    [`${pfx}/patient_disposition/disposition_type|terminology`]: "local",
-    [`${pfx}/patient_disposition/disposition_date_time`]: now,
+    // problem_diagnosis used as disposition record
+    [`${pfx}/problem_diagnosis/problem_diagnosis_name`]: `DISPOSITION_${dispositionData.type.toUpperCase()}`,
+    [`${pfx}/problem_diagnosis/clinical_description`]: JSON.stringify(payload),
+    [`${pfx}/problem_diagnosis/language|code`]: "en",
+    [`${pfx}/problem_diagnosis/language|terminology`]: "ISO_639-1",
+    [`${pfx}/problem_diagnosis/encoding|code`]: "UTF-8",
+    [`${pfx}/problem_diagnosis/encoding|terminology`]: "IANA_character-sets",
   };
 
-  // Add disposition-specific data
-  if (dispositionData.type === "discharge") {
-    composition[`${pfx}/patient_disposition/discharge_summary`] = dispositionData.dischargeSummary || "";
-    composition[`${pfx}/patient_disposition/prescription`] = dispositionData.prescription || "";
-    composition[`${pfx}/patient_disposition/follow_up_instructions`] = dispositionData.followUp || "";
-  } else if (dispositionData.type === "admit") {
-    composition[`${pfx}/patient_disposition/ward_unit`] = dispositionData.ward || "";
-    composition[`${pfx}/patient_disposition/bed_number`] = dispositionData.bedNumber || "";
-    composition[`${pfx}/patient_disposition/estimated_length_of_stay|magnitude`] = dispositionData.days || 0;
-    composition[`${pfx}/patient_disposition/estimated_length_of_stay|unit`] = "d";
-    if (dispositionData.admissionPrice) {
-      composition[`${pfx}/patient_disposition/admission_fee|magnitude`] = dispositionData.admissionPrice;
-      composition[`${pfx}/patient_disposition/admission_fee|unit`] = "IQD";
-    }
-    if (dispositionData.wardPrice) {
-      composition[`${pfx}/patient_disposition/ward_cost_per_day|magnitude`] = dispositionData.wardPrice;
-      composition[`${pfx}/patient_disposition/ward_cost_per_day|unit`] = "IQD";
-    }
-    if (dispositionData.totalPrice) {
-      composition[`${pfx}/patient_disposition/total_cost|magnitude`] = dispositionData.totalPrice;
-      composition[`${pfx}/patient_disposition/total_cost|unit`] = "IQD";
-    }
-  } else if (dispositionData.type === "transfer") {
-    composition[`${pfx}/patient_disposition/transfer_to_facility`] = dispositionData.transferTo || "";
-  }
+  const url = `${ehrbaseUrl}/ehrbase/rest/openehr/v1/ehr/${ehrId}/composition`;
 
-  // POST to EHRbase
-  const url = `${ehrbaseUrl}/rest/openehr/v1/ehr/${ehrId}/composition`;
-  
-  const response = await axios.post(
-    url,
-    composition,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-        Authorization: `Basic ${basicAuth}`,
-      },
-      params: {
-        format: "FLAT",
-        templateId: "template_patient_disposition_v1",
-      },
-    }
-  );
+  const response = await axios.post(url, composition, {
+    headers: getHeaders({ "Prefer": "return=representation" }),
+    params: { format: "FLAT", templateId: "template_clinical_encounter_v1" },
+  }).catch((err) => {
+    console.error("Disposition POST error response:", JSON.stringify(err.response?.data, null, 2));
+    console.error("Composition sent:", JSON.stringify(composition, null, 2));
+    throw err;
+  });
 
   return {
-    compositionUid: response.data.uid.value,
-    data: composition,
+    compositionUid: response.data.uid?.value ?? response.data,
+    data: composition as unknown as PatientDispositionComposition,
   };
 }
 
 /**
  * Retrieve the latest Patient Disposition composition for a patient
+ * Reads from template_clinical_encounter_v1 compositions where problem_diagnosis_name starts with DISPOSITION_
  */
 export async function getLatestDisposition(ehrId: string): Promise<DispositionData | null> {
   const ehrbaseUrl = process.env.EHRBASE_URL?.trim() || "";
-  const pfx = "template_patient_disposition_v1";
+  const pfx = "template_clinical_encounter_v1";
 
-  // AQL to get the latest composition UID for this template
   const aql = `
-    SELECT c/uid/value as uid
+    SELECT c/uid/value as uid, c/context/start_time/value as start_time
     FROM EHR e
     CONTAINS COMPOSITION c
+    CONTAINS EVALUATION eval[openEHR-EHR-EVALUATION.problem_diagnosis.v1]
     WHERE e/ehr_id/value = '${ehrId}'
-    AND c/archetype_details/template_id/value = 'template_patient_disposition_v1'
+    AND c/archetype_details/template_id/value = 'template_clinical_encounter_v1'
+    AND eval/data[at0001]/items[at0002]/value/value MATCHES {'DISPOSITION_ADMIT','DISPOSITION_TRANSFER','DISPOSITION_DISCHARGE'}
     ORDER BY c/context/start_time/value DESC
     LIMIT 1
   `;
 
   try {
     const aqlResponse = await axios.post(
-      `${ehrbaseUrl}/rest/openehr/v1/query/aql`,
+      `${ehrbaseUrl}/ehrbase/rest/openehr/v1/query/aql`,
       { q: aql },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${basicAuth}`,
-        },
-      }
-    );
+      { headers: getHeaders() }
+    ).catch((err) => {
+      console.error("Disposition AQL error response:", JSON.stringify(err.response?.data, null, 2));
+      throw err;
+    });
 
     if (!aqlResponse.data.rows || aqlResponse.data.rows.length === 0) {
       return null;
@@ -198,35 +211,36 @@ export async function getLatestDisposition(ehrId: string): Promise<DispositionDa
 
     const compositionUid = aqlResponse.data.rows[0][0];
 
-    // Fetch composition in FLAT format
     const compResponse = await axios.get(
-      `${ehrbaseUrl}/rest/openehr/v1/ehr/${ehrId}/composition/${compositionUid}`,
+      `${ehrbaseUrl}/ehrbase/rest/openehr/v1/ehr/${ehrId}/composition/${compositionUid}`,
       {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Basic ${basicAuth}`,
-        },
+        headers: getHeaders({ Accept: "application/json" }),
         params: { format: "FLAT" },
       }
     );
 
     const flat = compResponse.data as Record<string, unknown>;
+    const diagName = (flat[`${pfx}/problem_diagnosis/problem_diagnosis_name`] as string) || "";
+    const typeRaw = diagName.replace("DISPOSITION_", "").toLowerCase();
+    const type = (["admit", "transfer", "discharge"].includes(typeRaw) ? typeRaw : "discharge") as "admit" | "transfer" | "discharge";
 
-    const typeCode = (flat[`${pfx}/patient_disposition/disposition_type|code`] as string) || "";
-    const type = (["admit", "transfer", "discharge"].includes(typeCode) ? typeCode : "discharge") as "admit" | "transfer" | "discharge";
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = JSON.parse((flat[`${pfx}/problem_diagnosis/clinical_description`] as string) || "{}");
+    } catch { /* ignore parse errors */ }
 
     return {
       type,
-      ward: (flat[`${pfx}/patient_disposition/ward_unit`] as string) || undefined,
-      bedNumber: (flat[`${pfx}/patient_disposition/bed_number`] as string) || undefined,
-      days: (flat[`${pfx}/patient_disposition/estimated_length_of_stay|magnitude`] as number) || undefined,
-      transferTo: (flat[`${pfx}/patient_disposition/transfer_to_facility`] as string) || undefined,
-      dischargeSummary: (flat[`${pfx}/patient_disposition/discharge_summary`] as string) || undefined,
-      prescription: (flat[`${pfx}/patient_disposition/prescription`] as string) || undefined,
-      followUp: (flat[`${pfx}/patient_disposition/follow_up_instructions`] as string) || undefined,
-      admissionPrice: (flat[`${pfx}/patient_disposition/admission_fee|magnitude`] as number) || undefined,
-      wardPrice: (flat[`${pfx}/patient_disposition/ward_cost_per_day|magnitude`] as number) || undefined,
-      totalPrice: (flat[`${pfx}/patient_disposition/total_cost|magnitude`] as number) || undefined,
+      ward: payload.ward as string | undefined,
+      bedNumber: payload.bedNumber as string | undefined,
+      days: payload.days as number | undefined,
+      transferTo: payload.transferTo as string | undefined,
+      dischargeSummary: payload.dischargeSummary as string | undefined,
+      prescription: payload.prescription as string | undefined,
+      followUp: payload.followUp as string | undefined,
+      admissionPrice: payload.admissionPrice as number | undefined,
+      wardPrice: payload.wardPrice as number | undefined,
+      totalPrice: payload.totalPrice as number | undefined,
     };
   } catch (error) {
     console.error("Error fetching disposition:", error);

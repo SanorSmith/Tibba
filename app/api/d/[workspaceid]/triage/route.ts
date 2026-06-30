@@ -211,6 +211,53 @@ export async function GET(
       (a, b) => new Date(b.arrivalTime).getTime() - new Date(a.arrivalTime).getTime()
     );
 
+    // Batch-check dispositions for all patients using a single AQL query
+    if (result.length > 0) {
+      try {
+        const ehrIds = [...new Set(rows.map((r) => r.ehr_id))];
+        const ehrIdList = ehrIds.map((id) => `'${id}'`).join(",");
+        const dispositionAql = `
+          SELECT e/ehr_id/value as ehr_id, c/uid/value as uid, c/context/start_time/value as start_time,
+                 eval/data[at0001]/items[at0002]/value/value as diag_name
+          FROM EHR e
+          CONTAINS COMPOSITION c
+          CONTAINS EVALUATION eval[openEHR-EHR-EVALUATION.problem_diagnosis.v1]
+          WHERE e/ehr_id/value MATCHES {${ehrIdList}}
+          AND c/archetype_details/template_id/value = 'template_clinical_encounter_v1'
+          AND eval/data[at0001]/items[at0002]/value/value MATCHES {'DISPOSITION_ADMIT','DISPOSITION_TRANSFER','DISPOSITION_DISCHARGE'}
+          ORDER BY c/context/start_time/value DESC
+        `;
+        interface DispositionRow { ehr_id: string; uid: string; start_time: string; diag_name: string; }
+        const dispRows = await queryOpenEHR<DispositionRow>(dispositionAql);
+
+        // Keep only the latest disposition per EHR
+        const latestDispByEhr = new Map<string, string>();
+        for (const dr of dispRows) {
+          if (!latestDispByEhr.has(dr.ehr_id)) {
+            const raw = (dr.diag_name || "").replace("DISPOSITION_", "").toLowerCase();
+            const status = ["admit", "transfer", "discharge"].includes(raw) ? raw : null;
+            if (status) latestDispByEhr.set(dr.ehr_id, status);
+          }
+        }
+
+        // Map ehr_id back to patientId via the rows we already have
+        const ehrToPatient = new Map<string, string>();
+        for (const row of rows) {
+          const p = patientMap.get(row.subject_id);
+          if (p) ehrToPatient.set(row.ehr_id, p.patientid);
+        }
+
+        for (const record of result) {
+          const ehrId = [...ehrToPatient.entries()].find(([, pid]) => pid === record.patientId)?.[0];
+          if (ehrId && latestDispByEhr.has(ehrId)) {
+            record.status = latestDispByEhr.get(ehrId)!;
+          }
+        }
+      } catch (dispErr) {
+        console.warn("[triage] Could not load disposition statuses:", dispErr);
+      }
+    }
+
     return NextResponse.json({ records: result });
   } catch (error) {
     console.error("[triage][GET] error:", error);
