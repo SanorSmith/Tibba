@@ -172,6 +172,8 @@ interface LimsOrder {
   receivingProvider?: string;
   urgency?: string;
   clinicalIndication?: string;
+  bloodtype?: string | null;
+  bloodcomment?: string | null;
   clinical_indication?: string;
 
   // Aliases for compatibility
@@ -1962,7 +1964,7 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
   </div>
 
   {/* Clinical Information - Full Width */}
-  {(selectedOrder.clinicalindication || selectedOrder.clinicalnotes) && (
+  {(selectedOrder.clinicalindication || selectedOrder.clinicalnotes || selectedOrder.bloodtype || selectedOrder.bloodcomment) && (
     <div className="border-t mt-2 pt-2 text-[11px]">
       {selectedOrder.clinicalindication && (
         <div className="mb-0.5">
@@ -1971,9 +1973,21 @@ export default function OrdersTab({ workspaceid }: { workspaceid: string }) {
         </div>
       )}
       {selectedOrder.clinicalnotes && (
-        <div>
+        <div className="mb-0.5">
           <span className="font-medium text-muted-foreground">Clinical Notes:</span>{" "}
           <span>{selectedOrder.clinicalnotes}</span>
+        </div>
+      )}
+      {selectedOrder.bloodtype && (
+        <div className="mb-0.5">
+          <span className="font-medium text-muted-foreground">Blood Type:</span>{" "}
+          <span className="font-semibold text-red-600">{selectedOrder.bloodtype}</span>
+        </div>
+      )}
+      {selectedOrder.bloodcomment && (
+        <div>
+          <span className="font-medium text-muted-foreground">Blood Comment:</span>{" "}
+          <span>{selectedOrder.bloodcomment}</span>
         </div>
       )}
     </div>
