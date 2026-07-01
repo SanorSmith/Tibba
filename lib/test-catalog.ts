@@ -161,7 +161,7 @@ export const TEST_PACKAGES: Record<string, TestPackage> = {
     name: "Blood Central",
     category: "Blood Bank",
     description: "Blood bank services - blood products and transfusion",
-    tests: ["blood-transfusion"],
+    tests: ["blood-transfusion", "blood-group", "cross-match"],
     price: 50000,
   },
   // BIOCHEMISTRY - Infectious Disease

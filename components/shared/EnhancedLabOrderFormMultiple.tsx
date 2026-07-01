@@ -199,21 +199,12 @@ export default function EnhancedLabOrderFormMultiple({
             console.log('EnhancedLabOrderFormMultiple - Merged custom packages:', Object.values(mergedPackages).filter((p: any) => p.isCustom).map((p: any) => ({ id: p.id, name: p.name, labtype: p.labtype, category: p.category })));
           }
 
-          if (editMode) {
-            // Merge: static catalog first, then dynamic on top — static IDs preserved
-            setTestCatalog({
-              testPackages: { ...TEST_PACKAGES, ...mergedPackages },
-              individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
-              laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
-            });
-          } else {
-            // Always include static packages in non-edit mode too
-            setTestCatalog({
-              testPackages: { ...TEST_PACKAGES, ...mergedPackages },
-              individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
-              laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
-            });
-          }
+          // Always merge static catalog with dynamic - static IDs preserved
+          setTestCatalog({
+            testPackages: { ...TEST_PACKAGES, ...mergedPackages },
+            individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
+            laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
+          });
         })
         .catch(err => console.error("Failed to fetch test catalog, using fallback:", err))
         .finally(() => {
@@ -411,8 +402,20 @@ export default function EnhancedLabOrderFormMultiple({
     
     const packages = Object.values(testCatalog.testPackages).filter(
       (pkg: any) => {
-        // Match by category (for catalog packages)
-        if (pkg.category === category) {
+        console.log('Checking package:', pkg.name, { pkgCategory: pkg.category, category, labName: selectedLab?.name, labId: formState.target_lab });
+        
+        // Special case: blood-central should show for blood-bank or any lab with "blood" in name
+        if (pkg.id === 'blood-central') {
+          const labIdLower = formState.target_lab?.toLowerCase() || '';
+          const labNameLower = (selectedLab?.name || '').toLowerCase();
+          if (labIdLower.includes('blood') || labNameLower.includes('blood')) {
+            console.log('Matched blood-central by blood keyword:', pkg.name);
+            return true;
+          }
+        }
+        
+        // Match by category (for catalog packages) - case-insensitive
+        if (pkg.category && category && pkg.category.toLowerCase() === category.toLowerCase()) {
           console.log('Matched by category:', pkg.name);
           return true;
         }
@@ -420,6 +423,15 @@ export default function EnhancedLabOrderFormMultiple({
         if (pkg.category && selectedLab?.name && pkg.category.toLowerCase() === selectedLab.name.toLowerCase()) {
           console.log('Matched by category to lab name:', pkg.name);
           return true;
+        }
+        // Match by package category containing lab name or vice versa
+        if (pkg.category && selectedLab?.name) {
+          const pkgCatLower = pkg.category.toLowerCase();
+          const labNameLower = selectedLab.name.toLowerCase();
+          if (pkgCatLower.includes(labNameLower) || labNameLower.includes(pkgCatLower)) {
+            console.log('Matched by partial category/lab name:', pkg.name);
+            return true;
+          }
         }
         // Match custom packages by labtype (case-insensitive)
         if (pkg.isCustom && pkg.labtype) {
@@ -435,6 +447,7 @@ export default function EnhancedLabOrderFormMultiple({
           
           return match;
         }
+        console.log('No match for package:', pkg.name);
         return false;
       }
     );
@@ -1182,7 +1195,7 @@ export default function EnhancedLabOrderFormMultiple({
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select blood type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60">
                       <SelectItem value="A+">A+</SelectItem>
                       <SelectItem value="A-">A-</SelectItem>
                       <SelectItem value="B+">B+</SelectItem>
