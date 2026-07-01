@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,8 @@ interface TestOrderForm {
   containerType: string;
   volume: string;
   volumeUnit: string;
+  blood_type?: string;
+  blood_comment?: string;
 }
 
 const DEFAULT_FORM: TestOrderForm = {
@@ -676,6 +679,9 @@ export default function EnhancedLabOrderFormMultiple({
         volume: formState.volume,
         volumeUnit: formState.volumeUnit,
         sampleRecommendations: sampleRecommendations,
+        // Blood bank specific fields
+        blood_type: formState.blood_type,
+        blood_comment: formState.blood_comment,
       };
 
       await onSubmit(submissionData);
@@ -1151,6 +1157,52 @@ export default function EnhancedLabOrderFormMultiple({
 
         {/* Full-width sections below the 3-column layout */}
         <div className="space-y-4 mt-6">
+          {/* Blood Bank Requirements */}
+          {addedTests.length > 0 && (formState.selectedPackages || []).includes('blood-central') && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <div className="flex items-start gap-2">
+                <span className="text-red-600 font-semibold text-sm">🩸 Blood Bank Order</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="blood_type" className="text-sm">Blood Type *</Label>
+                  <Select
+                    value={formState.blood_type || ""}
+                    onValueChange={(value: any) =>
+                      dispatch({ type: "SET_FIELD", field: "blood_type", value })
+                    }
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select blood type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="A+">A+</SelectItem>
+                      <SelectItem value="A-">A-</SelectItem>
+                      <SelectItem value="B+">B+</SelectItem>
+                      <SelectItem value="B-">B-</SelectItem>
+                      <SelectItem value="AB+">AB+</SelectItem>
+                      <SelectItem value="AB-">AB-</SelectItem>
+                      <SelectItem value="O+">O+</SelectItem>
+                      <SelectItem value="O-">O-</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blood_comment" className="text-sm">Comment</Label>
+                  <Input
+                    id="blood_comment"
+                    placeholder="e.g., 2 units, urgent"
+                    value={formState.blood_comment || ""}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      dispatch({ type: "SET_FIELD", field: "blood_comment", value: e.target.value })
+                    }
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Fasting Requirements Alert */}
           {addedTests.length > 0 && addedTestObjects.some(t => t.fastingRequired) && (
             <div className="bg-amber-50 border border-amber-200 rounded-md p-3">

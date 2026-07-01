@@ -91,6 +91,19 @@ export const LABORATORIES: Record<string, Laboratory> = {
     ],
     turnaround: "Routine: 5-7 days, STAT: 48-72 hours (frozen section: 30 min)",
   },
+  "blood-bank": {
+    id: "blood-bank",
+    name: "Blood Bank",
+    address: "Laboratory Department",
+    phone: "(555) 123-4570",
+    email: "bloodbank@hospital.com",
+    specialties: [
+      "Blood Transfusion",
+      "Blood Products",
+      "Cross-Matching",
+    ],
+    turnaround: "STAT: 30-60 minutes",
+  },
 };
 
 // Test Packages organized by Laboratory
@@ -142,6 +155,14 @@ export const TEST_PACKAGES: Record<string, TestPackage> = {
     category: "Biochemistry",
     description: "Complete blood count, coagulation, blood banking",
     tests: ["cbc", "esr", "blood-film", "pt-inr", "ptt", "fibrinogen", "blood-group", "cross-match", "retic", "sickling-test", "malaria-test"],
+  },
+  "blood-central": {
+    id: "blood-central",
+    name: "Blood Central",
+    category: "Blood Bank",
+    description: "Blood bank services - blood products and transfusion",
+    tests: ["blood-transfusion"],
+    price: 50000,
   },
   // BIOCHEMISTRY - Infectious Disease
   "infectious-disease": {
@@ -386,6 +407,7 @@ export const INDIVIDUAL_TESTS: Record<string, TestItem> = {
   "blood-cs-automated": { id: "blood-cs-automated", name: "Blood C/S (Automated)", code: "BLOOD-CS-A", category: "Microbiology", material: "Blood", snomedCode: "165772006" },
   bacteremia: { id: "bacteremia", name: "Bacteremia", code: "BACT", category: "Microbiology", material: "Blood", snomedCode: "165772007" },
   fungemia: { id: "fungemia", name: "Fungemia", code: "FUNG", category: "Microbiology", material: "Blood", snomedCode: "165773000" },
+  "blood-transfusion": { id: "blood-transfusion", name: "Blood Transfusion", code: "BLOOD-TX", category: "Blood Bank", material: "Blood", snomedCode: "36643001" },
   
   // MICROBIOLOGY - Sputum
   "sputum-cs-manual": { id: "sputum-cs-manual", name: "Sputum C/S (Manual)", code: "SPUTUM-CS-M", category: "Microbiology", material: "Sputum", snomedCode: "165775001" },
