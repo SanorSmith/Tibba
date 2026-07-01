@@ -93,13 +93,22 @@ export async function GET(
       }, { status: 200 });
     }
 
-    // Filter out disposition compositions from the results
+    // Filter out disposition and triage compositions from the results
     const filteredDiagnoses = validDiagnoses.filter((diagnosis: any) => {
       // Filter out disposition compositions (they start with "DISPOSITION_")
       if (diagnosis.problem_diagnosis?.startsWith("DISPOSITION_")) {
         console.log("API: Filtering out disposition:", diagnosis.problem_diagnosis);
         return false;
       }
+      
+      // Filter out triage compositions (clinical description contains triage data)
+      if (diagnosis.clinical_description?.includes("Triage level:") || 
+          diagnosis.clinical_description?.includes("ESI:") ||
+          diagnosis.clinical_description?.includes("Arrival mode:")) {
+        console.log("API: Filtering out triage composition:", diagnosis.problem_diagnosis);
+        return false;
+      }
+      
       return true;
     });
 
