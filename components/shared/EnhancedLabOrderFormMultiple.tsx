@@ -389,6 +389,7 @@ export default function EnhancedLabOrderFormMultiple({
       "biochemistry": "Biochemistry",
       "microbiology": "Microbiology",
       "histopathology": "Histopathology",
+      "blood-bank": "Blood Bank",
     };
     return labMap[labId] || "";
   };
@@ -412,6 +413,11 @@ export default function EnhancedLabOrderFormMultiple({
         // Match by category (for catalog packages)
         if (pkg.category === category) {
           console.log('Matched by category:', pkg.name);
+          return true;
+        }
+        // Match by category name to lab name (for blood bank and other special cases)
+        if (pkg.category && selectedLab?.name && pkg.category.toLowerCase() === selectedLab.name.toLowerCase()) {
+          console.log('Matched by category to lab name:', pkg.name);
           return true;
         }
         // Match custom packages by labtype (case-insensitive)
