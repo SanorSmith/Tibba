@@ -660,7 +660,16 @@ ORDER BY
       const clinicalStatus =
         findDiagnosisValue(evaluation, "Variant") || "active";
 
-      return {
+      // Extract chronic disease from comment if present
+      let isChronicDisease = "";
+      if (comment?.includes("Chronic Disease:")) {
+        const match = comment.match(/Chronic Disease:\s*([^|]+)/);
+        if (match) {
+          isChronicDisease = match[1].trim();
+        }
+      }
+
+      const diagnosis = {
         composition_uid: row.composition_uid,
         recorded_time: row.recorded_time,
         problem_diagnosis: problemDiagnosis,
@@ -671,7 +680,11 @@ ORDER BY
         date_of_resolution: dateOfResolution,
         severity: "",
         comment: comment,
+        is_chronic_disease: isChronicDisease,
       };
+
+      console.log("Diagnosis record:", diagnosis.problem_diagnosis);
+      return diagnosis;
     });
 
     // Build a set of superseded composition UIDs
@@ -685,8 +698,8 @@ ORDER BY
       }
     });
 
-    // Filter out care plans, referrals, vaccinations, clinical notes, and superseded versions
-    return allDiagnoses.filter((diagnosis) => {
+    // Filter out care plans, referrals, vaccinations, clinical notes, dispositions, and superseded versions
+    const filtered = allDiagnoses.filter((diagnosis) => {
       // Filter out care plan compositions
       if (
         diagnosis.problem_diagnosis === "Care Plan - See Goal Section" ||
@@ -694,29 +707,38 @@ ORDER BY
       ) {
         return false;
       }
-      
+
       // Filter out referral compositions (they start with "REFERRAL:")
       if (diagnosis.problem_diagnosis.startsWith("REFERRAL:")) {
         return false;
       }
-      
+
       // Filter out vaccination compositions (they start with "VACCINATION:")
       if (diagnosis.problem_diagnosis.startsWith("VACCINATION:")) {
         return false;
       }
-      
+
       // Filter out clinical note compositions (they start with "CLINICAL_NOTE:")
       if (diagnosis.problem_diagnosis.startsWith("CLINICAL_NOTE:")) {
         return false;
       }
-      
+
+      // Filter out disposition compositions (they start with "DISPOSITION_")
+      if (diagnosis.problem_diagnosis.startsWith("DISPOSITION_")) {
+        console.log("Filtering out disposition:", diagnosis.problem_diagnosis);
+        return false;
+      }
+
       // Filter out superseded versions (old versions that have been updated)
       if (supersededUids.has(diagnosis.composition_uid)) {
         return false;
       }
-      
+
       return true;
     });
+
+    console.log("Filtered diagnoses count:", filtered.length, "out of", allDiagnoses.length);
+    return filtered;
   } catch (error) {
     console.error("Error fetching diagnoses via AQL:", error);
     return [];

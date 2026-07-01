@@ -24,6 +24,7 @@ export interface DiagnosisRecord {
   date_of_resolution?: string;
   severity?: string;
   comment?: string;
+  is_chronic_disease?: string;
 }
 
 interface DiagnosticsTabProps {
@@ -65,7 +66,33 @@ export function DiagnosticsTab({
     clinicalDescription: "",
     bodySite: "",
     comment: "",
+    isChronicDisease: "",
   });
+
+  const chronicDiseases = [
+    "Diabetes Type 1",
+    "Diabetes Type 2",
+    "Hypertension",
+    "Asthma",
+    "COPD (Chronic Obstructive Pulmonary Disease)",
+    "Heart Failure",
+    "Coronary Artery Disease",
+    "Stroke/CVA",
+    "Chronic Kidney Disease",
+    "Rheumatoid Arthritis",
+    "Osteoarthritis",
+    "Depression",
+    "Anxiety Disorder",
+    "Epilepsy",
+    "HIV/AIDS",
+    "Hepatitis B",
+    "Hepatitis C",
+    "Cancer",
+    "Multiple Sclerosis",
+    "Parkinson's Disease",
+    "Alzheimer's Disease",
+    "Other",
+  ];
 
   return (
     <div className="space-y-4">
@@ -125,6 +152,7 @@ export function DiagnosticsTab({
                   <tr className="border-b text-semibold bg-blue-100/90 text-blue-800">
                     <th className="text-left p-3 font-medium">Diagnosis</th>
                     <th className="text-left p-3 font-medium">Status</th>
+                    <th className="text-left p-3 font-medium">Chronic Disease</th>
                     <th className="text-left p-3 font-medium">Date Recorded</th>
                     <th className="text-left p-3 font-medium">Onset</th>
                     <th className="text-left p-3 font-medium">Body Site</th>
@@ -175,6 +203,15 @@ export function DiagnosticsTab({
                         </span>
                       </td>
                       <td className="p-3 text-sm">
+                        {diagnosis.is_chronic_disease ? (
+                          <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800 font-medium">
+                            {diagnosis.is_chronic_disease}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">
                         {new Date(diagnosis.recorded_time).toLocaleDateString()}
                       </td>
                       <td className="p-3 text-sm">
@@ -212,6 +249,7 @@ export function DiagnosticsTab({
                                 clinicalDescription: diagnosis.clinical_description || "",
                                 bodySite: diagnosis.body_site || "",
                                 comment: diagnosis.comment || "",
+                                isChronicDisease: "",
                               });
                               setShowDiagnosisForm(true);
                             }}
@@ -252,6 +290,10 @@ export function DiagnosticsTab({
                   <div>
                     <span className="text-sm text-gray-500">Clinical Status:</span>
                     <p className="font-medium">{selectedDiagnosis.clinical_status}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-500">Chronic Disease:</span>
+                    <p className="font-medium">{selectedDiagnosis.is_chronic_disease || 'Not specified'}</p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Date of Onset:</span>
@@ -374,6 +416,36 @@ export function DiagnosticsTab({
               </p>
             </div>
 
+            {/* Chronic Disease */}
+            <div>
+              <label htmlFor="isChronicDisease" className="text-sm font-medium">
+                Chronic Disease
+              </label>
+              <select
+                id="isChronicDisease"
+                className="w-full mt-1 px-3 py-2 border rounded-md"
+                value={diagnosisForm.isChronicDisease}
+                onChange={(e) =>
+                  setDiagnosisForm({
+                    ...diagnosisForm,
+                    isChronicDisease: e.target.value,
+                  })
+                }
+                aria-label="Chronic disease classification"
+                title="Select if this is a chronic disease condition"
+              >
+                <option value="">-- Select Chronic Disease (Optional) --</option>
+                {chronicDiseases.map((disease) => (
+                  <option key={disease} value={disease}>
+                    {disease}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Classify this diagnosis as a chronic disease condition (optional)
+              </p>
+            </div>
+
             {/* Date of Onset */}
             <div>
               <label className="text-sm font-medium">
@@ -489,6 +561,7 @@ export function DiagnosticsTab({
                     clinicalDescription: "",
                     bodySite: "",
                     comment: "",
+                    isChronicDisease: "",
                   });
                 }}
                 className="bg-blue-200/90 hover:bg-blue-300"
@@ -538,6 +611,7 @@ export function DiagnosticsTab({
                       clinicalDescription: "",
                       bodySite: "",
                       comment: "",
+                      isChronicDisease: "",
                     });
                     loadDiagnoses(true); // Force reload with reset=true
                   } catch (error) {

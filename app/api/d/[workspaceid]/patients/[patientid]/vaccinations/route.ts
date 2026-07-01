@@ -85,12 +85,22 @@ export async function GET(
         const clinicalDescription = composition["template_clinical_encounter_v1/problem_diagnosis/clinical_description"] || "";
         const [vaccineName, targetedDisease] = clinicalDescription.split(" | ");
 
-        // Parse comment field to extract next due date and additional details
+        // Parse comment field to extract next due date, additional details, and price
         const comment = composition["template_clinical_encounter_v1/problem_diagnosis/comment"] || "";
         const commentParts = comment.split(" | ");
         const nextVaccineDue = commentParts[0]?.trim() || "";
         const additionalDetails = commentParts[1]?.trim() || "";
         const commentText = commentParts[2]?.trim() || "";
+        
+        // Extract price from comment
+        let price = 0;
+        const pricePart = commentParts.find(part => part?.includes("Price:"));
+        if (pricePart) {
+          const priceMatch = pricePart.match(/Price:\s*(\d+)/);
+          if (priceMatch) {
+            price = parseInt(priceMatch[1]);
+          }
+        }
 
         return {
           composition_uid: item.composition_uid,
@@ -102,6 +112,7 @@ export async function GET(
           next_vaccine_due: nextVaccineDue,
           additional_details: additionalDetails,
           comment: commentText,
+          price: price,
         };
       })
     );
@@ -164,6 +175,7 @@ export async function POST(
         nextVaccineDue?: string;
         additionalDetails?: string;
         comment?: string;
+        price?: string;
       };
     };
 
@@ -237,7 +249,7 @@ export async function POST(
       "template_clinical_encounter_v1/problem_diagnosis/clinical_description": `${vaccination.vaccineName} | ${vaccination.targetedDisease}`,
       "template_clinical_encounter_v1/problem_diagnosis/variant:0": vaccination.totalAdministrations || "1",
       "template_clinical_encounter_v1/problem_diagnosis/body_site:0": vaccination.lastVaccineDate || now,
-      "template_clinical_encounter_v1/problem_diagnosis/comment": `${vaccination.nextVaccineDue || ""} | ${vaccination.additionalDetails || ""} | ${vaccination.comment || ""}`,
+      "template_clinical_encounter_v1/problem_diagnosis/comment": `${vaccination.nextVaccineDue || ""} | ${vaccination.additionalDetails || ""} | ${vaccination.comment || ""} | Price: ${vaccination.price || "0"}`,
     };
 
     const compositionUid = await createVaccination(ehrId, composition);

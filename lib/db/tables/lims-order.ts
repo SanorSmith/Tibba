@@ -99,6 +99,10 @@ export const limsOrders = pgTable(
     volumeunit: text("volume_unit").default("mL"),
     samplerecommendations: jsonb("sample_recommendations"),
     
+    // Blood bank specific fields
+    bloodtype: text("blood_type"),
+    bloodcomment: text("blood_comment"),
+    
     // Workspace for multi-tenancy
     workspaceid: text("workspaceid").notNull(),
     

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,8 @@ interface TestOrderForm {
   containerType: string;
   volume: string;
   volumeUnit: string;
+  blood_type?: string;
+  blood_comment?: string;
 }
 
 const DEFAULT_FORM: TestOrderForm = {
@@ -196,20 +199,12 @@ export default function EnhancedLabOrderFormMultiple({
             console.log('EnhancedLabOrderFormMultiple - Merged custom packages:', Object.values(mergedPackages).filter((p: any) => p.isCustom).map((p: any) => ({ id: p.id, name: p.name, labtype: p.labtype, category: p.category })));
           }
 
-          if (editMode) {
-            // Merge: static catalog first, then dynamic on top — static IDs preserved
-            setTestCatalog({
-              testPackages: { ...TEST_PACKAGES, ...mergedPackages },
-              individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
-              laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
-            });
-          } else {
-            setTestCatalog({
-              testPackages: mergedPackages,
-              individualTests: catalogData.individualTests || INDIVIDUAL_TESTS,
-              laboratories: catalogData.laboratories || LABORATORIES,
-            });
-          }
+          // Always merge static catalog with dynamic - static IDs preserved
+          setTestCatalog({
+            testPackages: { ...TEST_PACKAGES, ...mergedPackages },
+            individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
+            laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
+          });
         })
         .catch(err => console.error("Failed to fetch test catalog, using fallback:", err))
         .finally(() => {
@@ -386,6 +381,7 @@ export default function EnhancedLabOrderFormMultiple({
       "biochemistry": "Biochemistry",
       "microbiology": "Microbiology",
       "histopathology": "Histopathology",
+      "blood-bank": "Blood Bank",
     };
     return labMap[labId] || "";
   };
@@ -406,10 +402,36 @@ export default function EnhancedLabOrderFormMultiple({
     
     const packages = Object.values(testCatalog.testPackages).filter(
       (pkg: any) => {
-        // Match by category (for catalog packages)
-        if (pkg.category === category) {
+        console.log('Checking package:', pkg.name, { pkgCategory: pkg.category, category, labName: selectedLab?.name, labId: formState.target_lab });
+        
+        // Special case: blood-central should show for blood-bank or any lab with "blood" in name
+        if (pkg.id === 'blood-central') {
+          const labIdLower = formState.target_lab?.toLowerCase() || '';
+          const labNameLower = (selectedLab?.name || '').toLowerCase();
+          if (labIdLower.includes('blood') || labNameLower.includes('blood')) {
+            console.log('Matched blood-central by blood keyword:', pkg.name);
+            return true;
+          }
+        }
+        
+        // Match by category (for catalog packages) - case-insensitive
+        if (pkg.category && category && pkg.category.toLowerCase() === category.toLowerCase()) {
           console.log('Matched by category:', pkg.name);
           return true;
+        }
+        // Match by category name to lab name (for blood bank and other special cases)
+        if (pkg.category && selectedLab?.name && pkg.category.toLowerCase() === selectedLab.name.toLowerCase()) {
+          console.log('Matched by category to lab name:', pkg.name);
+          return true;
+        }
+        // Match by package category containing lab name or vice versa
+        if (pkg.category && selectedLab?.name) {
+          const pkgCatLower = pkg.category.toLowerCase();
+          const labNameLower = selectedLab.name.toLowerCase();
+          if (pkgCatLower.includes(labNameLower) || labNameLower.includes(pkgCatLower)) {
+            console.log('Matched by partial category/lab name:', pkg.name);
+            return true;
+          }
         }
         // Match custom packages by labtype (case-insensitive)
         if (pkg.isCustom && pkg.labtype) {
@@ -425,6 +447,7 @@ export default function EnhancedLabOrderFormMultiple({
           
           return match;
         }
+        console.log('No match for package:', pkg.name);
         return false;
       }
     );
@@ -676,6 +699,9 @@ export default function EnhancedLabOrderFormMultiple({
         volume: formState.volume,
         volumeUnit: formState.volumeUnit,
         sampleRecommendations: sampleRecommendations,
+        // Blood bank specific fields
+        blood_type: formState.blood_type,
+        blood_comment: formState.blood_comment,
       };
 
       await onSubmit(submissionData);
@@ -1151,6 +1177,52 @@ export default function EnhancedLabOrderFormMultiple({
 
         {/* Full-width sections below the 3-column layout */}
         <div className="space-y-4 mt-6">
+          {/* Blood Bank Requirements */}
+          {addedTests.length > 0 && (formState.selectedPackages || []).includes('blood-central') && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <div className="flex items-start gap-2">
+                <span className="text-red-600 font-semibold text-sm">🩸 Blood Bank Order</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="blood_type" className="text-sm">Blood Type *</Label>
+                  <Select
+                    value={formState.blood_type || ""}
+                    onValueChange={(value: any) =>
+                      dispatch({ type: "SET_FIELD", field: "blood_type", value })
+                    }
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select blood type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="A+">A+</SelectItem>
+                      <SelectItem value="A-">A-</SelectItem>
+                      <SelectItem value="B+">B+</SelectItem>
+                      <SelectItem value="B-">B-</SelectItem>
+                      <SelectItem value="AB+">AB+</SelectItem>
+                      <SelectItem value="AB-">AB-</SelectItem>
+                      <SelectItem value="O+">O+</SelectItem>
+                      <SelectItem value="O-">O-</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="blood_comment" className="text-sm">Comment</Label>
+                  <Input
+                    id="blood_comment"
+                    placeholder="e.g., 2 units, urgent"
+                    value={formState.blood_comment || ""}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      dispatch({ type: "SET_FIELD", field: "blood_comment", value: e.target.value })
+                    }
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Fasting Requirements Alert */}
           {addedTests.length > 0 && addedTestObjects.some(t => t.fastingRequired) && (
             <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
