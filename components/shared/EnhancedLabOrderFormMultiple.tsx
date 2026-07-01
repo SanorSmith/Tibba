@@ -207,10 +207,11 @@ export default function EnhancedLabOrderFormMultiple({
               laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
             });
           } else {
+            // Always include static packages in non-edit mode too
             setTestCatalog({
-              testPackages: mergedPackages,
-              individualTests: catalogData.individualTests || INDIVIDUAL_TESTS,
-              laboratories: catalogData.laboratories || LABORATORIES,
+              testPackages: { ...TEST_PACKAGES, ...mergedPackages },
+              individualTests: { ...INDIVIDUAL_TESTS, ...(catalogData.individualTests || {}) },
+              laboratories: { ...LABORATORIES, ...(catalogData.laboratories || {}) },
             });
           }
         })
