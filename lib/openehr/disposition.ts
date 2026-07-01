@@ -105,6 +105,68 @@ export interface DispositionData {
   totalPrice?: number;
   composerName?: string;
   composerId?: string;
+  // Emergency visit data
+  emergencyVisitData?: {
+    triageLevel?: string;
+    esi?: string;
+    chiefComplaint?: string;
+    arrivalMode?: string;
+    arrivalTime?: string;
+    painScore?: number;
+    allergies?: string;
+    vitals?: Array<{
+      temperature?: number;
+      systolic?: number;
+      diastolic?: number;
+      heartRate?: number;
+      respiratoryRate?: number;
+      spO2?: number;
+      recordedTime?: string;
+    }>;
+    labResults?: Array<{
+      testName: string;
+      reportDate: string;
+      conclusion?: string;
+      price?: number;
+    }>;
+    labOrders?: Array<{
+      serviceName: string;
+      requestedDate: string;
+      urgency?: string;
+      status?: string;
+    }>;
+    imagingResults?: Array<{
+      studyName: string;
+      reportDate: string;
+      impression?: string;
+      price?: number;
+    }>;
+    ecgResults?: Array<{
+      testName: string;
+      reportDate: string;
+      interpretation?: string;
+      price?: number;
+    }>;
+    diagnoses?: Array<{
+      problemDiagnosis: string;
+      clinicalStatus: string;
+      recordedTime: string;
+    }>;
+    procedures?: Array<{
+      procedureName: string;
+      recordedTime: string;
+    }>;
+    medications?: Array<{
+      medicationName: string;
+      route?: string;
+      timing?: string;
+    }>;
+    servicesProvided?: Array<{
+      serviceName: string;
+      category: string;
+      price: number;
+    }>;
+  };
 }
 
 /**
@@ -134,6 +196,7 @@ export async function createDispositionComposition(
     totalPrice: dispositionData.totalPrice,
     facility: facilityName,
     dateTime: now,
+    emergencyVisitData: dispositionData.emergencyVisitData,
   };
 
   const composition: Record<string, unknown> = {
@@ -241,6 +304,7 @@ export async function getLatestDisposition(ehrId: string): Promise<DispositionDa
       admissionPrice: payload.admissionPrice as number | undefined,
       wardPrice: payload.wardPrice as number | undefined,
       totalPrice: payload.totalPrice as number | undefined,
+      emergencyVisitData: payload.emergencyVisitData as DispositionData["emergencyVisitData"],
     };
   } catch (error) {
     console.error("Error fetching disposition:", error);
