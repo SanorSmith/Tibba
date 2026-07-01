@@ -6,7 +6,7 @@ import { createDispositionComposition, getLatestDisposition, DispositionData } f
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getOpenEHRDiagnoses } from "@/lib/openehr/openehr";
+import { getOpenEHRDiagnoses, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
 
 /**
  * POST /api/d/[workspaceid]/patients/[patientid]/disposition
@@ -67,9 +67,6 @@ export async function POST(
       }
     }
 
-    // Ensure EHR exists for patient
-    const ehrId = await ensurePatientEHR(patientid);
-
     // Fetch patient to get National ID
     const [patient] = await db
       .select()
@@ -81,13 +78,20 @@ export async function POST(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    // Find EHR by National ID or patient UUID
-    let actualEhrId: string | null = null;
-    if (patient.nationalid) {
-      actualEhrId = await ensurePatientEHR(patient.nationalid);
+    // Ensure EHR exists for patient
+    const ehrId = await ensurePatientEHR(patientid);
+
+    // Find EHR by National ID or use the one from ensurePatientEHR
+    let actualEhrId: string | null = ehrId;
+    if (patient.nationalid && !actualEhrId) {
+      try {
+        actualEhrId = await getOpenEHREHRBySubjectId(patient.nationalid);
+      } catch (error) {
+        console.error("Error finding EHR by National ID:", error);
+      }
     }
     if (!actualEhrId) {
-      actualEhrId = await ensurePatientEHR(patientid);
+      actualEhrId = ehrId;
     }
 
     // Fetch emergency visit data if not already provided
