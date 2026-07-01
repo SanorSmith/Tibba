@@ -161,6 +161,9 @@ export async function POST(request: NextRequest) {
         volume: body.volume?.toString() || null,
         volumeunit: body.volumeUnit || "mL",
         samplerecommendations: body.sampleRecommendations || null,
+        // Blood bank specific fields
+        bloodtype: body.blood_type || null,
+        bloodcomment: body.blood_comment || null,
       };
 
       const [order] = await tx.insert(limsOrders).values(orderRecord).returning();
