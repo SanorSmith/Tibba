@@ -97,21 +97,26 @@ export async function POST(
     // Fetch emergency visit data if not already provided
     if (!dispositionData.emergencyVisitData) {
       try {
+        // Build base URL from request
+        const protocol = request.headers.get('x-forwarded-proto') || 'http';
+        const host = request.headers.get('host') || 'localhost:3000';
+        const baseUrl = `${protocol}://${host}`;
+
         // Fetch triage data
-        const triageResponse = await fetch(`/api/d/${workspaceid}/triage`);
+        const triageResponse = await fetch(`${baseUrl}/api/d/${workspaceid}/triage`);
         const triageData = triageResponse.ok ? await triageResponse.json() : { records: [] };
         const patientTriage = (triageData.records || []).find((r: any) => r.patientId === patientid);
 
         // Fetch vitals
-        const vitalsResponse = await fetch(`/api/d/${workspaceid}/patients/${patientid}/vital-signs?limit=50`);
+        const vitalsResponse = await fetch(`${baseUrl}/api/d/${workspaceid}/patients/${patientid}/vital-signs?limit=50`);
         const vitalsData = vitalsResponse.ok ? await vitalsResponse.json() : { vitalSigns: [] };
 
         // Fetch lab results
-        const labResultsResponse = await fetch(`/api/d/${workspaceid}/patients/${patientid}/lab-results`);
+        const labResultsResponse = await fetch(`${baseUrl}/api/d/${workspaceid}/patients/${patientid}/lab-results`);
         const labResultsData = labResultsResponse.ok ? await labResultsResponse.json() : { labResults: [], imagingResults: [], ecgResults: [] };
 
         // Fetch lab orders
-        const labOrdersResponse = await fetch(`/api/d/${workspaceid}/patients/${patientid}/lab-orders`);
+        const labOrdersResponse = await fetch(`${baseUrl}/api/d/${workspaceid}/patients/${patientid}/lab-orders`);
         const labOrdersData = labOrdersResponse.ok ? await labOrdersResponse.json() : { labOrders: [] };
 
         // Fetch diagnoses
