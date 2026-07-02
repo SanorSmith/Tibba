@@ -1,0 +1,33 @@
+@baseUrl = https://base.tibbna.com
+@apiKey = BgMxGMZk5isfCWezE5CF
+@auth = auto-speed-ranting:KivLWsQgN4f8aiHAvwuq
+
+### List all templates
+GET {{baseUrl}}/ehrbase/rest/openehr/v1/definition/template/adl1.4
+X-API-Key: {{apiKey}}
+Authorization: Basic {{auth}}
+
+### List all EHRs
+POST {{baseUrl}}/ehrbase/rest/openehr/v1/query/aql
+X-API-Key: {{apiKey}}
+Authorization: Basic {{auth}}
+Content-Type: application/json
+
+{
+  "q": "SELECT e/ehr_id/value, e/ehr_status/subject/external_ref/id/value FROM EHR e"
+}
+
+### List all compositions
+POST {{baseUrl}}/ehrbase/rest/openehr/v1/query/aql
+X-API-Key: {{apiKey}}
+Authorization: Basic {{auth}}
+Content-Type: application/json
+
+{
+  "q": "SELECT c/archetype_details/template_id/value, c/uid/value, c/context/start_time/value FROM EHR e CONTAINS COMPOSITION c ORDER BY c/context/start_time/value DESC LIMIT 50"
+}
+
+### Get specific composition (replace {ehrId} and {compositionUid})
+GET {{baseUrl}}/ehrbase/rest/openehr/v1/ehr/{ehrId}/composition/{compositionUid}?format=FLAT
+X-API-Key: {{apiKey}}
+Authorization: Basic {{auth}}

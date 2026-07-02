@@ -16,5 +16,16 @@
             "username": "neondb_owner",
             "password": "npg_RBybikcu3tz5"
         }
+    ],
+    "postgres.connections": [
+        {
+            "name": "Neon DB",
+            "host": "ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech",
+            "port": 5432,
+            "database": "neondb",
+            "user": "neondb_owner",
+            "password": "npg_RBybikcu3tz5",
+            "ssl": true
+        }
     ]
 }
