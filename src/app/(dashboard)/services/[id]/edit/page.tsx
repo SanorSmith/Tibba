@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
-export default function AddServicePage() {
+export default function EditServicePage() {
+  const params = useParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [providers, setProviders] = useState<Array<{company_id?: string, id?: string, company_name?: string, name?: string}>>([]);
   const [departments, setDepartments] = useState<Array<{id: string, name: string, description?: string}>>([]);
   const [formData, setFormData] = useState({
@@ -30,35 +34,57 @@ export default function AddServicePage() {
   });
 
   useEffect(() => {
+    fetchService();
     fetchProviders();
     fetchDepartments();
-  }, []);
+  }, [params.id]);
 
-  useEffect(() => {
-    console.log('Providers state:', providers);
-  }, [providers]);
+  const fetchService = async () => {
+    try {
+      const response = await fetch(`/api/services/${params.id}`);
+      if (!response.ok) {
+        setNotFound(true);
+        return;
+      }
+      const result = await response.json();
+      if (!result.success || !result.data) {
+        setNotFound(true);
+        return;
+      }
+      const s = result.data;
+      setFormData({
+        name: s.name || '',
+        code: s.code || '',
+        category: s.category || 'Consultation',
+        subcategory: s.subcategory || '',
+        duration_minutes: String(s.duration_minutes || 30),
+        description: s.description || '',
+        price_insurance: String(s.price_insurance || ''),
+        price_self_pay: String(s.price_self_pay || ''),
+        price_government: String(s.price_government || ''),
+        department_id: s.department_id || '',
+        requires_appointment: s.requires_appointment ?? true,
+        provider_id: s.provider_id || '',
+        provider_name: s.provider_name || '',
+        service_fee: String(s.service_fee || ''),
+      });
+    } catch (error) {
+      console.error('Error fetching service:', error);
+      setNotFound(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchProviders = async () => {
     try {
       const response = await fetch('/api/insurance-companies');
       if (response.ok) {
         const data = await response.json();
-        console.log('Providers API response:', data);
         setProviders(data);
       }
     } catch (error) {
       console.error('Error fetching providers:', error);
-      // Fallback to mock data if API fails
-      setProviders([
-        { company_id: 'PRV001', company_name: 'Baghdad Medical Center' },
-        { company_id: 'PRV002', company_name: 'Al-Rasheed Radiology Lab' },
-        { company_id: 'PRV003', company_name: 'National Laboratory Services' },
-        { company_id: 'PRV004', company_name: 'Al-Amal Therapy Center' },
-        { company_id: 'PRV005', company_name: 'Iraqi Dental Group' },
-        { company_id: 'PRV006', company_name: 'Emergency Care Solutions' },
-        { company_id: 'PRV007', company_name: 'Preventive Health Institute' },
-        { company_id: 'PRV008', company_name: 'Al-Zahrawi Surgical Center' },
-      ]);
     }
   };
 
@@ -105,43 +131,47 @@ export default function AddServicePage() {
         service_fee: parseFloat(formData.service_fee) || 0,
       };
 
-      console.log('Submitting service:', payload);
-
-      const response = await fetch('/api/services', {
-        method: 'POST',
+      const response = await fetch(`/api/services/${params.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        alert('Server returned an error. Please check the console for details.');
-        return;
-      }
-
       if (response.ok) {
-        const result = await response.json();
-        console.log('Service created:', result);
-        alert('Service created successfully!');
+        toast.success('Service updated successfully');
         router.push('/services');
       } else {
         const error = await response.json();
-        console.error('API Error:', error);
-        alert(error.error || error.details || 'Failed to create service');
+        toast.error(error.error || 'Failed to update service');
       }
     } catch (error) {
-      console.error('Error creating service:', error);
-      alert('Failed to create service. Please try again.');
+      console.error('Error updating service:', error);
+      toast.error('Failed to update service. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-48 bg-gray-200 rounded" />
+          <div className="h-64 bg-gray-100 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="p-6 text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900">Service Not Found</h2>
+        <p className="text-gray-600 mt-2">The service you&apos;re trying to edit doesn&apos;t exist.</p>
+        <Button className="mt-4" onClick={() => router.push('/services')}>Back to Services</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -154,8 +184,8 @@ export default function AddServicePage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Services
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">Add New Service</h1>
-        <p className="text-gray-600 mt-1">Create a new hospital service</p>
+        <h1 className="text-3xl font-bold text-gray-900">Edit Service</h1>
+        <p className="text-gray-600 mt-1">Update service details for &quot;{formData.name}&quot;</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -181,6 +211,21 @@ export default function AddServicePage() {
               </div>
 
               <div>
+                <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
+                  Service Code
+                </label>
+                <Input
+                  id="code"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleChange}
+                  placeholder="e.g., CONS001"
+                  disabled
+                />
+                <p className="text-xs text-gray-400 mt-1">Code cannot be changed after creation</p>
+              </div>
+
+              <div>
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
                   Category *
                 </label>
@@ -201,6 +246,9 @@ export default function AddServicePage() {
                   <option value="Emergency">Emergency</option>
                   <option value="Dental">Dental</option>
                   <option value="Vaccination">Vaccination</option>
+                  <option value="Administrative">Administrative</option>
+                  <option value="Preventive">Preventive</option>
+                  <option value="Cardiology">Cardiology</option>
                 </select>
               </div>
 
@@ -234,7 +282,7 @@ export default function AddServicePage() {
 
               <div>
                 <label htmlFor="department_id" className="block text-sm font-medium text-gray-700 mb-1">
-                  Department *
+                  Department
                 </label>
                 <select
                   id="department_id"
@@ -242,7 +290,6 @@ export default function AddServicePage() {
                   value={formData.department_id}
                   onChange={handleChange}
                   className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  required
                 >
                   <option value="">Select Department</option>
                   {departments.map((dept, index) => (
@@ -252,11 +299,25 @@ export default function AddServicePage() {
                   ))}
                 </select>
               </div>
+
+              <div className="flex items-center gap-2 pt-6">
+                <input
+                  id="requires_appointment"
+                  name="requires_appointment"
+                  type="checkbox"
+                  checked={formData.requires_appointment}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="requires_appointment" className="text-sm font-medium text-gray-700">
+                  Requires Appointment
+                </label>
+              </div>
             </div>
 
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Customer Billing *
+                Description
               </label>
               <textarea
                 id="description"
@@ -265,8 +326,7 @@ export default function AddServicePage() {
                 onChange={handleChange}
                 rows={3}
                 className="w-full px-3 py-2 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter customer billing information..."
-                required
+                placeholder="Enter service description..."
               />
             </div>
           </CardContent>
@@ -401,7 +461,7 @@ export default function AddServicePage() {
             ) : (
               <>
                 <Save className="w-4 h-4 mr-2" />
-                Save Service
+                Update Service
               </>
             )}
           </Button>

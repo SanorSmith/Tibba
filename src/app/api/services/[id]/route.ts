@@ -1,6 +1,6 @@
 /**
  * /api/services/[id]
- * Single service from the real DB, plus revenue stats derived from invoices.
+ * Single service CRUD from the real DB, plus revenue stats derived from invoices.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
@@ -66,6 +66,83 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
   } catch (error) {
     console.error('[services/[id] GET]', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest, { params }: Params) {
+  if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
+  const { id } = await params;
+  try {
+    const body = await req.json();
+    const {
+      name, name_ar, code, category, subcategory, description,
+      price_self_pay, price_insurance, price_government,
+      department_id, requires_appointment, duration_minutes,
+      provider_id, provider_name, service_fee, active
+    } = body;
+
+    const result = await pool.query(
+      `UPDATE services SET
+        name = COALESCE($1, name),
+        name_ar = COALESCE($2, name_ar),
+        code = COALESCE($3, code),
+        category = COALESCE($4, category),
+        subcategory = COALESCE($5, subcategory),
+        description = COALESCE($6, description),
+        price_self_pay = COALESCE($7, price_self_pay),
+        price_insurance = COALESCE($8, price_insurance),
+        price_government = COALESCE($9, price_government),
+        department_id = COALESCE($10, department_id),
+        requires_appointment = COALESCE($11, requires_appointment),
+        duration_minutes = COALESCE($12, duration_minutes),
+        provider_id = COALESCE($13, provider_id),
+        provider_name = COALESCE($14, provider_name),
+        service_fee = COALESCE($15, service_fee),
+        active = COALESCE($16, active),
+        updatedat = NOW()
+      WHERE id::text = $17 OR code = $17
+      RETURNING *`,
+      [
+        name || null, name_ar || null, code || null, category || null,
+        subcategory || null, description || null,
+        price_self_pay ?? null, price_insurance ?? null, price_government ?? null,
+        department_id || null, requires_appointment ?? null, duration_minutes ?? null,
+        provider_id || null, provider_name || null, service_fee ?? null,
+        active ?? null, id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('[services/[id] PUT]', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
+  const { id } = await params;
+  try {
+    // Soft-delete: set active = false
+    const result = await pool.query(
+      `UPDATE services SET active = false, updatedat = NOW()
+       WHERE id::text = $1 OR code = $1
+       RETURNING id, code, name`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Service deactivated', data: result.rows[0] });
+  } catch (error) {
+    console.error('[services/[id] DELETE]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
