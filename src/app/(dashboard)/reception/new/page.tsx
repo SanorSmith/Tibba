@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, User, Phone, Mail, Calendar, MapPin, Shield, Plus, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, User, Phone, Mail, Calendar, MapPin, Shield, Plus, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PatientData {
@@ -79,7 +79,7 @@ export default function NewPatientPage() {
   };
 
   const handleSave = async () => {
-    if (!current.phone || !current.date_of_birth || !current.gender || !current.first_name_ar || !current.last_name_ar) {
+    if (!current.phone || !current.date_of_birth || !current.gender || !current.first_name_en || !current.last_name_en) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -112,8 +112,8 @@ export default function NewPatientPage() {
     try {
       const patientData = {
         // Personal Information
-        first_name_ar: current.first_name_ar || current.first_name_en || '',
-        last_name_ar: current.last_name_ar || current.last_name_en || '',
+        first_name_ar: current.first_name_en || '',
+        last_name_ar: current.last_name_en || '',
         first_name_en: current.first_name_en || '',
         middle_name: current.middle_name || '',
         last_name_en: current.last_name_en || '',
@@ -199,35 +199,22 @@ export default function NewPatientPage() {
               Personal Information
             </h3>
           </div>
-          <div className="tibbna-card-content">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
+          <div className="tibbna-card-content space-y-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name (Arabic) *
+                  First Name (English) *
                 </label>
                 <input
                   type="text"
                   required
-                  value={current.first_name_ar}
-                  onChange={e => setCurrent({...current, first_name_ar: e.target.value})}
+                  value={current.first_name_en}
+                  onChange={e => setCurrent({...current, first_name_en: e.target.value})}
                   className="tibbna-input"
-                  placeholder="e.g., أحمد"
+                  placeholder="e.g., Ahmed"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name (Arabic) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={current.last_name_ar}
-                  onChange={e => setCurrent({...current, last_name_ar: e.target.value})}
-                  className="tibbna-input"
-                  placeholder="e.g., محمد"
-                />
-              </div>
-              <div>
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Middle Name
                 </label>
@@ -236,82 +223,23 @@ export default function NewPatientPage() {
                   value={current.middle_name}
                   onChange={e => setCurrent({...current, middle_name: e.target.value})}
                   className="tibbna-input"
-                  placeholder="e.g., عبد"
+                  placeholder="e.g., Abdul"
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name (English)
+                  Last Name (English) *
                 </label>
                 <input
                   type="text"
-                  value={current.first_name_en}
-                  onChange={e => setCurrent({...current, first_name_en: e.target.value})}
-                  className="tibbna-input"
-                  placeholder="e.g., Ahmed"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name (English)
-                </label>
-                <input
-                  type="text"
+                  required
                   value={current.last_name_en}
                   onChange={e => setCurrent({...current, last_name_en: e.target.value})}
                   className="tibbna-input"
                   placeholder="e.g., Mohammed"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date of Birth *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={current.date_of_birth}
-                  onChange={e => setCurrent({...current, date_of_birth: e.target.value})}
-                  className="tibbna-input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Gender *
-                </label>
-                <select
-                  required
-                  value={current.gender}
-                  onChange={e => setCurrent({...current, gender: e.target.value})}
-                  className="tibbna-input"
-                >
-                  <option value="">Select Gender</option>
-                  <option value="MALE">Male</option>
-                  <option value="FEMALE">Female</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Blood Group
-                </label>
-                <select
-                  value={current.blood_group}
-                  onChange={e => setCurrent({...current, blood_group: e.target.value})}
-                  className="tibbna-input"
-                >
-                  <option value="">Select Blood Group</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
-                </select>
-              </div>
-              <div>
+              <div className="flex-1 min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   National ID
                 </label>
@@ -342,6 +270,56 @@ export default function NewPatientPage() {
                     ✓ Valid format
                   </p>
                 )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="w-[200px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date of Birth *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={current.date_of_birth}
+                  onChange={e => setCurrent({...current, date_of_birth: e.target.value})}
+                  className="tibbna-input"
+                />
+              </div>
+              <div className="w-[200px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gender *
+                </label>
+                <select
+                  required
+                  value={current.gender}
+                  onChange={e => setCurrent({...current, gender: e.target.value})}
+                  className="tibbna-input"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div className="w-[200px]">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Blood Group
+                </label>
+                <select
+                  value={current.blood_group}
+                  onChange={e => setCurrent({...current, blood_group: e.target.value})}
+                  className="tibbna-input"
+                >
+                  <option value="">Select Blood Group</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
               </div>
             </div>
           </div>
@@ -383,18 +361,6 @@ export default function NewPatientPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Governorate
-                </label>
-                <input
-                  type="text"
-                  value={current.governorate}
-                  onChange={e => setCurrent({...current, governorate: e.target.value})}
-                  className="tibbna-input"
-                  placeholder="e.g., Baghdad"
-                />
-              </div>
-              <div className="lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address
                 </label>
                 <input
@@ -405,19 +371,6 @@ export default function NewPatientPage() {
                   placeholder="e.g., Street, District, City, Governorate"
                 />
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="tibbna-card">
-          <div className="tibbna-card-header">
-            <h3 className="tibbna-section-title flex items-center gap-2">
-              <Shield size={16} />
-              Emergency Contact
-            </h3>
-          </div>
-          <div className="tibbna-card-content">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Emergency Contact Name
@@ -445,6 +398,7 @@ export default function NewPatientPage() {
             </div>
           </div>
         </div>
+
 
         <div className="tibbna-card">
           <div className="tibbna-card-header">
@@ -474,39 +428,15 @@ export default function NewPatientPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Insurance Number
+                  Insurance ID
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={current.insurance_number}
-                    onChange={e => setCurrent({...current, insurance_number: e.target.value})}
-                    className="tibbna-input flex-1"
-                    placeholder="e.g., NAT001-12345-2024"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const selectedCompany = insuranceCompanies.find(c => c.name === current.insurance_company);
-                      if (selectedCompany) {
-                        const companyCode = selectedCompany.code || selectedCompany.id?.replace('INS-', '') || 'UNK';
-                        const patientNumber = Math.floor(Math.random() * 90000) + 10000; // 5-digit random
-                        const year = new Date().getFullYear();
-                        const insuranceNumber = `${companyCode}-${patientNumber}-${year}`;
-                        setCurrent({...current, insurance_number: insuranceNumber});
-                      }
-                    }}
-                    className="btn-secondary px-3 py-2"
-                    disabled={!current.insurance_company}
-                  >
-                    <RefreshCw size={16} />
-                  </button>
-                </div>
-                {current.insurance_company && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Format: CompanyCode-PatientID-Year (e.g., NAT001-12345-2024)
-                  </p>
-                )}
+                <input
+                  type="text"
+                  value={current.insurance_number}
+                  onChange={e => setCurrent({...current, insurance_number: e.target.value})}
+                  className="tibbna-input"
+                  placeholder="Enter insurance ID"
+                />
               </div>
             </div>
           </div>
