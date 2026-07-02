@@ -81,7 +81,7 @@ const moduleLinks = [
       { href: '/finance/service-provider-reports', icon: BarChart3, label: 'Service Provider Reports' },
     ],
   },
-  { href: '/insurance', icon: Shield, label: 'Insurance' },
+  // Standalone "Insurance" top-level entry removed — duplicated Finance → Insurance.
   {
     href: '/hr', icon: Users, label: 'HR',
     children: [
@@ -184,8 +184,14 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <nav className="space-y-0.5 px-2">
         {navLinks.map((link) => {
           const Icon = link.icon;
-          const isActive = pathname.startsWith(link.href);
           const hasChildren = 'children' in link && link.children && link.children.length > 0;
+          // Some children (e.g. Finance → Services) live outside their parent's
+          // own URL prefix — pathname.startsWith(link.href) alone would miss
+          // those and collapse the group the moment you open one, so also
+          // match against every child's own href.
+          const isActive =
+            pathname.startsWith(link.href) ||
+            (hasChildren && link.children!.some(c => pathname === c.href || pathname.startsWith(c.href + '/')));
           const isExpanded = isActive && hasChildren;
           return (
             <div key={link.href}>
