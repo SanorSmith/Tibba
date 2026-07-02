@@ -23,7 +23,7 @@ async function getInsuranceStats() {
         COUNT(*) FILTER (WHERE status IN ('APPROVED','PAID'))                                    AS approved,
         COALESCE(SUM(approved_amount) FILTER (WHERE status IN ('APPROVED','PAID')), 0)           AS approved_amount,
         COUNT(*) FILTER (WHERE status IN ('SUBMITTED','UNDER_REVIEW','DRAFT'))                   AS pending,
-        COALESCE(SUM(claimed_amount) FILTER (WHERE status IN ('SUBMITTED','UNDER_REVIEW')), 0)   AS pending_amount,
+        COALESCE(SUM(claim_amount) FILTER (WHERE status IN ('SUBMITTED','UNDER_REVIEW')), 0)      AS pending_amount,
         COUNT(*) FILTER (WHERE status = 'REJECTED')                                              AS rejected,
         COUNT(*) FILTER (WHERE status = 'PAID')                                                  AS paid,
         COALESCE(SUM(paid_amount) FILTER (WHERE status = 'PAID'), 0)                             AS paid_amount
@@ -56,7 +56,7 @@ async function getInsuranceCompanies() {
         ic.coverage_percentage,
         ic.active,
         COUNT(cl.id)                                       AS claims_count,
-        COALESCE(SUM(cl.claimed_amount), 0)               AS total_claimed,
+        COALESCE(SUM(cl.claim_amount), 0)                  AS total_claimed,
         COALESCE(SUM(cl.paid_amount), 0)                  AS total_paid
       FROM insurance_companies ic
       LEFT JOIN insurance_claims cl ON ic.company_id = cl.insurance_company_id
