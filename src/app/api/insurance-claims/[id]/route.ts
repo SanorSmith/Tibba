@@ -71,16 +71,35 @@ export async function PUT(
       if (approved_amount === undefined || approved_amount < 0) {
         return NextResponse.json({ error: 'approved_amount is required' }, { status: 400 });
       }
-      updateQuery = `
-        UPDATE insurance_claims
-        SET status = 'APPROVED',
-            approved_amount = $1,
-            approval_date = CURRENT_DATE,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $2
-        RETURNING *
-      `;
-      updateValues = [approved_amount, id];
+      const approveResult = await pool.query(
+        `UPDATE insurance_claims
+         SET status = 'APPROVED',
+             approved_amount = $1,
+             approval_date = CURRENT_DATE,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2
+         RETURNING *`,
+        [approved_amount, id]
+      );
+
+      // Sync the linked invoice's coverage amount to what was actually approved
+      // (non-fatal) — keeps the invoice list/report in step with the claim outcome.
+      if (claim.invoice_id) {
+        try {
+          await pool.query(
+            `UPDATE invoices
+             SET insurance_coverage_amount = $1,
+                 patient_responsibility = GREATEST(total_amount - $1, 0),
+                 updatedat = NOW()
+             WHERE id = $2`,
+            [approved_amount, claim.invoice_id]
+          );
+        } catch (syncErr) {
+          console.warn('[approve] invoice sync error (non-fatal):', syncErr);
+        }
+      }
+
+      return NextResponse.json({ success: true, data: approveResult.rows[0] });
 
     } else if (action === 'reject') {
       const { rejection_reason } = body;
