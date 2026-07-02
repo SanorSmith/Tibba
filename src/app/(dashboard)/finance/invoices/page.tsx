@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Receipt, Plus, Search, Eye, Trash2, Edit, X, Percent, RefreshCw, ChevronDown, Shield, Printer } from 'lucide-react';
+import { Receipt, Plus, Search, Eye, Trash2, Edit, X, Percent, RefreshCw, ChevronDown, Shield, Printer, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Invoice {
@@ -31,6 +31,8 @@ interface Invoice {
     company_name: string;
     company_name_ar?: string;
   };
+  latest_claim_id?: string;
+  latest_claim_status?: string;
 }
 
 interface InsuranceCompany {
@@ -62,12 +64,17 @@ interface LineItem {
   service_category: string;
   quantity: number;
   unit_price: number;
+  discount_percentage: number;
   line_total: number;
   provider_id?: string;
   provider_name?: string;
   service_fee?: number;
   stakeholder_id?: string;       // receptionist's chosen provider for this line ('ALL' = split)
   providers?: ServiceProvider[]; // configured providers for the selected service
+  fromOpenEHR?: boolean;         // line was pulled from OpenEHR
+  orderGroup?: string;           // order id/name this line belongs to (for grouping)
+  openehr_source_uid?: string;   // OpenEHR composition uid this line was pulled from
+  openehr_order_id?: string;     // OpenEHR order/request id this line was pulled from
 }
 
 interface ServiceProvider {
@@ -85,6 +92,10 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  // All active stakeholders — used to let staff assign a physician to
+  // OpenEHR-pulled lines, which have no catalog service and therefore no
+  // per-service provider list to pick from (see updateLineProvider usage below).
+  const [allStakeholders, setAllStakeholders] = useState<{stakeholder_id: string; name_en: string; name_ar: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -101,12 +112,116 @@ export default function InvoicesPage() {
   const [patientSearch, setPatientSearch] = useState('');
   const [patientResults, setPatientResults] = useState<any[]>([]);
   const [activeApproval, setActiveApproval] = useState<any | null>(null);
+  const [patientNationalId, setPatientNationalId] = useState('');
+  const [pullingOrders, setPullingOrders] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (g: string) =>
+    setCollapsedGroups(prev => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+
+  // Pull filters: narrow which OpenEHR orders come back
+  const [pullDateFrom, setPullDateFrom] = useState('');
+  const [pullDateTo, setPullDateTo] = useState('');
+  const [pullOrderId, setPullOrderId] = useState('');
+  const [pullSkipPaid, setPullSkipPaid] = useState(true);
+  // Orders matched by the last pull, waiting for the user to click "+" to add them
+  const [openEhrCandidates, setOpenEhrCandidates] = useState<any[]>([]);
+
+  // The group key an order's line(s) are filed under in the invoice — used both
+  // to build lines and to detect whether an order has already been added.
+  const orderGroupOf = (o: any) => {
+    const dt = (d?: string) => (d ? ' · ' + new Date(d).toLocaleDateString('en-GB') : '');
+    if (o.order_type === 'LAB') return `🧪 Lab Order · ${o.order_id || o.name}${dt(o.requested_date)}`;
+    if (o.order_type === 'PROCEDURE') return `🔪 Surgery · ${o.name}${dt(o.requested_date)}`;
+    if (o.order_type === 'VACCINATION') return `💉 Vaccination · ${o.name}${dt(o.requested_date)}`;
+    if (o.order_type === 'MEDICATION') return '💊 Medications';
+    return `Order · ${o.name}${dt(o.requested_date)}`;
+  };
+
+  // Convert OpenEHR orders into invoice lines: lab orders expand into one line
+  // per test (grouped under the order), procedures/meds become one line each.
+  const buildOpenEHRLines = (items: any[]): LineItem[] => {
+    const lines: LineItem[] = [];
+    for (const o of items) {
+      const grp = orderGroupOf(o);
+      if (o.order_type === 'LAB' && Array.isArray(o.tests) && o.tests.length > 0) {
+        for (const t of o.tests) {
+          lines.push({
+            service_id: t.service_id || '', service_code: t.service_code || '',
+            service_name: t.name, service_name_ar: '', service_category: 'LAB',
+            quantity: 1, unit_price: Number(t.price) || 0, discount_percentage: 0,
+            line_total: Number(t.price) || 0, stakeholder_id: undefined, providers: [],
+            fromOpenEHR: true, orderGroup: grp,
+            openehr_source_uid: o.source_uid, openehr_order_id: o.order_id,
+          });
+        }
+      } else {
+        lines.push({
+          service_id: o.service_id || '', service_code: o.service_code || '',
+          service_name: `${o.name}${o.order_type ? ` (${o.order_type})` : ''}`,
+          service_name_ar: (o.description || '').slice(0, 140), service_category: o.order_type || '',
+          quantity: 1, unit_price: Number(o.price) || 0, discount_percentage: 0,
+          line_total: Number(o.price) || 0, stakeholder_id: undefined, providers: [],
+          fromOpenEHR: true, orderGroup: grp,
+          openehr_source_uid: o.source_uid, openehr_order_id: o.order_id,
+        });
+      }
+    }
+    return lines;
+  };
+
+  // Fetch matching OpenEHR orders for review — nothing is added to the invoice
+  // yet; the user picks which ones to add via the "+" button per order.
+  const pullOpenEHROrders = async (nationalIdOverride?: string, silent = false) => {
+    const nid = nationalIdOverride || patientNationalId;
+    if (!nid) { if (!silent) toast.error('Select a patient with a national ID first'); return; }
+    setPullingOrders(true);
+    try {
+      const qs = new URLSearchParams({ subject: nid });
+      if (pullDateFrom) qs.set('date_from', pullDateFrom);
+      if (pullDateTo) qs.set('date_to', pullDateTo);
+      if (pullOrderId.trim()) qs.set('order_id', pullOrderId.trim());
+      qs.set('skip_paid', String(pullSkipPaid));
+      const res = await fetch(`/api/openehr/patient-orders?${qs}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch OpenEHR orders');
+      const items: any[] = data.items || [];
+      setOpenEhrCandidates(items);
+      if (items.length === 0) {
+        if (!silent) toast.info(data.note || 'No clinical orders matched your filters for this patient');
+        return;
+      }
+      if (!silent) toast.success(`Found ${items.length} order(s) — click + to add each to the invoice`);
+    } catch (e: any) {
+      if (!silent) toast.error('OpenEHR: ' + e.message);
+    } finally {
+      setPullingOrders(false);
+    }
+  };
+
+  // Add a single matched OpenEHR order to the invoice's line items and totals.
+  const addOrderToInvoice = (o: any) => {
+    const grp = orderGroupOf(o);
+    const newLines = buildOpenEHRLines([o]);
+    const kept = lineItems.filter(l => l.orderGroup !== grp);
+    const updated = [...kept, ...newLines];
+    setLineItems(updated);
+    recalcFromLines(updated, formData.insurance_coverage_percentage || 0);
+    setCollapsedGroups(prev => new Set(prev).add(grp));
+    toast.success(`Added "${o.order_id || o.name}" to the invoice`);
+  };
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
 
   // Claim submission state
   const [claimInvoice, setClaimInvoice] = useState<Invoice | null>(null);
   const [claimNotes, setClaimNotes] = useState('');
   const [submittingClaim, setSubmittingClaim] = useState(false);
+
+  // Insurance categories state
+  const [insuranceCategories, setInsuranceCategories] = useState<{id: number; category_name: string; coverage_percentage: number}[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  // Generated invoice number
+  const [generatedInvoiceNumber, setGeneratedInvoiceNumber] = useState('');
 
   // Auto-load items when viewInvoice changes
   useEffect(() => {
@@ -148,17 +263,22 @@ export default function InvoicesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [invRes, insRes, svcRes] = await Promise.all([
+      const [invRes, insRes, svcRes, stkRes] = await Promise.all([
         fetch('/api/invoices'),
         fetch('/api/insurance-companies'),
         fetch('/api/services'),
+        fetch('/api/stakeholders?is_active=true'),
       ]);
-      if (invRes.ok) { 
+      if (invRes.ok) {
         const invData = await invRes.json();
         setInvoices(invData.data || []);
       }
       if (insRes.ok) setInsuranceCompanies(await insRes.json());
       if (svcRes.ok) setServices(await svcRes.json());
+      if (stkRes.ok) {
+        const stkData = await stkRes.json();
+        setAllStakeholders(stkData.data || []);
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load data');
@@ -168,10 +288,11 @@ export default function InvoicesPage() {
   };
 
   const handleCreate = () => {
+    const today = new Date().toISOString().split('T')[0];
     setEditingInvoice(null);
     setLineItems([]);
     setFormData({
-      invoice_date: new Date().toISOString().split('T')[0],
+      invoice_date: today,
       status: 'PENDING',
       subtotal: 0,
       discount_percentage: 0,
@@ -186,6 +307,9 @@ export default function InvoicesPage() {
     setPatientSearch('');
     setPatientResults([]);
     setActiveApproval(null);
+    setPatientNationalId('');
+    setOpenEhrCandidates([]);
+    setGeneratedInvoiceNumber(`INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`);
     setShowModal(true);
   };
 
@@ -196,7 +320,45 @@ export default function InvoicesPage() {
     setPatientSearch(invoice.patient_name_ar || invoice.patient_name || '');
     setPatientResults([]);
     setActiveApproval(invoice.authorization_number ? { authorization_number: invoice.authorization_number } : null);
+    setGeneratedInvoiceNumber(invoice.invoice_number || '');
+    setOpenEhrCandidates([]);
     setShowModal(true);
+
+    // selectPatient() (used when creating a new invoice) sets patientNationalId
+    // and pre-fetches insurance categories as side effects of the search picker —
+    // handleEdit bypasses that picker entirely, so both were silently skipped,
+    // leaving "🩺 Get Orders" permanently disabled and the Insurance Category
+    // dropdown showing "No categories defined" even when the company has some.
+    setPatientNationalId('');
+    if (invoice.patient_id) {
+      try {
+        const searchTerm = invoice.patient_name_ar || invoice.patient_name || '';
+        if (searchTerm) {
+          const pRes = await fetch(`/api/tibbna-openehr-patients?search=${encodeURIComponent(searchTerm)}`);
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            const list = Array.isArray(pData) ? pData : (pData.data || []);
+            const match = list.find((p: any) => (p.id || p.patient_id) === invoice.patient_id);
+            if (match) setPatientNationalId(match.nationalId || match.national_id || '');
+          }
+        }
+      } catch { /* non-fatal — Get Orders just stays disabled */ }
+    }
+    setInsuranceCategories([]);
+    setSelectedCategory('');
+    if (invoice.insurance_company_id) {
+      try {
+        const cRes = await fetch(`/api/insurance-companies/${invoice.insurance_company_id}/categories`);
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          const cats = cData.data || [];
+          setInsuranceCategories(cats);
+          const currentPct = parseFloat(String(invoice.insurance_coverage_percentage)) || 0;
+          const match = cats.find((c: any) => parseFloat(c.coverage_percentage) === currentPct);
+          if (match) setSelectedCategory(String(match.id));
+        }
+      } catch { /* non-fatal */ }
+    }
 
     // Fetch existing items for this invoice
     try {
@@ -215,6 +377,11 @@ export default function InvoicesPage() {
             const svc = services.find(
               s => s.id === item.item_code || s.code === item.item_code || s.name_ar === item.item_name_ar || s.name === item.item_name
             );
+            // Lines pulled via "🩺 Get Orders" (openehr_source_uid set) never had a
+            // catalog service — they're procedures/labs synthesized from OpenEHR
+            // with no service_id. Render those read-only (like on create) instead
+            // of a services <select> that can never show the right option.
+            const isFromOpenEHR = !!item.openehr_source_uid || !!item.openehr_order_id;
             return {
               service_id: svc?.id || item.item_code || '',
               service_code: svc?.code || item.item_code || '',
@@ -227,13 +394,17 @@ export default function InvoicesPage() {
               provider_id: item.provider_id || svc?.provider_id,
               provider_name: item.provider_name || svc?.provider_name,
               service_fee: item.service_fee ?? svc?.service_fee,
+              stakeholder_id: item.stakeholder_id || undefined,
+              fromOpenEHR: isFromOpenEHR,
+              openehr_source_uid: item.openehr_source_uid || undefined,
+              openehr_order_id: item.openehr_order_id || undefined,
             };
           });
           setLineItems(mapped);
           
           // Recalculate totals after loading items
           setTimeout(() => {
-            recalcFromLines(mapped, invoice.discount_percentage || 0, invoice.insurance_coverage_percentage || 0);
+            recalcFromLines(mapped, invoice.insurance_coverage_percentage || 0);
           }, 100);
         }
       }
@@ -244,18 +415,17 @@ export default function InvoicesPage() {
 
   // Line item helpers
   const addLineItem = () => {
-    setLineItems(prev => [...prev, { service_id: '', service_code: '', service_name: '', service_name_ar: '', service_category: '', quantity: 1, unit_price: 0, line_total: 0 }]);
+    setLineItems(prev => [...prev, { service_id: '', service_code: '', service_name: '', service_name_ar: '', service_category: '', quantity: 1, unit_price: 0, discount_percentage: 0, line_total: 0, stakeholder_id: undefined, providers: [] }]);
   };
 
   const updateLineService = (idx: number, serviceId: string) => {
     const svc = services.find(s => s.id === serviceId);
     if (!svc) return;
     const updated = [...lineItems];
-    const qty = updated[idx].quantity || 1;
     const price = svc.price_self_pay;
-    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: qty, unit_price: price, line_total: price * qty, provider_id: svc.provider_id, provider_name: svc.provider_name, service_fee: svc.service_fee, stakeholder_id: undefined, providers: [] };
+    updated[idx] = { service_id: svc.id, service_code: svc.code, service_name: svc.name, service_name_ar: svc.name_ar, service_category: svc.category, quantity: 1, unit_price: price, discount_percentage: 0, line_total: price, provider_id: svc.provider_id, provider_name: svc.provider_name, service_fee: svc.service_fee, stakeholder_id: undefined, providers: [] };
     setLineItems(updated);
-    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+    recalcFromLines(updated, formData.insurance_coverage_percentage || 0);
 
     // Fetch which providers are configured for this service → drives the per-line provider picker
     fetch(`/api/services/${svc.id}/providers`)
@@ -280,63 +450,63 @@ export default function InvoicesPage() {
     setLineItems(updated);
   };
 
-  const updateLineQty = (idx: number, qty: number) => {
-    const updated = [...lineItems];
-    updated[idx] = { ...updated[idx], quantity: qty, line_total: updated[idx].unit_price * qty };
-    setLineItems(updated);
-    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
-  };
 
   const updateLinePrice = (idx: number, price: number) => {
     const updated = [...lineItems];
-    updated[idx] = { ...updated[idx], unit_price: price, line_total: price * updated[idx].quantity };
+    const disc = updated[idx].discount_percentage || 0;
+    const lineTotal = price - Math.round(price * disc / 100);
+    updated[idx] = { ...updated[idx], unit_price: price, line_total: lineTotal };
     setLineItems(updated);
-    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+    recalcFromLines(updated, formData.insurance_coverage_percentage || 0);
+  };
+
+  const updateLineDiscount = (idx: number, discPct: number) => {
+    const updated = [...lineItems];
+    const price = updated[idx].unit_price || 0;
+    const lineTotal = price - Math.round(price * discPct / 100);
+    updated[idx] = { ...updated[idx], discount_percentage: discPct, line_total: lineTotal };
+    setLineItems(updated);
+    recalcFromLines(updated, formData.insurance_coverage_percentage || 0);
   };
 
   const removeLineItem = (idx: number) => {
     const updated = lineItems.filter((_, i) => i !== idx);
     setLineItems(updated);
-    recalcFromLines(updated, formData.discount_percentage || 0, formData.insurance_coverage_percentage || 0);
+    recalcFromLines(updated, formData.insurance_coverage_percentage || 0);
   };
 
-  const recalcFromLines = (lines: LineItem[], discPct: number, insPct: number) => {
-    const subtotal = lines.reduce((s, l) => s + l.line_total, 0);
-    const discountAmount = Math.round(subtotal * discPct / 100);
-    const totalAmount = subtotal - discountAmount;
-    const insuranceCoverage = Math.round(totalAmount * insPct / 100);
-    const patientResp = totalAmount - insuranceCoverage;
+  // Remove every line belonging to one pulled OpenEHR order at once (e.g. a
+  // 50+ test lab order) instead of deleting each test line individually.
+  // The order then reappears in the "Matched OpenEHR Orders" list to re-add.
+  const removeOrderGroup = (group: string) => {
+    const updated = lineItems.filter(l => l.orderGroup !== group);
+    setLineItems(updated);
+    recalcFromLines(updated, formData.insurance_coverage_percentage || 0);
+  };
+
+  const recalcFromLines = (lines: LineItem[], insPct: number) => {
+    const grossSubtotal = lines.reduce((s, l) => s + (Number(l.unit_price) || 0), 0);
+    const totalDiscount = lines.reduce((s, l) => s + Math.round((Number(l.unit_price) || 0) * (l.discount_percentage || 0) / 100), 0);
+    const subtotal = grossSubtotal - totalDiscount;
+    const insuranceCoverage = Math.round(subtotal * insPct / 100);
+    const patientResp = subtotal - insuranceCoverage;
     const balanceDue = patientResp - (formData.amount_paid || 0);
-    
-    console.log('🔧 Recalculation:', {
-      subtotal,
-      discountAmount,
-      totalAmount,
-      insuranceCoverage,
-      patientResp,
-      amountPaid: formData.amount_paid || 0,
-      balanceDue
-    });
     
     setFormData(prev => ({
       ...prev,
-      subtotal,
-      discount_amount: discountAmount,
-      total_amount: totalAmount,
+      subtotal: grossSubtotal,
+      discount_percentage: grossSubtotal > 0 ? Math.round(totalDiscount / grossSubtotal * 10000) / 100 : 0,
+      discount_amount: totalDiscount,
+      total_amount: subtotal,
       insurance_coverage_amount: insuranceCoverage,
       patient_responsibility: patientResp,
       balance_due: balanceDue,
     }));
   };
 
-  const handleDiscountChange = (discPct: number) => {
-    setFormData(prev => ({ ...prev, discount_percentage: discPct }));
-    recalcFromLines(lineItems, discPct, formData.insurance_coverage_percentage || 0);
-  };
-
   const handleInsurancePctChange = (insPct: number) => {
     setFormData(prev => ({ ...prev, insurance_coverage_percentage: insPct }));
-    recalcFromLines(lineItems, formData.discount_percentage || 0, insPct);
+    recalcFromLines(lineItems, insPct);
   };
 
   const handleAmountPaidChange = (amountPaid: number) => {
@@ -407,6 +577,7 @@ export default function InvoicesPage() {
       patient_name: patient.fullNameEn || patient.full_name || '',
       patient_name_ar: patient.fullNameAr || patient.full_name_ar || '',
     }));
+    setPatientNationalId(patient.nationalid || patient.national_id || '');
     setPatientSearch(patient.fullNameAr || patient.fullNameEn || patient.full_name_ar || patient.full_name || '');
     setShowPatientDropdown(false);
     setPatientResults([]);
@@ -424,7 +595,7 @@ export default function InvoicesPage() {
             insurance_company_id: policy.company_id,
             insurance_coverage_percentage: coverage,
           }));
-          recalcFromLines(lineItems, currentDiscount, coverage);
+          recalcFromLines(lineItems, coverage);
           toast.success(
             `Insurance auto-filled: ${policy.company_name || 'Policy found'} · ${coverage}% coverage`
           );
@@ -445,230 +616,34 @@ export default function InvoicesPage() {
     } catch {
       setActiveApproval(null);
     }
+
+    // Orders are only fetched once the user sets filter criteria (date/order id/
+    // skip-paid) and clicks "Pull from OpenEHR" — no auto-pull on patient select.
   };
 
-  const printInsuranceReport = async (inv: Invoice) => {
-    const fmtN = (n: number | string) => new Intl.NumberFormat('en-IQ').format(parseFloat(String(n)) || 0);
-    const fmtD = (d: string) => d ? new Date(d).toLocaleDateString('en-GB') : '-';
-
+  // Download the Insurance Pre-Approval Request Report as a .docx (auto-filled
+  // from patient/insurance/cost data; clinical & policy fields print blank for
+  // manual completion, matching the hospital's standard PA request template).
+  const downloadInsurancePreApproval = async (inv: Invoice) => {
     try {
-      toast.info('Preparing insurance report…');
-      const res = await fetch(`/api/invoices/${inv.id}/insurance-report`);
-      if (!res.ok) throw new Error('Failed to fetch report data');
-      const { data } = await res.json();
-      const { invoice, items, patient, insuranceCompany } = data;
-
-      const insPct = parseFloat(invoice.insurance_coverage_percentage) || 0;
-
-      const serviceRows = (items as any[]).map((item, i) => {
-        const lineTotal = parseFloat(item.total_price ?? item.subtotal ?? (item.unit_price * (item.quantity || 1))) || 0;
-        const insCovered = Math.round(lineTotal * insPct / 100);
-        const patPays = lineTotal - insCovered;
-        return `<tr>
-          <td>${i + 1}</td>
-          <td><strong>${item.service_name || item.item_name || '-'}</strong></td>
-          <td style="direction:rtl;text-align:right">${item.service_name_ar || item.item_name_ar || '-'}</td>
-          <td class="r">${item.quantity || 1}</td>
-          <td class="r">${fmtN(item.unit_price)}</td>
-          <td class="r"><strong>${fmtN(lineTotal)}</strong></td>
-          <td class="r ins">${fmtN(insCovered)}</td>
-          <td class="r pat">${fmtN(patPays)}</td>
-        </tr>`;
-      }).join('');
-
-      const hasMedical = patient?.medical_history || patient?.allergies || patient?.chronic_diseases || patient?.current_medications;
-
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Insurance Report – ${invoice.invoice_number}</title>
-  <style>
-    @page { size: A4; margin: 14mm 18mm; }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;font-size:10.5px;color:#1a1a2e;background:#fff}
-    /* header */
-    .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10px;border-bottom:3px solid #0066cc;margin-bottom:14px}
-    .hosp-name{font-size:20px;font-weight:800;color:#0066cc;letter-spacing:-.5px}
-    .hosp-sub{font-size:9px;color:#888;margin-top:2px}
-    .badge{background:#0066cc;color:#fff;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700}
-    .gen-date{font-size:8.5px;color:#aaa;text-align:right;margin-top:4px}
-    /* section */
-    .sec{margin-bottom:13px}
-    .sec-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0066cc;border-bottom:1px solid #e0e0e0;padding-bottom:3px;margin-bottom:7px}
-    /* info grid */
-    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-    .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-    .ibox{background:#f8fafc;border-radius:5px;padding:5px 9px;border-left:3px solid #0066cc}
-    .ilbl{font-size:8.5px;color:#888;font-weight:600;text-transform:uppercase}
-    .ival{font-size:10.5px;font-weight:600;margin-top:1px}
-    /* medical */
-    .med-box{background:#fff8f0;border:1px solid #ffe0b2;border-radius:7px;padding:9px 13px}
-    .mlbl{font-size:8.5px;color:#e65100;font-weight:700;text-transform:uppercase}
-    .mval{font-size:10px;color:#3e2723;margin-top:2px;line-height:1.45;white-space:pre-wrap}
-    .mitem{margin-bottom:6px}
-    .mitem:last-child{margin-bottom:0}
-    /* insurance box */
-    .ins-box{background:#e8f4fd;border:1px solid #b3d9f7;border-radius:7px;padding:9px 13px}
-    /* table */
-    table{width:100%;border-collapse:collapse;font-size:9.5px}
-    thead tr{background:#0066cc;color:#fff}
-    th{padding:5px 7px;text-align:left;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-    th.r,td.r{text-align:right}
-    tbody tr:nth-child(even){background:#f8fafc}
-    td{padding:5px 7px;border-bottom:1px solid #eee}
-    td.ins{color:#0066cc;font-weight:600}
-    td.pat{color:#c62828;font-weight:600}
-    tfoot tr{background:#dbeafe;font-weight:700}
-    tfoot td{padding:5px 7px;font-size:10px}
-    /* fin summary */
-    .fin{background:#f8fafc;border-radius:7px;padding:8px 12px;border:1px solid #e0e0e0}
-    .fr{display:flex;justify-content:space-between;padding:2.5px 0;font-size:10px}
-    .fr.tot{border-top:2px solid #0066cc;margin-top:4px;padding-top:5px;font-size:12px;font-weight:800;color:#0066cc}
-    .fr.ins-r{color:#0066cc}
-    .fr.paid{color:#2e7d32}
-    .fr.bal{color:#c62828;font-weight:700;font-size:11px}
-    .fr.resp{border-top:1px dashed #ccc;margin-top:4px;padding-top:4px;font-weight:700}
-    /* status */
-    .st{display:inline-block;padding:1.5px 7px;border-radius:10px;font-size:8.5px;font-weight:700}
-    .st-PAID{background:#e8f5e9;color:#2e7d32}
-    .st-PARTIALLY_PAID{background:#fff8e1;color:#f57f17}
-    .st-PENDING{background:#e3f2fd;color:#1565c0}
-    .st-UNPAID{background:#ffebee;color:#c62828}
-    .st-CANCELLED{background:#f5f5f5;color:#757575}
-    /* footer */
-    .foot{margin-top:18px;padding-top:8px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:flex-end}
-    .foot-note{font-size:7.5px;color:#bbb;max-width:55%;line-height:1.4}
-    .sig{text-align:center}
-    .sig-line{border-top:1px solid #555;width:120px;margin:0 auto}
-    .sig-lbl{font-size:7.5px;color:#aaa;margin-top:2px}
-    @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
-  </style>
-</head>
-<body>
-  <div class="hdr">
-    <div>
-      <div class="hosp-name">Tibbna Hospital</div>
-      <div class="hosp-sub">Healthcare Management System</div>
-    </div>
-    <div style="text-align:right">
-      <div class="badge">Insurance Claim Report</div>
-      <div class="gen-date">Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}</div>
-    </div>
-  </div>
-
-  <!-- Patient Info -->
-  <div class="sec">
-    <div class="sec-title">Patient Information</div>
-    <div class="grid3">
-      <div class="ibox"><div class="ilbl">Full Name</div><div class="ival">${invoice.patient_name || patient?.full_name || '-'}</div></div>
-      <div class="ibox"><div class="ilbl">Arabic Name</div><div class="ival" style="direction:rtl">${invoice.patient_name_ar || patient?.full_name_ar || '-'}</div></div>
-      <div class="ibox"><div class="ilbl">Patient ID</div><div class="ival" style="font-family:monospace;font-size:8.5px">${invoice.patient_id || '-'}</div></div>
-      <div class="ibox"><div class="ilbl">Date of Birth</div><div class="ival">${patient?.date_of_birth ? fmtD(patient.date_of_birth) : '-'}</div></div>
-      <div class="ibox"><div class="ilbl">Gender</div><div class="ival">${patient?.gender || '-'}</div></div>
-      <div class="ibox"><div class="ilbl">National ID</div><div class="ival">${patient?.national_id || '-'}</div></div>
-      ${patient?.phone ? `<div class="ibox"><div class="ilbl">Phone</div><div class="ival">${patient.phone}</div></div>` : ''}
-      ${patient?.blood_group ? `<div class="ibox"><div class="ilbl">Blood Group</div><div class="ival">${patient.blood_group}</div></div>` : ''}
-    </div>
-  </div>
-
-  <!-- Medical / Diagnoses -->
-  ${hasMedical ? `
-  <div class="sec">
-    <div class="sec-title">Medical Information &amp; Diagnoses</div>
-    <div class="med-box">
-      ${patient?.medical_history ? `<div class="mitem"><div class="mlbl">Medical History &amp; Diagnoses</div><div class="mval">${patient.medical_history}</div></div>` : ''}
-      ${patient?.chronic_diseases ? `<div class="mitem"><div class="mlbl">Chronic Diseases</div><div class="mval">${patient.chronic_diseases}</div></div>` : ''}
-      ${patient?.allergies ? `<div class="mitem"><div class="mlbl">Allergies</div><div class="mval">${patient.allergies}</div></div>` : ''}
-      ${patient?.current_medications ? `<div class="mitem"><div class="mlbl">Current Medications</div><div class="mval">${patient.current_medications}</div></div>` : ''}
-    </div>
-  </div>` : ''}
-
-  <!-- Insurance & Invoice Details -->
-  <div class="sec">
-    <div class="sec-title">Insurance &amp; Invoice Details</div>
-    <div class="grid2">
-      <div class="ins-box">
-        <div class="ilbl" style="color:#0066cc">Insurance Company</div>
-        <div style="font-size:14px;font-weight:800;color:#0066cc;margin-top:3px">${insuranceCompany?.name || '-'}</div>
-        ${insuranceCompany?.code ? `<div style="font-size:8.5px;color:#666;margin-top:1px">Code: ${insuranceCompany.code}</div>` : ''}
-        <div style="margin-top:6px"><span class="ilbl">Coverage: </span><span style="font-size:15px;font-weight:900;color:#0066cc">${insPct}%</span></div>
-      </div>
-      <div class="fin" style="border-left:4px solid #0066cc">
-        <div class="fr"><span style="color:#888">Invoice #</span><span style="font-family:monospace;font-weight:600">${invoice.invoice_number}</span></div>
-        <div class="fr"><span style="color:#888">Invoice Date</span><span>${fmtD(invoice.invoice_date)}</span></div>
-        <div class="fr"><span style="color:#888">Status</span><span class="st st-${invoice.status}">${invoice.status.replace(/_/g,' ')}</span></div>
-        ${invoice.payment_method ? `<div class="fr"><span style="color:#888">Payment Method</span><span>${invoice.payment_method}</span></div>` : ''}
-      </div>
-    </div>
-  </div>
-
-  <!-- Services Table -->
-  <div class="sec">
-    <div class="sec-title">Medical Services Rendered</div>
-    <table>
-      <thead><tr>
-        <th>#</th><th>Service Name</th><th style="text-align:right">Arabic Name</th>
-        <th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total (IQD)</th>
-        <th class="r">Ins. Covered</th><th class="r">Patient Pays</th>
-      </tr></thead>
-      <tbody>${serviceRows}</tbody>
-      <tfoot><tr>
-        <td colspan="5" style="text-align:right;color:#888;font-size:9px">TOTALS</td>
-        <td class="r">${fmtN(invoice.total_amount)} IQD</td>
-        <td class="r ins">${fmtN(invoice.insurance_coverage_amount)} IQD</td>
-        <td class="r pat">${fmtN(invoice.patient_responsibility)} IQD</td>
-      </tr></tfoot>
-    </table>
-  </div>
-
-  <!-- Financial Summary -->
-  <div class="sec">
-    <div class="sec-title">Financial Summary</div>
-    <div class="grid2">
-      <div class="fin">
-        <div class="fr"><span style="color:#888">Subtotal</span><span>${fmtN(invoice.subtotal)} IQD</span></div>
-        ${parseFloat(invoice.discount_percentage) > 0 ? `<div class="fr" style="color:#f57f17"><span>Discount (${parseFloat(invoice.discount_percentage)}%)</span><span>-${fmtN(invoice.discount_amount)} IQD</span></div>` : ''}
-        <div class="fr tot"><span>Grand Total</span><span>${fmtN(invoice.total_amount)} IQD</span></div>
-      </div>
-      <div class="fin">
-        <div class="fr ins-r"><span>Insurance Coverage (${insPct}%)</span><span>-${fmtN(invoice.insurance_coverage_amount)} IQD</span></div>
-        <div class="fr resp"><span>Patient Responsibility</span><span>${fmtN(invoice.patient_responsibility)} IQD</span></div>
-        <div class="fr paid"><span>Amount Paid</span><span>-${fmtN(invoice.amount_paid)} IQD</span></div>
-        <div class="fr bal"><span>Balance Due</span><span>${fmtN(invoice.balance_due)} IQD</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <div class="foot">
-    <div class="foot-note">
-      Official insurance claim report — Tibbna Hospital Management System.<br>
-      Computer-generated document. Valid without signature unless stated otherwise.<br>
-      For queries contact the billing department.
-    </div>
-    <div style="display:flex;gap:28px">
-      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Treating Physician</div></div>
-      <div class="sig"><div class="sig-line"></div><div class="sig-lbl">Billing Department</div></div>
-    </div>
-  </div>
-
-  <script>window.onload = function(){ window.print(); }</script>
-</body>
-</html>`;
-
-      const pw = window.open('', '_blank', 'width=900,height=750');
-      if (pw) {
-        pw.document.write(html);
-        pw.document.close();
-      } else {
-        toast.error('Please allow pop-ups to print the report');
-      }
+      toast.info('Generating insurance pre-approval report…');
+      const res = await fetch(`/api/invoices/${inv.id}/insurance-report/docx`);
+      if (!res.ok) throw new Error('Failed to generate report');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Insurance_PreApproval_${inv.invoice_number}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('printInsuranceReport error:', err);
+      console.error('downloadInsurancePreApproval error:', err);
       toast.error('Failed to generate report');
     }
   };
+
 
   // Auto-submit claim to Finance when a new invoice with insurance is saved
   const autoSubmitClaim = async (invoice: any) => {
@@ -731,6 +706,10 @@ export default function InvoicesPage() {
 
       const payload = {
         ...formData,
+        invoice_number: editingInvoice ? formData.invoice_number : generatedInvoiceNumber,
+        // Payment date is no longer picked manually — it's captured automatically
+        // as today's date the moment the invoice is saved.
+        payment_date: formData.payment_date || new Date().toISOString().split('T')[0],
         authorization_number: activeApproval?.authorization_number || null,
         items: lineItems.map(l => ({
           item_type: 'SERVICE',
@@ -751,6 +730,8 @@ export default function InvoicesPage() {
           service_fee: l.service_fee || 0,
           // Receptionist's chosen provider for revenue-share allocation ('ALL' = split)
           stakeholder_id: l.stakeholder_id || null,
+          openehr_source_uid: l.openehr_source_uid || null,
+          openehr_order_id: l.openehr_order_id || null,
         })),
       };
 
@@ -965,6 +946,8 @@ export default function InvoicesPage() {
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      {!showModal && (
+      <>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1118,8 +1101,12 @@ export default function InvoicesPage() {
                       >
                         <Edit className="w-4 h-4 text-gray-600" />
                       </button>
-                      {/* Submit Insurance Claim — only for invoices with insurance coverage */}
-                      {inv.insurance_coverage_amount > 0 && inv.status !== 'CANCELLED' && (
+                      {/* Submit Insurance Claim — only while there's no claim already
+                          in flight/decided for this invoice; once one exists, claim
+                          progress is tracked and actioned from the Insurance Claims
+                          page instead (resubmission included). */}
+                      {inv.insurance_coverage_amount > 0 && inv.status !== 'CANCELLED' &&
+                        !inv.latest_claim_status && (
                         <button
                           onClick={() => { setClaimInvoice(inv); setClaimNotes(''); }}
                           className="p-1 hover:bg-blue-50 rounded"
@@ -1128,11 +1115,22 @@ export default function InvoicesPage() {
                           <Shield className="w-4 h-4 text-blue-600" />
                         </button>
                       )}
-                      {inv.insurance_coverage_amount > 0 && (
+                      {inv.latest_claim_status === 'APPROVED' && (
+                        <span
+                          className="p-1 text-emerald-600"
+                          title="Insurance claim approved"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                        </span>
+                      )}
+                      {/* Pre-approval requests are typically submitted before coverage is
+                          determined, so this only needs an insurance company on file —
+                          not a nonzero coverage amount. */}
+                      {inv.insurance_company_id && (
                         <button
-                          onClick={() => printInsuranceReport(inv)}
+                          onClick={() => downloadInsurancePreApproval(inv)}
                           className="p-1 hover:bg-purple-50 rounded"
-                          title="Print Insurance Report (PDF)"
+                          title="Download Insurance Pre-Approval Report (DOCX)"
                         >
                           <Printer className="w-4 h-4 text-purple-600" />
                         </button>
@@ -1157,32 +1155,27 @@ export default function InvoicesPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit — shown inline in place of the list, not as a floating modal */}
       {showModal && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-                  >
-          <div
-            className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold">
-                {editingInvoice ? 'Edit Invoice' : 'Create Invoice'}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="bg-white rounded-xl border">
+          <div className="p-6 border-b flex items-center justify-between">
+            <h2 className="text-lg font-bold">
+              {editingInvoice ? 'Edit Invoice' : 'Create Invoice'}
+            </h2>
+            <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
             <div className="p-6 space-y-6">
               {/* Basic Info */}
               <div>
                 <h3 className="font-semibold text-sm mb-3">Invoice Information</h3>
                 <div className="space-y-4">
-                  {/* Auto-generated Invoice Number Info */}
-                  {!editingInvoice && (
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <div className="flex items-start gap-2">
                         <div className="text-blue-600 mt-0.5">
@@ -1191,37 +1184,24 @@ export default function InvoicesPage() {
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-blue-900">Invoice Number Auto-Generated</div>
-                          <div className="text-xs text-blue-700 mt-0.5">
-                            The system will automatically generate an invoice number in format: INV-YYYY-XXXXX
-                          </div>
+                          <div className="text-sm font-medium text-blue-900">Invoice Number</div>
+                          <div className="text-xs text-blue-700 mt-0.5 font-mono">{generatedInvoiceNumber}</div>
                         </div>
                       </div>
                     </div>
-                  )}
-
-                  {/* Show invoice number for editing */}
-                  {editingInvoice && formData.invoice_number && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Invoice Number
-                      </label>
-                      <div className="px-3 py-2 bg-gray-50 border rounded-lg text-sm font-mono text-gray-700">
-                        {formData.invoice_number}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <div className="text-blue-600 mt-0.5">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-blue-900">Invoice Date</div>
+                          <div className="text-xs text-blue-700 mt-0.5">{formData.invoice_date ? formData.invoice_date.split('T')[0] : new Date().toISOString().split('T')[0]}</div>
+                        </div>
                       </div>
                     </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Invoice Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.invoice_date ? formData.invoice_date.split('T')[0] : ''}
-                      onChange={e => setFormData({ ...formData, invoice_date: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
                   </div>
                 </div>
               </div>
@@ -1313,79 +1293,223 @@ export default function InvoicesPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-sm">Services *</h3>
-                  <button
-                    type="button"
-                    onClick={addLineItem}
-                    className="flex items-center gap-1 text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600"
-                  >
-                    <Plus className="w-3 h-3" /> Add Service
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => pullOpenEHROrders()}
+                      disabled={pullingOrders || !patientNationalId}
+                      title={patientNationalId ? "Load this patient's lab/surgery/medication orders from OpenEHR" : 'Select a patient first'}
+                      className="flex items-center gap-1 text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      🩺 {pullingOrders ? 'Loading…' : 'Get Orders'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addLineItem}
+                      className="flex items-center gap-1 text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600"
+                    >
+                      <Plus className="w-3 h-3" /> Add Service
+                    </button>
+                  </div>
                 </div>
 
-                {lineItems.length === 0 && (
-                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center text-sm text-gray-400">
-                    No services added yet. Click "Add Service" to begin.
+                {patientNationalId && (
+                  <div className="flex flex-wrap items-end gap-2 mb-3 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                    <div>
+                      <label className="text-[11px] text-gray-500 block mb-0.5">From</label>
+                      <input type="date" value={pullDateFrom} onChange={e => setPullDateFrom(e.target.value)}
+                        className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-gray-500 block mb-0.5">To</label>
+                      <input type="date" value={pullDateTo} onChange={e => setPullDateTo(e.target.value)}
+                        className="border rounded px-2 py-1 text-xs" />
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-gray-500 block mb-0.5">Order ID</label>
+                      <input type="text" value={pullOrderId} onChange={e => setPullOrderId(e.target.value)}
+                        placeholder="e.g. OrderId-178..." className="border rounded px-2 py-1 text-xs w-40" />
+                    </div>
+                    <label className="flex items-center gap-1.5 text-xs text-gray-700 pb-1.5">
+                      <input type="checkbox" checked={pullSkipPaid} onChange={e => setPullSkipPaid(e.target.checked)} />
+                      Skip orders already paid on another invoice
+                    </label>
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  {lineItems.map((line, idx) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2">
-                     <div className="grid grid-cols-12 gap-2 items-end">
+                {(() => {
+                  // Once an order is added to the invoice it disappears from this list —
+                  // it now lives only as an editable/removable line item below (no duplication).
+                  const pendingCandidates = openEhrCandidates.filter(
+                    o => !lineItems.some(l => l.orderGroup === orderGroupOf(o))
+                  );
+                  if (pendingCandidates.length === 0) return null;
+                  return (
+                    <div className="mb-3 border border-emerald-200 rounded-lg overflow-hidden">
+                      <div className="bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 flex items-center justify-between">
+                        <span>🩺 Matched OpenEHR Orders ({pendingCandidates.length}) — click + to add to invoice</span>
+                        <button type="button" onClick={() => setOpenEhrCandidates([])} className="text-emerald-100 hover:text-white text-[11px] underline">
+                          Clear
+                        </button>
+                      </div>
+                      <div className="divide-y divide-emerald-100 max-h-64 overflow-y-auto bg-white">
+                        {pendingCandidates.map((o, i) => {
+                          const itemCount = o.order_type === 'LAB' && Array.isArray(o.tests) ? o.tests.length : 1;
+                          const total = o.order_type === 'LAB' && Array.isArray(o.tests)
+                            ? o.tests.reduce((s: number, t: any) => s + (Number(t.price) || 0), 0)
+                            : Number(o.price) || 0;
+                          const icon = o.order_type === 'PROCEDURE' ? '🔪' : o.order_type === 'VACCINATION' ? '💉' : o.order_type === 'MEDICATION' ? '💊' : '🧪';
+                          return (
+                            <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                              <div className="min-w-0">
+                                <div className="font-medium text-gray-800 truncate">
+                                  {icon} {o.order_id || o.name}
+                                  {o.requested_date && <span className="text-gray-400 font-normal"> · {new Date(o.requested_date).toLocaleDateString('en-GB')}</span>}
+                                </div>
+                                <div className="text-gray-400">
+                                  {itemCount} item{itemCount > 1 ? 's' : ''} · {fmt(total)} IQD
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => addOrderToInvoice(o)}
+                                title="Add this order to the invoice"
+                                className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition bg-emerald-500 text-white hover:bg-emerald-600 hover:scale-105"
+                              >
+                                +
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="space-y-3">
+                  {lineItems.map((line, idx) => {
+                    const showGroup = !!line.orderGroup && (idx === 0 || lineItems[idx - 1].orderGroup !== line.orderGroup);
+                    const collapsed = !!line.orderGroup && collapsedGroups.has(line.orderGroup);
+                    const groupLines = line.orderGroup ? lineItems.filter(l => l.orderGroup === line.orderGroup) : [];
+                    const groupTotal = groupLines.reduce((s, l) => s + (Number(l.line_total) || 0), 0);
+                    return (
+                    <div key={idx}>
+                     {showGroup && line.orderGroup && (
+                       <div className="w-full mt-2 mb-1 px-3 py-2 bg-indigo-50 border-l-4 border-indigo-400 rounded flex items-center justify-between hover:bg-indigo-100 transition">
+                         <button
+                           type="button"
+                           onClick={() => toggleGroup(line.orderGroup!)}
+                           className="flex-1 flex items-center justify-between text-left"
+                         >
+                           <span className="text-xs font-semibold text-indigo-800 flex items-center gap-1.5">
+                             <span className="text-[10px]">{collapsed ? '▶' : '▼'}</span> {line.orderGroup}
+                             <span className="text-indigo-400 font-normal">({groupLines.length} item{groupLines.length !== 1 ? 's' : ''})</span>
+                           </span>
+                           <span className="text-xs font-bold text-indigo-900 mr-2">{fmt(groupTotal)} IQD</span>
+                         </button>
+                         {line.fromOpenEHR && (
+                           <button
+                             type="button"
+                             onClick={() => removeOrderGroup(line.orderGroup!)}
+                             className="p-1 text-red-500 hover:bg-red-100 rounded transition shrink-0"
+                             title="Remove this whole order from the invoice"
+                           >
+                             <Trash2 className="w-3.5 h-3.5" />
+                           </button>
+                         )}
+                       </div>
+                     )}
+                     {!collapsed && (
+                     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                     <div className="grid grid-cols-12 gap-3 items-end">
                       {/* Service selector */}
                       <div className="col-span-5">
-                        <label className="block text-xs text-gray-500 mb-1">Service</label>
-                        <select
-                          value={line.service_id}
-                          onChange={e => updateLineService(idx, e.target.value)}
-                          className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
-                        >
-                          <option value="">Select service...</option>
-                          {services.map(s => (
-                            <option key={s.id} value={s.id}>
-                              {s.name} - {s.name_ar}
-                            </option>
-                          ))}
-                        </select>
+                        <label className="block text-xs font-medium text-gray-600 mb-1.5">Service</label>
+                        {line.fromOpenEHR ? (
+                          <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2">
+                            <div className="text-sm font-medium text-gray-900 flex items-center gap-1.5">🩺 {line.service_name}</div>
+                            {line.service_name_ar && <div className="text-[11px] text-gray-500 truncate">{line.service_name_ar}</div>}
+                          </div>
+                        ) : (
+                          <select
+                            value={line.service_id}
+                            onChange={e => updateLineService(idx, e.target.value)}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                          >
+                            <option value="">Select service...</option>
+                            {services.map(s => (
+                              <option key={s.id} value={s.id}>
+                                {s.name} - {s.name_ar}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                       {/* Unit price */}
                       <div className="col-span-3">
-                        <label className="block text-xs text-gray-500 mb-1">Unit Price (IQD)</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1.5">Price (IQD)</label>
                         <input
                           type="number"
                           min="0"
-                          value={line.unit_price || 0}
+                          value={Number(line.unit_price) || 0}
                           onChange={e => updateLinePrice(idx, parseFloat(e.target.value) || 0)}
-                          className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                         />
                       </div>
-                      {/* Quantity */}
+                      {/* Discount % */}
                       <div className="col-span-2">
-                        <label className="block text-xs text-gray-500 mb-1">Qty</label>
+                        <label className="block text-xs font-medium text-gray-600 mb-1.5">Disc %</label>
                         <input
                           type="number"
-                          min="1"
-                          value={line.quantity || 1}
-                          onChange={e => updateLineQty(idx, parseInt(e.target.value) || 1)}
-                          className="w-full border rounded-lg px-2 py-1.5 text-xs bg-white"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={line.discount_percentage || ''}
+                          onChange={e => updateLineDiscount(idx, parseFloat(e.target.value) || 0)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                          placeholder="0"
                         />
                       </div>
-                      {/* Line total + remove */}
+                      {/* Net + remove */}
                       <div className="col-span-2 flex items-end gap-1">
-                        <div className="flex-1 text-right">
-                          <div className="text-xs text-gray-500 mb-1">Total</div>
-                          <div className="text-sm font-bold text-gray-900">{fmt(line.line_total)}</div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-600 mb-1.5">Net</label>
+                          <div className="px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-900 text-center">
+                            {fmt(line.line_total)}
+                          </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeLineItem(idx)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded mb-0.5"
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                          title="Remove service"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                      </div>
 
+                      {/* Physician picker for OpenEHR-pulled lines — these have no
+                          catalog service, so there's no per-service provider list to
+                          draw from; offer the full active stakeholder roster instead.
+                          Optional: the pre-approval report just shows it blank if unset. */}
+                      {line.fromOpenEHR && (
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-500 whitespace-nowrap">👤 Physician:</label>
+                          <select
+                            value={line.stakeholder_id || ''}
+                            onChange={e => updateLineProvider(idx, e.target.value)}
+                            className="flex-1 border rounded-lg px-2 py-1.5 text-xs bg-white"
+                          >
+                            <option value="">— Not specified —</option>
+                            {allStakeholders.map(s => (
+                              <option key={s.stakeholder_id} value={s.stakeholder_id}>
+                                {s.name_en || s.name_ar}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       {/* Provider / stakeholder picker — only when the service has providers configured */}
                       {line.providers && line.providers.length > 0 && (
                         <div className="flex items-center gap-2">
@@ -1419,12 +1543,15 @@ export default function InvoicesPage() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    )}
+                    </div>
+                    );
+                  })}
                 </div>
 
                 {lineItems.length > 0 && (
                   <div className="mt-2 flex justify-end text-sm font-medium text-gray-700 bg-blue-50 rounded-lg px-4 py-2">
-                    Services Subtotal: <span className="ml-2 font-bold text-gray-900">{fmt(formData.subtotal || 0)} IQD</span>
+                    Services Total: <span className="ml-2 font-bold text-gray-900">{fmt(formData.total_amount || 0)} IQD</span>
                   </div>
                 )}
               </div>
@@ -1439,37 +1566,31 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
-                      readOnly={lineItems.length > 0}
-                      value={formData.subtotal || 0}
-                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, subtotal: parseFloat(e.target.value) || 0 })}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm ${lineItems.length > 0 ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
+                      readOnly
+                      value={Number(formData.subtotal) || 0}
+                      className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
-                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Auto-calculated from services</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">Before discounts</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Discount %</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Total Discount (IQD)</label>
                     <input
                       type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={formData.discount_percentage || 0}
-                      onChange={e => handleDiscountChange(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      readOnly
+                      value={Number(formData.discount_amount) || 0}
+                      className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
+                    <p className="text-xs text-gray-400 mt-0.5">Per-service discounts</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Total Amount (IQD)</label>
                     <input
                       type="number"
-                      min="0"
-                      step="1000"
-                      readOnly={lineItems.length > 0}
-                      value={formData.total_amount || 0}
-                      onChange={e => lineItems.length === 0 && setFormData({ ...formData, total_amount: parseFloat(e.target.value) || 0 })}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm font-bold ${lineItems.length > 0 ? 'bg-gray-50 text-gray-900 cursor-not-allowed' : ''}`}
+                      readOnly
+                      value={Number(formData.total_amount) || 0}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-bold bg-gray-50 text-gray-900 cursor-not-allowed"
                     />
-                    {lineItems.length > 0 && <p className="text-xs text-gray-400 mt-0.5">Subtotal minus discount</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">After discounts</p>
                   </div>
                 </div>
               </div>
@@ -1507,7 +1628,20 @@ export default function InvoicesPage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">Insurance Company</label>
                     <select
                       value={formData.insurance_company_id || ''}
-                      onChange={e => setFormData({ ...formData, insurance_company_id: e.target.value || '' })}
+                      onChange={e => {
+                        const companyId = e.target.value || '';
+                        setFormData({ ...formData, insurance_company_id: companyId });
+                        setSelectedCategory('');
+                        if (companyId) {
+                          fetch(`/api/insurance-companies/${companyId}/categories`)
+                            .then(r => r.json())
+                            .then(d => setInsuranceCategories(d.data || []))
+                            .catch(() => setInsuranceCategories([]));
+                        } else {
+                          setInsuranceCategories([]);
+                          handleInsurancePctChange(0);
+                        }
+                      }}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     >
                       <option value="">No Insurance</option>
@@ -1518,17 +1652,50 @@ export default function InvoicesPage() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Coverage %</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={formData.insurance_coverage_percentage || 0}
-                      onChange={e => handleInsurancePctChange(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
+                  {formData.insurance_company_id && (
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Insurance Category *</label>
+                      {insuranceCategories.length > 0 ? (
+                        <select
+                          value={selectedCategory}
+                          onChange={e => {
+                            const catId = e.target.value;
+                            setSelectedCategory(catId);
+                            if (catId) {
+                              const cat = insuranceCategories.find(c => String(c.id) === catId);
+                              if (cat) handleInsurancePctChange(cat.coverage_percentage);
+                            } else {
+                              handleInsurancePctChange(0);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border rounded-lg text-sm"
+                        >
+                          <option value="">Select category...</option>
+                          {insuranceCategories.map(cat => (
+                            <option key={cat.id} value={String(cat.id)}>
+                              {cat.category_name} - {cat.coverage_percentage}%
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-xs text-gray-400 py-2">No categories defined for this company.</p>
+                      )}
+                    </div>
+                  )}
+                  {formData.insurance_company_id && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Coverage %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        readOnly
+                        value={Number(formData.insurance_coverage_percentage) || 0}
+                        className="w-full px-3 py-2 border rounded-lg text-sm bg-gray-50 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-400 mt-0.5">Set by selected category</p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Coverage Amount (IQD)</label>
                     <input
@@ -1536,7 +1703,7 @@ export default function InvoicesPage() {
                       min="0"
                       step="1000"
                       readOnly={lineItems.length > 0}
-                      value={formData.insurance_coverage_amount || 0}
+                      value={Number(formData.insurance_coverage_amount) || 0}
                       onChange={e => lineItems.length === 0 && setFormData({ ...formData, insurance_coverage_amount: parseFloat(e.target.value) || 0 })}
                       className={`w-full px-3 py-2 border rounded-lg text-sm ${lineItems.length > 0 ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
@@ -1556,7 +1723,7 @@ export default function InvoicesPage() {
                       min="0"
                       step="1000"
                       readOnly={lineItems.length > 0}
-                      value={formData.patient_responsibility || 0}
+                      value={Number(formData.patient_responsibility) || 0}
                       onChange={e => lineItems.length === 0 && setFormData({ ...formData, patient_responsibility: parseFloat(e.target.value) || 0 })}
                       className={`w-full px-3 py-2 border rounded-lg text-sm font-bold ${lineItems.length > 0 ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
@@ -1568,7 +1735,7 @@ export default function InvoicesPage() {
                       type="number"
                       min="0"
                       step="1000"
-                      value={formData.amount_paid || 0}
+                      value={Number(formData.amount_paid) || 0}
                       onChange={e => handleAmountPaidChange(parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                     />
@@ -1580,7 +1747,7 @@ export default function InvoicesPage() {
                       min="0"
                       step="1000"
                       readOnly={lineItems.length > 0}
-                      value={formData.balance_due || 0}
+                      value={Number(formData.balance_due) || 0}
                       onChange={e => lineItems.length === 0 && setFormData({ ...formData, balance_due: parseFloat(e.target.value) || 0 })}
                       className={`w-full px-3 py-2 border rounded-lg text-sm ${lineItems.length > 0 ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                     />
@@ -1615,15 +1782,6 @@ export default function InvoicesPage() {
                       <option value="CHECK">Check</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Payment Date</label>
-                    <input
-                      type="date"
-                      value={formData.payment_date ? formData.payment_date.split('T')[0] : ''}
-                      onChange={e => setFormData({ ...formData, payment_date: e.target.value || '' })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -1653,7 +1811,6 @@ export default function InvoicesPage() {
                 {editingInvoice ? 'Update' : 'Create'}
               </button>
             </div>
-          </div>
         </div>
       )}
 

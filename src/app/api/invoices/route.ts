@@ -40,32 +40,45 @@ export async function GET(request: NextRequest) {
     const total = parseInt(countResult.rows[0].total);
 
     // Get invoices with pagination
+    // latest_claim_status/latest_claim_id: most recent insurance claim tied to this
+    // invoice, if any — lets the UI hide "Submit Insurance Claim" once a claim
+    // already exists (e.g. was approved) instead of always showing it whenever
+    // insurance_coverage_amount > 0.
     const invoicesResult = await pool.query(`
-      SELECT 
-        id,
-        invoice_number,
-        invoice_date,
-        patient_id,
-        patient_name,
-        patient_name_ar,
-        subtotal,
-        discount_percentage,
-        discount_amount,
-        total_amount,
-        insurance_company_id,
-        insurance_coverage_amount,
-        insurance_coverage_percentage,
-        patient_responsibility,
-        amount_paid,
-        balance_due,
-        status,
-        payment_method,
-        payment_date,
-        notes,
-        createdat,
-        updatedat
-      FROM invoices
-      ORDER BY createdat DESC
+      SELECT
+        i.id,
+        i.invoice_number,
+        i.invoice_date,
+        i.patient_id,
+        i.patient_name,
+        i.patient_name_ar,
+        i.subtotal,
+        i.discount_percentage,
+        i.discount_amount,
+        i.total_amount,
+        i.insurance_company_id,
+        i.insurance_coverage_amount,
+        i.insurance_coverage_percentage,
+        i.patient_responsibility,
+        i.amount_paid,
+        i.balance_due,
+        i.status,
+        i.payment_method,
+        i.payment_date,
+        i.notes,
+        i.createdat,
+        i.updatedat,
+        lc.id AS latest_claim_id,
+        lc.status AS latest_claim_status
+      FROM invoices i
+      LEFT JOIN LATERAL (
+        SELECT id, status
+        FROM insurance_claims
+        WHERE invoice_id = i.id::varchar
+        ORDER BY created_at DESC
+        LIMIT 1
+      ) lc ON true
+      ORDER BY i.createdat DESC
       LIMIT $1 OFFSET $2
     `, [limit, offset]);
 
@@ -262,6 +275,9 @@ export async function POST(request: NextRequest) {
         
         // Each line item can carry the receptionist's chosen provider (stakeholder)
         await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS stakeholder_id UUID`).catch(() => {});
+        // Line items pulled from OpenEHR carry provenance so we can detect already-paid orders on re-pull
+        await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS openehr_source_uid VARCHAR(255)`).catch(() => {});
+        await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS openehr_order_id VARCHAR(255)`).catch(() => {});
 
         for (const item of items) {
           const serviceId = item.service_id || item.item_code || '';
@@ -281,6 +297,8 @@ export async function POST(request: NextRequest) {
             unit_price: unitPrice,
             total_price: totalPrice,
             stakeholder_id: chosenStakeholder,
+            openehr_source_uid: item.openehr_source_uid || null,
+            openehr_order_id: item.openehr_order_id || null,
           };
 
           console.log('Inserting item:', itemData);
@@ -294,9 +312,11 @@ export async function POST(request: NextRequest) {
               quantity,
               unit_price,
               total_price,
-              stakeholder_id
+              stakeholder_id,
+              openehr_source_uid,
+              openehr_order_id
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
             )
           `, [
             itemData.invoice_id,
@@ -307,6 +327,8 @@ export async function POST(request: NextRequest) {
             itemData.unit_price,
             itemData.total_price,
             itemData.stakeholder_id,
+            itemData.openehr_source_uid,
+            itemData.openehr_order_id,
           ]);
         }
         console.log('All items inserted successfully');

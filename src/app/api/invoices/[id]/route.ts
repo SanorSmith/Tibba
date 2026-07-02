@@ -62,15 +62,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const invoice = result.rows[0];
     const items = itemsResult.rows || [];
 
-    // Map items to frontend-expected format
+    // Map items to frontend-expected format.
+    // openehr_source_uid/openehr_order_id were previously dropped here even
+    // though they're stored — without them the Edit modal can't tell an
+    // OpenEHR-pulled line (e.g. a surgery order with no catalog service_id)
+    // from a regular one, so it tried to fit it into the services dropdown
+    // and showed a blank "Select service..." instead of the actual procedure.
     const mappedItems = items.map(item => ({
       id: item.id,
       item_code: item.service_id,
       item_name: item.service_name,
       item_name_ar: item.service_name_ar,
+      description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
       subtotal: item.total_price,
+      provider_id: item.provider_id,
+      provider_name: item.provider_name,
+      service_fee: item.service_fee,
+      stakeholder_id: item.stakeholder_id,
+      openehr_source_uid: item.openehr_source_uid,
+      openehr_order_id: item.openehr_order_id,
       createdat: item.createdat
     }));
 
