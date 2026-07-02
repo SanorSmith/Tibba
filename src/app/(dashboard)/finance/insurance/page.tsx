@@ -113,6 +113,23 @@ export default function InsurancePage() {
   const [editingCompany, setEditingCompany] = useState<InsuranceCompany | null>(null);
   const [formData, setFormData] = useState<Partial<InsuranceCompany>>({});
 
+  // Categories state
+  const [categories, setCategories] = useState<{id: number; company_id: string; category_name: string; coverage_percentage: number}[]>([]);
+  const [pendingCategories, setPendingCategories] = useState<{category_name: string; coverage_percentage: number}[]>([]);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatPct, setNewCatPct] = useState(0);
+  const [catLoading, setCatLoading] = useState(false);
+
+  // Plan types state — per-company list that drives the Enroll Patient
+  // "Policy Type" dropdown, instead of one hardcoded list shared by every company.
+  const [planTypes, setPlanTypes] = useState<{id: number; company_id: string; plan_name: string}[]>([]);
+  const [pendingPlanTypes, setPendingPlanTypes] = useState<string[]>([]);
+  const [newPlanName, setNewPlanName] = useState('');
+  const [planLoading, setPlanLoading] = useState(false);
+
+  // Plan types for whichever company is selected in the Enroll Patient modal
+  const [enrollPlanTypes, setEnrollPlanTypes] = useState<{id: number; plan_name: string}[]>([]);
+
   // Tabs
   const [tab, setTab] = useState<'companies' | 'policies' | 'preapprovals'>('companies');
 
@@ -136,6 +153,16 @@ export default function InsurancePage() {
     if (tab === 'policies') loadPolicies();
     if (tab === 'preapprovals') loadPreApprovals();
   }, [tab]);
+
+  // Refresh the Enroll Patient "Policy Type" options whenever the selected
+  // company changes, and clear any policy_type picked for the old company.
+  useEffect(() => {
+    if (!enrollForm.company_id) { setEnrollPlanTypes([]); return; }
+    fetch(`/api/insurance-companies/${enrollForm.company_id}/plan-types`)
+      .then(r => r.json())
+      .then(d => setEnrollPlanTypes(d.data || []))
+      .catch(() => setEnrollPlanTypes([]));
+  }, [enrollForm.company_id]);
 
   const loadPolicies = async () => {
     try {
@@ -321,6 +348,13 @@ export default function InsurancePage() {
 
   const handleCreate = () => {
     setEditingCompany(null);
+    setCategories([]);
+    setPendingCategories([]);
+    setNewCatName('');
+    setNewCatPct(0);
+    setPlanTypes([]);
+    setPendingPlanTypes([]);
+    setNewPlanName('');
     setFormData({
       type: 'PRIVATE',
       active: true,
@@ -343,6 +377,92 @@ export default function InsurancePage() {
     setEditingCompany(company);
     setFormData(company);
     setShowModal(true);
+    loadCategories(company.company_id || company.id);
+    loadPlanTypes(company.company_id || company.id);
+  };
+
+  const loadCategories = async (companyId: string) => {
+    try {
+      const res = await fetch(`/api/insurance-companies/${companyId}/categories`);
+      const data = await res.json();
+      setCategories(data.data || []);
+    } catch { setCategories([]); }
+  };
+
+  const addCategory = async (companyId: string) => {
+    if (!newCatName.trim()) { toast.error('Category name is required'); return; }
+    if (newCatPct < 0 || newCatPct > 100) { toast.error('Percentage must be 0-100'); return; }
+    setCatLoading(true);
+    try {
+      const res = await fetch(`/api/insurance-companies/${companyId}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category_name: newCatName.trim(), coverage_percentage: newCatPct })
+      });
+      if (res.ok) {
+        toast.success('Category added');
+        setNewCatName('');
+        setNewCatPct(0);
+        loadCategories(companyId);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to add category');
+      }
+    } catch { toast.error('Failed to add category'); }
+    setCatLoading(false);
+  };
+
+  const deleteCategory = async (companyId: string, categoryId: number) => {
+    try {
+      const res = await fetch(`/api/insurance-companies/${companyId}/categories?categoryId=${categoryId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Category removed');
+        loadCategories(companyId);
+      } else {
+        toast.error('Failed to delete category');
+      }
+    } catch { toast.error('Failed to delete category'); }
+  };
+
+  const loadPlanTypes = async (companyId: string) => {
+    try {
+      const res = await fetch(`/api/insurance-companies/${companyId}/plan-types`);
+      const data = await res.json();
+      setPlanTypes(data.data || []);
+    } catch { setPlanTypes([]); }
+  };
+
+  const addPlanType = async (companyId: string) => {
+    if (!newPlanName.trim()) { toast.error('Plan name is required'); return; }
+    setPlanLoading(true);
+    try {
+      const res = await fetch(`/api/insurance-companies/${companyId}/plan-types`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_name: newPlanName.trim() })
+      });
+      if (res.ok) {
+        toast.success('Plan type added');
+        setNewPlanName('');
+        loadPlanTypes(companyId);
+      } else {
+        const err = await res.json();
+        toast.error(err.error || 'Failed to add plan type');
+      }
+    } catch { toast.error('Failed to add plan type'); }
+    setPlanLoading(false);
+  };
+
+  const deletePlanType = async (companyId: string, planId: number) => {
+    try {
+      const res = await fetch(`/api/insurance-companies/${companyId}/plan-types?planId=${planId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Plan type removed');
+        loadPlanTypes(companyId);
+      } else {
+        toast.error('Failed to delete plan type');
+      }
+    } catch { toast.error('Failed to delete plan type'); }
   };
 
   const handleSave = async () => {
@@ -387,8 +507,35 @@ export default function InsurancePage() {
       });
 
       if (res.ok) {
+        const savedData = await res.json();
+        // If creating a new company and there are pending categories/plan types, save them
+        if (!editingCompany && (pendingCategories.length > 0 || pendingPlanTypes.length > 0)) {
+          const companyId = savedData.data?.company_id || savedData.data?.id;
+          if (companyId) {
+            for (const cat of pendingCategories) {
+              try {
+                await fetch(`/api/insurance-companies/${companyId}/categories`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(cat)
+                });
+              } catch {}
+            }
+            for (const plan_name of pendingPlanTypes) {
+              try {
+                await fetch(`/api/insurance-companies/${companyId}/plan-types`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ plan_name })
+                });
+              } catch {}
+            }
+          }
+        }
         toast.success(editingCompany ? 'Company updated' : 'Company created');
         setShowModal(false);
+        setPendingCategories([]);
+        setPendingPlanTypes([]);
         loadCompanies();
       } else {
         const error = await res.json();
@@ -445,6 +592,558 @@ export default function InsurancePage() {
     return (
       <div className="p-6">
         <div className="animate-pulse h-8 w-48 bg-gray-200 rounded" />
+      </div>
+    );
+  }
+
+  // If showModal is true, render the form inline (full page) instead of the list
+  if (showModal) {
+    return (
+      <div className="p-4 lg:p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {editingCompany ? 'Edit Insurance Company' : 'Add Insurance Company'}
+            </h1>
+            <p className="text-gray-500 text-sm">Fill in the details below</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg border">
+          <div className="p-6 space-y-6">
+            {/* Basic Info */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Basic Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Company Code *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.code || ''}
+                    onChange={e => setFormData({ ...formData, code: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    placeholder="INS-001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Company Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name || ''}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    placeholder="National Insurance Co."
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Arabic Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name_ar || ''}
+                    onChange={e => setFormData({ ...formData, name_ar: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    placeholder="شركة التأمين الوطنية"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Info */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Contact Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.contact?.contact_person || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      contact: { ...formData.contact, contact_person: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={formData.contact?.phone || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      contact: { ...formData.contact, phone: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={formData.contact?.email || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      contact: { ...formData.contact, email: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Website</label>
+                  <input
+                    type="text"
+                    value={formData.contact?.website || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      contact: { ...formData.contact, website: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Address</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+                  <input
+                    type="text"
+                    value={formData.address?.address_line1 || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      address: { ...formData.address, address_line1: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    value={formData.address?.city || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      address: { ...formData.address, city: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Province</label>
+                  <input
+                    type="text"
+                    value={formData.address?.province || ''}
+                    onChange={e => setFormData({ 
+                      ...formData, 
+                      address: { ...formData.address, province: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Pricing Configuration</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Discount %
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.metadata?.default_discount_percentage || 0}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        metadata: { ...formData.metadata, default_discount_percentage: parseFloat(e.target.value) || 0 }
+                      })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Copay %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.metadata?.default_copay_percentage || 0}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        metadata: { ...formData.metadata, default_copay_percentage: parseFloat(e.target.value) || 0 }
+                      })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Payment Terms (days)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.metadata?.claim_payment_terms_days || 30}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        metadata: { ...formData.metadata, claim_payment_terms_days: parseInt(e.target.value) || 30 }
+                      })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contract */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Contract Details</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.metadata?.contract_start_date || ''}
+                    onChange={e =>
+                      setFormData({ ...formData, metadata: { ...formData.metadata, contract_start_date: e.target.value } })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={formData.metadata?.contract_end_date || ''}
+                    onChange={e =>
+                      setFormData({ ...formData, metadata: { ...formData.metadata, contract_end_date: e.target.value } })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Coverage Limit (IQD)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.metadata?.coverage_limit || ''}
+                    onChange={e =>
+                      setFormData({ ...formData, metadata: { ...formData.metadata, coverage_limit: parseFloat(e.target.value) || undefined } })
+                    }
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    placeholder="50000000"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Coverage Categories */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Coverage Categories</h3>
+              <p className="text-xs text-gray-500 mb-3">Define coverage percentages per service category for this company.</p>
+              {editingCompany ? (
+                <>
+                  {categories.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden mb-3">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Category</th>
+                            <th className="text-center px-3 py-2 font-medium text-gray-600 text-xs">Coverage %</th>
+                            <th className="text-center px-3 py-2 font-medium text-gray-600 text-xs w-16"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {categories.map(cat => (
+                            <tr key={cat.id}>
+                              <td className="px-3 py-2">{cat.category_name}</td>
+                              <td className="px-3 py-2 text-center font-medium text-blue-600">{cat.coverage_percentage}%</td>
+                              <td className="px-3 py-2 text-center">
+                                <button
+                                  onClick={() => deleteCategory(editingCompany.company_id || editingCompany.id, cat.id)}
+                                  className="p-1 hover:bg-red-50 rounded text-red-500"
+                                  title="Remove"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {categories.length === 0 && (
+                    <p className="text-xs text-gray-400 mb-3">No categories defined yet.</p>
+                  )}
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Category Name</label>
+                      <input
+                        type="text"
+                        value={newCatName}
+                        onChange={e => setNewCatName(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        placeholder="e.g., Surgery, Lab Tests, Consultation"
+                      />
+                    </div>
+                    <div className="w-28">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Coverage %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={newCatPct}
+                        onChange={e => setNewCatPct(parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => addCategory(editingCompany.company_id || editingCompany.id)}
+                      disabled={catLoading}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {catLoading ? '...' : 'Add'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {pendingCategories.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden mb-3">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Category</th>
+                            <th className="text-center px-3 py-2 font-medium text-gray-600 text-xs">Coverage %</th>
+                            <th className="text-center px-3 py-2 font-medium text-gray-600 text-xs w-16"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {pendingCategories.map((cat, idx) => (
+                            <tr key={idx}>
+                              <td className="px-3 py-2">{cat.category_name}</td>
+                              <td className="px-3 py-2 text-center font-medium text-blue-600">{cat.coverage_percentage}%</td>
+                              <td className="px-3 py-2 text-center">
+                                <button
+                                  onClick={() => setPendingCategories(prev => prev.filter((_, i) => i !== idx))}
+                                  className="p-1 hover:bg-red-50 rounded text-red-500"
+                                  title="Remove"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {pendingCategories.length === 0 && (
+                    <p className="text-xs text-gray-400 mb-3">No categories added yet.</p>
+                  )}
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Category Name</label>
+                      <input
+                        type="text"
+                        value={newCatName}
+                        onChange={e => setNewCatName(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        placeholder="e.g., Surgery, Lab Tests, Consultation"
+                      />
+                    </div>
+                    <div className="w-28">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Coverage %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={newCatPct}
+                        onChange={e => setNewCatPct(parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!newCatName.trim()) { toast.error('Category name is required'); return; }
+                        if (newCatPct < 0 || newCatPct > 100) { toast.error('Percentage must be 0-100'); return; }
+                        if (pendingCategories.some(c => c.category_name.toLowerCase() === newCatName.trim().toLowerCase())) {
+                          toast.error('Category already added'); return;
+                        }
+                        setPendingCategories(prev => [...prev, { category_name: newCatName.trim(), coverage_percentage: newCatPct }]);
+                        setNewCatName('');
+                        setNewCatPct(0);
+                      }}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Categories will be saved when you create the company.</p>
+                </>
+              )}
+            </div>
+
+            {/* Plan Types — feeds the "Policy Type" dropdown in Enroll Patient,
+                scoped to whichever company is selected there. */}
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Plan Types</h3>
+              <p className="text-xs text-gray-500 mb-3">Named plans this company offers (e.g. Gold, Silver, Family). Shown as options when enrolling a patient under this company.</p>
+              {editingCompany ? (
+                <>
+                  {planTypes.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {planTypes.map(p => (
+                        <span key={p.id} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs">
+                          {p.plan_name}
+                          <button
+                            onClick={() => deletePlanType(editingCompany.company_id || editingCompany.id, p.id)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {planTypes.length === 0 && (
+                    <p className="text-xs text-gray-400 mb-3">No plan types defined yet.</p>
+                  )}
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Plan Name</label>
+                      <input
+                        type="text"
+                        value={newPlanName}
+                        onChange={e => setNewPlanName(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        placeholder="e.g., Gold, Family, Executive"
+                      />
+                    </div>
+                    <button
+                      onClick={() => addPlanType(editingCompany.company_id || editingCompany.id)}
+                      disabled={planLoading}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {planLoading ? '...' : 'Add'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {pendingPlanTypes.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {pendingPlanTypes.map((p, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs">
+                          {p}
+                          <button
+                            onClick={() => setPendingPlanTypes(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-red-500 hover:text-red-700"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {pendingPlanTypes.length === 0 && (
+                    <p className="text-xs text-gray-400 mb-3">No plan types added yet.</p>
+                  )}
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Plan Name</label>
+                      <input
+                        type="text"
+                        value={newPlanName}
+                        onChange={e => setNewPlanName(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        placeholder="e.g., Gold, Family, Executive"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!newPlanName.trim()) { toast.error('Plan name is required'); return; }
+                        if (pendingPlanTypes.some(p => p.toLowerCase() === newPlanName.trim().toLowerCase())) {
+                          toast.error('Plan already added'); return;
+                        }
+                        setPendingPlanTypes(prev => [...prev, newPlanName.trim()]);
+                        setNewPlanName('');
+                      }}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Plan types will be saved when you create the company.</p>
+                </>
+              )}
+            </div>
+
+            {/* Notes & Status */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+              <textarea
+                value={formData.metadata?.notes || ''}
+                onChange={e => setFormData({ ...formData, metadata: { ...formData.metadata, notes: e.target.value } })}
+                className="w-full px-3 py-2 border rounded-lg text-sm"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={formData.active !== false}
+                  onChange={e => setFormData({ ...formData, active: e.target.checked })}
+                  className="rounded"
+                />
+                Active
+              </label>
+            </div>
+          </div>
+
+          <div className="p-4 border-t flex justify-end gap-3">
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:opacity-90"
+            >
+              {editingCompany ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -849,7 +1548,7 @@ export default function InsurancePage() {
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Insurance Company *</label>
-                <select value={enrollForm.company_id} onChange={e => setEnrollForm(f => ({ ...f, company_id: e.target.value }))}
+                <select value={enrollForm.company_id} onChange={e => setEnrollForm(f => ({ ...f, company_id: e.target.value, policy_type: '' }))}
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="">Select company…</option>
                   {companies.map((c) => (
@@ -877,12 +1576,18 @@ export default function InsurancePage() {
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Policy Type</label>
                   <select value={enrollForm.policy_type} onChange={e => setEnrollForm(f => ({ ...f, policy_type: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value="">Select type…</option>
-                    {['Individual', 'Family', 'Corporate', 'Government', 'Premium', 'Basic', 'VIP'].map(t => (
-                      <option key={t} value={t}>{t}</option>
+                    disabled={!enrollForm.company_id}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-400">
+                    <option value="">{enrollForm.company_id ? 'Select type…' : 'Select company first…'}</option>
+                    {enrollPlanTypes.map(t => (
+                      <option key={t.id} value={t.plan_name}>{t.plan_name}</option>
                     ))}
                   </select>
+                  {enrollForm.company_id && enrollPlanTypes.length === 0 && (
+                    <p className="text-[11px] text-amber-600 mt-1">
+                      No plan types defined for this company yet — add some via Edit on the Companies tab.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -894,316 +1599,6 @@ export default function InsurancePage() {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-lg font-bold">
-                {editingCompany ? 'Edit Insurance Company' : 'Add Insurance Company'}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Basic Info */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3">Basic Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Company Code *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.code || ''}
-                      onChange={e => setFormData({ ...formData, code: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      placeholder="INS-001"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Company Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name || ''}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      placeholder="National Insurance Co."
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Arabic Name
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name_ar || ''}
-                      onChange={e => setFormData({ ...formData, name_ar: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      placeholder="شركة التأمين الوطنية"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3">Contact Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Contact Person
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.contact?.contact_person || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        contact: { ...formData.contact, contact_person: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-                    <input
-                      type="text"
-                      value={formData.contact?.phone || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        contact: { ...formData.contact, phone: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.contact?.email || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        contact: { ...formData.contact, email: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Website</label>
-                    <input
-                      type="text"
-                      value={formData.contact?.website || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        contact: { ...formData.contact, website: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Address */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3">Address</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
-                    <input
-                      type="text"
-                      value={formData.address?.address_line1 || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        address: { ...formData.address, address_line1: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">City</label>
-                    <input
-                      type="text"
-                      value={formData.address?.city || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        address: { ...formData.address, city: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Province</label>
-                    <input
-                      type="text"
-                      value={formData.address?.province || ''}
-                      onChange={e => setFormData({ 
-                        ...formData, 
-                        address: { ...formData.address, province: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Pricing */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3">Pricing Configuration</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Discount %
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={formData.metadata?.default_discount_percentage || 0}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          metadata: { ...formData.metadata, default_discount_percentage: parseFloat(e.target.value) || 0 }
-                        })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Copay %</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={formData.metadata?.default_copay_percentage || 0}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          metadata: { ...formData.metadata, default_copay_percentage: parseFloat(e.target.value) || 0 }
-                        })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Payment Terms (days)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.metadata?.claim_payment_terms_days || 30}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          metadata: { ...formData.metadata, claim_payment_terms_days: parseInt(e.target.value) || 30 }
-                        })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contract */}
-              <div>
-                <h3 className="font-semibold text-sm mb-3">Contract Details</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.metadata?.contract_start_date || ''}
-                      onChange={e =>
-                        setFormData({ ...formData, metadata: { ...formData.metadata, contract_start_date: e.target.value } })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
-                    <input
-                      type="date"
-                      value={formData.metadata?.contract_end_date || ''}
-                      onChange={e =>
-                        setFormData({ ...formData, metadata: { ...formData.metadata, contract_end_date: e.target.value } })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Coverage Limit (IQD)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.metadata?.coverage_limit || ''}
-                      onChange={e =>
-                        setFormData({ ...formData, metadata: { ...formData.metadata, coverage_limit: parseFloat(e.target.value) || undefined } })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                      placeholder="50000000"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes & Status */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                <textarea
-                  value={formData.metadata?.notes || ''}
-                  onChange={e => setFormData({ ...formData, metadata: { ...formData.metadata, notes: e.target.value } })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formData.active !== false}
-                    onChange={e => setFormData({ ...formData, active: e.target.checked })}
-                    className="rounded"
-                  />
-                  Active
-                </label>
-              </div>
-            </div>
-
-            <div className="p-4 border-t flex justify-end gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:opacity-90"
-              >
-                {editingCompany ? 'Update' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
