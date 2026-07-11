@@ -459,7 +459,32 @@ export default function PatientsPage() {
                 </button>
               </div>
 
+              {/* Shown immediately below Search/Edit — no scrolling past the
+                  (irrelevant, all-empty) patient form needed to see it. */}
+              {searchNotFound && (
+                <div className="bg-amber-50 border-2 border-dashed border-amber-200 rounded-lg py-12 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                      <Plus size={32} className="text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Patient Not Registered</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        No patient matches &quot;{search}&quot;. Would you like to add them?
+                      </p>
+                    </div>
+                    <button
+                      onClick={openCreate}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700"
+                    >
+                      <Plus size={16} /> Add Patient
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Patient Information Display */}
+              {!searchNotFound && (
               <div className="bg-white rounded-lg border">
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b">
                   <h2 className="text-lg font-semibold text-gray-800">Patient Information</h2>
@@ -668,28 +693,7 @@ export default function PatientsPage() {
                       </div>
                     </div>
                   </div>
-                  {!searchedPatient && searchNotFound && (
-                    <div className="mt-8 text-center py-12 bg-amber-50 rounded-lg border-2 border-dashed border-amber-200">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
-                          <Plus size={32} className="text-amber-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Patient Not Registered</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            No patient matches &quot;{search}&quot;. Would you like to add them?
-                          </p>
-                        </div>
-                        <button
-                          onClick={openCreate}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700"
-                        >
-                          <Plus size={16} /> Add Patient
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {!searchedPatient && !searchNotFound && (
+                  {!searchedPatient && (
                     <div className="mt-8 text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
@@ -722,6 +726,7 @@ export default function PatientsPage() {
                   )}
                 </div>
               </div>
+              )}
             </div>
           </div>
         </>
