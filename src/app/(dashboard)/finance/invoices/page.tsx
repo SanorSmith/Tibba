@@ -570,6 +570,17 @@ export default function InvoicesPage() {
 
   const selectPatient = async (patient: any) => {
     const patientId = patient.id || patient.patient_id;
+
+    // Switching patient mid-invoice would otherwise leave the previous
+    // patient's pulled OpenEHR services (and any manually added lines)
+    // attached to whoever gets selected next — confirm before discarding.
+    if (patientId !== formData.patient_id && (lineItems.length > 0 || openEhrCandidates.length > 0)) {
+      const ok = window.confirm(
+        'Switching patients will clear the services already added to this invoice. Continue?'
+      );
+      if (!ok) return;
+    }
+
     const currentDiscount = formData.discount_percentage || 0;
 
     setFormData(prev => ({
@@ -577,7 +588,21 @@ export default function InvoicesPage() {
       patient_id: patientId,
       patient_name: patient.fullNameEn || patient.full_name || '',
       patient_name_ar: patient.fullNameAr || patient.full_name_ar || '',
+      insurance_company_id: undefined,
+      insurance_coverage_percentage: 0,
+      insurance_coverage_amount: 0,
+      subtotal: 0,
+      discount_amount: 0,
+      total_amount: 0,
+      patient_responsibility: 0,
+      balance_due: 0,
     }));
+    setLineItems([]);
+    setOpenEhrCandidates([]);
+    setCollapsedGroups(new Set());
+    setInsuranceCategories([]);
+    setSelectedCategory('');
+    setActiveApproval(null);
     setPatientNationalId(patient.nationalid || patient.national_id || '');
     setPatientSearch(patient.fullNameAr || patient.fullNameEn || patient.full_name_ar || patient.full_name || '');
     setShowPatientDropdown(false);
@@ -596,7 +621,7 @@ export default function InvoicesPage() {
             insurance_company_id: policy.company_id,
             insurance_coverage_percentage: coverage,
           }));
-          recalcFromLines(lineItems, coverage);
+          recalcFromLines([], coverage);
           toast.success(
             `Insurance auto-filled: ${policy.company_name || 'Policy found'} · ${coverage}% coverage`
           );
