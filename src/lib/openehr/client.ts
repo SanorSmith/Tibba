@@ -139,7 +139,7 @@ export async function getCompositionFlat(ehrId: string, uid: string): Promise<Re
   return res.json();
 }
 
-export type OrderType = 'LAB' | 'MEDICATION' | 'PROCEDURE' | 'VACCINATION' | 'OTHER';
+export type OrderType = 'LAB' | 'MEDICATION' | 'PROCEDURE' | 'VACCINATION' | 'ER' | 'OTHER';
 export interface PatientOrder {
   source_uid: string;
   order_id?: string;            // e.g. OrderId-1781811936726 (Request ID)
@@ -279,6 +279,29 @@ export async function getPatientOrders(
       });
     }
   }
+
+  // ER/triage assessments are written by the separate ER module as a
+  // template_triage_v1 composition (EVALUATION.problem_diagnosis, same slot
+  // pattern as vaccinations above) — a different template than
+  // template_clinical_encounter_v1, so they need their own fetch+parse pass.
+  // No price is embedded; the caller resolves it from the "Emergency Room Fee"
+  // catalog service by matching on the order name.
+  const triageComps = await getCompositions(ehrId, 'template_triage_v1', dateFrom, dateTo);
+  for (const c of triageComps.slice(0, limit)) {
+    const flat = await getCompositionFlat(ehrId, c.composition_uid);
+    if (!flat) continue;
+    const chiefComplaint: string = flat['template_triage_v1/problem_diagnosis/problem_diagnosis_name'] || '';
+    const composer: string = flat['template_triage_v1/composer|name'] || '';
+    orders.push({
+      source_uid: c.composition_uid,
+      order_type: 'ER',
+      name: chiefComplaint ? `Emergency Room Fee — ${chiefComplaint}` : 'Emergency Room Fee',
+      description: flat['template_triage_v1/problem_diagnosis/clinical_description'] || undefined,
+      requested_date: c.start_time,
+      requesting_provider: composer || undefined,
+    });
+  }
+
   return orders;
 }
 

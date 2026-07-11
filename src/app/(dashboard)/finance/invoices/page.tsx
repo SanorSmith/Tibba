@@ -134,6 +134,7 @@ export default function InvoicesPage() {
     if (o.order_type === 'PROCEDURE') return `🔪 Surgery · ${o.name}${dt(o.requested_date)}`;
     if (o.order_type === 'VACCINATION') return `💉 Vaccination · ${o.name}${dt(o.requested_date)}`;
     if (o.order_type === 'MEDICATION') return '💊 Medications';
+    if (o.order_type === 'ER') return `🚑 Emergency Room${dt(o.requested_date)}`;
     return `Order · ${o.name}${dt(o.requested_date)}`;
   };
 
@@ -157,7 +158,7 @@ export default function InvoicesPage() {
       } else {
         lines.push({
           service_id: o.service_id || '', service_code: o.service_code || '',
-          service_name: `${o.name}${o.order_type ? ` (${o.order_type})` : ''}`,
+          service_name: o.order_type === 'ER' ? o.name : `${o.name}${o.order_type ? ` (${o.order_type})` : ''}`,
           service_name_ar: (o.description || '').slice(0, 140), service_category: o.order_type || '',
           quantity: 1, unit_price: Number(o.price) || 0, discount_percentage: 0,
           line_total: Number(o.price) || 0, stakeholder_id: undefined, providers: [],
