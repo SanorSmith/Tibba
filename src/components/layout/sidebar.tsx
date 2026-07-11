@@ -100,7 +100,6 @@ const moduleLinks = [
       { href: '/hr/reports', icon: FileText, label: 'Reports' },
     ],
   },
-  { href: '/billing', icon: CreditCard, label: 'Billing' },
   {
     href: '/staff', icon: UsersRound, label: 'Staff Portal',
     children: [
