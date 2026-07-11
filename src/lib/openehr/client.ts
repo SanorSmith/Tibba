@@ -302,6 +302,16 @@ export async function getPatientOrders(
     });
   }
 
+  // Orders are collected in separate passes (encounter instructions, then
+  // vaccinations, then ER/triage) so without re-sorting they'd come back
+  // bucketed by pass rather than chronologically — most-recent-first across
+  // every order type, so same-date orders naturally end up grouped together.
+  orders.sort((a, b) => {
+    const ta = a.requested_date ? new Date(a.requested_date).getTime() : 0;
+    const tb = b.requested_date ? new Date(b.requested_date).getTime() : 0;
+    return tb - ta;
+  });
+
   return orders;
 }
 
