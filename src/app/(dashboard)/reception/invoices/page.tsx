@@ -411,8 +411,19 @@ export default function InvoicesPage() {
 
   const selectPatient = async (patient: any) => {
     const patientId = patient.id || patient.patient_id;
-    let autoInsCompanyId = patient.insuranceCompany?.id || patient.insurance_provider_id || formData.insurance_company_id || '';
-    let autoInsPct = formData.insurance_coverage_percentage || 0;
+
+    // Switching patient mid-invoice would otherwise leave the previous
+    // patient's pulled OpenEHR services (and any manually added lines)
+    // attached to whoever gets selected next — confirm before discarding.
+    if (patientId !== formData.patient_id && (lineItems.length > 0 || openEhrCandidates.length > 0)) {
+      const ok = window.confirm(
+        'Switching patients will clear the services already added to this invoice. Continue?'
+      );
+      if (!ok) return;
+    }
+
+    let autoInsCompanyId = patient.insuranceCompany?.id || patient.insurance_provider_id || '';
+    let autoInsPct = 0;
 
     // Auto-fill insurance from patient_insurance table
     try {
@@ -435,7 +446,18 @@ export default function InvoicesPage() {
       patient_name_ar: patient.fullNameAr || patient.full_name_ar,
       insurance_company_id: autoInsCompanyId,
       insurance_coverage_percentage: autoInsPct,
+      insurance_coverage_amount: 0,
+      subtotal: 0,
+      discount_amount: 0,
+      total_amount: 0,
+      patient_responsibility: 0,
+      balance_due: 0,
     }));
+    setLineItems([]);
+    setOpenEhrCandidates([]);
+    setCollapsedGroups(new Set());
+    setInsuranceCategories([]);
+    setSelectedCategory('');
     setPatientSearch(patient.fullNameAr || patient.fullNameEn || patient.full_name_ar || patient.full_name);
     setShowPatientDropdown(false);
     setPatientResults([]);
