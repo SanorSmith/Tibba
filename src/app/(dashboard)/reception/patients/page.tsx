@@ -28,6 +28,10 @@ export default function PatientsPage() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<FinancePatient | null>(null);
   const [searchedPatient, setSearchedPatient] = useState<FinancePatient | null>(null);
+  // Distinguishes "haven't searched yet" (generic placeholder) from "searched
+  // and found nothing" (offer to register the patient) — both leave
+  // searchedPatient null, so a separate flag is needed.
+  const [searchNotFound, setSearchNotFound] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editablePatient, setEditablePatient] = useState<FinancePatient | null>(null);
   const [insuranceCompanies, setInsuranceCompanies] = useState<any[]>([]);
@@ -152,15 +156,16 @@ export default function PatientsPage() {
         
         if (foundPatients.length > 0) {
           // Prioritize patients with related data (emergency contact, insurance, or medical info)
-          const patientWithRelatedData = foundPatients.find((p: any) => 
-            p.emergency_contact || p.emergency_phone || 
+          const patientWithRelatedData = foundPatients.find((p: any) =>
+            p.emergency_contact || p.emergency_phone ||
             p.insurance_company || p.insurance_number ||
             p.allergies || p.chronic_diseases || p.current_medications
           );
-          
+
           const foundPatient = patientWithRelatedData || foundPatients[0];
           setSearchedPatient(foundPatient);
-          
+          setSearchNotFound(false);
+
           if (patientWithRelatedData) {
             toast.success(`Patient found with complete data: ${foundPatient.full_name_ar}`);
           } else {
@@ -168,11 +173,12 @@ export default function PatientsPage() {
           }
         } else {
           setSearchedPatient(null);
+          setSearchNotFound(true);
           toast.error('No patient found with the given criteria');
         }
       } else {
         // Fallback to local search if API fails
-        const foundPatient = patients.find(p => 
+        const foundPatient = patients.find(p =>
           p.full_name_ar.toLowerCase().includes(search.toLowerCase()) ||
           (p.full_name_en || '').toLowerCase().includes(search.toLowerCase()) ||
           p.patient_number.toLowerCase().includes(search.toLowerCase()) ||
@@ -182,9 +188,11 @@ export default function PatientsPage() {
 
         if (foundPatient) {
           setSearchedPatient(foundPatient);
+          setSearchNotFound(false);
           toast.success(`Patient found: ${foundPatient.full_name_ar}`);
         } else {
           setSearchedPatient(null);
+          setSearchNotFound(true);
           toast.error('No patient found with the given criteria');
         }
       }
@@ -396,6 +404,7 @@ export default function PatientsPage() {
                     onChange={e => {
                       setSearch(e.target.value);
                       setShowDropdown(true);
+                      setSearchNotFound(false);
                     }}
                     onFocus={() => setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
@@ -659,7 +668,28 @@ export default function PatientsPage() {
                       </div>
                     </div>
                   </div>
-                  {!searchedPatient && (
+                  {!searchedPatient && searchNotFound && (
+                    <div className="mt-8 text-center py-12 bg-amber-50 rounded-lg border-2 border-dashed border-amber-200">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+                          <Plus size={32} className="text-amber-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Patient Not Registered</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            No patient matches &quot;{search}&quot;. Would you like to add them?
+                          </p>
+                        </div>
+                        <button
+                          onClick={openCreate}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-blue-700"
+                        >
+                          <Plus size={16} /> Add Patient
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {!searchedPatient && !searchNotFound && (
                     <div className="mt-8 text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
