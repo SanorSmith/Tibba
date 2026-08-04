@@ -56,6 +56,9 @@ const TEST_REQUIREMENTS: Record<string, TestRecommendation> = {
   'IRON-HB': { testCode: 'IRON-HB', testName: 'Iron Studies & Hb Electrophoresis', sampleType: 'blood', containerType: 'Serum Separator Tube', volume: 5, volumeUnit: 'mL', fastingRequired: true },
   'BM-EXAM': { testCode: 'BM-EXAM', testName: 'Bone Marrow Examination', sampleType: 'bone marrow', containerType: 'Special Container', volume: 2, volumeUnit: 'mL', fastingRequired: false, specialInstructions: 'Procedure performed by specialist' },
   
+  // BLOOD BANK - Blood Transfusion
+  'BLOOD-TX': { testCode: 'BLOOD-TX', testName: 'Blood Transfusion', sampleType: 'blood', containerType: 'Blood Bag', volume: 450, volumeUnit: 'mL', fastingRequired: false, specialInstructions: 'Cross-match required, specify blood type' },
+  
   // BIOCHEMISTRY - Liver Function
   'ALT': { testCode: 'ALT', testName: 'ALT (SGPT)', sampleType: 'blood', containerType: 'Serum Separator Tube', volume: 3, volumeUnit: 'mL', fastingRequired: false },
   'AST': { testCode: 'AST', testName: 'AST (SGOT)', sampleType: 'blood', containerType: 'Serum Separator Tube', volume: 3, volumeUnit: 'mL', fastingRequired: false },

@@ -326,6 +326,22 @@ export default function EmergencyPatientDashboardPage() {
 
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
 
+  // Disposition state
+  const [dispositionModalOpen, setDispositionModalOpen] = useState(false);
+  const [disposition, setDisposition] = useState<{
+    type: "admit" | "transfer" | "discharge" | null;
+    ward?: string;
+    bedNumber?: string;
+    days?: number;
+    transferTo?: string;
+    dischargeSummary?: string;
+    prescription?: string;
+    followUp?: string;
+    admissionPrice?: number;
+    wardPrice?: number;
+    totalPrice?: number;
+  }>({ type: null });
+
   // Emergency services pricing (IQD - Iraqi Dinar)
   const emergencyServices = [
     { name: "Emergency Room Visit", price: 200000, category: "ER Visit" },
@@ -390,6 +406,15 @@ export default function EmergencyPatientDashboardPage() {
         setEcgResults(labResultsData.ecgResults || []);
         setLabOrders(labOrdersData.labOrders || []);
         setAccessionSamples(samplesData.samples || []);
+
+        // Fetch disposition
+        const dispositionResponse = await fetch(`/api/d/${workspaceId}/patients/${params.id}/disposition`);
+        if (dispositionResponse.ok) {
+          const dispositionData = await dispositionResponse.json();
+          if (dispositionData.disposition) {
+            setDisposition(dispositionData.disposition);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load patient dashboard");
       } finally {
@@ -429,6 +454,39 @@ export default function EmergencyPatientDashboardPage() {
     } catch (err) {
       console.error("Failed to create lab order:", err);
       throw err;
+    }
+  }
+
+  async function saveDisposition() {
+    if (!workspaceId || !params.id || !disposition.type) return;
+
+    try {
+      const response = await fetch(`/api/d/${workspaceId}/patients/${params.id}/disposition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(disposition),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save disposition");
+      }
+
+      setDispositionModalOpen(false);
+      setAlertDialog({
+        show: true,
+        title: "Disposition Saved",
+        message: `Patient disposition has been saved to openEHR as ${disposition.type?.toUpperCase()}.`,
+        type: "success"
+      });
+    } catch (error) {
+      setAlertDialog({
+        show: true,
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to save disposition",
+        type: "error"
+      });
     }
   }
 
@@ -718,12 +776,16 @@ export default function EmergencyPatientDashboardPage() {
       ...filteredImagingResults.map((r) => [r.study_name, "Imaging", new Date(r.report_date).toLocaleDateString(), (r.price * 1300).toLocaleString() + " IQD"]),
       ...filteredEcgResults.map((r) => [r.test_name, "ECG", new Date(r.report_date).toLocaleDateString(), (r.price * 1300).toLocaleString() + " IQD"]),
     ];
+    if (disposition.admissionPrice) serviceRows.push(["Emergency Admission", "Admission", new Date().toLocaleDateString(), disposition.admissionPrice.toLocaleString() + " IQD"]);
+    if (disposition.wardPrice && disposition.days) serviceRows.push([`Ward Stay (${disposition.ward || "Ward"} - ${disposition.days} days)`, "Ward", new Date().toLocaleDateString(), disposition.wardPrice.toLocaleString() + " IQD"]);
 
     const grandTotal =
       emergencyServices.reduce((s, r) => s + r.price, 0) +
       filteredLabResults.reduce((s, r) => s + ((r.price || 0) * 1300), 0) +
       filteredImagingResults.reduce((s, r) => s + (r.price * 1300), 0) +
-      filteredEcgResults.reduce((s, r) => s + (r.price * 1300), 0);
+      filteredEcgResults.reduce((s, r) => s + (r.price * 1300), 0) +
+      (disposition.admissionPrice || 0) +
+      (disposition.wardPrice || 0);
 
     autoTable(doc, {
       startY: y,
@@ -793,6 +855,46 @@ export default function EmergencyPatientDashboardPage() {
         }
       }
       y += 4;
+    }
+
+    // 5. Disposition
+    y = section("Disposition", y);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    if (!disposition.type) {
+      doc.text("No disposition set - patient still in emergency.", 14, y);
+      y += 6;
+    } else {
+      doc.setFont("helvetica", "bold");
+      doc.text(`Status: ${disposition.type.toUpperCase()}`, 14, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      if (disposition.type === "admit") {
+        doc.text(`Ward: ${disposition.ward || "-"}   Bed: ${disposition.bedNumber || "-"}   Est. Stay: ${disposition.days || "-"} days`, 14, y);
+        y += 5;
+      } else if (disposition.type === "transfer") {
+        doc.text(`Transfer To: ${disposition.transferTo || "-"}`, 14, y);
+        y += 5;
+      } else if (disposition.type === "discharge") {
+        if (disposition.dischargeSummary) {
+          doc.setFont("helvetica", "bold"); doc.text("Discharge Summary:", 14, y); y += 4;
+          doc.setFont("helvetica", "normal");
+          const lines = doc.splitTextToSize(disposition.dischargeSummary, pageWidth - 28) as string[];
+          doc.text(lines, 14, y); y += lines.length * 4 + 3;
+        }
+        if (disposition.prescription) {
+          doc.setFont("helvetica", "bold"); doc.text("Prescription:", 14, y); y += 4;
+          doc.setFont("helvetica", "normal");
+          const lines = doc.splitTextToSize(disposition.prescription, pageWidth - 28) as string[];
+          doc.text(lines, 14, y); y += lines.length * 4 + 3;
+        }
+        if (disposition.followUp) {
+          doc.setFont("helvetica", "bold"); doc.text("Follow-up Instructions:", 14, y); y += 4;
+          doc.setFont("helvetica", "normal");
+          const lines = doc.splitTextToSize(disposition.followUp, pageWidth - 28) as string[];
+          doc.text(lines, 14, y);
+        }
+      }
     }
 
     // Footer on each page
@@ -1481,7 +1583,9 @@ export default function EmergencyPatientDashboardPage() {
                   (emergencyServices.reduce((sum, s) => sum + s.price, 0) +
                   labResults.reduce((sum, r) => sum + ((r.price || 0) * 1300), 0) +
                   imagingResults.reduce((sum, r) => sum + (r.price * 1300), 0) +
-                  ecgResults.reduce((sum, r) => sum + (r.price * 1300), 0)).toLocaleString()
+                  ecgResults.reduce((sum, r) => sum + (r.price * 1300), 0) +
+                  (disposition.admissionPrice || 0) +
+                  (disposition.wardPrice || 0)).toLocaleString()
                 } IQD
               </Badge>
             </CardHeader>
@@ -1536,8 +1640,90 @@ export default function EmergencyPatientDashboardPage() {
                       <TableCell className="text-right font-medium">{(result.price * 1300).toLocaleString()} IQD</TableCell>
                     </TableRow>
                   ))}
+                  {disposition.admissionPrice && (
+                    <TableRow>
+                      <TableCell>Emergency Admission</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-orange-50">Admission</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date().toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{(disposition.admissionPrice || 0).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  )}
+                  {disposition.wardPrice && disposition.days && (
+                    <TableRow>
+                      <TableCell>Ward Stay ({disposition.ward} - {disposition.days} days)</TableCell>
+                      <TableCell><Badge variant="outline" className="bg-yellow-50">Ward</Badge></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date().toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{(disposition.wardPrice || 0).toLocaleString()} IQD</TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* Disposition Card */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Patient Disposition</CardTitle>
+              <Button size="sm" onClick={() => setDispositionModalOpen(true)} className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white">
+                {disposition.type ? "Update Disposition" : "Set Disposition"}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {!disposition.type ? (
+                <div className="text-sm text-muted-foreground">No disposition set yet.</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={
+                      disposition.type === "admit" ? "bg-[#4684c2] text-white border-[#4684c2]" :
+                      disposition.type === "transfer" ? "bg-orange-500 text-white border-orange-500" :
+                      "bg-[#4684c2] text-white border-[#4684c2]"
+                    }>
+                      {disposition.type.toUpperCase()}
+                    </Badge>
+                    <span className="text-sm font-medium">
+                      {disposition.type === "admit" && `Admitted to ${disposition.ward || "Ward"} - Bed ${disposition.bedNumber || "TBD"}`}
+                      {disposition.type === "transfer" && `Transferred to ${disposition.transferTo}`}
+                      {disposition.type === "discharge" && "Discharged"}
+                    </span>
+                  </div>
+
+                  {disposition.type === "admit" && disposition.days && (
+                    <div className="rounded-lg bg-muted p-3">
+                      <div className="text-muted-foreground text-sm">Estimated Stay</div>
+                      <div className="font-medium">{disposition.days} days</div>
+                    </div>
+                  )}
+
+                  {disposition.type === "discharge" && (
+                    <>
+                      {disposition.dischargeSummary && (
+                        <div className="rounded-lg border p-3">
+                          <div className="text-muted-foreground text-sm mb-2">Discharge Summary</div>
+                          <div className="text-sm whitespace-pre-wrap">{disposition.dischargeSummary}</div>
+                        </div>
+                      )}
+                      {disposition.prescription && (
+                        <div className="rounded-lg border p-3">
+                          <div className="text-muted-foreground text-sm mb-2">Prescription</div>
+                          <div className="text-sm whitespace-pre-wrap">{disposition.prescription}</div>
+                        </div>
+                      )}
+                      {disposition.followUp && (
+                        <div className="rounded-lg border p-3">
+                          <div className="text-muted-foreground text-sm mb-2">Follow-up Instructions</div>
+                          <div className="text-sm whitespace-pre-wrap">{disposition.followUp}</div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2038,6 +2224,22 @@ export default function EmergencyPatientDashboardPage() {
                       <td className="p-2 text-right font-medium">{(r.price * 1300).toLocaleString()}</td>
                     </tr>
                   ))}
+                  {disposition.admissionPrice && (
+                    <tr className="bg-gray-50">
+                      <td className="p-2">Emergency Admission</td>
+                      <td className="p-2"><span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-xs">Admission</span></td>
+                      <td className="p-2 text-gray-500">{new Date().toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{disposition.admissionPrice.toLocaleString()}</td>
+                    </tr>
+                  )}
+                  {disposition.wardPrice && disposition.days && (
+                    <tr className="bg-white">
+                      <td className="p-2">Ward Stay ({disposition.ward} — {disposition.days} days)</td>
+                      <td className="p-2"><span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded text-xs">Ward</span></td>
+                      <td className="p-2 text-gray-500">{new Date().toLocaleDateString()}</td>
+                      <td className="p-2 text-right font-medium">{disposition.wardPrice.toLocaleString()}</td>
+                    </tr>
+                  )}
                   <tr className="border-t-2 border-[#4684c2] bg-[#4684c2]/5">
                     <td colSpan={3} className="p-2 font-bold text-right">Grand Total</td>
                     <td className="p-2 text-right font-bold text-base text-[#4684c2]">
@@ -2045,7 +2247,9 @@ export default function EmergencyPatientDashboardPage() {
                         emergencyServices.reduce((s, r) => s + r.price, 0) +
                         labResults.reduce((s, r) => s + ((r.price || 0) * 1300), 0) +
                         imagingResults.reduce((s, r) => s + (r.price * 1300), 0) +
-                        ecgResults.reduce((s, r) => s + (r.price * 1300), 0)
+                        ecgResults.reduce((s, r) => s + (r.price * 1300), 0) +
+                        (disposition.admissionPrice || 0) +
+                        (disposition.wardPrice || 0)
                       ).toLocaleString()} IQD
                       {/* filtered total */}
                     </td>
@@ -2144,6 +2348,55 @@ export default function EmergencyPatientDashboardPage() {
               </div>
             )}
 
+            {/* 5. Disposition */}
+            <div>
+              <h2 className="font-bold text-base border-b-2 border-[#4684c2] pb-1 mb-3">Disposition</h2>
+              {!disposition.type ? (
+                <div className="text-gray-400 italic text-xs">No disposition set — patient still in emergency.</div>
+              ) : (
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-gray-500">Status:</span>{" "}
+                    <span className={`font-bold uppercase px-2 py-0.5 rounded text-white text-xs ${
+                      disposition.type === "transfer" ? "bg-orange-500" : "bg-[#4684c2]"
+                    }`}>{disposition.type}</span>
+                  </div>
+                  {disposition.type === "admit" && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><span className="text-gray-500">Ward:</span> {disposition.ward || "-"}</div>
+                      <div><span className="text-gray-500">Bed:</span> {disposition.bedNumber || "-"}</div>
+                      <div><span className="text-gray-500">Est. Stay:</span> {disposition.days || "-"} days</div>
+                    </div>
+                  )}
+                  {disposition.type === "transfer" && (
+                    <div><span className="text-gray-500">Transfer To:</span> {disposition.transferTo || "-"}</div>
+                  )}
+                  {disposition.type === "discharge" && (
+                    <div className="space-y-2">
+                      {disposition.dischargeSummary && (
+                        <div>
+                          <div className="font-semibold text-gray-700 text-xs mb-1">Discharge Summary</div>
+                          <div className="bg-gray-50 rounded p-2 whitespace-pre-wrap text-xs">{disposition.dischargeSummary}</div>
+                        </div>
+                      )}
+                      {disposition.prescription && (
+                        <div>
+                          <div className="font-semibold text-gray-700 text-xs mb-1">Prescription</div>
+                          <div className="bg-gray-50 rounded p-2 whitespace-pre-wrap text-xs">{disposition.prescription}</div>
+                        </div>
+                      )}
+                      {disposition.followUp && (
+                        <div>
+                          <div className="font-semibold text-gray-700 text-xs mb-1">Follow-up Instructions</div>
+                          <div className="bg-gray-50 rounded p-2 whitespace-pre-wrap text-xs">{disposition.followUp}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Footer */}
             <div className="text-center text-xs text-gray-400 border-t pt-3">
               Tibbna EHR — Confidential Medical Document
@@ -2158,6 +2411,156 @@ export default function EmergencyPatientDashboardPage() {
             >
               <Printer className="h-4 w-4 mr-2" />
               Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disposition Modal */}
+      <Dialog open={dispositionModalOpen} onOpenChange={setDispositionModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Set Patient Disposition</DialogTitle>
+            <DialogDescription>Choose the patient&apos;s disposition and provide relevant details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Disposition Type *</Label>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisposition({ ...disposition, type: "admit" })}
+                  className={`w-full border-[#4684c2] ${disposition.type === "admit" ? "bg-[#4684c2] text-white hover:bg-[#3a6fa8]" : "text-[#4684c2] hover:bg-[#4684c2]/10"}`}
+                >
+                  Admit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisposition({ ...disposition, type: "transfer" })}
+                  className={`w-full border-orange-500 ${disposition.type === "transfer" ? "bg-orange-500 text-white hover:bg-orange-600" : "text-orange-500 hover:bg-orange-500/10"}`}
+                >
+                  Transfer
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDisposition({ ...disposition, type: "discharge" })}
+                  className={`w-full border-[#4684c2] ${disposition.type === "discharge" ? "bg-[#4684c2] text-white hover:bg-[#3a6fa8]" : "text-[#4684c2] hover:bg-[#4684c2]/10"}`}
+                >
+                  Discharge
+                </Button>
+              </div>
+            </div>
+
+            {disposition.type === "admit" && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Ward/Unit *</Label>
+                    <Input
+                      value={disposition.ward || ""}
+                      onChange={(e) => setDisposition({ ...disposition, ward: e.target.value })}
+                      placeholder="e.g., ICU, General Ward"
+                    />
+                  </div>
+                  <div>
+                    <Label>Bed Number *</Label>
+                    <Input
+                      value={disposition.bedNumber || ""}
+                      onChange={(e) => setDisposition({ ...disposition, bedNumber: e.target.value })}
+                      placeholder="e.g., A-101"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Estimated Days *</Label>
+                    <Input
+                      type="number"
+                      value={disposition.days || ""}
+                      onChange={(e) => setDisposition({ ...disposition, days: parseInt(e.target.value) || 0 })}
+                      placeholder="Number of days"
+                    />
+                  </div>
+                  <div>
+                    <Label>Admission Fee (IQD)</Label>
+                    <Input
+                      type="number"
+                      value={disposition.admissionPrice || ""}
+                      onChange={(e) => setDisposition({ ...disposition, admissionPrice: parseFloat(e.target.value) || 0 })}
+                      placeholder="e.g., 650000"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Ward Cost per Day (IQD)</Label>
+                  <Input
+                    type="number"
+                    value={disposition.wardPrice || ""}
+                    onChange={(e) => setDisposition({ ...disposition, wardPrice: parseFloat(e.target.value) || 0 })}
+                    placeholder="e.g., 260000"
+                  />
+                </div>
+              </>
+            )}
+
+            {disposition.type === "transfer" && (
+              <div>
+                <Label>Transfer To *</Label>
+                <Input
+                  value={disposition.transferTo || ""}
+                  onChange={(e) => setDisposition({ ...disposition, transferTo: e.target.value })}
+                  placeholder="e.g., City General Hospital"
+                />
+              </div>
+            )}
+
+            {disposition.type === "discharge" && (
+              <>
+                <div>
+                  <Label>Discharge Summary *</Label>
+                  <textarea
+                    value={disposition.dischargeSummary || ""}
+                    onChange={(e) => setDisposition({ ...disposition, dischargeSummary: e.target.value })}
+                    placeholder="Summary of emergency visit, diagnosis, and treatment provided..."
+                    rows={4}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <Label>Prescription</Label>
+                  <textarea
+                    value={disposition.prescription || ""}
+                    onChange={(e) => setDisposition({ ...disposition, prescription: e.target.value })}
+                    placeholder="Medications prescribed with dosage and duration..."
+                    rows={3}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <Label>Follow-up Instructions</Label>
+                  <textarea
+                    value={disposition.followUp || ""}
+                    onChange={(e) => setDisposition({ ...disposition, followUp: e.target.value })}
+                    placeholder="Follow-up appointments, warning signs, and care instructions..."
+                    rows={3}
+                    className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-[#4684c2] text-[#4684c2] hover:bg-[#4684c2]/10" onClick={() => setDispositionModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={saveDisposition}
+              className="bg-[#4684c2] hover:bg-[#3a6fa8] text-white"
+            >
+              Save Disposition
             </Button>
           </DialogFooter>
         </DialogContent>
