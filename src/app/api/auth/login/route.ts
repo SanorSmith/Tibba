@@ -60,8 +60,37 @@ export async function POST(request: NextRequest) {
       console.warn('User DB lookup failed, falling back to mock:', e);
     }
 
-    // Default workspace = Hospital 1
-    const DEFAULT_WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
+    // ── Resolve the facility (workspace) this user actually belongs to ────────
+    // Real accounts get their facility + role from `workspaceusers`, the same
+    // source of truth the wider Tibbna platform uses — so a nurse at "Alis"
+    // lands in Alis as a nurse, not in a hardcoded hospital as a super admin.
+    //
+    // The demo logins (superadmin/finance/hr/inventory/reception) have no row
+    // in `users` at all, so they fall back to the legacy behaviour below.
+    // Removing that fallback would lock every demo account out of the ERP.
+    const FALLBACK_WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd'; // Hospital 1
+    let membership: { workspaceid: string; workspace_name: string; ws_role: string } | null = null;
+    if (dbUser?.userid) {
+      try {
+        // Selection rule when a user belongs to several facilities: this app is
+        // the hospital ERP, so prefer a hospital, then the earliest-created one.
+        // Oldest-first keeps existing staff in the facility they've always used
+        // rather than bouncing them to whichever facility was created most
+        // recently (the platform's own default, which is arbitrary here).
+        const m = await pool.query(
+          `SELECT wu.workspaceid, w.name AS workspace_name, wu.role AS ws_role
+           FROM workspaceusers wu
+           JOIN workspaces w ON w.workspaceid = wu.workspaceid
+           WHERE wu.userid = $1 AND w.isactive IS NOT FALSE
+           ORDER BY (w.type = 'hospital') DESC, w.createdat ASC
+           LIMIT 1`,
+          [dbUser.userid]
+        );
+        if (m.rows.length > 0) membership = m.rows[0];
+      } catch (e) {
+        console.warn('Workspace lookup failed, using fallback workspace:', e);
+      }
+    }
 
     const resolvedUser = {
       id: dbUser?.userid ?? '123e4567-e89b-12d3-a456-426614174000',
@@ -71,10 +100,24 @@ export async function POST(request: NextRequest) {
       firstName: dbUser?.name?.split(' ')[0] ?? 'Admin',
       lastName: dbUser?.name?.split(' ').slice(1).join(' ') ?? 'User',
       role: 'Admin',
-      workspaceId: DEFAULT_WORKSPACE_ID,
+      workspaceId: membership?.workspaceid ?? FALLBACK_WORKSPACE_ID,
+      workspaceName: membership?.workspace_name ?? 'Hospital 1',
     };
 
-    // Map username to role for middleware
+    // Map the platform's facility role onto this app's module-access roles.
+    // Clinical roles get reception (patients/appointments/billing); admins get
+    // everything; pharmacists additionally need inventory.
+    const wsRoleMap: Record<string, string> = {
+      administrator:   'SUPER_ADMIN',
+      doctor:          'RECEPTION_ADMIN',
+      nurse:           'RECEPTION_ADMIN',
+      receptionist:    'RECEPTION_ADMIN',
+      plastic_surgeon: 'RECEPTION_ADMIN',
+      lab_technician:  'RECEPTION_ADMIN',
+      pharmacist:      'INVENTORY_ADMIN',
+    };
+
+    // Legacy demo logins, kept working — these have no `users` row to resolve.
     const roleMap: Record<string, string> = {
       'superadmin': 'SUPER_ADMIN',
       'finance': 'FINANCE_ADMIN',
@@ -83,7 +126,9 @@ export async function POST(request: NextRequest) {
       'reception': 'RECEPTION_ADMIN',
     };
 
-    const userRole = roleMap[loginIdentifier.toLowerCase()] || 'SUPER_ADMIN';
+    const userRole = membership
+      ? (wsRoleMap[membership.ws_role] ?? 'RECEPTION_ADMIN')
+      : (roleMap[loginIdentifier.toLowerCase()] || 'SUPER_ADMIN');
 
     // Create session object for cookie — now includes userId, workspaceId, email
     const session = {
@@ -92,6 +137,8 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now(),
       userId: resolvedUser.id,
       workspaceId: resolvedUser.workspaceId,
+      workspaceName: resolvedUser.workspaceName,
+      facilityRole: membership?.ws_role ?? null,
       email: resolvedUser.email,
     };
 
