@@ -47,22 +47,43 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const doLogin = async (u: string, p: string) => {
+  // Second login step: shown only when the account belongs to more than one
+  // facility, so the user picks which to open instead of the server guessing.
+  type Facility = { workspaceId: string; name: string; type: string; role: string };
+  const [facilities, setFacilities] = useState<Facility[] | null>(null);
+
+  const doLogin = async (u: string, p: string, workspaceId?: string) => {
     setError('');
     setIsLoading(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: p }),
+        body: JSON.stringify({ username: u, password: p, ...(workspaceId ? { workspaceId } : {}) }),
       });
       const data = await res.json();
+      if (res.ok && data.requiresFacilitySelection) {
+        setFacilities(data.facilities);
+        setIsLoading(false);
+        return;
+      }
       if (res.ok && data.success) {
-        // Full page navigation so middleware sees the new cookie
-        const role = ROLES.find(r => r.username === u.toLowerCase());
+        // Full page navigation so middleware sees the new cookie.
+        // Land on a route this role can actually reach — the middleware only
+        // lets FINANCE_ADMIN into /finance, RECEPTION_ADMIN into /reception and
+        // so on, so defaulting everyone to /dashboard bounces them to
+        // /unauthorized.
+        const ROLE_HOME: Record<string, string> = {
+          SUPER_ADMIN: '/dashboard',
+          FINANCE_ADMIN: '/finance',
+          HR_ADMIN: '/hr',
+          INVENTORY_ADMIN: '/hospital',
+          RECEPTION_ADMIN: '/reception',
+        };
+        const home = ROLE_HOME[data.role] ?? '/dashboard';
         const dest = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
           ? returnTo
-          : (role?.route ?? '/dashboard');
+          : home;
         window.location.href = dest;
       } else {
         setError(data.error || 'Invalid credentials');
@@ -107,6 +128,50 @@ function LoginForm() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+
+          {/* Facility picker — replaces the form when the account belongs to
+              more than one facility. Nothing is signed in until one is chosen. */}
+          {facilities ? (
+          <div className="p-6">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Choose facility</p>
+            <p className="text-sm text-gray-500 mb-4">
+              <span className="font-medium text-gray-700">{username}</span> has access to {facilities.length} facilities.
+            </p>
+
+            {error && (
+              <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                <span className="text-red-500">⚠</span> {error}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {facilities.map(f => (
+                <button
+                  key={f.workspaceId}
+                  onClick={() => doLogin(username.trim(), password.trim(), f.workspaceId)}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-gray-900 truncate">{f.name}</span>
+                    <span className="block text-[11px] text-gray-400 capitalize">
+                      {f.type} · {f.role.replace(/_/g, ' ')}
+                    </span>
+                  </span>
+                  <Hospital className="w-4 h-4 text-gray-300 shrink-0" />
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => { setFacilities(null); setPassword(''); setError(''); }}
+              className="mt-4 w-full py-2 text-xs font-medium text-gray-500 hover:text-gray-800 transition"
+            >
+              ← Sign in as someone else
+            </button>
+          </div>
+          ) : (
+          <>
 
           {/* Quick Login Cards */}
           <div className="p-6 border-b border-gray-100">
@@ -194,6 +259,8 @@ function LoginForm() {
               </div>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

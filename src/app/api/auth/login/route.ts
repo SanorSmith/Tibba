@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, password, username } = body;
+    const { email, password, username, workspaceId: chosenWorkspaceId } = body;
 
     // Accept either email or username
     const loginIdentifier = email || username;
@@ -69,24 +69,51 @@ export async function POST(request: NextRequest) {
     // in `users` at all, so they fall back to the legacy behaviour below.
     // Removing that fallback would lock every demo account out of the ERP.
     const FALLBACK_WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd'; // Hospital 1
-    let membership: { workspaceid: string; workspace_name: string; ws_role: string } | null = null;
+    type Membership = { workspaceid: string; workspace_name: string; ws_type: string; ws_role: string };
+    let membership: Membership | null = null;
     if (dbUser?.userid) {
       try {
-        // Selection rule when a user belongs to several facilities: this app is
-        // the hospital ERP, so prefer a hospital, then the earliest-created one.
-        // Oldest-first keeps existing staff in the facility they've always used
-        // rather than bouncing them to whichever facility was created most
-        // recently (the platform's own default, which is arbitrary here).
+        // Ordering when a user belongs to several facilities: this app is the
+        // hospital ERP, so hospitals sort first, then earliest-created — that
+        // keeps existing staff in the facility they've always used rather than
+        // whichever was created most recently.
         const m = await pool.query(
-          `SELECT wu.workspaceid, w.name AS workspace_name, wu.role AS ws_role
+          `SELECT wu.workspaceid, w.name AS workspace_name, w.type AS ws_type, wu.role AS ws_role
            FROM workspaceusers wu
            JOIN workspaces w ON w.workspaceid = wu.workspaceid
            WHERE wu.userid = $1 AND w.isactive IS NOT FALSE
-           ORDER BY (w.type = 'hospital') DESC, w.createdat ASC
-           LIMIT 1`,
+           ORDER BY (w.type = 'hospital') DESC, w.createdat ASC`,
           [dbUser.userid]
         );
-        if (m.rows.length > 0) membership = m.rows[0];
+        const memberships: Membership[] = m.rows;
+
+        if (chosenWorkspaceId) {
+          // Second step of the login: honour the facility the user picked, but
+          // only if they actually belong to it.
+          const picked = memberships.find(x => x.workspaceid === chosenWorkspaceId);
+          if (!picked) {
+            return NextResponse.json(
+              { error: 'You do not have access to that facility' },
+              { status: 403 }
+            );
+          }
+          membership = picked;
+        } else if (memberships.length > 1) {
+          // Belongs to more than one facility — ask which to open rather than
+          // guessing. No session cookie is issued until they choose.
+          return NextResponse.json({
+            success: false,
+            requiresFacilitySelection: true,
+            facilities: memberships.map(x => ({
+              workspaceId: x.workspaceid,
+              name: x.workspace_name.trim(),
+              type: x.ws_type,
+              role: x.ws_role,
+            })),
+          });
+        } else {
+          membership = memberships[0] ?? null;
+        }
       } catch (e) {
         console.warn('Workspace lookup failed, using fallback workspace:', e);
       }
@@ -151,6 +178,9 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Login successful',
       user: mockUser,
+      // The module-access role the middleware will enforce — the login page
+      // needs it to land the user somewhere they're actually allowed to go.
+      role: userRole,
       token: 'mock-jwt-token'
     });
 
