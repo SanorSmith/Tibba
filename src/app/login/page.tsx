@@ -80,11 +80,25 @@ function LoginForm() {
           INVENTORY_ADMIN: '/hospital',
           RECEPTION_ADMIN: '/reception',
         };
+        // Must match ROLE_MODULES in src/middleware.ts
+        const ROLE_MODULES: Record<string, string[]> = {
+          SUPER_ADMIN: ['*'],
+          FINANCE_ADMIN: ['/finance'],
+          HR_ADMIN: ['/hr'],
+          INVENTORY_ADMIN: ['/inventory', '/hospital'],
+          RECEPTION_ADMIN: ['/reception'],
+        };
         const home = ROLE_HOME[data.role] ?? '/dashboard';
-        const dest = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')
-          ? returnTo
-          : home;
-        window.location.href = dest;
+        const allowed = ROLE_MODULES[data.role] ?? [];
+        // Only follow returnTo if this role can actually reach it — otherwise
+        // the middleware immediately bounces them to /unauthorized. Landing on
+        // "/" after being redirected from the root is the common case.
+        const canReturn =
+          !!returnTo &&
+          returnTo.startsWith('/') &&
+          !returnTo.startsWith('//') &&
+          (allowed.includes('*') || allowed.some(p => returnTo.startsWith(p)));
+        window.location.href = canReturn ? returnTo : home;
       } else {
         setError(data.error || 'Invalid credentials');
         setIsLoading(false);
