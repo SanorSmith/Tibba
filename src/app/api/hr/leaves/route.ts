@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,12 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    // Leave requests belong to the employee's facility.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const employeeId = searchParams.get('employee_id');
@@ -47,11 +54,11 @@ export async function GET(request: NextRequest) {
         lr.updated_at
       FROM leave_requests lr
       LEFT JOIN leave_types lt ON lr.leave_type_id = lt.id
-      WHERE 1=1
+      WHERE lr.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (status) {
       query += ` AND lr.status = $${paramIndex}`;
@@ -136,6 +143,11 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       employee_id,
@@ -198,8 +210,8 @@ export async function POST(request: NextRequest) {
         employee_id, employee_name, employee_number, leave_type_id, leave_type_code,
         start_date, end_date, return_date, days_count, working_days_count,
         reason, emergency_contact, replacement_employee, handover_notes,
-        status, organization_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        status, organization_id, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING id`,
       [
         employeeUuid,
@@ -218,6 +230,7 @@ export async function POST(request: NextRequest) {
         handover_notes || null,
         'PENDING',
         '00000000-0000-0000-0000-000000000001',
+        workspaceId,
       ]
     );
 

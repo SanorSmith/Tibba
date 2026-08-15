@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -11,6 +12,12 @@ const pool = new Pool({
  */
 export async function GET(request: NextRequest) {
   try {
+    // Payroll is facility-owned — never expose another hospital's salaries.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const period_id = searchParams.get('period_id');
     const employee_id = searchParams.get('employee_id');
@@ -31,9 +38,9 @@ export async function GET(request: NextRequest) {
         pp.end_date
       FROM payroll_transactions pt
       LEFT JOIN payroll_periods pp ON pt.period_id = pp.id
-      WHERE 1=1
+      WHERE pt.workspaceid = $1
     `;
-    const params: any[] = [];
+    const params: any[] = [workspaceId];
 
     if (period_id) {
       params.push(period_id);
