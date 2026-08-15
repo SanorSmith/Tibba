@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,13 @@ export async function GET(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // Services are a per-facility catalogue: one hospital must not see or
+    // bill another's service list or prices.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
 
     // Check if services table exists
@@ -287,9 +295,9 @@ export async function GET(request: NextRequest) {
         createdat,
         updatedat
       FROM services
-      WHERE active = true
+      WHERE active = true AND workspaceid = $1
       ORDER BY category, name
-    `);
+    `, [workspaceId]);
     
     console.log('Simple query result (no dept join):', simpleResult.rows.length, 'services found');
     
@@ -321,9 +329,9 @@ export async function GET(request: NextRequest) {
           s.updatedat
         FROM services s
         LEFT JOIN departments d ON s.department_id::text = d.departmentid::text
-        WHERE s.active = true
+        WHERE s.active = true AND s.workspaceid = $1
         ORDER BY s.category, s.name
-      `);
+      `, [workspaceId]);
       console.log('Department join (UUID match) result:', result.rows.length, 'services found');
     } catch (error) {
       console.log('Department join failed, using simple query:', error instanceof Error ? error.message : String(error));
@@ -334,11 +342,11 @@ export async function GET(request: NextRequest) {
     console.log('First service sample:', result.rows[0]);
     
     // Also check total services count (including inactive)
-    const totalCount = await pool.query('SELECT COUNT(*) as total FROM services');
+    const totalCount = await pool.query('SELECT COUNT(*) as total FROM services WHERE workspaceid = $1', [workspaceId]);
     console.log('Total services in table (including inactive):', totalCount.rows[0].total);
     
     // Check active services count
-    const activeCount = await pool.query('SELECT COUNT(*) as active FROM services WHERE active = true');
+    const activeCount = await pool.query('SELECT COUNT(*) as active FROM services WHERE active = true AND workspaceid = $1', [workspaceId]);
     console.log('Active services count:', activeCount.rows[0].active);
     
     // Always return the query with more services
@@ -372,8 +380,9 @@ export async function GET(request: NextRequest) {
           createdat,
           updatedat
         FROM services
+        WHERE workspaceid = $1
         ORDER BY category, name
-      `);
+      `, [workspaceId]);
       finalResult = allServices;
       console.log('All services count:', finalResult.rows.length);
     }
@@ -421,6 +430,12 @@ export async function POST(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // New services belong to the facility that created them.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -493,9 +508,10 @@ export async function POST(request: NextRequest) {
         provider_id,
         provider_name,
         service_fee,
-        active
+        active,
+        workspaceid
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `, [
       serviceCode,
@@ -513,7 +529,8 @@ export async function POST(request: NextRequest) {
       provider_id || null,
       provider_name || null,
       service_fee || 0,
-      true
+      true,
+      workspaceId
     ]);
 
     return NextResponse.json({

@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,17 +17,21 @@ const pool = process.env.DATABASE_URL
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  // Scoped to the caller's facility — another hospital's service must read
+  // as "not found".
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     const r = await pool.query(
       `SELECT id, code, name, name_ar, category, subcategory, description,
               price_self_pay, price_insurance, price_government, department_id,
               requires_appointment, duration_minutes, active,
               provider_id, provider_name, service_fee
-       FROM services WHERE id::text = $1 OR code = $1 LIMIT 1`,
-      [id]
+       FROM services WHERE (id::text = $1 OR code = $1) AND workspaceid = $2 LIMIT 1`,
+      [id, workspaceId]
     );
     if (r.rows.length === 0) {
       return NextResponse.json({ error: 'Service not found' }, { status: 404 });
@@ -73,6 +78,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  // Scoped to the caller's facility — another hospital's service must read
+  // as "not found".
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     const body = await req.json();
     const {
@@ -101,7 +110,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         service_fee = COALESCE($15, service_fee),
         active = COALESCE($16, active),
         updatedat = NOW()
-      WHERE id::text = $17 OR code = $17
+      WHERE (id::text = $17 OR code = $17) AND workspaceid = $18
       RETURNING *`,
       [
         name || null, name_ar || null, code || null, category || null,
@@ -109,7 +118,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
         price_self_pay ?? null, price_insurance ?? null, price_government ?? null,
         department_id || null, requires_appointment ?? null, duration_minutes ?? null,
         provider_id || null, provider_name || null, service_fee ?? null,
-        active ?? null, id
+        active ?? null, id, workspaceId
       ]
     );
 
@@ -124,16 +133,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  // Scoped to the caller's facility — another hospital's service must read
+  // as "not found".
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     // Soft-delete: set active = false
     const result = await pool.query(
       `UPDATE services SET active = false, updatedat = NOW()
-       WHERE id::text = $1 OR code = $1
+       WHERE (id::text = $1 OR code = $1) AND workspaceid = $2
        RETURNING id, code, name`,
-      [id]
+      [id, workspaceId]
     );
 
     if (result.rows.length === 0) {
