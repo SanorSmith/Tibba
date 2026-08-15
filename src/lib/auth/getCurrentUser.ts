@@ -3,7 +3,6 @@ import { NextRequest } from 'next/server';
 import { query } from '@/lib/db/pool';
 
 const SESSION_COOKIE = 'tibbna_session';
-const DEFAULT_WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd'; // Hospital 1
 
 export interface SessionUser {
   userId: string;
@@ -36,7 +35,9 @@ function decodeCookie(cookieValue: string | undefined): RawSession | null {
  * Resolve full user record from session.
  * - Reads `tibbna_session` cookie (works for both Server Components and Route Handlers)
  * - Falls back to looking up the user in `users` table by email if session is partial
- * - Always returns a workspaceId (defaults to Hospital 1 if missing)
+ * - Returns null when the session carries no facility. There is deliberately no
+ *   default: a missing workspaceId used to silently resolve to Hospital 1, which
+ *   showed one facility's stock to every other facility.
  */
 export async function getCurrentUser(request?: NextRequest): Promise<SessionUser | null> {
   let cookieValue: string | undefined;
@@ -50,6 +51,7 @@ export async function getCurrentUser(request?: NextRequest): Promise<SessionUser
 
   const session = decodeCookie(cookieValue);
   if (!session?.username || !session?.role) return null;
+  if (!session.workspaceId) return null;
 
   // Hydrate from DB (resolve real userId by email)
   let userRecord: any = null;
@@ -82,7 +84,7 @@ export async function getCurrentUser(request?: NextRequest): Promise<SessionUser
     name: userRecord?.name ?? session.username,
     email: userRecord?.email ?? session.email ?? `${session.username}@hospital.com`,
     role: session.role,
-    workspaceId: session.workspaceId ?? DEFAULT_WORKSPACE_ID,
+    workspaceId: session.workspaceId,
   };
 }
 

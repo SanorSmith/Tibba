@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,8 +100,15 @@ export async function POST(request: NextRequest) {
       normal_balance,
       is_group = false,
       description,
-      workspace_id = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd', // default workspace
     } = body;
+
+    // The chart of accounts belongs to the caller's facility. This used to
+    // accept workspace_id from the request body, letting a client write an
+    // account into another hospital's ledger.
+    const workspace_id = getWorkspaceId(request);
+    if (!workspace_id) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
 
     if (!account_code || !account_name || !account_type) {
       return NextResponse.json(

@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { postDividend } from '@/lib/gl-posting';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // GL entries post to the caller’s facility ledger.
+  const ws = getWorkspaceId(request);
+  if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const client = await pool.connect();
   try {
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     // GL: DR Retained Earnings / CR Cash for the whole declaration
-    await postDividend(client, declarationId, declarationNumber, total, dividendDate);
+    await postDividend(client, ws, declarationId, declarationNumber, total, dividendDate);
 
     await client.query('COMMIT');
 

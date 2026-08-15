@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,8 +93,14 @@ export async function POST(request: NextRequest) {
       entry_date,
       source_type = 'MANUAL',
       lines = [],
-      workspace_id = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd',
     } = body;
+
+    // Journal entries post to the caller's facility ledger, never one named
+    // by the client.
+    const workspace_id = getWorkspaceId(request);
+    if (!workspace_id) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
 
     if (!description || !entry_date || lines.length < 2) {
       return NextResponse.json(

@@ -30,7 +30,6 @@
 
 import { PoolClient } from 'pg';
 
-const WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
 /** In-process cache so we only query fin_accounts once per server restart */
 const _cache: Record<string, string | null> = {};
@@ -42,10 +41,11 @@ const _cache: Record<string, string | null> = {};
  */
 async function findByType(
   client: PoolClient,
+  ws: string,
   accountType: string,
   codePrefix?: string
 ): Promise<string | null> {
-  const key = `${accountType}:${codePrefix ?? '*'}`;
+  const key = `${ws}:${accountType}:${codePrefix ?? '*'}`;
   if (key in _cache) return _cache[key];
 
   try {
@@ -53,13 +53,14 @@ async function findByType(
     if (codePrefix) {
       const r = await client.query(
         `SELECT accountid FROM fin_accounts
-         WHERE accounttype = $1
-           AND accountcode LIKE $2
+         WHERE workspaceid = $1
+           AND accounttype = $2
+           AND accountcode LIKE $3
            AND isgroupaccount = false
            AND isactive = true
          ORDER BY accountcode ASC
          LIMIT 1`,
-        [accountType, `${codePrefix}%`]
+        [ws, accountType, `${codePrefix}%`]
       );
       if (r.rows.length > 0) {
         _cache[key] = r.rows[0].accountid;
@@ -70,12 +71,13 @@ async function findByType(
     // 2. Fallback: any posting leaf of this type
     const r2 = await client.query(
       `SELECT accountid FROM fin_accounts
-       WHERE accounttype = $1
+       WHERE workspaceid = $1
+         AND accounttype = $2
          AND isgroupaccount = false
          AND isactive = true
        ORDER BY accountcode ASC
        LIMIT 1`,
-      [accountType]
+      [ws, accountType]
     );
     const id = r2.rows[0]?.accountid ?? null;
     _cache[key] = id;
@@ -92,21 +94,23 @@ async function findByType(
  */
 async function findByName(
   client: PoolClient,
+  ws: string,
   accountType: string,
   keyword: string
 ): Promise<string | null> {
-  const key = `name:${accountType}:${keyword}`;
+  const key = `name:${ws}:${accountType}:${keyword}`;
   if (key in _cache) return _cache[key];
   try {
     const r = await client.query(
       `SELECT accountid FROM fin_accounts
-       WHERE accounttype = $1
-         AND LOWER(accountname) LIKE $2
+       WHERE workspaceid = $1
+         AND accounttype = $2
+         AND LOWER(accountname) LIKE $3
          AND isgroupaccount = false
          AND isactive = true
        ORDER BY accountcode ASC
        LIMIT 1`,
-      [accountType, `%${keyword.toLowerCase()}%`]
+      [ws, accountType, `%${keyword.toLowerCase()}%`]
     );
     const id = r.rows[0]?.accountid ?? null;
     _cache[key] = id;
@@ -126,136 +130,136 @@ async function findByName(
 //   5xxx  = Cost of Revenue
 //   6xxx  = Operating Expenses
 
-async function getCashAccount(client: PoolClient): Promise<string | null> {
+async function getCashAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByType(client, 'ASSET', '11') ??
-    await findByType(client, 'ASSET', '10') ??
-    await findByName(client, 'ASSET', 'cash') ??
-    await findByName(client, 'ASSET', 'bank') ??
-    await findByName(client, 'ASSET', 'نقد') ??
-    await findByName(client, 'ASSET', 'بنك') ??
-    await findByType(client, 'ASSET')           // last resort: any asset
+    await findByType(client, ws, 'ASSET', '11') ??
+    await findByType(client, ws, 'ASSET', '10') ??
+    await findByName(client, ws, 'ASSET', 'cash') ??
+    await findByName(client, ws, 'ASSET', 'bank') ??
+    await findByName(client, ws, 'ASSET', 'نقد') ??
+    await findByName(client, ws, 'ASSET', 'بنك') ??
+    await findByType(client, ws, 'ASSET')           // last resort: any asset
   );
 }
 
-async function getARAccount(client: PoolClient): Promise<string | null> {
+async function getARAccount(client: PoolClient, ws: string): Promise<string | null> {
   // Receivables are at 112x in this chart of accounts, not 12x (which is Equipment)
   return (
-    await findByName(client, 'ASSET', 'insurance accounts receivable') ??
-    await findByName(client, 'ASSET', 'insurance receivable') ??
-    await findByName(client, 'ASSET', 'receivable') ??
-    await findByType(client, 'ASSET', '112') ??   // 1121/1122 receivables
-    await findByType(client, 'ASSET', '13') ??
-    await findByName(client, 'ASSET', 'insurance') ??
-    await findByName(client, 'ASSET', 'مدين') ??
-    await findByName(client, 'ASSET', 'تأمين') ??
-    await getCashAccount(client)                // fall back to cash
+    await findByName(client, ws, 'ASSET', 'insurance accounts receivable') ??
+    await findByName(client, ws, 'ASSET', 'insurance receivable') ??
+    await findByName(client, ws, 'ASSET', 'receivable') ??
+    await findByType(client, ws, 'ASSET', '112') ??   // 1121/1122 receivables
+    await findByType(client, ws, 'ASSET', '13') ??
+    await findByName(client, ws, 'ASSET', 'insurance') ??
+    await findByName(client, ws, 'ASSET', 'مدين') ??
+    await findByName(client, ws, 'ASSET', 'تأمين') ??
+    await getCashAccount(client, ws)                // fall back to cash
   );
 }
 
-async function getPatientARAccount(client: PoolClient): Promise<string | null> {
+async function getPatientARAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'ASSET', 'patient accounts receivable') ??
-    await findByName(client, 'ASSET', 'patient receivable') ??
-    await findByType(client, 'ASSET', '1121') ??
-    await getARAccount(client)
+    await findByName(client, ws, 'ASSET', 'patient accounts receivable') ??
+    await findByName(client, ws, 'ASSET', 'patient receivable') ??
+    await findByType(client, ws, 'ASSET', '1121') ??
+    await getARAccount(client, ws)
   );
 }
 
 // ── Equity account resolvers (shareholder capital + dividends) ────────────
-async function getOwnerCapitalAccount(client: PoolClient): Promise<string | null> {
+async function getOwnerCapitalAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'EQUITY', "owner's capital") ??
-    await findByName(client, 'EQUITY', 'capital') ??
-    await findByType(client, 'EQUITY', '3100') ??
-    await findByType(client, 'EQUITY', '31') ??
-    await findByType(client, 'EQUITY')
+    await findByName(client, ws, 'EQUITY', "owner's capital") ??
+    await findByName(client, ws, 'EQUITY', 'capital') ??
+    await findByType(client, ws, 'EQUITY', '3100') ??
+    await findByType(client, ws, 'EQUITY', '31') ??
+    await findByType(client, ws, 'EQUITY')
   );
 }
 
-async function getRetainedEarningsAccount(client: PoolClient): Promise<string | null> {
+async function getRetainedEarningsAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'EQUITY', 'retained earnings') ??
-    await findByName(client, 'EQUITY', 'retained') ??
-    await findByType(client, 'EQUITY', '3200') ??
-    await findByType(client, 'EQUITY', '32') ??
-    await getOwnerCapitalAccount(client)
+    await findByName(client, ws, 'EQUITY', 'retained earnings') ??
+    await findByName(client, ws, 'EQUITY', 'retained') ??
+    await findByType(client, ws, 'EQUITY', '3200') ??
+    await findByType(client, ws, 'EQUITY', '32') ??
+    await getOwnerCapitalAccount(client, ws)
   );
 }
 
-async function getRevenueAccount(client: PoolClient): Promise<string | null> {
+async function getRevenueAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByType(client, 'REVENUE', '4') ??
-    await findByType(client, 'REVENUE', '41') ??
-    await findByType(client, 'REVENUE', '40') ??
-    await findByName(client, 'REVENUE', 'revenue') ??
-    await findByName(client, 'REVENUE', 'income') ??
-    await findByName(client, 'REVENUE', 'إيراد') ??
-    await findByName(client, 'REVENUE', 'دخل') ??
-    await findByType(client, 'REVENUE')
+    await findByType(client, ws, 'REVENUE', '4') ??
+    await findByType(client, ws, 'REVENUE', '41') ??
+    await findByType(client, ws, 'REVENUE', '40') ??
+    await findByName(client, ws, 'REVENUE', 'revenue') ??
+    await findByName(client, ws, 'REVENUE', 'income') ??
+    await findByName(client, ws, 'REVENUE', 'إيراد') ??
+    await findByName(client, ws, 'REVENUE', 'دخل') ??
+    await findByType(client, ws, 'REVENUE')
   );
 }
 
-async function getPayableAccount(client: PoolClient): Promise<string | null> {
+async function getPayableAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByType(client, 'LIABILITY', '21') ??
-    await findByType(client, 'LIABILITY', '20') ??
-    await findByName(client, 'LIABILITY', 'payable') ??
-    await findByName(client, 'LIABILITY', 'creditor') ??
-    await findByName(client, 'LIABILITY', 'دائن') ??
-    await findByName(client, 'LIABILITY', 'مورد') ??
-    await findByType(client, 'LIABILITY')
+    await findByType(client, ws, 'LIABILITY', '21') ??
+    await findByType(client, ws, 'LIABILITY', '20') ??
+    await findByName(client, ws, 'LIABILITY', 'payable') ??
+    await findByName(client, ws, 'LIABILITY', 'creditor') ??
+    await findByName(client, ws, 'LIABILITY', 'دائن') ??
+    await findByName(client, ws, 'LIABILITY', 'مورد') ??
+    await findByType(client, ws, 'LIABILITY')
   );
 }
 
-async function getExpenseAccount(client: PoolClient): Promise<string | null> {
+async function getExpenseAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByType(client, 'EXPENSE', '6') ??
-    await findByType(client, 'EXPENSE', '5') ??
-    await findByName(client, 'EXPENSE', 'purchase') ??
-    await findByName(client, 'EXPENSE', 'supplies') ??
-    await findByName(client, 'EXPENSE', 'مشتريات') ??
-    await findByName(client, 'EXPENSE', 'مصاريف') ??
-    await findByType(client, 'EXPENSE')
+    await findByType(client, ws, 'EXPENSE', '6') ??
+    await findByType(client, ws, 'EXPENSE', '5') ??
+    await findByName(client, ws, 'EXPENSE', 'purchase') ??
+    await findByName(client, ws, 'EXPENSE', 'supplies') ??
+    await findByName(client, ws, 'EXPENSE', 'مشتريات') ??
+    await findByName(client, ws, 'EXPENSE', 'مصاريف') ??
+    await findByType(client, ws, 'EXPENSE')
   );
 }
 
 // ── Payroll-specific account resolvers ────────────────────────────────────
-async function getSalaryExpenseAccount(client: PoolClient): Promise<string | null> {
+async function getSalaryExpenseAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'EXPENSE', 'salaries') ??
-    await findByName(client, 'EXPENSE', 'wages') ??
-    await findByType(client, 'EXPENSE', '5210') ??
-    await findByType(client, 'EXPENSE', '52') ??
-    await findByName(client, 'EXPENSE', 'staff') ??
-    await getExpenseAccount(client)
+    await findByName(client, ws, 'EXPENSE', 'salaries') ??
+    await findByName(client, ws, 'EXPENSE', 'wages') ??
+    await findByType(client, ws, 'EXPENSE', '5210') ??
+    await findByType(client, ws, 'EXPENSE', '52') ??
+    await findByName(client, ws, 'EXPENSE', 'staff') ??
+    await getExpenseAccount(client, ws)
   );
 }
 
-async function getEmployeePayableAccount(client: PoolClient): Promise<string | null> {
+async function getEmployeePayableAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'LIABILITY', 'employee payable') ??
-    await findByName(client, 'LIABILITY', 'employee') ??
-    await findByType(client, 'LIABILITY', '2140') ??
-    await findByName(client, 'LIABILITY', 'accrued') ??
-    await getPayableAccount(client)
+    await findByName(client, ws, 'LIABILITY', 'employee payable') ??
+    await findByName(client, ws, 'LIABILITY', 'employee') ??
+    await findByType(client, ws, 'LIABILITY', '2140') ??
+    await findByName(client, ws, 'LIABILITY', 'accrued') ??
+    await getPayableAccount(client, ws)
   );
 }
 
-async function getTaxPayableAccount(client: PoolClient): Promise<string | null> {
+async function getTaxPayableAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'LIABILITY', 'tax payable') ??
-    await findByName(client, 'LIABILITY', 'tax') ??
-    await findByType(client, 'LIABILITY', '2130') ??
-    await getEmployeePayableAccount(client)
+    await findByName(client, ws, 'LIABILITY', 'tax payable') ??
+    await findByName(client, ws, 'LIABILITY', 'tax') ??
+    await findByType(client, ws, 'LIABILITY', '2130') ??
+    await getEmployeePayableAccount(client, ws)
   );
 }
 
-async function getAccruedExpenseAccount(client: PoolClient): Promise<string | null> {
+async function getAccruedExpenseAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'LIABILITY', 'accrued') ??
-    await findByType(client, 'LIABILITY', '2120') ??
-    await getEmployeePayableAccount(client)
+    await findByName(client, ws, 'LIABILITY', 'accrued') ??
+    await findByType(client, ws, 'LIABILITY', '2120') ??
+    await getEmployeePayableAccount(client, ws)
   );
 }
 
@@ -271,7 +275,8 @@ function makeJournalNumber() {
  * Resolve the accounting period (fin_periods.periodid) that contains the given date.
  * Falls back to the latest OPEN period if no exact range match.
  */
-async function resolvePeriodId(client: PoolClient, entryDate: string): Promise<string | null> {
+async function resolvePeriodId(client: PoolClient,
+  ws: string, entryDate: string): Promise<string | null> {
   try {
     // 1. Period whose date range contains entryDate
     const r = await client.query(
@@ -280,7 +285,7 @@ async function resolvePeriodId(client: PoolClient, entryDate: string): Promise<s
          AND $2::date BETWEEN startdate AND enddate
        ORDER BY startdate DESC
        LIMIT 1`,
-      [WORKSPACE_ID, entryDate]
+      [ws, entryDate]
     );
     if (r.rows.length > 0) return r.rows[0].periodid;
 
@@ -290,7 +295,7 @@ async function resolvePeriodId(client: PoolClient, entryDate: string): Promise<s
        WHERE workspaceid = $1 AND status = 'OPEN'
        ORDER BY startdate DESC
        LIMIT 1`,
-      [WORKSPACE_ID]
+      [ws]
     );
     return r2.rows[0]?.periodid ?? null;
   } catch (err) {
@@ -327,6 +332,7 @@ async function resolveCreatedBy(client: PoolClient): Promise<string | null> {
  */
 async function insertJournal(
   client: PoolClient,
+  ws: string,
   opts: {
     source_type: string;
     source_id?: string;
@@ -344,7 +350,7 @@ async function insertJournal(
   }
 
   // Resolve required NOT NULL FKs: periodid (by date) + createdby (any user)
-  const periodId  = await resolvePeriodId(client, opts.entry_date);
+  const periodId  = await resolvePeriodId(client, ws, opts.entry_date);
   const createdBy = await resolveCreatedBy(client);
 
   if (!periodId) {
@@ -364,7 +370,7 @@ async function insertJournal(
         totaldebit, totalcredit, status, postedat, createdby, createdat, updatedat)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'POSTED',NOW(),$10,NOW(),NOW())
      RETURNING journalid`,
-    [WORKSPACE_ID, makeJournalNumber(), opts.entry_date, periodId,
+    [ws, makeJournalNumber(), opts.entry_date, periodId,
      opts.source_type, opts.source_id ?? null, opts.description, totalDebit, totalCredit, createdBy]
   );
   const journalId = jeRes.rows[0]?.journalid;
@@ -399,6 +405,7 @@ async function insertJournal(
  */
 export async function postInvoicePayment(
   client: PoolClient,
+  ws: string,
   invoiceId: string,
   invoiceNumber: string,
   patientPayment: number,
@@ -407,10 +414,10 @@ export async function postInvoicePayment(
 ): Promise<void> {
   try {
     const date    = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc      = await getCashAccount(client);        // 1111 Cash & Bank
-    const patientARAcc = await getPatientARAccount(client);   // 1121 Patient AR
-    const insARAcc     = await getARAccount(client);          // 1122 Insurance AR
-    const revAcc       = await getRevenueAccount(client);     // 4110 Revenue
+    const cashAcc      = await getCashAccount(client, ws);        // 1111 Cash & Bank
+    const patientARAcc = await getPatientARAccount(client, ws);   // 1121 Patient AR
+    const insARAcc     = await getARAccount(client, ws);          // 1122 Insurance AR
+    const revAcc       = await getRevenueAccount(client, ws);     // 4110 Revenue
 
     if (!revAcc) {
       console.warn('[GL] postInvoicePayment: No REVENUE account found — GL skipped');
@@ -446,7 +453,7 @@ export async function postInvoicePayment(
       return;
     }
 
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'INVOICE',
       source_id: invoiceId,
       description: `Invoice payment — ${invoiceNumber}`,
@@ -468,6 +475,7 @@ export async function postInvoicePayment(
  */
 export async function postInvoiceAccrual(
   client: PoolClient,
+  ws: string,
   invoiceId: string,
   invoiceNumber: string,
   totalAmount: number,
@@ -477,9 +485,9 @@ export async function postInvoiceAccrual(
   try {
     if (totalAmount <= 0) return;
     const date         = entryDate ?? new Date().toISOString().split('T')[0];
-    const patientARAcc = await getPatientARAccount(client);   // 1121 Patient AR
-    const insARAcc     = await getARAccount(client);          // 1122 Insurance AR
-    const revAcc       = await getRevenueAccount(client);     // 4110 Revenue
+    const patientARAcc = await getPatientARAccount(client, ws);   // 1121 Patient AR
+    const insARAcc     = await getARAccount(client, ws);          // 1122 Insurance AR
+    const revAcc       = await getRevenueAccount(client, ws);     // 4110 Revenue
     if (!revAcc) {
       console.warn('[GL] postInvoiceAccrual: No REVENUE account — skipped');
       return;
@@ -499,7 +507,7 @@ export async function postInvoiceAccrual(
     if (drTotal <= 0) return;
     lines.push({ accountId: revAcc, debit: 0, credit: drTotal, memo: `Revenue — ${invoiceNumber}` });
 
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'INVOICE',
       source_id: invoiceId,
       description: `Invoice issued (accrual) — ${invoiceNumber}`,
@@ -517,6 +525,7 @@ export async function postInvoiceAccrual(
  */
 export async function postInsuranceClaimPayment(
   client: PoolClient,
+  ws: string,
   claimId: string,
   claimRef: string,
   amount: number,
@@ -525,11 +534,11 @@ export async function postInsuranceClaimPayment(
   try {
     if (amount <= 0) return;
     const date    = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc = await getCashAccount(client);
-    const arAcc   = await getARAccount(client);
+    const cashAcc = await getCashAccount(client, ws);
+    const arAcc   = await getARAccount(client, ws);
     if (!cashAcc || !arAcc) return;
 
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'INSURANCE_CLAIM',
       description: `Insurance claim — ${claimRef}`,
       entry_date: date,
@@ -549,6 +558,7 @@ export async function postInsuranceClaimPayment(
  */
 export async function postAPInvoiceReceived(
   client: PoolClient,
+  ws: string,
   apInvoiceId: string,
   vendorName: string,
   amount: number,
@@ -558,15 +568,15 @@ export async function postAPInvoiceReceived(
   try {
     if (amount <= 0) return;
     const date       = entryDate ?? new Date().toISOString().split('T')[0];
-    const expenseAcc = await getExpenseAccount(client);
-    const payableAcc = await getPayableAccount(client);
+    const expenseAcc = await getExpenseAccount(client, ws);
+    const payableAcc = await getPayableAccount(client, ws);
     if (!expenseAcc || !payableAcc) {
       console.warn('[GL] postAPInvoiceReceived: accounts not found — GL skipped');
       return;
     }
 
     const ref = reference ? ` (${reference})` : '';
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'AP_INVOICE',
       source_id: apInvoiceId,
       description: `Vendor invoice — ${vendorName}${ref}`,
@@ -587,6 +597,7 @@ export async function postAPInvoiceReceived(
  */
 export async function postAPPayment(
   client: PoolClient,
+  ws: string,
   apInvoiceId: string,
   vendorName: string,
   amount: number,
@@ -596,12 +607,12 @@ export async function postAPPayment(
   try {
     if (amount <= 0) return;
     const date       = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc    = await getCashAccount(client);
-    const payableAcc = await getPayableAccount(client);
+    const cashAcc    = await getCashAccount(client, ws);
+    const payableAcc = await getPayableAccount(client, ws);
     if (!cashAcc || !payableAcc) return;
 
     const ref = reference ? ` (${reference})` : '';
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'AP_PAYMENT',
       source_id: apInvoiceId,
       description: `Vendor payment — ${vendorName}${ref}`,
@@ -626,6 +637,7 @@ export async function postAPPayment(
  */
 export async function postPayroll(
   client: PoolClient,
+  ws: string,
   periodId: string,
   periodName: string,
   totals: { gross: number; net: number; incomeTax: number },
@@ -634,10 +646,10 @@ export async function postPayroll(
   try {
     if (totals.gross <= 0) return;
     const date       = entryDate ?? new Date().toISOString().split('T')[0];
-    const salaryAcc  = await getSalaryExpenseAccount(client);
-    const empPayAcc  = await getEmployeePayableAccount(client);
-    const taxAcc     = await getTaxPayableAccount(client);
-    const accruedAcc = await getAccruedExpenseAccount(client);
+    const salaryAcc  = await getSalaryExpenseAccount(client, ws);
+    const empPayAcc  = await getEmployeePayableAccount(client, ws);
+    const taxAcc     = await getTaxPayableAccount(client, ws);
+    const accruedAcc = await getAccruedExpenseAccount(client, ws);
 
     if (!salaryAcc || !empPayAcc) {
       console.warn('[GL] postPayroll: salary/payable accounts not found — skipped');
@@ -662,7 +674,7 @@ export async function postPayroll(
       lines[1].credit += (totals.gross - creditTotal);
     }
 
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'PAYROLL',
       source_id: periodId,
       description: `Payroll accrual — ${periodName}`,
@@ -681,6 +693,7 @@ export async function postPayroll(
  */
 export async function postPayrollPayment(
   client: PoolClient,
+  ws: string,
   periodId: string,
   periodName: string,
   netAmount: number,
@@ -689,11 +702,11 @@ export async function postPayrollPayment(
   try {
     if (netAmount <= 0) return;
     const date      = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc   = await getCashAccount(client);
-    const empPayAcc = await getEmployeePayableAccount(client);
+    const cashAcc   = await getCashAccount(client, ws);
+    const empPayAcc = await getEmployeePayableAccount(client, ws);
     if (!cashAcc || !empPayAcc) return;
 
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'PAYROLL_PAYMENT',
       source_id: periodId,
       description: `Payroll payment — ${periodName}`,
@@ -715,6 +728,7 @@ export async function postPayrollPayment(
  */
 export async function postShareholderCapital(
   client: PoolClient,
+  ws: string,
   sourceId: string,
   label: string,
   amount: number,
@@ -723,13 +737,13 @@ export async function postShareholderCapital(
   try {
     if (amount <= 0) return;
     const date       = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc    = await getCashAccount(client);
-    const capitalAcc = await getOwnerCapitalAccount(client);
+    const cashAcc    = await getCashAccount(client, ws);
+    const capitalAcc = await getOwnerCapitalAccount(client, ws);
     if (!cashAcc || !capitalAcc) {
       console.warn('[GL] postShareholderCapital: accounts not found — skipped');
       return;
     }
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'SH_CAPITAL',
       source_id: sourceId,
       description: `Shareholder capital — ${label}`,
@@ -750,6 +764,7 @@ export async function postShareholderCapital(
  */
 export async function postDividend(
   client: PoolClient,
+  ws: string,
   declarationId: string,
   label: string,
   amount: number,
@@ -758,13 +773,13 @@ export async function postDividend(
   try {
     if (amount <= 0) return;
     const date        = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc     = await getCashAccount(client);
-    const retainedAcc = await getRetainedEarningsAccount(client);
+    const cashAcc     = await getCashAccount(client, ws);
+    const retainedAcc = await getRetainedEarningsAccount(client, ws);
     if (!cashAcc || !retainedAcc) {
       console.warn('[GL] postDividend: accounts not found — skipped');
       return;
     }
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'DIVIDEND',
       source_id: declarationId,
       description: `Dividend distribution — ${label}`,
@@ -780,15 +795,15 @@ export async function postDividend(
 }
 
 // Provider / professional-fees expense account for stakeholder share payouts
-async function getProviderFeeAccount(client: PoolClient): Promise<string | null> {
+async function getProviderFeeAccount(client: PoolClient, ws: string): Promise<string | null> {
   return (
-    await findByName(client, 'EXPENSE', 'provider') ??
-    await findByName(client, 'EXPENSE', 'professional') ??
-    await findByName(client, 'EXPENSE', 'doctor') ??
-    await findByName(client, 'EXPENSE', 'physician') ??
-    await findByName(client, 'EXPENSE', 'fees') ??
-    await findByName(client, 'EXPENSE', 'أتعاب') ??
-    await getExpenseAccount(client)
+    await findByName(client, ws, 'EXPENSE', 'provider') ??
+    await findByName(client, ws, 'EXPENSE', 'professional') ??
+    await findByName(client, ws, 'EXPENSE', 'doctor') ??
+    await findByName(client, ws, 'EXPENSE', 'physician') ??
+    await findByName(client, ws, 'EXPENSE', 'fees') ??
+    await findByName(client, ws, 'EXPENSE', 'أتعاب') ??
+    await getExpenseAccount(client, ws)
   );
 }
 
@@ -799,6 +814,7 @@ async function getProviderFeeAccount(client: PoolClient): Promise<string | null>
  */
 export async function postStakeholderPayment(
   client: PoolClient,
+  ws: string,
   sourceId: string,
   label: string,
   amount: number,
@@ -807,13 +823,13 @@ export async function postStakeholderPayment(
   try {
     if (amount <= 0) return;
     const date    = entryDate ?? new Date().toISOString().split('T')[0];
-    const cashAcc = await getCashAccount(client);
-    const feeAcc  = await getProviderFeeAccount(client);
+    const cashAcc = await getCashAccount(client, ws);
+    const feeAcc  = await getProviderFeeAccount(client, ws);
     if (!cashAcc || !feeAcc) {
       console.warn('[GL] postStakeholderPayment: accounts not found — skipped');
       return;
     }
-    await insertJournal(client, {
+    await insertJournal(client, ws, {
       source_type: 'STAKEHOLDER_PAYMENT',
       source_id: sourceId,
       description: `Provider share payment — ${label}`,

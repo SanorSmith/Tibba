@@ -6,7 +6,8 @@
  *
  * Returns: { posted: number, skipped: number, errors: string[] }
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 import { postInvoicePayment } from '@/lib/gl-posting';
 
@@ -19,8 +20,13 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
+
+  // Backfill only the caller's facility. This used to sweep every invoice in
+  // the database into one ledger regardless of which hospital issued it.
+  const ws = getWorkspaceId(request);
+  if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   // Find PAID/PARTIAL invoices that have no matching POSTED journal entry
   const invoices = await pool.query(`
@@ -31,14 +37,15 @@ export async function POST() {
       COALESCE(i.insurance_coverage_amount, 0)            AS insurance_payment,
       COALESCE(i.payment_date, i.invoice_date)::date      AS entry_date
     FROM invoices i
-    WHERE i.status IN ('PAID', 'PARTIAL', 'PARTIALLY_PAID')
+    WHERE i.workspaceid = $1
+      AND i.status IN ('PAID', 'PARTIAL', 'PARTIALLY_PAID')
       AND NOT EXISTS (
         SELECT 1 FROM fin_journal_entries je
         WHERE je.sourcetype = 'INVOICE'
           AND je.description LIKE '%' || i.invoice_number || '%'
       )
     ORDER BY i.invoice_date ASC
-  `);
+  `, [ws]);
 
   let posted = 0;
   let skipped = 0;
@@ -50,6 +57,7 @@ export async function POST() {
       await client.query('BEGIN');
       await postInvoicePayment(
         client,
+        ws,
         inv.id,
         inv.invoice_number,
         parseFloat(inv.patient_payment) || 0,

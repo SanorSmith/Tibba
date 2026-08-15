@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getWorkspaceId } from "@/lib/workspace";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 const CENTRAL = '00000000-0000-0000-0000-000000000000';
 
 export async function GET(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const q = (req.nextUrl.searchParams.get("q") ?? "").toLowerCase();
   const dateFrom = req.nextUrl.searchParams.get("dateFrom") ?? "";
   const dateTo = req.nextUrl.searchParams.get("dateTo") ?? "";
@@ -39,6 +43,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   try {
     const b = await req.json();
     const { originalReceiptId, correctedBy, reason, items } = b;

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getWorkspaceId } from "@/lib/workspace";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 
 export async function GET(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const r = await pool.query(
     `SELECT s.*, d.name AS department_name FROM hospital_storage_locations s
@@ -16,6 +20,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const { name, department_id, location, type, temperature, notes } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
   const r = await pool.query(
@@ -27,6 +35,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const { id, name, department_id, location, type, temperature, notes } = await req.json();
   await pool.query(
     `UPDATE hospital_storage_locations SET name=$1,department_id=$2,location=$3,type=$4,temperature=$5,notes=$6,updatedat=NOW() WHERE id=$7`,
@@ -36,6 +48,10 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const { id } = await req.json();
   await pool.query(`UPDATE hospital_storage_locations SET isactive=false WHERE id=$1`, [id]);
   return NextResponse.json({ success: true });

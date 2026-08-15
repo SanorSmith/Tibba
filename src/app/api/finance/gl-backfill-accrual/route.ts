@@ -8,7 +8,8 @@
  * Balance Sheet, and Trial Balance all tie to a single source (the GL).
  * Safe to run multiple times — skips invoices already posted (matched by sourceid).
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 import { postInvoiceAccrual } from '@/lib/gl-posting';
 
@@ -21,8 +22,12 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
+
+  // Backfill only the caller's facility — this swept every hospital's invoices.
+  const ws = getWorkspaceId(request);
+  if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   // Invoices with NO existing journal entry (by sourceid or invoice number in description)
   const invoices = await pool.query(`
@@ -31,7 +36,8 @@ export async function POST() {
            COALESCE(i.insurance_coverage_amount, 0)  AS insurance_amount,
            COALESCE(i.invoice_date, CURRENT_DATE)::date AS entry_date
     FROM invoices i
-    WHERE COALESCE(i.status,'') NOT IN ('CANCELLED')
+    WHERE i.workspaceid = $1
+      AND COALESCE(i.status,'') NOT IN ('CANCELLED')
       AND NOT EXISTS (
         SELECT 1 FROM fin_journal_entries je
         WHERE je.sourcetype = 'INVOICE'
@@ -39,7 +45,7 @@ export async function POST() {
                OR je.description LIKE '%' || i.invoice_number || '%')
       )
     ORDER BY i.invoice_date ASC
-  `);
+  `, [ws]);
 
   let posted = 0;
   const errors: string[] = [];
@@ -50,6 +56,7 @@ export async function POST() {
       await client.query('BEGIN');
       await postInvoiceAccrual(
         client,
+        ws,
         inv.id,
         inv.invoice_number,
         parseFloat(inv.total_amount) || 0,
