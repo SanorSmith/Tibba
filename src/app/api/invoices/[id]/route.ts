@@ -444,6 +444,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               await glClient.query('BEGIN');
               await postInvoicePayment(
                 glClient,
+                workspaceId,
                 id,
                 inv.invoice_number,
                 patientAmt,

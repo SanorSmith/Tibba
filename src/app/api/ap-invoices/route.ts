@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { postAPInvoiceReceived } from '@/lib/gl-posting';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +69,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // GL entries post to the caller’s facility ledger.
+  const ws = getWorkspaceId(request);
+  if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
   const client = await pool.connect();
@@ -117,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     // GL posting: DR Expense, CR Payable
     const resolvedVendorName = vendor_name ?? 'Vendor';
-    await postAPInvoiceReceived(client, apInvoice.id, resolvedVendorName, parseFloat(total_amount), invoice_date, apInvoice.ap_number);
+    await postAPInvoiceReceived(client, ws, apInvoice.id, resolvedVendorName, parseFloat(total_amount), invoice_date, apInvoice.ap_number);
 
     await client.query('COMMIT');
     return NextResponse.json({ success: true, data: apInvoice }, { status: 201 });

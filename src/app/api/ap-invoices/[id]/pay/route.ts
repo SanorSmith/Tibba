@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { postAPPayment } from '@/lib/gl-posting';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,10 @@ const pool = process.env.DATABASE_URL
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
+  // GL entries post to the caller’s facility ledger.
+  const ws = getWorkspaceId(req);
+  if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
 
@@ -77,6 +82,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     // GL posting: DR Payable, CR Cash
     await postAPPayment(
       client,
+      ws,
       id,
       ap.vendor_name ?? 'Vendor',
       parseFloat(amount),

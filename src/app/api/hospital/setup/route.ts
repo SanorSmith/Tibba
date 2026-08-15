@@ -7,7 +7,9 @@ export async function GET() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS hospital_purchase_notes (
         id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        workspace_id    UUID NOT NULL DEFAULT 'cec4d702-6dae-4ea5-9a30-ef17842c00fd',
+        -- No default: an insert that forgets the facility must fail loudly
+        -- rather than silently filing the row under Hospital 1.
+        workspace_id    UUID NOT NULL,
         note_number     TEXT UNIQUE,
         order_id        UUID REFERENCES hospital_orders(id),
         order_number    TEXT,

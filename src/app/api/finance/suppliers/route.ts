@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,18 +8,19 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
     const category = searchParams.get('category');
     const isActive = searchParams.get('isActive');
 
-    let sql = 'SELECT * FROM suppliers WHERE 1=1';
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    if (workspaceId) {
-      sql += ` AND workspaceid = $${paramIndex++}`;
-      params.push(workspaceId);
+    // Supplier list is facility-private. The workspace came from a query
+    // param before, so omitting it listed every facility's suppliers.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    let sql = 'SELECT * FROM suppliers WHERE workspaceid = $1';
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (category && category !== 'ALL') {
       sql += ` AND category = $${paramIndex++}`;
@@ -72,9 +74,14 @@ export async function POST(request: NextRequest) {
       currency,
       ispreferred,
       isactive,
-      workspaceid,
       createdby,
     } = body;
+
+    // New suppliers belong to the creator's facility, not one the client picks.
+    const workspaceid = getWorkspaceId(request);
+    if (!workspaceid) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
 
     // Generate code if not provided
     const supplierCode = code || `SUP-${Date.now().toString().slice(-6)}`;
@@ -111,7 +118,7 @@ export async function POST(request: NextRequest) {
       currency || 'USD',
       ispreferred || false,
       isactive !== undefined ? isactive : true,
-      workspaceid || 'cec4d702-6dae-4ea5-9a30-ef17842c00fd',
+      workspaceid,
       createdby || 'af41447e-91c1-45e5-91c4-a2c5bf3cb9ce',
     ]);
 

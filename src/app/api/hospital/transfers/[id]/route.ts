@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getWorkspaceId } from "@/lib/workspace";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 const CENTRAL = '00000000-0000-0000-0000-000000000000'; // hospital central store
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const { id } = await params;
   const items = await pool.query(`SELECT * FROM hospital_transfer_items WHERE transfer_id = $1`, [id]);
   return NextResponse.json(items.rows);
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const { id } = await params;
   try {
     const { status, receivedBy, sentBy, items, deliveryKey } = await req.json();

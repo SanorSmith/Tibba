@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getWorkspaceId } from "@/lib/workspace";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 
 export async function GET(req: NextRequest) {
+  // Inventory is facility-private: resolve the caller’s facility per request.
+  // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   const type   = req.nextUrl.searchParams.get("type") ?? "stock";
   const deptId = req.nextUrl.searchParams.get("department_id") ?? "";
 

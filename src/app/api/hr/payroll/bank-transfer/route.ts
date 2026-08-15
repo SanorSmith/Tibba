@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { createBankFileGenerator } from '@/lib/services/bank-file-generator';
 import { postPayrollPayment } from '@/lib/gl-posting';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -12,6 +13,10 @@ const pool = new Pool({
  * Generate bank transfer file
  */
 export async function POST(request: NextRequest) {
+  // GL entries post to the caller’s facility ledger.
+  const ws = getWorkspaceId(request);
+  if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
   try {
     const body = await request.json();
     const { period_id, format, company_name, company_account, company_iban, value_date } = body;
@@ -65,7 +70,7 @@ export async function POST(request: NextRequest) {
                WHERE sourcetype='PAYROLL_PAYMENT' AND sourceid=$1)`, [period_id]);
           await glClient.query(
             `DELETE FROM fin_journal_entries WHERE sourcetype='PAYROLL_PAYMENT' AND sourceid=$1`, [period_id]);
-          await postPayrollPayment(glClient, period_id, periodName, net, entryDate);
+          await postPayrollPayment(glClient, ws, period_id, periodName, net, entryDate);
           await glClient.query('COMMIT');
         } catch (glErr) {
           await glClient.query('ROLLBACK');
