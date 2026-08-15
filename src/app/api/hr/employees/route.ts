@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,12 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    // Staff belong to a facility — one hospital must not see another's roster.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const departmentId = searchParams.get('department_id');
@@ -33,11 +40,11 @@ export async function GET(request: NextRequest) {
         createdat as created_at,
         updatedat as updated_at
       FROM staff
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (departmentId) {
       query += ` AND unit = $${paramIndex}`;
@@ -54,8 +61,8 @@ export async function GET(request: NextRequest) {
     query += ' ORDER BY firstname ASC, lastname ASC';
     
     // First, get total count
-    const countQuery = `SELECT COUNT(*) FROM staff WHERE 1=1`;
-    const countResult = await pool.query(countQuery);
+    const countQuery = `SELECT COUNT(*) FROM staff WHERE workspaceid = $1`;
+    const countResult = await pool.query(countQuery, [workspaceId]);
     console.log(`Total staff in database: ${countResult.rows[0].count}`);
 
     const result = await pool.query(query, params);
@@ -101,6 +108,12 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    // New staff belong to the facility that created them.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     // Debug: Log what we're receiving
@@ -172,7 +185,9 @@ export async function POST(request: NextRequest) {
       `;
       
       const employeeResult = await client.query(employeeQuery, [
-        'b227528d-ca34-4850-9b72-94a220365d7f', // Baghdad health center workspace ID
+        // Was hardcoded to Baghdad health center, so every employee created
+        // anywhere landed in that facility. Use the creator's facility.
+        workspaceId,
         first_name,
         middle_name || null,
         last_name,
