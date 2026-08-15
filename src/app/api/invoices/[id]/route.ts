@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { postInvoicePayment } from '@/lib/gl-posting';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -42,10 +43,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    // Scoped to the caller's facility — an invoice id from another hospital
+    // must read as "not found", not be served.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     // Get invoice
     const result = await pool.query(`
-      SELECT * FROM invoices WHERE id = $1
-    `, [id]);
+      SELECT * FROM invoices WHERE id = $1 AND workspaceid = $2
+    `, [id, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -149,6 +157,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         { error: 'Invoice ID is required' },
         { status: 400 }
       );
+    }
+
+    // Refuse to edit another facility's invoice.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+    const ownedPut = await pool.query(
+      'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
+    );
+    if (ownedPut.rowCount === 0) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -500,6 +521,19 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         { error: 'Invoice ID is required' },
         { status: 400 }
       );
+    }
+
+    // Refuse to delete another facility's invoice.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+    const owned = await pool.query(
+      'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
+    );
+    if (owned.rowCount === 0) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
     // Start transaction

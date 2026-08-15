@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Updated: Fixed duplicate PUT handlers - 2026-03-07
 // Fixed controlled input warnings - 2026-03-07
@@ -30,13 +31,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Only ever return invoices belonging to the caller's facility. No session
+    // means no facility, which must show nothing rather than everything.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
     // Get total count
-    const countResult = await pool.query('SELECT COUNT(*) as total FROM invoices');
+    const countResult = await pool.query(
+      'SELECT COUNT(*) as total FROM invoices WHERE workspaceid = $1',
+      [workspaceId]
+    );
     const total = parseInt(countResult.rows[0].total);
 
     // Get invoices with pagination
@@ -78,9 +89,10 @@ export async function GET(request: NextRequest) {
         ORDER BY created_at DESC
         LIMIT 1
       ) lc ON true
+      WHERE i.workspaceid = $3
       ORDER BY i.createdat DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+    `, [limit, offset, workspaceId]);
 
     return NextResponse.json({
       success: true,
@@ -122,9 +134,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Stamp the new invoice with the facility the caller is working in, so it
+    // is only ever visible to that facility.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     console.log('Request body:', JSON.stringify(body, null, 2));
-    
+
     // Generate invoice number if not provided
     const invoice_number = body.invoice_number || `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
     
@@ -239,10 +258,11 @@ export async function POST(request: NextRequest) {
           payment_date,
           notes,
           authorization_number,
+          workspaceid,
           createdat,
           updatedat
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, NOW(), NOW()
         ) RETURNING *
       `, [
         invoice_number,
@@ -264,7 +284,8 @@ export async function POST(request: NextRequest) {
         payment_method,
         payment_date,
         notes,
-        authorization_number || null
+        authorization_number || null,
+        workspaceId
       ]);
 
       const newInvoice = invoiceResult.rows[0];
