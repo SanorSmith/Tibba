@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,17 +21,23 @@ const pool = process.env.DATABASE_URL
  *   - insuranceCompany (insurance_companies)
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
 
+  // Reports expose patient and billing detail, so only for the caller's facility.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   try {
     // 1. Invoice
     const invoiceResult = await pool.query(
-      'SELECT * FROM invoices WHERE id = $1',
-      [id]
+      'SELECT * FROM invoices WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
     if (invoiceResult.rows.length === 0) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
