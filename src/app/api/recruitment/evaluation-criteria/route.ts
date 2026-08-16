@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List evaluation criteria
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
-    const appliesTo = searchParams.get('appliesTo');
-
+    // Was supplied by the caller, so one facility could read or write
+    // another's by passing its id.
+    const workspaceId = getWorkspaceId(request);
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required param: workspaceId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const appliesTo = searchParams.get('appliesTo');
 
     let sql = `
       SELECT * FROM evaluation_criteria
@@ -51,9 +51,13 @@ export async function GET(request: NextRequest) {
 // POST - Create a new evaluation criterion
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceId,
       criteriaName,
       criteriaCategory,
       description,
@@ -63,9 +67,9 @@ export async function POST(request: NextRequest) {
       appliesTo,
     } = body;
 
-    if (!workspaceId || !criteriaName) {
+    if (!criteriaName) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: workspaceId, criteriaName' },
+        { success: false, error: 'Missing required fields: criteriaName' },
         { status: 400 }
       );
     }

@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List interviews with filters
 export async function GET(request: NextRequest) {
   try {
+    // workspaceId was a query-string filter and optional, so omitting it
+    // returned every facility's records.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
     const applicationId = searchParams.get('applicationId');
     const status = searchParams.get('status');
     const fromDate = searchParams.get('fromDate');
@@ -29,13 +36,10 @@ export async function GET(request: NextRequest) {
       LEFT JOIN recruitment_stages s ON i.stage_id = s.stage_id
       WHERE 1=1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
+    sql += ' AND i.workspace_id = $1';
 
-    if (workspaceId) {
-      sql += ` AND i.workspace_id = $${idx++}`;
-      params.push(workspaceId);
-    }
     if (applicationId) {
       sql += ` AND i.application_id = $${idx++}`;
       params.push(applicationId);
@@ -70,10 +74,15 @@ export async function GET(request: NextRequest) {
 // POST - Schedule new interview
 export async function POST(request: NextRequest) {
   try {
+    // Facility comes from the session, never the request body.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceId,
-      applicationId,
+            applicationId,
       stageId,
       interviewType,
       interviewRound,
@@ -86,9 +95,9 @@ export async function POST(request: NextRequest) {
       createdBy,
     } = body;
 
-    if (!workspaceId || !applicationId || !scheduledDate || !startTime || !endTime) {
+    if (!applicationId || !scheduledDate || !startTime || !endTime) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: workspaceId, applicationId, scheduledDate, startTime, endTime' },
+        { success: false, error: 'Missing required fields: applicationId, scheduledDate, startTime, endTime' },
         { status: 400 }
       );
     }

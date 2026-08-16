@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,20 @@ export async function GET(
 ) {
   try {
     const { applicationId } = await params;
+    
+    // The record must belong to the caller’s facility; every statement
+    // below is keyed off this id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await query(
+      'SELECT 1 FROM job_applications WHERE application_id = $1 AND workspace_id = $2',
+      [applicationId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
 
     // Main application with candidate, vacancy, current stage
     const appResult = await query(`
@@ -115,6 +130,20 @@ export async function PUT(
 ) {
   try {
     const { applicationId } = await params;
+    
+    // The record must belong to the caller’s facility; every statement
+    // below is keyed off this id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await query(
+      'SELECT 1 FROM job_applications WHERE application_id = $1 AND workspace_id = $2',
+      [applicationId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
     const body = await request.json();
 
     const allowedFields = [

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,20 @@ export async function GET(
 ) {
   try {
     const { requisitionId } = await params;
+    
+    // The record must belong to the caller’s facility; every statement
+    // below is keyed off this id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await query(
+      'SELECT 1 FROM job_requisitions WHERE requisition_id = $1 AND workspace_id = $2',
+      [requisitionId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
 
     // Get requisition with related data
     const result = await query(`
@@ -78,6 +93,20 @@ export async function PUT(
 ) {
   try {
     const { requisitionId } = await params;
+    
+    // The record must belong to the caller’s facility; every statement
+    // below is keyed off this id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await query(
+      'SELECT 1 FROM job_requisitions WHERE requisition_id = $1 AND workspace_id = $2',
+      [requisitionId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
     const body = await request.json();
 
     // Check if requisition exists and is editable
@@ -174,6 +203,20 @@ export async function DELETE(
 ) {
   try {
     const { requisitionId } = await params;
+    
+    // The record must belong to the caller’s facility; every statement
+    // below is keyed off this id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await query(
+      'SELECT 1 FROM job_requisitions WHERE requisition_id = $1 AND workspace_id = $2',
+      [requisitionId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
 
     const existing = await query(
       'SELECT status FROM job_requisitions WHERE requisition_id = $1',

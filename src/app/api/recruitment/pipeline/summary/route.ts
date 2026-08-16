@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,14 +8,12 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
+    // Was a query param, so any facility's pipeline could be requested.
+    const workspaceId = getWorkspaceId(request);
     const vacancyId = searchParams.get('vacancyId');
 
     if (!workspaceId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required param: workspaceId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
 
     // Get all active stages for workspace

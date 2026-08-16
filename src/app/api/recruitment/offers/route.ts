@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List all offers with filters
 export async function GET(request: NextRequest) {
   try {
+    // workspaceId was a query-string filter and optional, so omitting it
+    // returned every facility's records.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
     const status = searchParams.get('status');
     const candidateId = searchParams.get('candidateId');
 
@@ -27,10 +34,10 @@ export async function GET(request: NextRequest) {
       LEFT JOIN job_applications a ON o.application_id = a.application_id
       WHERE 1=1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
+    sql += ' AND o.workspace_id = $1';
 
-    if (workspaceId) { sql += ` AND o.workspace_id = $${idx++}`; params.push(workspaceId); }
     if (status) { sql += ` AND o.status = $${idx++}`; params.push(status); }
     if (candidateId) { sql += ` AND o.candidate_id = $${idx++}`; params.push(candidateId); }
 
@@ -42,7 +49,7 @@ export async function GET(request: NextRequest) {
     const statsParams: any[] = [];
     let statsWhere = 'WHERE 1=1';
     let sIdx = 1;
-    if (workspaceId) { statsWhere += ` AND workspace_id = $${sIdx++}`; statsParams.push(workspaceId); }
+    statsWhere += ` AND workspace_id = $${sIdx++}`; statsParams.push(workspaceId);
 
     const statsResult = await query(`
       SELECT
@@ -72,18 +79,24 @@ export async function GET(request: NextRequest) {
 // POST - Create new offer
 export async function POST(request: NextRequest) {
   try {
+    // Facility comes from the session, never the request body.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceId, applicationId, candidateId, vacancyId,
+      applicationId, candidateId, vacancyId,
       positionTitle, department, offeredSalary, currency,
       salaryPeriod, probationMonths, startDate, contractType,
       contractDurationMonths, benefitsPackage, signingBonus,
       relocationPackage, relocationAmount, otherTerms, createdBy,
     } = body;
 
-    if (!workspaceId || !applicationId || !candidateId || !vacancyId || !positionTitle || !offeredSalary) {
+    if (!applicationId || !candidateId || !vacancyId || !positionTitle || !offeredSalary) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: workspaceId, applicationId, candidateId, vacancyId, positionTitle, offeredSalary' },
+        { success: false, error: 'Missing required fields: applicationId, candidateId, vacancyId, positionTitle, offeredSalary' },
         { status: 400 }
       );
     }
