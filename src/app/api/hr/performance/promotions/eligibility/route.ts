@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -8,23 +9,32 @@ const pool = new Pool({
 // GET - Check promotion eligibility for employee(s)
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
 
     if (employeeId) {
       // Check single employee
-      const eligibility = await checkEmployeeEligibility(employeeId);
+      const eligibility = await checkEmployeeEligibility(employeeId, workspaceId);
       return NextResponse.json({
         success: true,
         data: eligibility
       });
     } else {
       // Check all employees
-      const staffResult = await pool.query('SELECT staffid FROM staff LIMIT 50');
+      // Was every facility's staff; now only the caller's.
+      const staffResult = await pool.query(
+        'SELECT staffid FROM staff WHERE workspaceid = $1 LIMIT 50',
+        [workspaceId]
+      );
       const eligibilityResults = [];
 
       for (const row of staffResult.rows) {
-        const eligibility = await checkEmployeeEligibility(row.staffid);
+        const eligibility = await checkEmployeeEligibility(row.staffid, workspaceId);
         if (eligibility.eligible || eligibility.score >= 65) {
           eligibilityResults.push(eligibility);
         }
@@ -49,12 +59,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function checkEmployeeEligibility(employeeId: string) {
+async function checkEmployeeEligibility(employeeId: string, ws: string) {
   // Get employee info
   const employeeResult = await pool.query(
     `SELECT staffid, firstname, lastname, role, unit, createdat
-     FROM staff WHERE staffid = $1`,
-    [employeeId]
+     FROM staff WHERE staffid = $1 AND workspaceid = $2`,
+    [employeeId, ws]
   );
 
   if (employeeResult.rows.length === 0) {

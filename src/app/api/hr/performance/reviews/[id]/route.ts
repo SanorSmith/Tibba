@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -8,10 +9,14 @@ const pool = new Pool({
 // GET - Get single performance review by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
 
     const result = await pool.query(
       `SELECT 
@@ -23,8 +28,8 @@ export async function GET(
       FROM performance_reviews pr
       LEFT JOIN staff e ON pr.employee_id = e.staffid
       LEFT JOIN staff r ON pr.reviewer_id = r.staffid
-      WHERE pr.id = $1`,
-      [id]
+      WHERE pr.id = $1 AND pr.workspaceid = $2`,
+      [id, workspaceId]
     );
 
     if (result.rows.length === 0) {
@@ -51,10 +56,15 @@ export async function GET(
 // PUT - Update performance review
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const {
@@ -125,7 +135,7 @@ export async function PUT(
         recommendation = COALESCE($20, recommendation),
         status = COALESCE($21, status)
         ${statusUpdates}
-      WHERE id = $22
+      WHERE id = $22 AND workspaceid = $23
       RETURNING *`,
       [
         reviewer_id, cycle_id, cycle_name,
@@ -136,7 +146,8 @@ export async function PUT(
         patient_feedback_score, recognition_bonus,
         strengths, improvements, achievements,
         goals_next_period, recommendation, status,
-        id
+        id,
+        workspaceId
       ]
     );
 
@@ -165,14 +176,19 @@ export async function PUT(
 // DELETE - Delete performance review
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
+    const { id } = await params;
 
     const result = await pool.query(
-      'DELETE FROM performance_reviews WHERE id = $1 RETURNING id',
-      [id]
+      'DELETE FROM performance_reviews WHERE id = $1 AND workspaceid = $2 RETURNING id',
+      [id, workspaceId]
     );
 
     if (result.rows.length === 0) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -14,6 +15,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'employee_id is required' },
         { status: 400 }
+      );
+    }
+
+    // Every lookup below is keyed on this employee, so gating on the employee
+    // belonging to the caller's facility scopes the whole scorecard.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+    const emp = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
+    );
+    if (emp.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Employee not found' },
+        { status: 404 }
       );
     }
 

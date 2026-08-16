@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -8,6 +9,11 @@ const pool = new Pool({
 // GET - List patient feedback with filters
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
     const patientId = searchParams.get('patient_id');
@@ -21,13 +27,16 @@ export async function GET(request: NextRequest) {
         s.role as employee_role,
         p.firstname || ' ' || p.lastname as patient_name
       FROM patient_feedback pf
-      LEFT JOIN staff s ON pf.employee_id = s.staffid
+      -- patient_feedback has no workspace column of its own, so the facility
+      -- filter has to come from the employee the feedback is about. INNER
+      -- JOIN, not LEFT, or unmatched rows would leak through.
+      JOIN staff s ON pf.employee_id = s.staffid AND s.workspaceid = $1
       LEFT JOIN patients p ON pf.patient_id = p.patientid
       WHERE 1=1
     `;
     
-    const params: any[] = [];
-    let paramCount = 1;
+    const params: any[] = [workspaceId];
+    let paramCount = 2;
 
     if (employeeId) {
       query += ` AND pf.employee_id = $${paramCount}`;
@@ -64,6 +73,11 @@ export async function GET(request: NextRequest) {
 // POST - Submit patient feedback
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     const {
@@ -84,6 +98,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'employee_id is required' },
         { status: 400 }
+      );
+    }
+
+    // The feedback is about an employee, so that employee must be ours.
+    const emp = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
+    );
+    if (emp.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Employee not found' },
+        { status: 404 }
       );
     }
 

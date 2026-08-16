@@ -365,6 +365,11 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staff_id');
     const startDate = searchParams.get('start_date');
@@ -388,11 +393,11 @@ export async function PUT(request: NextRequest) {
         s.unit
       FROM attendance_transactions at
       JOIN staff s ON at.employee_id = s.staffid
-      WHERE 1=1
+      WHERE at.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (staffId) {
       query += ` AND at.employee_id = $${paramIndex}`;

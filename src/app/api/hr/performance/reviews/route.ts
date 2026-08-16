@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -8,6 +9,11 @@ const pool = new Pool({
 // GET - List all performance reviews with filters
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
     const reviewerId = searchParams.get('reviewer_id');
@@ -26,11 +32,11 @@ export async function GET(request: NextRequest) {
       FROM performance_reviews pr
       LEFT JOIN staff e ON pr.employee_id = e.staffid
       LEFT JOIN staff r ON pr.reviewer_id = r.staffid
-      WHERE 1=1
+      WHERE pr.workspaceid = $1
     `;
     
-    const params: any[] = [];
-    let paramCount = 1;
+    const params: any[] = [workspaceId];
+    let paramCount = 2;
 
     if (employeeId) {
       query += ` AND pr.employee_id = $${paramCount}`;
@@ -62,9 +68,9 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(query, params);
 
     // Get total count
-    let countQuery = 'SELECT COUNT(*) FROM performance_reviews WHERE 1=1';
-    const countParams: any[] = [];
-    let countParamNum = 1;
+    let countQuery = 'SELECT COUNT(*) FROM performance_reviews WHERE workspaceid = $1';
+    const countParams: any[] = [workspaceId];
+    let countParamNum = 2;
 
     if (employeeId) {
       countQuery += ` AND employee_id = $${countParamNum}`;
@@ -103,6 +109,11 @@ export async function GET(request: NextRequest) {
 // POST - Create new performance review or update existing
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     const {
@@ -171,7 +182,7 @@ export async function POST(request: NextRequest) {
           recommendation = $17,
           status = $18,
           updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 AND workspaceid = $19
         RETURNING *`,
         [
           review_id, reviewer_id, cycle_id, cycle_name,
@@ -179,10 +190,18 @@ export async function POST(request: NextRequest) {
           clinical_competence, patient_care, professionalism,
           teamwork, quality_safety, overall_rating,
           strengths, improvements, achievements,
-          goals_next_period, recommendation, status
+          goals_next_period, recommendation, status,
+          workspaceId
         ]
       );
-      
+
+      if (result.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Review not found' },
+          { status: 404 }
+        );
+      }
+
       return NextResponse.json({
         success: true,
         data: result.rows[0],
@@ -197,8 +216,8 @@ export async function POST(request: NextRequest) {
           clinical_competence, patient_care, professionalism,
           teamwork, quality_safety, overall_rating,
           strengths, improvements, achievements,
-          goals_next_period, recommendation, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          goals_next_period, recommendation, status, workspaceid
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         RETURNING *`,
         [
           employee_id, reviewer_id, cycle_id, cycle_name,
@@ -206,7 +225,8 @@ export async function POST(request: NextRequest) {
           clinical_competence, patient_care, professionalism,
           teamwork, quality_safety, overall_rating,
           strengths, improvements, achievements,
-          goals_next_period, recommendation, status
+          goals_next_period, recommendation, status,
+          workspaceId
         ]
       );
       
