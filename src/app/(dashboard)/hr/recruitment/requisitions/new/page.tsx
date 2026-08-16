@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Send } from 'lucide-react';
 
-const WS = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
 export default function NewRequisitionPage() {
   const router = useRouter();
@@ -54,7 +53,7 @@ export default function NewRequisitionPage() {
       const res = await fetch('/api/recruitment/requisitions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, workspaceId: WS }),
+        body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!data.success) { toast.error(data.error); setSaving(false); return; }

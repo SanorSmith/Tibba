@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { Search, Plus, Users, GripVertical, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-const WS = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
 const stageColors: Record<string, string> = {
   APPLICATION: '#3B82F6',
@@ -43,11 +42,11 @@ export default function PipelinePage() {
     setLoading(true);
     try {
       // Fetch pipeline summary (stages with counts)
-      const summaryRes = await fetch(`/api/recruitment/pipeline/summary?workspaceId=${WS}`);
+      const summaryRes = await fetch(`/api/recruitment/pipeline/summary`);
       const summaryData = await summaryRes.json();
 
       // Fetch all applications
-      const appsRes = await fetch(`/api/recruitment/applications?workspaceId=${WS}`);
+      const appsRes = await fetch(`/api/recruitment/applications`);
       const appsData = await appsRes.json();
 
       if (summaryData.success && appsData.success) {

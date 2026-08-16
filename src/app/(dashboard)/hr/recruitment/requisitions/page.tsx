@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { Briefcase, Plus, Search, ChevronRight, Clock, CheckCircle, XCircle, FileText } from 'lucide-react';
 
-const WS = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   DRAFT: { bg: '#F3F4F6', text: '#6B7280' },
@@ -31,7 +30,7 @@ export default function RequisitionsPage() {
   const fetchRequisitions = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ workspaceId: WS });
+      const params = new URLSearchParams();
       if (statusFilter) params.append('status', statusFilter);
       const res = await fetch(`/api/recruitment/requisitions?${params}`);
       const data = await res.json();
