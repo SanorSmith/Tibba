@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - Get interview statistics for an application
 export async function GET(request: NextRequest) {
   try {
+    // The facility always comes from the session. Previously it was a query
+    // param, so stats for any workspace could be requested by id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId');
-    const workspaceId = searchParams.get('workspaceId');
-
-    if (!applicationId && !workspaceId) {
-      return NextResponse.json(
-        { success: false, error: 'Provide applicationId or workspaceId' },
-        { status: 400 }
-      );
-    }
 
     if (applicationId) {
       // Per-application statistics
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
           COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
           COUNT(*) FILTER (WHERE status = 'SCHEDULED') as scheduled,
           COUNT(*) FILTER (WHERE status = 'CANCELLED') as cancelled
-        FROM interviews WHERE application_id = $1
-      `, [applicationId]);
+        FROM interviews WHERE application_id = $1 AND workspace_id = $2
+      `, [applicationId, workspaceId]);
 
       const evalsResult = await query(`
         SELECT 
@@ -34,9 +34,12 @@ export async function GET(request: NextRequest) {
           AVG(overall_rating) as avg_overall_rating,
           recommendation, COUNT(*) as rec_count
         FROM interview_evaluations
-        WHERE interview_id IN (SELECT interview_id FROM interviews WHERE application_id = $1)
+        WHERE interview_id IN (
+          SELECT interview_id FROM interviews
+          WHERE application_id = $1 AND workspace_id = $2
+        )
         GROUP BY recommendation
-      `, [applicationId]);
+      `, [applicationId, workspaceId]);
 
       // Build recommendation breakdown
       const recommendations: Record<string, number> = {};

@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List assessment tests
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
-    const testType = searchParams.get('testType');
-
+    // Was supplied by the caller, so one facility could read or write
+    // another's by passing its id.
+    const workspaceId = getWorkspaceId(request);
     if (!workspaceId) {
-      return NextResponse.json({ success: false, error: 'Missing workspaceId' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    const { searchParams } = new URL(request.url);
+    const testType = searchParams.get('testType');
 
     let sql = 'SELECT * FROM assessment_tests WHERE workspace_id = $1 AND is_active = TRUE';
     const params: any[] = [workspaceId];
@@ -33,16 +36,23 @@ export async function GET(request: NextRequest) {
 // POST - Create new assessment test
 export async function POST(request: NextRequest) {
   try {
+    // Was supplied by the caller, so one facility could read or write
+    // another's by passing its id.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceId, testName, testType, description,
+      testName, testType, description,
       durationMinutes, passingScore, maxScore,
       instructions, testContent, createdBy,
     } = body;
 
-    if (!workspaceId || !testName || !testType) {
+    if (!testName || !testType) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: workspaceId, testName, testType' },
+        { success: false, error: 'Missing required fields: testName, testType' },
         { status: 400 }
       );
     }

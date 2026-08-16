@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List all applications with filters
 export async function GET(request: NextRequest) {
   try {
+    // workspaceId used to come from the query string and was optional, so
+    // omitting it listed every facility's applications.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
     const vacancyId = searchParams.get('vacancyId');
     const status = searchParams.get('status');
     const stageId = searchParams.get('stageId');
@@ -32,13 +39,9 @@ export async function GET(request: NextRequest) {
       LEFT JOIN recruitment_stages s ON a.current_stage_id = s.stage_id
       WHERE 1=1
     `;
-    const params: any[] = [];
-    let idx = 1;
-
-    if (workspaceId) {
-      sql += ` AND a.workspace_id = $${idx++}`;
-      params.push(workspaceId);
-    }
+    const params: any[] = [workspaceId];
+    let idx = 2;
+    sql += ' AND a.workspace_id = $1';
     if (vacancyId) {
       sql += ` AND a.vacancy_id = $${idx++}`;
       params.push(vacancyId);
@@ -62,13 +65,9 @@ export async function GET(request: NextRequest) {
     const result = await query(sql, params);
 
     // Stats
-    const statsParams: any[] = [];
-    let statsWhere = 'WHERE 1=1';
-    let sIdx = 1;
-    if (workspaceId) {
-      statsWhere += ` AND workspace_id = $${sIdx++}`;
-      statsParams.push(workspaceId);
-    }
+    const statsParams: any[] = [workspaceId];
+    let statsWhere = 'WHERE workspace_id = $1';
+    let sIdx = 2;
     if (vacancyId) {
       statsWhere += ` AND vacancy_id = $${sIdx++}`;
       statsParams.push(vacancyId);
@@ -105,9 +104,13 @@ export async function GET(request: NextRequest) {
 // POST - Create new application
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceId,
       candidateId,
       vacancyId,
       source,
@@ -116,17 +119,17 @@ export async function POST(request: NextRequest) {
       createdBy,
     } = body;
 
-    if (!workspaceId || !candidateId || !vacancyId) {
+    if (!candidateId || !vacancyId) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: workspaceId, candidateId, vacancyId' },
+        { success: false, error: 'Missing required fields: candidateId, vacancyId' },
         { status: 400 }
       );
     }
 
     // Check duplicate
     const existing = await query(
-      'SELECT application_id FROM job_applications WHERE candidate_id = $1 AND vacancy_id = $2',
-      [candidateId, vacancyId]
+      'SELECT application_id FROM job_applications WHERE candidate_id = $1 AND vacancy_id = $2 AND workspace_id = $3',
+      [candidateId, vacancyId, workspaceId]
     );
     if (existing.rows.length > 0) {
       return NextResponse.json(

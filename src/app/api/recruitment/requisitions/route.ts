@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List all requisitions
 export async function GET(request: NextRequest) {
   try {
+    // workspaceId was a query-string filter and optional, so omitting it
+    // returned every facility's records.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const workspaceId = searchParams.get('workspaceId');
     const status = searchParams.get('status');
     const departmentId = searchParams.get('departmentId');
 
@@ -25,10 +32,8 @@ export async function GET(request: NextRequest) {
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (workspaceId) {
-      sql += ` AND r.workspace_id = $${paramIndex++}`;
-      params.push(workspaceId);
-    }
+    sql += ` AND r.workspace_id = $${paramIndex++}`;
+    params.push(workspaceId);
     if (status) {
       sql += ` AND r.status = $${paramIndex++}`;
       params.push(status);
@@ -74,10 +79,15 @@ export async function GET(request: NextRequest) {
 // POST - Create new requisition
 export async function POST(request: NextRequest) {
   try {
+    // Facility comes from the session, never the request body.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceId,
-      positionTitle,
+            positionTitle,
       departmentId,
       reportingTo,
       location,
@@ -99,9 +109,9 @@ export async function POST(request: NextRequest) {
       createdBy,
     } = body;
 
-    if (!workspaceId || !positionTitle) {
+    if (!positionTitle) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields: workspaceId, positionTitle' },
+        { success: false, error: 'Missing required fields: positionTitle' },
         { status: 400 }
       );
     }
