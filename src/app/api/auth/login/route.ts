@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
     // The demo logins (superadmin/finance/hr/inventory/reception) have no row
     // in `users` at all, so they fall back to the legacy behaviour below.
     // Removing that fallback would lock every demo account out of the ERP.
+    // Only reachable by the legacy demo logins, which have no `users` row at
+    // all. A real user who exists but has no facility membership is now
+    // rejected below rather than landing here.
     const FALLBACK_WORKSPACE_ID = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd'; // Hospital 1
     type Membership = { workspaceid: string; workspace_name: string; ws_type: string; ws_role: string };
     let membership: Membership | null = null;
@@ -111,11 +114,29 @@ export async function POST(request: NextRequest) {
               role: x.ws_role,
             })),
           });
+        } else if (memberships.length === 1) {
+          membership = memberships[0];
         } else {
-          membership = memberships[0] ?? null;
+          // A real user with no facility grant at all. Previously this fell
+          // through to the demo fallback and opened Hospital 1, so anyone
+          // provisioned in `users` but never added to a facility could read
+          // Hospital 1's data. Deny instead.
+          return NextResponse.json(
+            {
+              error:
+                'Your account is not assigned to any facility. Ask an administrator to grant you access.',
+            },
+            { status: 403 }
+          );
         }
       } catch (e) {
-        console.warn('Workspace lookup failed, using fallback workspace:', e);
+        // A lookup failure is not the same as "no membership": we cannot tell
+        // which facility this user belongs to, so refuse rather than guess.
+        console.error('Workspace lookup failed:', e);
+        return NextResponse.json(
+          { error: 'Could not resolve your facility. Please try again.' },
+          { status: 503 }
+        );
       }
     }
 
