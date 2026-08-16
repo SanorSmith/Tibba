@@ -35,6 +35,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The generator is keyed only by period_id, and produces a file listing
+    // employee names, salaries and bank account numbers. Without this check
+    // any facility could generate another's payment file by passing its id.
+    const ownsPeriod = await pool.query(
+      'SELECT 1 FROM payroll_periods WHERE id = $1 AND workspaceid = $2',
+      [period_id, ws]
+    );
+    if (ownsPeriod.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Payroll period not found' },
+        { status: 404 }
+      );
+    }
+
     const generator = createBankFileGenerator(pool);
 
     const result = await generator.generateBankFile(period_id, {

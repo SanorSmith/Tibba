@@ -61,6 +61,18 @@ const SCOPED_ENDPOINTS = [
   '/api/invoice-returns',
 ];
 
+/**
+ * Routes that never query a facility table themselves — they hand a
+ * client-supplied id to a service that does. A GET with someone else's id must
+ * come back 404, not that person's data. These are listed separately because
+ * the disjoint-ids check above does not apply: they take a required parameter.
+ */
+const INDIRECT_ENDPOINTS = [
+  (id: string) => `/api/hr/leaves/conflicts?employee_id=${id}&start_date=2020-01-01&end_date=2030-12-31`,
+  (id: string) => `/api/hr/performance/attendance-score?employee_id=${id}`,
+  (id: string) => `/api/hr/payroll/calculate-enhanced?employee_id=${id}`,
+];
+
 interface Actor {
   email: string;
   userid: string;
@@ -215,6 +227,32 @@ describeIntegration('facility isolation', () => {
     it('rejects an unauthenticated request', async () => {
       const res = await get(endpoint);
       expect([401, 403]).toContain(res.status);
+    });
+  });
+
+  describe('routes that reach facility data through a service', () => {
+    it("refuses another facility's employee id", async () => {
+      // Find an employee belonging to facility B, then ask for them as A.
+      const other = await pool.query(
+        `SELECT s.staffid FROM staff s
+           JOIN workspaces w ON w.workspaceid = s.workspaceid
+          WHERE TRIM(w.name) ILIKE $1 LIMIT 1`,
+        [b.facility]
+      );
+      if (other.rows.length === 0) return; // nothing to test with
+      const foreignId = other.rows[0].staffid;
+
+      for (const build of INDIRECT_ENDPOINTS) {
+        const res = await get(build(foreignId), a.cookie);
+        expect([400, 401, 403, 404]).toContain(res.status);
+      }
+    });
+
+    it('rejects these routes unauthenticated', async () => {
+      for (const build of INDIRECT_ENDPOINTS) {
+        const res = await get(build('00000000-0000-0000-0000-000000000000'));
+        expect([400, 401, 403]).toContain(res.status);
+      }
     });
   });
 

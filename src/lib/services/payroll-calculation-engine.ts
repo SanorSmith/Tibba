@@ -805,11 +805,16 @@ export class PayrollCalculationEngine {
            FROM payroll_transactions WHERE period_id = $1`,
           [periodId]
         );
+        // The GL entry belongs to the same facility as the payroll period it
+        // is for. This engine has no session to read, so the facility is taken
+        // from the period itself.
         const periodRow = await this.pool.query(
-          `SELECT period_name, end_date FROM payroll_periods WHERE id = $1`, [periodId]
+          `SELECT period_name, end_date, workspaceid FROM payroll_periods WHERE id = $1`,
+          [periodId]
         );
         const gross = parseFloat(sums.rows[0].gross) || 0;
-        if (gross > 0 && periodRow.rows.length > 0) {
+        const workspaceId = periodRow.rows[0]?.workspaceid ?? null;
+        if (gross > 0 && periodRow.rows.length > 0 && workspaceId) {
           const periodName = periodRow.rows[0].period_name || 'Period';
           const entryDate  = periodRow.rows[0].end_date
             ? new Date(periodRow.rows[0].end_date).toISOString().split('T')[0]
@@ -822,14 +827,16 @@ export class PayrollCalculationEngine {
             await glClient.query(
               `DELETE FROM fin_journal_lines WHERE journalid IN (
                  SELECT journalid FROM fin_journal_entries
-                 WHERE sourcetype = 'PAYROLL' AND sourceid = $1)`,
-              [periodId]
+                 WHERE sourcetype = 'PAYROLL' AND sourceid = $1
+                   AND workspaceid = $2)`,
+              [periodId, workspaceId]
             );
             await glClient.query(
-              `DELETE FROM fin_journal_entries WHERE sourcetype = 'PAYROLL' AND sourceid = $1`,
-              [periodId]
+              `DELETE FROM fin_journal_entries
+                WHERE sourcetype = 'PAYROLL' AND sourceid = $1 AND workspaceid = $2`,
+              [periodId, workspaceId]
             );
-            await postPayroll(glClient, periodId, periodName, {
+            await postPayroll(glClient, workspaceId, periodId, periodName, {
               gross,
               net: parseFloat(sums.rows[0].net) || 0,
               incomeTax: parseFloat(sums.rows[0].tax) || 0,
