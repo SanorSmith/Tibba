@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Force dynamic rendering
@@ -26,6 +27,11 @@ function generateUUID(): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -55,11 +61,11 @@ export async function GET(request: NextRequest) {
         createdat as created_at,
         updatedat as updated_at
       FROM specialties
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (departmentId) {
       query += ` AND departmentid = $${paramIndex}`;
@@ -101,6 +107,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -143,10 +154,11 @@ export async function POST(request: NextRequest) {
         departmentid,
         code,
         is_active,
+        workspaceid,
         createdat,
         updatedat
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
       )
       RETURNING *
     `, [
@@ -155,7 +167,8 @@ export async function POST(request: NextRequest) {
       description || null,
       department_id || null,
       code,
-      is_active !== undefined ? is_active : true
+      is_active !== undefined ? is_active : true,
+      workspaceId
     ]);
 
     console.log('Specialty created successfully:', newSpecialty.rows[0]);

@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Neon database connection
@@ -25,6 +26,10 @@ function getIdFromRequest(request: NextRequest): string | null {
 export async function GET(request: NextRequest) {
   try {
     const id = getIdFromRequest(request);
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     
     if (!process.env.OPENEHR_DATABASE_URL) {
       return NextResponse.json(
@@ -49,8 +54,8 @@ export async function GET(request: NextRequest) {
       `SELECT departmentid as id, name, phone as contact_phone, email as contact_email, 
               address as location, createdat as created_at, updatedat as updated_at
        FROM departments 
-       WHERE departmentid = $1`,
-      [id]
+       WHERE departmentid = $1 AND workspaceid = $2`,
+      [id, workspaceId]
     );
 
     console.log('Department query result:', result.rows.length, 'rows found');
@@ -127,6 +132,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const id = getIdFromRequest(request);
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     
     if (!process.env.OPENEHR_DATABASE_URL) {
       return NextResponse.json(
@@ -150,8 +159,8 @@ export async function PUT(request: NextRequest) {
 
     // Check if department exists
     const existingDept = await pool.query(
-      'SELECT departmentid FROM departments WHERE departmentid = $1',
-      [id]
+      'SELECT departmentid FROM departments WHERE departmentid = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (existingDept.rows.length === 0) {
@@ -165,7 +174,7 @@ export async function PUT(request: NextRequest) {
     const result = await pool.query(
       `UPDATE departments 
        SET name = $1, email = $2, phone = $3, address = $4, updatedat = NOW()
-       WHERE departmentid = $5
+       WHERE departmentid = $5 AND workspaceid = $6
        RETURNING departmentid, name, email, phone, address, createdat, updatedat`,
       [
         name,
@@ -173,6 +182,7 @@ export async function PUT(request: NextRequest) {
         contact_phone || null,
         location || null,
         id,
+        workspaceId,
       ]
     );
 
@@ -212,6 +222,10 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const id = getIdFromRequest(request);
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     
     if (!process.env.OPENEHR_DATABASE_URL) {
       return NextResponse.json(
@@ -232,8 +246,8 @@ export async function DELETE(request: NextRequest) {
 
     // Check if department exists
     const existingDept = await pool.query(
-      'SELECT departmentid FROM departments WHERE departmentid = $1',
-      [id]
+      'SELECT departmentid FROM departments WHERE departmentid = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (existingDept.rows.length === 0) {
@@ -244,7 +258,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete department
-    await pool.query('DELETE FROM departments WHERE departmentid = $1', [id]);
+    await pool.query('DELETE FROM departments WHERE departmentid = $1 AND workspaceid = $2', [id, workspaceId]);
 
     return NextResponse.json({
       success: true,
