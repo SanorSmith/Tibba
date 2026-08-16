@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { verifyPassword } from '@/lib/auth/password';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,12 +53,56 @@ export async function POST(request: NextRequest) {
     let dbUser: any = null;
     try {
       const r = await pool.query(
-        'SELECT userid, name, email FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($2) LIMIT 1',
+        `SELECT userid, name, email, password, isactive
+           FROM users
+          WHERE LOWER(email) = LOWER($1) OR LOWER(name) = LOWER($2)
+          LIMIT 1`,
         [lookupEmail, loginIdentifier]
       );
       if (r.rows.length > 0) dbUser = r.rows[0];
     } catch (e) {
-      console.warn('User DB lookup failed, falling back to mock:', e);
+      // Do not fall through to the demo path on a database error — that would
+      // turn an outage into an authentication bypass.
+      console.error('User lookup failed:', e);
+      return NextResponse.json(
+        { error: 'Sign-in is unavailable right now. Please try again.' },
+        { status: 503 }
+      );
+    }
+
+    // ── Verify the password ──────────────────────────────────────────────────
+    // Until now any string was accepted for any account. Real accounts are
+    // checked against the stored scrypt hash; the legacy demo logins have no
+    // `users` row and are handled separately below.
+    if (dbUser) {
+      if (dbUser.isactive === false) {
+        return NextResponse.json(
+          { error: 'This account has been deactivated.' },
+          { status: 403 }
+        );
+      }
+
+      const result = await verifyPassword(password, dbUser.password);
+      if (!result.ok) {
+        // The user always sees the same message; the log distinguishes the
+        // cases so an operator can tell "never had a password" from "typo".
+        console.warn(
+          `Failed login for ${loginIdentifier}: ${result.reason}`
+        );
+        if (result.reason === 'no-password-set') {
+          return NextResponse.json(
+            {
+              error:
+                'This account has no password set. Ask an administrator to set one before signing in.',
+            },
+            { status: 403 }
+          );
+        }
+        return NextResponse.json(
+          { error: 'Incorrect email or password.' },
+          { status: 401 }
+        );
+      }
     }
 
     // ── Resolve the facility (workspace) this user actually belongs to ────────
@@ -165,7 +210,10 @@ export async function POST(request: NextRequest) {
       pharmacist:      'INVENTORY_ADMIN',
     };
 
-    // Legacy demo logins, kept working — these have no `users` row to resolve.
+    // Legacy demo logins — these have no `users` row, so there is no stored
+    // password to check them against. They are therefore only usable when
+    // explicitly enabled, and never by default. Setting DEMO_LOGIN_PASSWORD
+    // turns them on; without it these names are treated as unknown accounts.
     const roleMap: Record<string, string> = {
       'superadmin': 'SUPER_ADMIN',
       'finance': 'FINANCE_ADMIN',
@@ -173,6 +221,27 @@ export async function POST(request: NextRequest) {
       'inventory': 'INVENTORY_ADMIN',
       'reception': 'RECEPTION_ADMIN',
     };
+
+    if (!dbUser) {
+      const demoPassword = process.env.DEMO_LOGIN_PASSWORD;
+      const isDemoName = Object.prototype.hasOwnProperty.call(
+        roleMap,
+        loginIdentifier.toLowerCase()
+      );
+
+      if (!isDemoName || !demoPassword || password !== demoPassword) {
+        // Same message whether the account does not exist or the password is
+        // wrong, so this cannot be used to enumerate valid accounts.
+        console.warn(
+          `Failed login for ${loginIdentifier}: ` +
+            (isDemoName ? 'demo login disabled or wrong password' : 'no such user')
+        );
+        return NextResponse.json(
+          { error: 'Incorrect email or password.' },
+          { status: 401 }
+        );
+      }
+    }
 
     const userRole = membership
       ? (wsRoleMap[membership.ws_role] ?? 'RECEPTION_ADMIN')
