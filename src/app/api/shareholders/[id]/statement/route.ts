@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,11 +18,13 @@ const pool = process.env.DATABASE_URL
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
-    const shRes = await pool.query('SELECT * FROM shareholders WHERE id = $1', [id]);
+    const shRes = await pool.query('SELECT * FROM shareholders WHERE id = $1 AND workspaceid = $2', [id, workspaceId]);
     if (shRes.rows.length === 0) {
       return NextResponse.json({ error: 'Shareholder not found' }, { status: 404 });
     }
@@ -33,9 +36,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
       const dRes = await pool.query(
         `SELECT declaration_number, dividend_date, total_declared, share_percentage, amount, status
          FROM shareholder_distributions
-         WHERE shareholder_id = $1
+         WHERE shareholder_id = $1 AND workspaceid = $2
          ORDER BY dividend_date DESC`,
-        [id]
+        [id, workspaceId]
       );
       dividends = dRes.rows;
     } catch { /* table may not exist yet */ }
@@ -48,7 +51,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const totals = await pool.query(
       `SELECT COALESCE(SUM(investment_amount),0) AS total_capital,
               COALESCE(SUM(number_of_shares),0)  AS total_shares
-       FROM shareholders WHERE status = 'ACTIVE'`
+       FROM shareholders WHERE status = 'ACTIVE' AND workspaceid = $1`,
+      [workspaceId]
     );
     const companyCapital = parseFloat(totals.rows[0].total_capital) || 0;
     const ownershipValue = Math.round((companyCapital * sharePct) / 100);

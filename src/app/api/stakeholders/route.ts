@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,9 @@ export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const role     = searchParams.get('role');
     const active   = searchParams.get('is_active');
@@ -33,10 +37,10 @@ export async function GET(request: NextRequest) {
         default_share_percentage, default_share_amount,
         is_active, notes, createdat AS created_at, updatedat AS updated_at
       FROM stakeholders
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
 
     if (role && role !== 'ALL') { query += ` AND role = $${idx++}`; params.push(role); }
     if (active !== null) { query += ` AND is_active = $${idx++}`; params.push(active === 'true'); }
@@ -66,6 +70,9 @@ export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
     const body = await request.json();
     const {
       stakeholder_code, name_ar, name_en, role = 'DOCTOR',
@@ -94,9 +101,9 @@ export async function POST(request: NextRequest) {
          bank_name_ar, account_number, iban,
          service_type, default_share_type,
          default_share_percentage, default_share_amount,
-         is_active, notes
+         is_active, notes, workspaceid
        ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
        ) RETURNING
          id AS stakeholder_id, stakeholder_code, name_ar, name_en, role,
          specialty_ar, mobile, email, is_active, createdat AS created_at`,
@@ -108,7 +115,7 @@ export async function POST(request: NextRequest) {
         service_type || null, default_share_type,
         default_share_percentage != null ? default_share_percentage : null,
         default_share_amount != null ? default_share_amount : null,
-        is_active, notes || null,
+        is_active, notes || null, workspaceId,
       ]
     );
 

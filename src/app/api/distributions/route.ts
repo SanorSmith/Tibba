@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const stakeholderId = searchParams.get('stakeholder_id');
     const status        = searchParams.get('status');
@@ -52,10 +55,10 @@ export async function GET(request: NextRequest) {
         JOIN stakeholders stk ON sh.stakeholder_id = stk.id
         JOIN invoices i       ON sh.invoice_id = i.id
         LEFT JOIN patients p  ON i.patient_id::text = p.patientid::text
-        WHERE 1=1
+        WHERE sh.workspaceid = $1
       `;
-      const params: any[] = [];
-      let idx = 1;
+      const params: any[] = [workspaceId];
+      let idx = 2;
       if (stakeholderId) { q += ` AND sh.stakeholder_id = $${idx++}`; params.push(stakeholderId); }
       if (status)        { q += ` AND sh.payment_status = $${idx++}`; params.push(status); }
       if (from)          { q += ` AND i.invoice_date >= $${idx++}`;   params.push(from); }
@@ -85,10 +88,10 @@ export async function GET(request: NextRequest) {
       FROM stakeholders stk
       JOIN invoice_shares sh ON stk.id = sh.stakeholder_id
       JOIN invoices i        ON sh.invoice_id = i.id
-      WHERE 1=1
+      WHERE sh.workspaceid = $1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
     if (stakeholderId) { q += ` AND stk.id = $${idx++}`; params.push(stakeholderId); }
     if (status)        { q += ` AND sh.payment_status = $${idx++}`; params.push(status); }
     if (from)          { q += ` AND i.invoice_date >= $${idx++}`;   params.push(from); }

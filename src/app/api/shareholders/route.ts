@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,11 @@ async function ensureTable(p: Pool) {
     )
   `);
 
-  // Seed sample data once (matches the 7 shareholders in the roadmap)
+  // Seed sample data once (matches the 7 shareholders in the roadmap).
+  // This count is deliberately left unscoped: the table already holds the
+  // seed rows, so the check stays false and no facility gets a fresh set of
+  // sample shareholders. If it ever did run, the rows would land with a null
+  // workspaceid and be invisible to every facility rather than leak into one.
   const cnt = await p.query('SELECT COUNT(*)::int AS c FROM shareholders');
   if (cnt.rows[0].c === 0) {
     await p.query(`
@@ -78,15 +83,17 @@ async function ensureTable(p: Pool) {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     await ensureTable(pool);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const type   = searchParams.get('type');
     const search = searchParams.get('search');
 
-    let q = 'SELECT * FROM shareholders WHERE 1=1';
-    const params: any[] = [];
-    let idx = 1;
+    let q = 'SELECT * FROM shareholders WHERE workspaceid = $1';
+    const params: any[] = [workspaceId];
+    let idx = 2;
     if (status) { q += ` AND status = $${idx++}`; params.push(status); }
     if (type)   { q += ` AND shareholder_type = $${idx++}`; params.push(type); }
     if (search) {
@@ -107,6 +114,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     await ensureTable(pool);
     const b = await request.json();
     if (!b.full_name) {
@@ -115,7 +124,12 @@ export async function POST(request: NextRequest) {
     // Auto-generate shareholder_id if not provided
     let shareholderId = b.shareholder_id;
     if (!shareholderId) {
-      const max = await pool.query(`SELECT shareholder_id FROM shareholders WHERE shareholder_id LIKE 'SH-%' ORDER BY shareholder_id DESC LIMIT 1`);
+      const max = await pool.query(
+        `SELECT shareholder_id FROM shareholders
+         WHERE shareholder_id LIKE 'SH-%' AND workspaceid = $1
+         ORDER BY shareholder_id DESC LIMIT 1`,
+        [workspaceId]
+      );
       const n = max.rows[0] ? parseInt(max.rows[0].shareholder_id.replace('SH-', '')) + 1 : 1;
       shareholderId = `SH-${String(n).padStart(3, '0')}`;
     }
@@ -126,9 +140,9 @@ export async function POST(request: NextRequest) {
          city, country, national_id, passport_number, date_of_birth, nationality,
          share_percentage, number_of_shares, share_value, investment_amount, investment_date,
          shareholder_type, company_name, company_registration, status, is_board_member,
-         board_position, notes
+         board_position, notes, workspaceid
        ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27
        ) RETURNING *`,
       [
         shareholderId, b.full_name, b.full_name_ar || null, b.email || null, b.phone || null,
@@ -137,7 +151,7 @@ export async function POST(request: NextRequest) {
         b.share_percentage || 0, b.number_of_shares || 0, b.share_value || 0, b.investment_amount || 0,
         b.investment_date || null, b.shareholder_type || 'INDIVIDUAL', b.company_name || null,
         b.company_registration || null, b.status || 'ACTIVE', b.is_board_member || false,
-        b.board_position || null, b.notes || null,
+        b.board_position || null, b.notes || null, workspaceId,
       ]
     );
     return NextResponse.json(result.rows[0], { status: 201 });
