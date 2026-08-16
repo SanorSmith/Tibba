@@ -4,7 +4,8 @@
  * and adds the is_paid column to leave_types.
  * Safe to call multiple times — all statements are CREATE IF NOT EXISTS / ADD IF NOT EXISTS.
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,18 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Schema/seed utility. These endpoints create tables, seed rows and — in
+  // the appointments cases — drop foreign-key constraints on tables shared by
+  // every facility, so the blast radius is the whole platform rather than one
+  // hospital. A workspace filter is not the right control here; requiring a
+  // session is the minimum. These should probably be deleted outright, but
+  // that is a call for the repo owner, not something to do silently.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
   const client = await pool.connect();

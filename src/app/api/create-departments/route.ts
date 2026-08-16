@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export async function GET(request: NextRequest) {
+  // Schema/seed utility. These endpoints create tables, seed rows and — in
+  // the appointments cases — drop foreign-key constraints on tables shared by
+  // every facility, so the blast radius is the whole platform rather than one
+  // hospital. A workspace filter is not the right control here; requiring a
+  // session is the minimum. These should probably be deleted outright, but
+  // that is a call for the repo owner, not something to do silently.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   try {
     console.log('=== CREATE DEPARTMENTS TABLE ===');
     
