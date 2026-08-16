@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,11 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const severity = searchParams.get('severity');
@@ -31,11 +37,11 @@ export async function GET(request: NextRequest) {
       FROM attendance_exceptions ae
       LEFT JOIN staff s ON ae.employee_id = s.staffid
       LEFT JOIN daily_attendance da ON ae.daily_attendance_id = da.id
-      WHERE 1=1
+      WHERE ae.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (status && status !== 'all') {
       query += ` AND ae.review_status = $${paramIndex}`;
@@ -123,6 +129,11 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action, date, employee_id, exception_data } = body;
 
@@ -163,8 +174,9 @@ export async function POST(request: NextRequest) {
           severity,
           minutes_late,
           minutes_early,
-          auto_detected
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, false)
+          auto_detected,
+          workspaceid
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8)
         RETURNING *`,
         [
           employee_id,
@@ -174,6 +186,7 @@ export async function POST(request: NextRequest) {
           severity || 'MEDIUM',
           minutes_late,
           minutes_early,
+          workspaceId,
         ]
       );
 
@@ -202,6 +215,11 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       exception_id,
@@ -219,6 +237,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Exception ID is required' },
         { status: 400 }
+      );
+    }
+
+    // All three branches below update by id alone, so confirm the exception
+    // belongs to this facility before any of them run.
+    const owns = await pool.query(
+      'SELECT 1 FROM attendance_exceptions WHERE id = $1 AND workspaceid = $2',
+      [exception_id, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Exception not found' },
+        { status: 404 }
       );
     }
 
@@ -312,6 +343,11 @@ export async function PUT(request: NextRequest) {
 // =====================================================
 export async function DELETE(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const exceptionId = searchParams.get('id');
 
@@ -323,8 +359,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const result = await pool.query(
-      'DELETE FROM attendance_exceptions WHERE id = $1 RETURNING id',
-      [exceptionId]
+      'DELETE FROM attendance_exceptions WHERE id = $1 AND workspaceid = $2 RETURNING id',
+      [exceptionId, workspaceId]
     );
 
     if (result.rows.length === 0) {

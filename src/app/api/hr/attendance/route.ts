@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,12 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    // Attendance is facility-private.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
     const status = searchParams.get('status');
@@ -46,11 +53,11 @@ export async function GET(request: NextRequest) {
       LEFT JOIN leave_requests lr ON 
         s.staffid = lr.employee_id AND 
         da.date BETWEEN lr.start_date AND COALESCE(lr.return_date, lr.end_date)
-      WHERE 1=1
+      WHERE da.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (date) {
       query += ` AND da.date = $${paramIndex}`;
@@ -130,6 +137,12 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    // Attendance is recorded against the caller's own staff.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       employee_id,
@@ -175,8 +188,8 @@ export async function POST(request: NextRequest) {
 
     // Get staff UUID
     const staffResult = await pool.query(
-      'SELECT staffid FROM staff WHERE custom_staff_id = $1 OR staffid::text = $1',
-      [employee_id]
+      'SELECT staffid FROM staff WHERE (custom_staff_id = $1 OR staffid::text = $1) AND workspaceid = $2',
+      [employee_id, workspaceId]
     );
 
     if (staffResult.rows.length === 0) {
@@ -190,8 +203,8 @@ export async function POST(request: NextRequest) {
 
     // Get shift UUID
     const shiftResult = await pool.query(
-      'SELECT id FROM shifts WHERE code = $1',
-      [shift_id]
+      'SELECT id FROM shifts WHERE code = $1 AND workspaceid = $2',
+      [shift_id, workspaceId]
     );
 
     if (shiftResult.rows.length === 0) {
@@ -211,8 +224,8 @@ export async function POST(request: NextRequest) {
       `INSERT INTO daily_attendance (
         employee_id, date, shift_id, first_in, last_out, total_hours,
         regular_hours, overtime_hours, late_arrival_minutes, status,
-        organization_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        organization_id, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING id`,
       [
         employeeUuid,
@@ -226,6 +239,7 @@ export async function POST(request: NextRequest) {
         late_minutes || 0,
         status,
         '00000000-0000-0000-0000-000000000001',
+        workspaceId,
       ]
     );
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,6 +8,12 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    // One facility must not read another's attendance by passing its staffId.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staffId');
     const month = searchParams.get('month'); // Format: YYYY-MM
@@ -48,10 +55,11 @@ export async function GET(request: NextRequest) {
         created_at
       FROM attendance_transactions 
       WHERE employee_id = $1 ${dateFilter}
+        AND workspaceid = $${params.length + 1}
       ORDER BY timestamp DESC
     `;
 
-    const result = await pool.query(query, params);
+    const result = await pool.query(query, [...params, workspaceId]);
 
     // Group transactions by date
     const groupedTransactions: { [key: string]: any[] } = {};
@@ -94,8 +102,8 @@ export async function GET(request: NextRequest) {
     const staffResult = await pool.query(`
       SELECT staffid, firstname, lastname, custom_staff_id 
       FROM staff 
-      WHERE staffid = $1
-    `, [staffId]);
+      WHERE staffid = $1 AND workspaceid = $2
+    `, [staffId, workspaceId]);
 
     const staff = staffResult.rows[0];
 
