@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getWorkspaceId } from "@/lib/workspace";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -8,13 +9,17 @@ const pool = new Pool({
 
 export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.get("search") ?? "";
+  // Supplier/manufacturer lists are facility-private.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   try {
     const r = await pool.query(
       `SELECT id, name, country, contactname AS contact_name, email, phone
        FROM manufacturers
-       WHERE ($1 = '' OR name ILIKE $1 OR country ILIKE $1)
+       WHERE workspace_id = $2
+         AND ($1 = '' OR name ILIKE $1 OR country ILIKE $1)
        ORDER BY name LIMIT 100`,
-      [`%${search}%`]
+      [`%${search}%`, WS]
     );
     return NextResponse.json(r.rows);
   } catch (err: any) {
@@ -22,8 +27,9 @@ export async function GET(req: NextRequest) {
     try {
       const r2 = await pool.query(
         `SELECT id, name, country, contact_name, email FROM hospital_manufacturers
-         WHERE isactive=true AND ($1='' OR name ILIKE $1) ORDER BY name LIMIT 100`,
-        [`%${search}%`]
+         WHERE isactive=true AND workspace_id=$2 AND ($1='' OR name ILIKE $1)
+         ORDER BY name LIMIT 100`,
+        [`%${search}%`, WS]
       );
       return NextResponse.json(r2.rows);
     } catch {

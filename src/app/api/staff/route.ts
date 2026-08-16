@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -79,6 +80,13 @@ export async function GET(request: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // Staff rosters are facility-private — this route returned every
+    // facility's staff to every caller.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -161,10 +169,10 @@ export async function GET(request: NextRequest) {
         LEFT JOIN employee_profile ep ON s.staffid = ep.staff_id
         LEFT JOIN settlement_rules sr ON s.staffid = sr.staff_id
         LEFT JOIN national_id nid ON s.staffid = nid.staff_id
-        WHERE s.staffid = $1
+        WHERE s.staffid = $1 AND s.workspaceid = $2
       `;
 
-      const result = await pool.query(query, [staffId]);
+      const result = await pool.query(query, [staffId, workspaceId]);
 
       if (result.rows.length === 0) {
         return NextResponse.json(
@@ -206,11 +214,11 @@ export async function GET(request: NextRequest) {
         createdat as "createdAt",
         updatedat as "updatedAt"
       FROM staff
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (searchTerm) {
       query += ` AND (
@@ -263,6 +271,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const sessionWorkspaceId = getWorkspaceId(request);
+    if (!sessionWorkspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     if (!pool) {
       return NextResponse.json(
         { 
@@ -327,8 +339,7 @@ export async function POST(request: NextRequest) {
       settlementEligible,
       settlementCalculationMethod,
       noticePeriodDays,
-      gratuityEligible,
-      workspaceId
+      gratuityEligible
     } = body;
 
     // Validate required fields
@@ -348,32 +359,11 @@ export async function POST(request: NextRequest) {
     console.log('✅ Generated UUID:', staffId);
     console.log('✅ Generated Custom ID:', customStaffId);
     
-    // Get an existing workspace ID or use provided one
-    let defaultWorkspaceId = workspaceId;
-    
-    if (!defaultWorkspaceId) {
-      // Try to get an existing workspace from the database
-      try {
-        const existingWorkspace = await pool.query(`
-          SELECT workspaceid FROM workspaces LIMIT 1
-        `);
-        
-        if (existingWorkspace.rows.length > 0) {
-          defaultWorkspaceId = existingWorkspace.rows[0].workspaceid;
-        } else {
-          // If no workspace exists, create a default one
-          const newWorkspaceId = generateUUID();
-          await pool.query(`
-            INSERT INTO workspaces (workspaceid, name) VALUES ($1, 'Default Workspace')
-          `, [newWorkspaceId]);
-          defaultWorkspaceId = newWorkspaceId;
-        }
-      } catch (error) {
-        // If workspaces table doesn't exist or other error, generate a UUID
-        console.log('Workspaces table not accessible, using generated UUID');
-        defaultWorkspaceId = generateUUID();
-      }
-    }
+    // New staff belong to the facility of whoever is creating them. This used
+    // to take workspaceId from the request body, and when absent it picked an
+    // arbitrary facility (SELECT ... LIMIT 1) or invented a new one, so staff
+    // could land in a hospital the creator has nothing to do with.
+    const defaultWorkspaceId = sessionWorkspaceId;
 
     // Start transaction
     const client = await pool.connect();
@@ -617,6 +607,10 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const updateWorkspaceId = getWorkspaceId(request);
+    if (!updateWorkspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     if (!pool) {
       return NextResponse.json(
         { 
@@ -637,6 +631,20 @@ export async function PUT(request: NextRequest) {
           required: ['staffId']
         },
         { status: 400 }
+      );
+    }
+
+    // This handler also writes side tables (employment_details, bank_details,
+    // settlement_rules, …) keyed only by staff_id, so confirm the employee is
+    // ours before touching any of them.
+    const owns = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [staffId, updateWorkspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Staff member not found', details: `No staff member found with ID: ${staffId}` },
+        { status: 404 }
       );
     }
 
@@ -766,11 +774,12 @@ export async function PUT(request: NextRequest) {
         updateValues.push(staffId);
         
         const staffQuery = `
-          UPDATE staff 
+          UPDATE staff
           SET ${updateFields.join(', ')}
-          WHERE staffid = $${paramIndex}
+          WHERE staffid = $${paramIndex} AND workspaceid = $${paramIndex + 1}
           RETURNING *
         `;
+        updateValues.push(updateWorkspaceId);
         
         const staffResult = await client.query(staffQuery, updateValues);
         
@@ -880,6 +889,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const deleteWorkspaceId = getWorkspaceId(request);
+    if (!deleteWorkspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const staffId = searchParams.get('staffId');
 
@@ -893,10 +907,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if staff member exists
+    // Check the staff member exists *in this facility*. Without the workspace
+    // filter, one hospital could delete another's employee by id.
     const existingStaff = await pool.query(
-      'SELECT * FROM staff WHERE staffid = $1',
-      [staffId]
+      'SELECT * FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [staffId, deleteWorkspaceId]
     );
 
     if (existingStaff.rows.length === 0) {
@@ -911,8 +926,8 @@ export async function DELETE(request: NextRequest) {
 
     // Delete staff member
     await pool.query(
-      'DELETE FROM staff WHERE staffid = $1',
-      [staffId]
+      'DELETE FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [staffId, deleteWorkspaceId]
     );
 
     console.log('Staff member deleted successfully:', staffId);

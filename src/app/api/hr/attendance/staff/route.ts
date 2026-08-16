@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,12 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    // Attendance and the staff list behind it are facility-private.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staff_id');
     const startDate = searchParams.get('start_date');
@@ -38,8 +45,9 @@ export async function GET(request: NextRequest) {
         FROM staff s
         LEFT JOIN daily_attendance da ON s.staffid = da.employee_id 
           AND da.date = CURRENT_DATE
+        WHERE s.workspaceid = $1
         ORDER BY s.firstname, s.lastname
-      `);
+      `, [workspaceId]);
 
       return NextResponse.json({
         success: true,
@@ -67,11 +75,11 @@ export async function GET(request: NextRequest) {
           da.scheduled_start,
           da.scheduled_end
         FROM daily_attendance da
-        WHERE da.employee_id = $1
+        WHERE da.employee_id = $1 AND da.workspaceid = $2
       `;
 
-      const params: any[] = [staffId];
-      let paramIndex = 2;
+      const params: any[] = [staffId, workspaceId];
+      let paramIndex = 3;
 
       if (startDate) {
         query += ` AND da.date >= $${paramIndex}`;
@@ -109,11 +117,11 @@ export async function GET(request: NextRequest) {
         da.total_hours,
         da.status
       FROM daily_attendance da
-      WHERE 1=1
+      WHERE da.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (startDate) {
       query += ` AND da.date >= $${paramIndex}`;
@@ -150,6 +158,12 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    // Punches may only be filed against this facility's own staff.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       staff_id,
@@ -179,8 +193,8 @@ export async function POST(request: NextRequest) {
     const empResult = await pool.query(`
       SELECT staffid, firstname, lastname, custom_staff_id 
       FROM staff 
-      WHERE staffid = $1
-    `, [staff_id]);
+      WHERE staffid = $1 AND workspaceid = $2
+    `, [staff_id, workspaceId]);
 
     if (empResult.rows.length === 0) {
       return NextResponse.json(
@@ -205,9 +219,10 @@ export async function POST(request: NextRequest) {
         device_type,
         source,
         is_valid,
-        validation_status
+        validation_status,
+        workspaceid
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, true, 'VALID'
+        $1, $2, $3, $4, $5, $6, $7, true, 'VALID', $8
       ) RETURNING id
     `, [
       employeeUuid,
@@ -216,7 +231,8 @@ export async function POST(request: NextRequest) {
       transaction_type,
       timestamp || new Date().toISOString(),
       device_type,
-      source
+      source,
+      workspaceId
     ]);
 
     const transactionId = transactionResult.rows[0].id;
@@ -227,8 +243,8 @@ export async function POST(request: NextRequest) {
       // Check if daily summary exists
       const existingResult = await pool.query(`
         SELECT id, first_in FROM daily_attendance 
-        WHERE employee_id = $1 AND date = $2
-      `, [employeeUuid, date]);
+        WHERE employee_id = $1 AND date = $2 AND workspaceid = $3
+      `, [employeeUuid, date, workspaceId]);
 
       if (existingResult.rows.length > 0) {
         dailySummaryId = existingResult.rows[0].id;
@@ -247,10 +263,11 @@ export async function POST(request: NextRequest) {
             employee_number,
             date,
             first_in,
-            status
-          ) VALUES ($1, $2, $3, $4, $5, 'PRESENT')
+            status,
+            workspaceid
+          ) VALUES ($1, $2, $3, $4, $5, 'PRESENT', $6)
           RETURNING id
-        `, [employeeUuid, employeeName, employee.custom_staff_id || 'N/A', date, timestamp || new Date().toISOString()]);
+        `, [employeeUuid, employeeName, employee.custom_staff_id || 'N/A', date, timestamp || new Date().toISOString(), workspaceId]);
         dailySummaryId = newResult.rows[0].id;
       }
     } else {
@@ -274,9 +291,9 @@ export async function POST(request: NextRequest) {
                 GREATEST(EXTRACT(EPOCH FROM ($1 - first_in)) / 3600 - 8, 0)
               ELSE overtime_hours
             END
-        WHERE employee_id = $2 AND date = $3
+        WHERE employee_id = $2 AND date = $3 AND workspaceid = $4
         RETURNING id
-      `, [timestamp || new Date().toISOString(), employeeUuid, date]);
+      `, [timestamp || new Date().toISOString(), employeeUuid, date, workspaceId]);
       
       dailySummaryId = updateResult.rows[0].id;
       
@@ -289,10 +306,11 @@ export async function POST(request: NextRequest) {
             employee_number,
             date,
             last_out,
-            status
-          ) VALUES ($1, $2, $3, $4, $5, 'PRESENT')
+            status,
+            workspaceid
+          ) VALUES ($1, $2, $3, $4, $5, 'PRESENT', $6)
           RETURNING id
-        `, [employeeUuid, employeeName, employee.custom_staff_id || 'N/A', date, timestamp || new Date().toISOString()]);
+        `, [employeeUuid, employeeName, employee.custom_staff_id || 'N/A', date, timestamp || new Date().toISOString(), workspaceId]);
         dailySummaryId = newResult.rows[0].id;
       }
     }

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getWorkspaceId } from "@/lib/workspace";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Another facility's order must read as "not found".
+  const WS = getWorkspaceId(_req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   try {
-    const order = await pool.query(`SELECT * FROM hospital_orders WHERE id=$1`, [id]);
+    const order = await pool.query(`SELECT * FROM hospital_orders WHERE id=$1 AND workspace_id=$2`, [id, WS]);
+    if (order.rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const items = await pool.query(`SELECT * FROM hospital_order_items_new WHERE order_id=$1 ORDER BY createdat`, [id]);
     return NextResponse.json({ order: order.rows[0], items: items.rows });
   } catch (e: any) {
@@ -15,7 +20,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Refuse to mutate an order owned by a different facility.
+  const WS = getWorkspaceId(req);
+  if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   try {
+    const owns = await pool.query(
+      `SELECT 1 FROM hospital_orders WHERE id=$1 AND workspace_id=$2`,
+      [id, WS]
+    );
+    if (owns.rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
     const body = await req.json();
     const { status, edit, orderedBy, orderDate, expectedDate, supplierName, supplierEmail, supplierPhone, notes, items } = body;
 
@@ -69,8 +83,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           // Sync unit_cost back to inventory
           if (item.itemId && item.unitCost) {
             await pool.query(
-              `UPDATE hospital_items SET unit_cost=$1, updatedat=NOW() WHERE id=$2`,
-              [parseFloat(item.unitCost), item.itemId]
+              `UPDATE hospital_items SET unit_cost=$1, updatedat=NOW() WHERE id=$2 AND workspace_id=$3`,
+              [parseFloat(item.unitCost), item.itemId, WS]
             ).catch(() => {});
           }
         }

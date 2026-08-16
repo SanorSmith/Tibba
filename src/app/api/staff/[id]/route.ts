@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ const pool = databaseUrl ? new Pool({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     if (!pool) {
@@ -32,7 +33,13 @@ export async function GET(
       );
     }
 
-    const staffId = params.id;
+    // An employee of another facility must read as "not found".
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
+    const { id: staffId } = await params;
 
     console.log('Fetching staff member from database:', staffId);
 
@@ -52,10 +59,10 @@ export async function GET(
         createdat as "createdAt",
         updatedat as "updatedAt"
       FROM staff
-      WHERE staffid = $1
+      WHERE staffid = $1 AND workspaceid = $2
     `;
 
-    const result = await pool.query(query, [staffId]);
+    const result = await pool.query(query, [staffId, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(
