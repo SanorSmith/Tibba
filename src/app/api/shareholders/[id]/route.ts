@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,11 +19,13 @@ const pool = process.env.DATABASE_URL
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
-    const r = await pool.query('SELECT * FROM shareholders WHERE id = $1', [id]);
+    const r = await pool.query('SELECT * FROM shareholders WHERE id = $1 AND workspaceid = $2', [id, workspaceId]);
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json(r.rows[0]);
   } catch (error) {
@@ -33,6 +36,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     const b = await req.json();
     // Allowed columns for partial update
@@ -51,10 +56,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }
     if (sets.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     sets.push('updated_at = NOW()');
-    vals.push(id);
+    vals.push(id, workspaceId);
 
     const r = await pool.query(
-      `UPDATE shareholders SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      `UPDATE shareholders SET ${sets.join(', ')} WHERE id = $${idx} AND workspaceid = $${idx + 1} RETURNING *`,
       vals
     );
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -65,11 +70,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
-    const r = await pool.query('DELETE FROM shareholders WHERE id = $1 RETURNING id', [id]);
+    const r = await pool.query('DELETE FROM shareholders WHERE id = $1 AND workspaceid = $2 RETURNING id', [id, workspaceId]);
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {

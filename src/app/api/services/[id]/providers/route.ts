@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,9 +17,20 @@ type Params = { params: Promise<{ id: string }> };
  * GET /api/services/[id]/providers
  * Returns all stakeholders assigned to this service with their share config.
  */
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // The service must be ours before its provider list is read or changed.
+  const ownsService = await pool.query(
+    'SELECT 1 FROM services WHERE id::text = $1 AND workspaceid = $2',
+    [id, workspaceId]
+  );
+  if (ownsService.rows.length === 0) {
+    return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+  }
 
   try {
     const result = await pool.query(
@@ -39,9 +51,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
          s.specialty_ar
        FROM service_stakeholders ss
        JOIN stakeholders s ON ss.stakeholder_id = s.id
-       WHERE ss.service_id = $1
+       WHERE ss.service_id = $1 AND ss.workspaceid = $2
        ORDER BY ss.share_percentage DESC NULLS LAST`,
-      [id]
+      [id, workspaceId]
     );
 
     // Calculate total allocated percentage
@@ -69,6 +81,17 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function POST(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // The service must be ours before its provider list is read or changed.
+  const ownsService = await pool.query(
+    'SELECT 1 FROM services WHERE id::text = $1 AND workspaceid = $2',
+    [id, workspaceId]
+  );
+  if (ownsService.rows.length === 0) {
+    return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+  }
 
   try {
     const body = await req.json();
@@ -84,8 +107,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     // Check total won't exceed 100%
     if (share_type === 'PERCENTAGE') {
       const current = await pool.query(
-        'SELECT COALESCE(SUM(share_percentage),0) AS total FROM service_stakeholders WHERE service_id = $1 AND is_active = true AND stakeholder_id != $2',
-        [id, stakeholder_id]
+        'SELECT COALESCE(SUM(share_percentage),0) AS total FROM service_stakeholders WHERE service_id = $1 AND is_active = true AND stakeholder_id != $2 AND workspaceid = $3',
+        [id, stakeholder_id, workspaceId]
       );
       const currentTotal = parseFloat(current.rows[0].total) || 0;
       if (currentTotal + parseFloat(share_percentage) > 100) {
@@ -97,8 +120,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     const result = await pool.query(
       `INSERT INTO service_stakeholders
-         (service_id, stakeholder_id, provider_role, share_type, share_percentage, share_amount, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+         (service_id, stakeholder_id, provider_role, share_type, share_percentage, share_amount, notes, workspaceid)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (service_id, stakeholder_id)
        DO UPDATE SET
          provider_role = EXCLUDED.provider_role,
@@ -109,7 +132,7 @@ export async function POST(req: NextRequest, { params }: Params) {
          is_active = true,
          updatedat = NOW()
        RETURNING *`,
-      [id, stakeholder_id, provider_role, share_type, share_percentage ?? null, share_amount ?? null, notes ?? null]
+      [id, stakeholder_id, provider_role, share_type, share_percentage ?? null, share_amount ?? null, notes ?? null, workspaceId]
     );
 
     return NextResponse.json({ success: true, data: result.rows[0] }, { status: 201 });
@@ -126,6 +149,17 @@ export async function POST(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // The service must be ours before its provider list is read or changed.
+  const ownsService = await pool.query(
+    'SELECT 1 FROM services WHERE id::text = $1 AND workspaceid = $2',
+    [id, workspaceId]
+  );
+  if (ownsService.rows.length === 0) {
+    return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+  }
 
   try {
     const body = await req.json();
@@ -133,8 +167,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     if (!stakeholder_id) return NextResponse.json({ error: 'stakeholder_id required' }, { status: 400 });
 
     await pool.query(
-      'DELETE FROM service_stakeholders WHERE service_id = $1 AND stakeholder_id = $2',
-      [id, stakeholder_id]
+      'DELETE FROM service_stakeholders WHERE service_id = $1 AND stakeholder_id = $2 AND workspaceid = $3',
+      [id, stakeholder_id, workspaceId]
     );
     return NextResponse.json({ success: true });
   } catch (error) {

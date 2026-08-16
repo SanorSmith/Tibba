@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
   try {
     const { searchParams } = new URL(request.url);
     const invoiceId = searchParams.get('invoice_id');
@@ -36,11 +40,11 @@ export async function GET(request: NextRequest) {
       FROM service_payments sp
       LEFT JOIN invoices i ON sp.invoice_id = i.id
       LEFT JOIN patients p ON sp.patient_id = p.patientid
-      WHERE 1=1
+      WHERE sp.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
 
     if (invoiceId) { query += ` AND sp.invoice_id = $${idx++}`; params.push(invoiceId); }
     if (patientId) { query += ` AND sp.patient_id = $${idx++}`; params.push(patientId); }
@@ -82,6 +86,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
   const client = await pool.connect();
   try {
     const body = await request.json();
@@ -112,8 +119,8 @@ export async function POST(request: NextRequest) {
     // 1. Verify invoice exists and get current balances
     const invResult = await client.query(
       `SELECT id, total_amount, amount_paid, balance_due, status
-       FROM invoices WHERE id = $1 FOR UPDATE`,
-      [invoice_id]
+       FROM invoices WHERE id = $1 AND workspaceid = $2 FOR UPDATE`,
+      [invoice_id, workspaceId]
     );
     if (invResult.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -129,8 +136,8 @@ export async function POST(request: NextRequest) {
     const spResult = await client.query(
       `INSERT INTO service_payments (
          invoice_id, patient_id, amount, payment_method,
-         reference_number, notes, received_by, status
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'COMPLETED')
+         reference_number, notes, received_by, status, workspaceid
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'COMPLETED', $8)
        RETURNING *`,
       [
         invoice_id,
@@ -140,6 +147,7 @@ export async function POST(request: NextRequest) {
         reference_number || null,
         notes || null,
         received_by || null,
+        workspaceId,
       ]
     );
 

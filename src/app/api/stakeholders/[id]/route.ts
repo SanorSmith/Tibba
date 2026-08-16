@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,11 +12,13 @@ const pool = process.env.DATABASE_URL
   : null;
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   try {
     const result = await pool.query(
@@ -26,8 +29,8 @@ export async function GET(
               service_type, default_share_type,
               default_share_percentage, default_share_amount,
               is_active, notes, createdat AS created_at, updatedat AS updated_at
-       FROM stakeholders WHERE id = $1`,
-      [id]
+       FROM stakeholders WHERE id = $1 AND workspaceid = $2`,
+      [id, workspaceId]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
@@ -44,6 +47,8 @@ export async function PUT(
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -77,7 +82,7 @@ export async function PUT(
          is_active = COALESCE($18, is_active),
          notes = COALESCE($19, notes),
          updatedat = NOW()
-       WHERE id = $20
+       WHERE id = $20 AND workspaceid = $21
        RETURNING id AS stakeholder_id, stakeholder_code, name_ar, name_en, role, mobile, is_active`,
       [
         name_ar || null, name_en || null, role || null, specialty_ar || null, specialty_en || null,
@@ -87,7 +92,7 @@ export async function PUT(
         default_share_percentage != null ? default_share_percentage : null,
         default_share_amount != null ? default_share_amount : null,
         is_active != null ? is_active : null,
-        notes || null, id,
+        notes || null, id, workspaceId,
       ]
     );
     if (result.rows.length === 0) {
@@ -100,17 +105,19 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   try {
     // Soft delete — set is_active = false
     const result = await pool.query(
-      'UPDATE stakeholders SET is_active = false, updatedat = NOW() WHERE id = $1 RETURNING id',
-      [id]
+      'UPDATE stakeholders SET is_active = false, updatedat = NOW() WHERE id = $1 AND workspaceid = $2 RETURNING id',
+      [id, workspaceId]
     );
     if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Stakeholder not found' }, { status: 404 });
