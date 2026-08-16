@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Search, Settings, HelpCircle, Menu, X, CircleQuestionMark } from 'lucide-react';
 import { UserMenu } from './user-menu';
+import { FacilityBadge } from './facility-badge';
 
 export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -20,7 +21,8 @@ export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
           <Menu size={24} />
         </button>
         
-        <h1 className="text-xl sm:text-2xl text-white font-bold whitespace-nowrap mr-4 sm:mr-8">Tibbna-ERP</h1>
+        <h1 className="text-xl sm:text-2xl text-white font-bold whitespace-nowrap mr-3">Tibbna-ERP</h1>
+        <FacilityBadge />
         <div className="flex-1 max-w-xl ml-0 sm:ml-16 hidden sm:block">
           <div className="relative w-full max-w-md">
             <div className="relative">
