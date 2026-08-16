@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 import { PerformanceCalculator } from '@/services/performance-calculator';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
 export async function POST(request: NextRequest) {
   let calculator: PerformanceCalculator | null = null;
@@ -7,6 +14,20 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { employee_id, review_period } = body;
+
+    // employee_id comes from the client and is handed to a calculator that
+    // reads that employee's attendance and payroll history keyed by id alone.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Employee not found' }, { status: 404 });
+    }
     
     if (!employee_id) {
       return NextResponse.json(
@@ -45,6 +66,20 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const employee_id = searchParams.get('employee_id');
+
+  // employee_id comes from the client and is handed to a calculator that
+  // reads that employee's attendance and payroll history keyed by id alone.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+  }
+  const owns = await pool.query(
+    'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+    [employee_id, workspaceId]
+  );
+  if (owns.rows.length === 0) {
+    return NextResponse.json({ success: false, error: 'Employee not found' }, { status: 404 });
+  }
   const start_date = searchParams.get('start_date');
   const end_date = searchParams.get('end_date');
   

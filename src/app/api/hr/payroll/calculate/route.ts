@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 import { createPayrollCalculationEngine } from '@/lib/services/payroll-calculation-engine';
 
@@ -14,6 +15,20 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { period_id, employee_ids } = body;
+
+    // This handler passes a client-supplied id to a service that reads
+    // facility data keyed by that id alone, so the check belongs here.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await pool.query(
+      'SELECT 1 FROM payroll_periods WHERE id = $1 AND workspaceid = $2',
+      [period_id, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
 
     if (!period_id) {
       return NextResponse.json(

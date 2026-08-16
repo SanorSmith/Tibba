@@ -1,11 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const approverId = searchParams.get('approver_id');
     const leaveRequestId = searchParams.get('leave_request_id');
+
+    // The workflow service is keyed by these ids alone, so the facility check
+    // has to happen here rather than inside it.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    if (leaveRequestId) {
+      const owns = await pool.query(
+        'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
+        [leaveRequestId, workspaceId]
+      );
+      if (owns.rows.length === 0) {
+        return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+      }
+    }
+    if (approverId) {
+      const owns = await pool.query(
+        'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+        [approverId, workspaceId]
+      );
+      if (owns.rows.length === 0) {
+        return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+      }
+    }
     
     if (leaveRequestId) {
       const history = await approvalWorkflow.getApprovalHistory(leaveRequestId);
@@ -51,6 +83,18 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Missing required parameters: leave_request_id and action',
       }, { status: 400 });
+    }
+
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const owns = await pool.query(
+      'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
+      [leave_request_id, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
     
     if (action === 'approve') {
