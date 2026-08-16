@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,6 +8,12 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    // Leave analytics must cover this facility only.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
@@ -20,6 +27,13 @@ export async function GET(request: NextRequest) {
     const queryStartDate = startDate || defaultStartDate;
     const queryEndDate = endDate || defaultEndDate;
     
+    // workspaceId is appended last so its placeholder index depends on
+    // whether the optional department filter is present.
+    const params = department
+      ? [queryStartDate, queryEndDate, department, workspaceId]
+      : [queryStartDate, queryEndDate, workspaceId];
+    const wsIdx = department ? 4 : 3;
+
     // Get leave statistics
     const statsQuery = `
       SELECT 
@@ -33,9 +47,9 @@ export async function GET(request: NextRequest) {
       FROM leave_requests
       WHERE start_date >= $1 AND end_date <= $2
       ${department ? 'AND employee_id IN (SELECT staffid FROM staff WHERE unit = $3)' : ''}
+      AND workspaceid = $${wsIdx}
     `;
     
-    const params = department ? [queryStartDate, queryEndDate, department] : [queryStartDate, queryEndDate];
     const statsResult = await pool.query(statsQuery, params);
     const stats = statsResult.rows[0];
     
@@ -51,6 +65,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN leave_types lt ON lr.leave_type_id = lt.id
       WHERE lr.start_date >= $1 AND lr.end_date <= $2
       ${department ? 'AND lr.employee_id IN (SELECT staffid FROM staff WHERE unit = $3)' : ''}
+      AND lr.workspaceid = $${wsIdx}
       GROUP BY lt.name, lt.code
       ORDER BY total_days DESC
     `;
@@ -67,12 +82,12 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT lr.employee_id) as unique_employees
       FROM leave_requests lr
       LEFT JOIN staff s ON lr.employee_id = s.staffid
-      WHERE lr.start_date >= $1 AND lr.end_date <= $2
+      WHERE lr.start_date >= $1 AND lr.end_date <= $2 AND lr.workspaceid = $3
       GROUP BY s.unit
       ORDER BY total_days DESC
     `;
     
-    const byDeptResult = await pool.query(byDeptQuery, [queryStartDate, queryEndDate]);
+    const byDeptResult = await pool.query(byDeptQuery, [queryStartDate, queryEndDate, workspaceId]);
     
     // Get monthly trend
     const trendQuery = `
@@ -82,12 +97,12 @@ export async function GET(request: NextRequest) {
         SUM(working_days_count) as total_days,
         COUNT(CASE WHEN status = 'APPROVED' THEN 1 END) as approved_count
       FROM leave_requests
-      WHERE start_date >= $1 AND end_date <= $2
+      WHERE start_date >= $1 AND end_date <= $2 AND workspaceid = $3
       GROUP BY TO_CHAR(start_date, 'YYYY-MM')
       ORDER BY month
     `;
     
-    const trendResult = await pool.query(trendQuery, [queryStartDate, queryEndDate]);
+    const trendResult = await pool.query(trendQuery, [queryStartDate, queryEndDate, workspaceId]);
     
     // Get top employees by leave days
     const topEmployeesQuery = `
@@ -102,6 +117,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN staff s ON lr.employee_id = s.staffid
       WHERE lr.start_date >= $1 AND lr.end_date <= $2
       ${department ? 'AND s.unit = $3' : ''}
+      AND lr.workspaceid = $${wsIdx}
       GROUP BY lr.employee_id, lr.employee_name, s.unit
       ORDER BY total_days DESC
       LIMIT 10
@@ -119,13 +135,13 @@ export async function GET(request: NextRequest) {
         ROUND(COUNT(CASE WHEN status = 'APPROVED' THEN 1 END)::numeric / COUNT(*)::numeric * 100, 2) as approval_rate
       FROM leave_requests
       WHERE approved_by IS NOT NULL
-      AND start_date >= $1 AND end_date <= $2
+      AND start_date >= $1 AND end_date <= $2 AND workspaceid = $3
       GROUP BY approved_by_name
       ORDER BY total_reviewed DESC
       LIMIT 10
     `;
     
-    const approverStatsResult = await pool.query(approverStatsQuery, [queryStartDate, queryEndDate]);
+    const approverStatsResult = await pool.query(approverStatsQuery, [queryStartDate, queryEndDate, workspaceId]);
     
     // Calculate average processing time
     const processingTimeQuery = `
@@ -135,10 +151,10 @@ export async function GET(request: NextRequest) {
         MAX(EXTRACT(EPOCH FROM (approved_at - created_at))/3600) as max_hours
       FROM leave_requests
       WHERE approved_at IS NOT NULL
-      AND start_date >= $1 AND end_date <= $2
+      AND start_date >= $1 AND end_date <= $2 AND workspaceid = $3
     `;
     
-    const processingTimeResult = await pool.query(processingTimeQuery, [queryStartDate, queryEndDate]);
+    const processingTimeResult = await pool.query(processingTimeQuery, [queryStartDate, queryEndDate, workspaceId]);
     
     return NextResponse.json({
       success: true,

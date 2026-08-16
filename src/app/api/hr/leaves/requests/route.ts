@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,12 @@ async function calculateWorkingDays(pool: Pool, startDate: string, endDate: stri
 
 
 export async function GET(request: NextRequest) {
+  // Leave requests are facility-private.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -83,11 +90,11 @@ export async function GET(request: NextRequest) {
       FROM leave_requests lr
       JOIN leave_types lt ON lr.leave_type_id = lt.id
       LEFT JOIN staff s ON lr.employee_id = s.staffid
-      WHERE 1=1
+      WHERE lr.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (employeeId) {
       query += ` AND lr.employee_id = $${paramIndex}`;
@@ -140,6 +147,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // A request may only be filed for this facility's own employee.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -175,6 +188,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The employee must be ours, otherwise a request for another facility's
+    // staff would be filed under this facility.
+    const emp = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
+    );
+    if (emp.rows.length === 0) {
+      await pool.end();
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
     // Validate dates
     const startDateObj = new Date(start_date);
     const endDateObj = new Date(end_date);
@@ -191,8 +215,8 @@ export async function POST(request: NextRequest) {
 
     // Get leave type details
     const leaveType = await pool.query(`
-      SELECT * FROM leave_types WHERE id = $1
-    `, [leave_type_id]);
+      SELECT * FROM leave_types WHERE id = $1 AND workspaceid = $2
+    `, [leave_type_id, workspaceId]);
 
     if (leaveType.rows.length === 0) {
       await pool.end();
@@ -219,7 +243,8 @@ export async function POST(request: NextRequest) {
     const balance = await pool.query(`
       SELECT * FROM leave_balance
       WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3
-    `, [employee_id, leave_type_id, currentYear]);
+        AND workspaceid = $4
+    `, [employee_id, leave_type_id, currentYear, workspaceId]);
 
     if (balance.rows.length > 0) {
       const availableBalance = balance.rows[0].available_balance ?? 0;
@@ -236,8 +261,8 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(`
       INSERT INTO leave_requests (
         organization_id, employee_id, leave_type_id, start_date, end_date,
-        days_count, reason, emergency_contact, handover_notes, status
-      ) VALUES ('00000000-0000-0000-0000-000000000001', $1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+        days_count, reason, emergency_contact, handover_notes, status, workspaceid
+      ) VALUES ('00000000-0000-0000-0000-000000000001', $1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9)
       RETURNING *
     `, [
       employee_id,
@@ -247,16 +272,17 @@ export async function POST(request: NextRequest) {
       totalDays,
       reason || null,
       emergency_contact || null,
-      handover_to || null
+      handover_to || null,
+      workspaceId
     ]);
 
     // Create level-1 approval record
     try {
       await pool.query(`
         INSERT INTO leave_request_approvals (
-          organization_id, leave_request_id, approval_level, status
-        ) VALUES ('00000000-0000-0000-0000-000000000001', $1, 1, 'PENDING')
-      `, [result.rows[0].id]);
+          organization_id, leave_request_id, approval_level, status, workspaceid
+        ) VALUES ('00000000-0000-0000-0000-000000000001', $1, 1, 'PENDING', $2)
+      `, [result.rows[0].id, workspaceId]);
     } catch {
       // non-fatal — approval record creation is best-effort
     }
