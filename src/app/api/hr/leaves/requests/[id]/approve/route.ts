@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  // Approving is a write on someone else's leave record, so the request must
+  // belong to the approver's facility.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -44,8 +52,8 @@ export async function POST(
 
     // Get leave request details
     const leaveRequest = await pool.query(`
-      SELECT * FROM leave_requests WHERE id = $1
-    `, [id]);
+      SELECT * FROM leave_requests WHERE id = $1 AND workspaceid = $2
+    `, [id, workspaceId]);
 
     if (leaveRequest.rows.length === 0) {
       await pool.end();

@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  // Adjusting a balance credits or debits leave days, so it must be limited
+  // to the caller's own facility.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -34,7 +42,8 @@ export async function POST(request: NextRequest) {
     const currentBalance = await pool.query(`
       SELECT * FROM leave_balance 
       WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3
-    `, [employee_id, leave_type_id, year]);
+        AND workspaceid = $4
+    `, [employee_id, leave_type_id, year, workspaceId]);
 
     if (currentBalance.rows.length === 0) {
       await pool.end();
@@ -58,8 +67,9 @@ export async function POST(request: NextRequest) {
         available_balance = $2,
         updated_at = NOW()
       WHERE employee_id = $3 AND leave_type_id = $4 AND year = $5
+        AND workspaceid = $6
       RETURNING *
-    `, [newAccrued, newClosingBalance, employee_id, leave_type_id, year]);
+    `, [newAccrued, newClosingBalance, employee_id, leave_type_id, year, workspaceId]);
 
     // Create transaction record for audit trail
     await pool.query(`

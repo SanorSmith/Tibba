@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,11 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'PENDING';
 
@@ -33,9 +39,9 @@ export async function GET(request: NextRequest) {
         pp.total_deductions as deductions_total
       FROM payroll_approvals pa
       JOIN payroll_periods pp ON pa.period_id = pp.id
-      WHERE pa.status = $1
+      WHERE pa.status = $1 AND pa.workspaceid = $2
       ORDER BY pa.created_at DESC
-    `, [status]);
+    `, [status, workspaceId]);
 
     return NextResponse.json({
       success: true,
@@ -50,11 +56,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { period_id } = body;
 
     if (!period_id) {
       return NextResponse.json({ error: 'period_id is required' }, { status: 400 });
+    }
+
+    // The period must belong to this facility before a workflow is built
+    // around it and its status is rewritten below.
+    const ownsPeriod = await pool.query(
+      'SELECT 1 FROM payroll_periods WHERE id = $1 AND workspaceid = $2',
+      [period_id, workspaceId]
+    );
+    if (ownsPeriod.rows.length === 0) {
+      return NextResponse.json({ error: 'Payroll period not found' }, { status: 404 });
     }
 
     // Check if approval already exists for this period
@@ -78,18 +99,18 @@ export async function POST(request: NextRequest) {
 
     for (const s of steps) {
       const result = await pool.query(`
-        INSERT INTO payroll_approvals (period_id, step_number, approver_role, status)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO payroll_approvals (period_id, step_number, approver_role, status, workspaceid)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
-      `, [period_id, s.step, s.role, s.step === 1 ? 'PENDING' : 'WAITING']);
+      `, [period_id, s.step, s.role, s.step === 1 ? 'PENDING' : 'WAITING', workspaceId]);
 
       insertedIds.push(result.rows[0].id);
     }
 
     // Update period status
     await pool.query(
-      `UPDATE payroll_periods SET status = 'PENDING_APPROVAL' WHERE id = $1`,
-      [period_id]
+      `UPDATE payroll_periods SET status = 'PENDING_APPROVAL' WHERE id = $1 AND workspaceid = $2`,
+      [period_id, workspaceId]
     );
 
     return NextResponse.json({
@@ -106,11 +127,26 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { approval_id, action, comments, approver_name } = body;
 
     if (!approval_id || !action) {
       return NextResponse.json({ error: 'approval_id and action are required' }, { status: 400 });
+    }
+
+    // Both branches below update by approval_id and then rewrite the parent
+    // period's status, so establish ownership once here.
+    const ownsApproval = await pool.query(
+      'SELECT 1 FROM payroll_approvals WHERE id = $1 AND workspaceid = $2',
+      [approval_id, workspaceId]
+    );
+    if (ownsApproval.rows.length === 0) {
+      return NextResponse.json({ error: 'Approval not found' }, { status: 404 });
     }
 
     if (action === 'approve') {

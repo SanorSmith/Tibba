@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
   const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -46,7 +51,7 @@ export async function PUT(
         profile_completed = true,
         profile_completion_date = NOW(),
         updated_at = NOW()
-      WHERE staffid = $7
+      WHERE staffid = $7 AND workspaceid = $8
     `, [
       cv_summary || null,
       JSON.stringify(education || []),
@@ -54,7 +59,8 @@ export async function PUT(
       JSON.stringify(certifications || []),
       JSON.stringify(languages || []),
       JSON.stringify(skills || []),
-      id
+      id,
+      workspaceId
     ]);
 
     await pool.end();
@@ -83,6 +89,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
   const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -109,8 +119,8 @@ export async function GET(
         profile_completed,
         profile_completion_date
       FROM staff 
-      WHERE staffid = $1
-    `, [id]);
+      WHERE staffid = $1 AND workspaceid = $2
+    `, [id, workspaceId]);
 
     await pool.end();
 

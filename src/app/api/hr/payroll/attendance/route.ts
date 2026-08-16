@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,11 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const periodId = searchParams.get('period_id');
 
@@ -19,8 +25,8 @@ export async function GET(request: NextRequest) {
 
     // Get period dates
     const periodResult = await pool.query(
-      `SELECT start_date, end_date FROM payroll_periods WHERE id = $1`,
-      [periodId]
+      `SELECT start_date, end_date FROM payroll_periods WHERE id = $1 AND workspaceid = $2`,
+      [periodId, workspaceId]
     );
 
     if (periodResult.rows.length === 0) {
@@ -60,11 +66,12 @@ export async function GET(request: NextRequest) {
           ROUND(AVG(COALESCE(total_hours, 0))::numeric, 1) as avg_hours,
           COUNT(*) as total_records
         FROM daily_attendance
-        WHERE date BETWEEN $1 AND $2
+        WHERE date BETWEEN $1 AND $2 AND workspaceid = $3
         GROUP BY employee_id
       ) att ON att.employee_id = s.staffid
+      WHERE s.workspaceid = $3
       ORDER BY s.firstname
-    `, [start_date, end_date]);
+    `, [start_date, end_date, workspaceId]);
 
     return NextResponse.json({
       success: true,

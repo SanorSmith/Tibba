@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -11,6 +12,12 @@ const pool = new Pool({
  */
 export async function GET(request: NextRequest) {
   try {
+    // Salary data — strictly the caller's own employees.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employee_id = searchParams.get('employee_id');
 
@@ -36,12 +43,12 @@ export async function GET(request: NextRequest) {
         effective_to,
         is_active
       FROM employee_compensation
-      WHERE employee_id = $1 AND is_active = true
+      WHERE employee_id = $1 AND is_active = true AND workspaceid = $2
       ORDER BY effective_from DESC
       LIMIT 1
     `;
 
-    const result = await pool.query(query, [employee_id]);
+    const result = await pool.query(query, [employee_id, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json({
@@ -81,6 +88,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     const {
@@ -111,12 +123,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Setting a salary is a write against an employee record, so the
+    // employee must belong to this facility.
+    const emp = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
+    );
+    if (emp.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
     // Deactivate previous compensation records
     await pool.query(
       `UPDATE employee_compensation 
        SET is_active = false, effective_to = CURRENT_DATE 
-       WHERE employee_id = $1 AND is_active = true`,
-      [employee_id]
+       WHERE employee_id = $1 AND is_active = true AND workspaceid = $2`,
+      [employee_id, workspaceId]
     );
 
     // Insert new compensation record
@@ -131,8 +156,9 @@ export async function POST(request: NextRequest) {
         currency,
         salary_grade_id,
         effective_from,
-        is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+        is_active,
+        workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)
       RETURNING *
     `;
 
@@ -145,7 +171,8 @@ export async function POST(request: NextRequest) {
       payment_frequency,
       currency,
       salary_grade_id,
-      effective_from || new Date().toISOString().split('T')[0]
+      effective_from || new Date().toISOString().split('T')[0],
+      workspaceId
     ]);
 
     return NextResponse.json({
@@ -169,6 +196,11 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     const {
@@ -216,6 +248,7 @@ export async function PUT(request: NextRequest) {
         total_package = $6,
         updated_at = CURRENT_TIMESTAMP
       WHERE ${id ? 'id = $7' : 'employee_id = $7 AND is_active = true'}
+        AND workspaceid = $8
       RETURNING *
     `;
 
@@ -226,7 +259,8 @@ export async function PUT(request: NextRequest) {
       meal_allowance,
       payment_frequency,
       total_package,
-      id || employee_id
+      id || employee_id,
+      workspaceId
     ]);
 
     if (result.rows.length === 0) {

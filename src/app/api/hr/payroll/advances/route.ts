@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -11,6 +12,11 @@ const pool = new Pool({
  */
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employee_id = searchParams.get('employee_id');
     const status = searchParams.get('status');
@@ -21,9 +27,9 @@ export async function GET(request: NextRequest) {
         s.firstname || ' ' || COALESCE(s.lastname, '') as employee_name
       FROM employee_advances ea
       LEFT JOIN staff s ON ea.employee_id = s.staffid
-      WHERE 1=1
+      WHERE ea.workspaceid = $1
     `;
-    const params: any[] = [];
+    const params: any[] = [workspaceId];
 
     if (employee_id) {
       params.push(employee_id);
@@ -59,6 +65,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       employee_id,
@@ -75,6 +86,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The advance must be for one of this facility's own employees.
+    const emp = await pool.query(
+      'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
+    );
+    if (emp.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Employee not found' },
+        { status: 404 }
+      );
+    }
+
     // Calculate deduction amount per month
     const deduction_amount = advance_amount / deduction_months;
 
@@ -85,13 +108,13 @@ export async function POST(request: NextRequest) {
       INSERT INTO employee_advances (
         employee_id, advance_number, advance_amount,
         deduction_amount, deduction_months, remaining_balance,
-        request_date, deduction_start_date, reason, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, $8, 'PENDING')
+        request_date, deduction_start_date, reason, status, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, $8, 'PENDING', $9)
       RETURNING *
     `, [
       employee_id, advanceNumber, advance_amount,
       deduction_amount, deduction_months, advance_amount,
-      deduction_start_date || new Date(), reason
+      deduction_start_date || new Date(), reason, workspaceId
     ]);
 
     return NextResponse.json({
@@ -114,6 +137,11 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { advance_id, status, approved_by, approval_notes } = body;
 
@@ -132,9 +160,9 @@ export async function PUT(request: NextRequest) {
         approved_at = CASE WHEN $1 = 'APPROVED' THEN NOW() ELSE approved_at END,
         approval_notes = $3,
         updated_at = NOW()
-      WHERE id = $4
+      WHERE id = $4 AND workspaceid = $5
       RETURNING *
-    `, [status, approved_by, approval_notes, advance_id]);
+    `, [status, approved_by, approval_notes, advance_id, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(

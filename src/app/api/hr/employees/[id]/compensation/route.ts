@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -15,6 +16,10 @@ export async function GET(
 ) {
   try {
     const { id: employeeId } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
 
     const result = await pool.query(`
       SELECT 
@@ -33,9 +38,10 @@ export async function GET(
       LEFT JOIN salary_grades sg ON ec.salary_grade_id = sg.id
       WHERE ec.employee_id = $1 
         AND ec.is_active = true
+        AND ec.workspaceid = $2
       ORDER BY ec.effective_from DESC
       LIMIT 1
-    `, [employeeId]);
+    `, [employeeId, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json({
