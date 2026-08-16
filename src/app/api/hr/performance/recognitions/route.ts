@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -8,6 +9,11 @@ const pool = new Pool({
 // GET - List recognitions with filters
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
     const status = searchParams.get('status');
@@ -25,11 +31,11 @@ export async function GET(request: NextRequest) {
       LEFT JOIN staff e ON er.employee_id = e.staffid
       LEFT JOIN staff rb ON er.recognized_by = rb.staffid
       LEFT JOIN staff ab ON er.approved_by = ab.staffid
-      WHERE 1=1
+      WHERE er.workspaceid = $1
     `;
     
-    const params: any[] = [];
-    let paramCount = 1;
+    const params: any[] = [workspaceId];
+    let paramCount = 2;
 
     if (employeeId) {
       query += ` AND er.employee_id = $${paramCount}`;
@@ -72,6 +78,11 @@ export async function GET(request: NextRequest) {
 // POST - Create recognition
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     const {
@@ -96,12 +107,13 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(
       `INSERT INTO employee_recognitions (
         employee_id, recognized_by, type, title, reason,
-        monetary_reward, status, is_auto_suggested, suggestion_reason
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        monetary_reward, status, is_auto_suggested, suggestion_reason, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *`,
       [
         employee_id, recognized_by, type, title, reason,
-        monetary_reward, status, is_auto_suggested, suggestion_reason
+        monetary_reward, status, is_auto_suggested, suggestion_reason,
+        workspaceId
       ]
     );
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require'
@@ -8,6 +9,11 @@ const pool = new Pool({
 // GET - List promotions with filters
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const employeeId = searchParams.get('employee_id');
     const status = searchParams.get('status');
@@ -22,11 +28,11 @@ export async function GET(request: NextRequest) {
       FROM promotions p
       LEFT JOIN staff e ON p.employee_id = e.staffid
       LEFT JOIN staff ab ON p.approved_by = ab.staffid
-      WHERE 1=1
+      WHERE p.workspaceid = $1
     `;
     
-    const params: any[] = [];
-    let paramCount = 1;
+    const params: any[] = [workspaceId];
+    let paramCount = 2;
 
     if (employeeId) {
       query += ` AND p.employee_id = $${paramCount}`;
@@ -63,6 +69,11 @@ export async function GET(request: NextRequest) {
 // POST - Create promotion
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     
     const {
@@ -97,15 +108,16 @@ export async function POST(request: NextRequest) {
         from_department, to_department,
         current_salary, new_salary, salary_increase, salary_increase_percentage,
         promotion_date, effective_date, reason,
-        performance_review_id, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        performance_review_id, status, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         employee_id, from_position, to_position,
         from_department, to_department,
         current_salary, new_salary, salaryIncrease, salaryIncreasePercentage,
         promotion_date, effective_date, reason,
-        performance_review_id, status
+        performance_review_id, status,
+        workspaceId
       ]
     );
 
