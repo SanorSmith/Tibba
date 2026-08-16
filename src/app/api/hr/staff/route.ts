@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,11 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const unit = searchParams.get('unit');
@@ -32,11 +38,11 @@ export async function GET(request: NextRequest) {
         dateofbirth,
         custom_staff_id
       FROM staff
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (role) {
       query += ` AND role = $${paramIndex}`;
@@ -100,9 +106,13 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
-      workspaceid,
       role,
       firstname,
       middlename,
@@ -116,7 +126,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!workspaceid || !role || !firstname || !lastname) {
+    if (!role || !firstname || !lastname) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
@@ -130,7 +140,9 @@ export async function POST(request: NextRequest) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING staffid`,
       [
-        workspaceid,
+        // Was taken from the request body, which let a client file a new
+        // employee under any facility.
+        workspaceId,
         role,
         firstname,
         middlename || null,
@@ -163,6 +175,11 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { staffid, ...updates } = body;
 
@@ -198,10 +215,17 @@ export async function PUT(request: NextRequest) {
     }
 
     updateFields.push(`updatedat = NOW()`);
-    params.push(staffid);
+    params.push(staffid, workspaceId);
 
-    const query = `UPDATE staff SET ${updateFields.join(', ')} WHERE staffid = $${paramIndex}`;
-    await pool.query(query, params);
+    const query = `UPDATE staff SET ${updateFields.join(', ')} WHERE staffid = $${paramIndex} AND workspaceid = $${paramIndex + 1}`;
+    const upd = await pool.query(query, params);
+
+    if (upd.rowCount === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Staff member not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -221,6 +245,11 @@ export async function PUT(request: NextRequest) {
 // =====================================================
 export async function DELETE(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const staffid = searchParams.get('staffid');
 
@@ -231,7 +260,17 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await pool.query('DELETE FROM staff WHERE staffid = $1', [staffid]);
+    const del = await pool.query(
+      'DELETE FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [staffid, workspaceId]
+    );
+
+    if (del.rowCount === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Staff member not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

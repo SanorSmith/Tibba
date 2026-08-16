@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require',
@@ -8,6 +9,11 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'vacancies' or 'candidates'
     
@@ -32,8 +38,9 @@ export async function GET(request: NextRequest) {
           created_at,
           updated_at
         FROM job_vacancies 
+        WHERE workspace_id = $1
         ORDER BY posting_date DESC
-      `);
+      `, [workspaceId]);
       
       return NextResponse.json({
         success: true,
@@ -70,8 +77,9 @@ export async function GET(request: NextRequest) {
           v.department as vacancy_department
         FROM job_candidates c
         LEFT JOIN job_vacancies v ON c.vacancy_id = v.id
+        WHERE c.workspace_id = $1
         ORDER BY c.created_at DESC
-      `);
+      `, [workspaceId]);
       
       return NextResponse.json({
         success: true,
@@ -86,7 +94,8 @@ export async function GET(request: NextRequest) {
           COUNT(*) as total_vacancies,
           COUNT(*) FILTER (WHERE status = 'OPEN') as open_vacancies
         FROM job_vacancies
-      `),
+        WHERE workspace_id = $1
+      `, [workspaceId]),
       pool.query(`
         SELECT 
           COUNT(*) as total_candidates,
@@ -97,13 +106,15 @@ export async function GET(request: NextRequest) {
           COUNT(*) FILTER (WHERE status = 'HIRED') as hired_count,
           COUNT(*) FILTER (WHERE status = 'REJECTED') as rejected_count
         FROM job_candidates
-      `),
+        WHERE workspace_id = $1
+      `, [workspaceId]),
       pool.query(`
         SELECT 
           AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/86400) as avg_days
         FROM job_candidates 
         WHERE status = 'HIRED' AND created_at > NOW() - INTERVAL '6 months'
-      `)
+          AND workspace_id = $1
+      `, [workspaceId])
     ]);
     
     const vacancyData = vacancyStats.rows[0];
@@ -146,6 +157,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { type, data } = body;
     
@@ -154,7 +170,8 @@ export async function POST(request: NextRequest) {
       const result = await pool.query(`
         INSERT INTO job_vacancies (
           vacancy_number, position, department, department_id, openings,
-          posting_date, deadline, status, priority, grade, salary_min, salary_max, recruiter
+          posting_date, deadline, status, priority, grade, salary_min, salary_max, recruiter,
+          workspace_id
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *
       `, [
@@ -170,7 +187,8 @@ export async function POST(request: NextRequest) {
         data.grade,
         data.salary_min,
         data.salary_max,
-        data.recruiter
+        data.recruiter,
+        workspaceId
       ]);
       
       return NextResponse.json({
@@ -185,7 +203,8 @@ export async function POST(request: NextRequest) {
         INSERT INTO job_candidates (
           candidate_number, first_name, last_name, email, phone, gender,
           nationality, education, university, specialization, experience_years,
-          current_employer, expected_salary, source, referral_employee, status, vacancy_id, resume_url, notes
+          current_employer, expected_salary, source, referral_employee, status, vacancy_id, resume_url, notes,
+          workspace_id
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         RETURNING *
       `, [
@@ -207,7 +226,8 @@ export async function POST(request: NextRequest) {
         data.status || 'NEW',
         data.vacancy_id,
         data.resume_url,
-        data.notes
+        data.notes,
+        workspaceId
       ]);
       
       return NextResponse.json({
@@ -232,6 +252,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { type, id, data } = body;
     
@@ -278,14 +303,21 @@ export async function PATCH(request: NextRequest) {
       }
       
       updateFields.push(`updated_at = NOW()`);
-      values.push(id);
+      values.push(id, workspaceId);
       
       const result = await pool.query(`
         UPDATE job_vacancies 
         SET ${updateFields.join(', ')}
-        WHERE id = $${paramCount}
+        WHERE id = $${paramCount} AND workspace_id = $${paramCount + 1}
         RETURNING *
       `, values);
+
+      if (result.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Vacancy not found' },
+          { status: 404 }
+        );
+      }
       
       return NextResponse.json({
         success: true,
@@ -386,14 +418,21 @@ export async function PATCH(request: NextRequest) {
       }
       
       updateFields.push(`updated_at = NOW()`);
-      values.push(id);
+      values.push(id, workspaceId);
       
       const result = await pool.query(`
         UPDATE job_candidates 
         SET ${updateFields.join(', ')}
-        WHERE id = $${paramCount}
+        WHERE id = $${paramCount} AND workspace_id = $${paramCount + 1}
         RETURNING *
       `, values);
+
+      if (result.rows.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Candidate not found' },
+          { status: 404 }
+        );
+      }
       
       return NextResponse.json({
         success: true,
@@ -417,13 +456,18 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const id = searchParams.get('id');
     
     if (type === 'vacancy' && id) {
       // Delete vacancy
-      await pool.query('DELETE FROM job_vacancies WHERE id = $1', [id]);
+      await pool.query('DELETE FROM job_vacancies WHERE id = $1 AND workspace_id = $2', [id, workspaceId]);
       
       return NextResponse.json({
         success: true,
@@ -433,7 +477,7 @@ export async function DELETE(request: NextRequest) {
     
     if (type === 'candidate' && id) {
       // Delete candidate
-      await pool.query('DELETE FROM job_candidates WHERE id = $1', [id]);
+      await pool.query('DELETE FROM job_candidates WHERE id = $1 AND workspace_id = $2', [id, workspaceId]);
       
       return NextResponse.json({
         success: true,

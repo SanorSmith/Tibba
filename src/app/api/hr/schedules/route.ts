@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,11 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const employeeId = searchParams.get('employee_id');
@@ -54,10 +60,10 @@ export async function GET(request: NextRequest) {
         FROM employee_schedules es
         LEFT JOIN staff s ON es.employee_id = s.staffid
         LEFT JOIN shifts sh ON es.shift_id = sh.id
-        WHERE es.id = $1
+        WHERE es.id = $1 AND es.workspaceid = $2
       `;
 
-      const result = await pool.query(query, [id]);
+      const result = await pool.query(query, [id, workspaceId]);
 
       if (result.rows.length === 0) {
         return NextResponse.json(
@@ -122,11 +128,11 @@ export async function GET(request: NextRequest) {
       FROM employee_schedules es
       INNER JOIN staff s ON es.employee_id = s.staffid
       LEFT JOIN shifts sh ON es.shift_id = sh.id
-      WHERE 1=1
+      WHERE es.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (employeeId) {
       query += ` AND s.custom_staff_id = $${paramIndex}`;
@@ -247,6 +253,11 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       employee_id,
@@ -276,14 +287,14 @@ export async function POST(request: NextRequest) {
       searchId = employee_id.replace('STAFF-', '');
       // Try to find by UUID suffix
       staffResult = await pool.query(
-        'SELECT staffid FROM staff WHERE staffid::text LIKE $1 OR custom_staff_id = $2',
-        [`%${searchId}`, employee_id]
+        'SELECT staffid FROM staff WHERE (staffid::text LIKE $1 OR custom_staff_id = $2) AND workspaceid = $3',
+        [`%${searchId}`, employee_id, workspaceId]
       );
     } else {
       // Search by custom_staff_id or exact staffid
       staffResult = await pool.query(
-        'SELECT staffid FROM staff WHERE custom_staff_id = $1 OR staffid::text = $1',
-        [employee_id]
+        'SELECT staffid FROM staff WHERE (custom_staff_id = $1 OR staffid::text = $1) AND workspaceid = $2',
+        [employee_id, workspaceId]
       );
     }
 
@@ -298,7 +309,7 @@ export async function POST(request: NextRequest) {
 
     // Get shift UUID
     const shiftResult = await pool.query(
-      'SELECT id FROM shifts WHERE code = $1',
+      'SELECT id FROM shifts WHERE code = $1 AND workspaceid = $2',
       [shift_id]
     );
 
@@ -315,8 +326,8 @@ export async function POST(request: NextRequest) {
     const scheduleResult = await pool.query(
       `INSERT INTO employee_schedules (
         employee_id, shift_id, effective_date, end_date, schedule_type,
-        rotation_pattern, notes, status, organization_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        rotation_pattern, notes, status, organization_id, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id`,
       [
         employeeUuid,
@@ -328,6 +339,7 @@ export async function POST(request: NextRequest) {
         notes || null,
         'ACTIVE',
         '00000000-0000-0000-0000-000000000001',
+        workspaceId,
       ]
     );
 
@@ -390,6 +402,11 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, status, end_date, notes, approved_by } = body;
 
@@ -424,8 +441,8 @@ export async function PUT(request: NextRequest) {
 
     if (approved_by) {
       const approverResult = await pool.query(
-        'SELECT firstname, lastname FROM staff WHERE custom_staff_id = $1 OR staffid::text = $1',
-        [approved_by]
+        'SELECT firstname, lastname FROM staff WHERE (custom_staff_id = $1 OR staffid::text = $1) AND workspaceid = $2',
+        [approved_by, workspaceId]
       );
 
       if (approverResult.rows.length > 0) {
@@ -436,10 +453,16 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    query += ` WHERE id = $${paramIndex}`;
-    params.push(id);
+    query += ` WHERE id = $${paramIndex} AND workspaceid = $${paramIndex + 1}`;
+    params.push(id, workspaceId);
 
-    await pool.query(query, params);
+    const upd = await pool.query(query, params);
+    if (upd.rowCount === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Schedule not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -459,6 +482,11 @@ export async function PUT(request: NextRequest) {
 // =====================================================
 export async function DELETE(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -469,7 +497,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await pool.query('DELETE FROM employee_schedules WHERE id = $1', [id]);
+    const del = await pool.query(
+      'DELETE FROM employee_schedules WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
+    );
+    if (del.rowCount === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Schedule not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

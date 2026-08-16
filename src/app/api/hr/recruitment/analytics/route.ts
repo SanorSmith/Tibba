@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require',
@@ -8,6 +9,11 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || '30days';
 
@@ -16,26 +22,28 @@ export async function GET(request: NextRequest) {
     try {
       // Get basic metrics
       const [totalApplicants, hireRate, avgTimeToHire, costPerHire] = await Promise.all([
-        client.query('SELECT COUNT(*) as count FROM job_candidates'),
+        client.query('SELECT COUNT(*) as count FROM job_candidates WHERE workspace_id = $1', [workspaceId]),
         client.query(`
           SELECT ROUND(
             (COUNT(*) FILTER (WHERE status = 'HIRED')::float / COUNT(*)::float) * 100, 2
           ) as rate
           FROM job_candidates
-          WHERE created_at >= NOW() - INTERVAL '30 days'
-        `),
+          WHERE created_at >= NOW() - INTERVAL '30 days' AND workspace_id = $1
+        `, [workspaceId]),
         client.query(`
           SELECT ROUND(
             AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/86400), 1
           ) as avg_days
           FROM job_candidates
           WHERE status = 'HIRED' AND created_at >= NOW() - INTERVAL '30 days'
-        `),
+            AND workspace_id = $1
+        `, [workspaceId]),
         client.query(`
           SELECT ROUND(AVG(expected_salary), 0) as avg_salary
           FROM job_candidates
           WHERE status = 'HIRED' AND created_at >= NOW() - INTERVAL '30 days'
-        `)
+            AND workspace_id = $1
+        `, [workspaceId])
       ]);
 
       // Get funnel data
@@ -47,8 +55,8 @@ export async function GET(request: NextRequest) {
           COUNT(*) FILTER (WHERE status = 'OFFERED') as offered,
           COUNT(*) FILTER (WHERE status = 'HIRED') as hired
         FROM job_candidates
-        WHERE created_at >= NOW() - INTERVAL '30 days'
-      `);
+        WHERE created_at >= NOW() - INTERVAL '30 days' AND workspace_id = $1
+      `, [workspaceId]);
 
       // Get source performance
       const sourceResult = await client.query(`
@@ -57,10 +65,10 @@ export async function GET(request: NextRequest) {
           COUNT(*) as applicants,
           COUNT(*) FILTER (WHERE status = 'HIRED') as hired
         FROM job_candidates
-        WHERE created_at >= NOW() - INTERVAL '30 days'
+        WHERE created_at >= NOW() - INTERVAL '30 days' AND workspace_id = $1
         GROUP BY source
         ORDER BY applicants DESC
-      `);
+      `, [workspaceId]);
 
       // Calculate source rates
       const sourcePerformance = sourceResult.rows.map(row => ({
