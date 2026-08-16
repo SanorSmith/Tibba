@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -53,12 +59,13 @@ export async function GET(request: NextRequest) {
       WHERE lr.status = 'APPROVED'
         AND lr.start_date <= $2
         AND lr.end_date >= $1
+        AND lr.workspaceid = $3
     `;
 
-    const params: any[] = [startDate, endDate];
+    const params: any[] = [startDate, endDate, workspaceId];
 
     if (departmentId) {
-      query += ` AND s.unit = $3`;
+      query += ` AND s.unit = $4`;
       params.push(departmentId);
     }
 

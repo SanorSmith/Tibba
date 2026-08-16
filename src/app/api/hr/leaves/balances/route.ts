@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
@@ -49,7 +55,7 @@ export async function GET(request: NextRequest) {
         lb.available_balance
       FROM leave_balance lb
       JOIN leave_types lt ON lb.leave_type_id = lt.id
-      WHERE lb.employee_id = $1 AND lb.year = $2
+      WHERE lb.employee_id = $1 AND lb.year = $2 AND lb.workspaceid = $3
       ORDER BY lt.name ASC
     `, [employeeId, year]);
 
@@ -76,6 +82,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Bulk balance initialisation and accrual must not reach other facilities.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
@@ -99,15 +111,18 @@ export async function POST(request: NextRequest) {
       const currentYear = new Date().getFullYear();
       
       // Get all active staff
+      // Only this facility's staff — this used to initialise balances for
+      // every employee in every hospital.
       const staff = await pool.query(`
-        SELECT staffid FROM staff
-      `);
+        SELECT staffid FROM staff WHERE workspaceid = $1
+      `, [workspaceId]);
 
       // Get all leave types with accrual
       const leaveTypes = await pool.query(`
         SELECT * FROM leave_types 
         WHERE is_active = true AND accrual_frequency IS NOT NULL
-      `);
+          AND workspaceid = $1
+      `, [workspaceId]);
 
       let initialized = 0;
 
@@ -117,7 +132,8 @@ export async function POST(request: NextRequest) {
           const existing = await pool.query(`
             SELECT id FROM leave_balance 
             WHERE employee_id = $1 AND leave_type_id = $2 AND year = $3
-          `, [employee.staffid, leaveType.id, currentYear]);
+              AND workspaceid = $4
+          `, [employee.staffid, leaveType.id, currentYear, workspaceId]);
 
           if (existing.rows.length === 0) {
             // Calculate initial accrual
@@ -132,9 +148,9 @@ export async function POST(request: NextRequest) {
             await pool.query(`
               INSERT INTO leave_balance (
                 employee_id, leave_type_id, year, opening_balance, accrued,
-                carry_forwarded, encashed, forfeited
-              ) VALUES ($1, $2, $3, 0, $4, 0, 0, 0)
-            `, [employee.staffid, leaveType.id, currentYear, initialAccrual]);
+                carry_forwarded, encashed, forfeited, workspaceid
+              ) VALUES ($1, $2, $3, 0, $4, 0, 0, 0, $5)
+            `, [employee.staffid, leaveType.id, currentYear, initialAccrual, workspaceId]);
 
             initialized++;
           }
@@ -159,7 +175,8 @@ export async function POST(request: NextRequest) {
       const leaveTypes = await pool.query(`
         SELECT * FROM leave_types 
         WHERE is_active = true AND accrual_frequency = 'MONTHLY'
-      `);
+          AND workspaceid = $1
+      `, [workspaceId]);
 
       let accrued = 0;
 
@@ -174,9 +191,9 @@ export async function POST(request: NextRequest) {
             available_balance = available_balance + $1,
             last_accrual_date = CURRENT_DATE,
             updated_at = NOW()
-          WHERE leave_type_id = $2 AND year = $3
+          WHERE leave_type_id = $2 AND year = $3 AND workspaceid = $4
           RETURNING employee_id
-        `, [accrualAmount, leaveType.id, currentYear]);
+        `, [accrualAmount, leaveType.id, currentYear, workspaceId]);
 
         accrued += result.rowCount || 0;
 

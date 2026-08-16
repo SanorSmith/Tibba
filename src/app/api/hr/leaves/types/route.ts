@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // Each facility defines its own leave types.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -44,10 +51,10 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at
       FROM leave_types
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
 
-    const params: any[] = [];
+    const params: any[] = [workspaceId];
 
     if (activeOnly) {
       query += ` AND is_active = true`;
@@ -57,8 +64,8 @@ export async function GET(request: NextRequest) {
     if (employeeId) {
       // Get employee gender
       const employeeResult = await pool.query(`
-        SELECT gender FROM staff WHERE staffid = $1
-      `, [employeeId]);
+        SELECT gender FROM staff WHERE staffid = $1 AND workspaceid = $2
+      `, [employeeId, workspaceId]);
 
       if (employeeResult.rows.length > 0) {
         const gender = employeeResult.rows[0].gender;
@@ -94,6 +101,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -138,8 +150,9 @@ export async function POST(request: NextRequest) {
       INSERT INTO leave_types (
         code, name, category, max_days, max_consecutive, carry_forward,
         max_carry_forward_days, accrual_method, accrual_rate, notice_days,
-        requires_documentation, gender_specific, applicable_to_roles, color, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true)
+        requires_documentation, gender_specific, applicable_to_roles, color, is_active,
+        workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true, $15)
       RETURNING *
     `, [
       code,
@@ -155,7 +168,8 @@ export async function POST(request: NextRequest) {
       requires_documentation || false,
       gender_specific || null,
       applicable_to_roles ? JSON.stringify(applicable_to_roles) : null,
-      color || '#3B82F6'
+      color || '#3B82F6',
+      workspaceId
     ]);
 
     await pool.end();

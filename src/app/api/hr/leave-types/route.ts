@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,6 +11,13 @@ const pool = new Pool({
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
+    // organization_id is a fixed constant here, so it isolates nothing —
+    // the facility filter has to come from the session.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get('isActive');
     const organizationId = searchParams.get('organizationId') || '00000000-0000-0000-0000-000000000001';
@@ -41,10 +49,10 @@ export async function GET(request: NextRequest) {
         updated_at,
         updated_by
       FROM leave_types
-      WHERE organization_id = $1
+      WHERE organization_id = $1 AND workspaceid = $2
     `;
 
-    const params: any[] = [organizationId];
+    const params: any[] = [organizationId, workspaceId];
 
     if (isActive !== null) {
       query += ` AND is_active = $${params.length + 1}`;
@@ -78,6 +86,11 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // Validation
@@ -93,8 +106,8 @@ export async function POST(request: NextRequest) {
 
     // Check for duplicate code
     const checkResult = await pool.query(
-      'SELECT id FROM leave_types WHERE code = $1 AND organization_id = $2',
-      [body.code, body.organizationId || '00000000-0000-0000-0000-000000000001']
+      'SELECT id FROM leave_types WHERE code = $1 AND organization_id = $2 AND workspaceid = $3',
+      [body.code, body.organizationId || '00000000-0000-0000-0000-000000000001', workspaceId]
     );
 
     if (checkResult.rows.length > 0) {
@@ -128,10 +141,11 @@ export async function POST(request: NextRequest) {
         icon,
         sort_order,
         is_active,
-        created_by
+        created_by,
+        workspaceid
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
       )
       RETURNING *
     `;
@@ -157,6 +171,7 @@ export async function POST(request: NextRequest) {
       body.sortOrder || 0,
       body.isActive !== undefined ? body.isActive : true,
       body.createdBy || 'system',
+      workspaceId,
     ];
 
     const result = await pool.query(query, values);
