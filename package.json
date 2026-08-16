@@ -18,7 +18,9 @@
     "validate:hr:fixed": "node scripts/validate-hr-fixed.js",
     "test:supabase": "ts-node scripts/test-supabase-connection.ts",
     "test:supabase:env": "ts-node scripts/test-supabase-with-env.ts",
-    "test:supabase:fixed": "node scripts/test-supabase-fixed.js"
+    "test:supabase:fixed": "node scripts/test-supabase-fixed.js",
+    "test:unit": "jest src/__tests__/unit",
+    "test:isolation": "jest --config jest.integration.config.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

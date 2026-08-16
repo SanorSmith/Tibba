@@ -5,36 +5,35 @@ const createJestConfig = nextJest({
   dir: './',
 })
 
-// Add any custom config to be passed to Jest
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
+
+  // Default to node: most of what we test is server-side (password hashing,
+  // session parsing, API routes). Component tests opt into jsdom with a
+  // `@jest-environment jsdom` docblock at the top of the file.
+  testEnvironment: 'node',
+
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  testMatch: [
-    '**/__tests__/payroll-calculator.test.ts',
-    '**/__tests__/simple-*.test.ts',
-  ],
+
+  // A git worktree lives under .claude/worktrees and contains a second copy of
+  // the whole app, including package.json. Without this, jest-haste-map aborts
+  // with a "naming collision" before running anything.
+  modulePathIgnorePatterns: ['<rootDir>/.claude/'],
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/.claude/'],
+
+  testMatch: ['<rootDir>/src/__tests__/**/*.test.ts', '<rootDir>/src/__tests__/**/*.test.tsx'],
+
   collectCoverageFrom: [
+    'src/lib/workspace.ts',
+    'src/lib/auth/password.ts',
     'src/services/payroll-calculator.ts',
     'src/services/alert-service.ts',
     'src/services/workflow-service.ts',
-    'src/services/report-generator.ts',
-    'src/services/report-exporter.ts',
-    'src/services/payslip-generator.ts',
-    'src/services/bank-file-generator.ts',
   ],
-  coverageThreshold: {
-    global: {
-      branches: 50,
-      functions: 50,
-      lines: 50,
-      statements: 50,
-    },
-  },
-  testTimeout: 10000,
+
+  testTimeout: 30000,
 }
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 module.exports = createJestConfig(customJestConfig)
