@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('=== DEPARTMENTS API START ===');
     
     // Import pg dynamically
@@ -37,8 +43,9 @@ export async function GET(request: NextRequest) {
         createdat as created_at,
         updatedat as updated_at
       FROM departments
+      WHERE workspaceid = $1
       ORDER BY name ASC
-    `);
+    `, [workspaceId]);
 
     console.log('Departments fetched:', result.rows.length, 'departments found');
 
@@ -120,6 +127,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('=== DEPARTMENTS POST API START ===');
     
     // Import pg dynamically
@@ -162,13 +174,14 @@ export async function POST(request: NextRequest) {
 
     const result = await pool.query(`
       INSERT INTO departments 
-       (departmentid, name, description, createdat, updatedat)
-       VALUES ($1, $2, $3, NOW(), NOW())
+       (departmentid, name, description, workspaceid, createdat, updatedat)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
        RETURNING departmentid, name, description, createdat, updatedat
     `, [
       departmentId,
       name,
-      description || null
+      description || null,
+      workspaceId
     ]);
 
     // Transform the result to match expected interface

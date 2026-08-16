@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     });
 
     const { id } = await context.params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     console.log('Fetching specialty with ID:', id);
 
     const result = await pool.query(`
@@ -36,8 +41,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         createdat as created_at,
         updatedat as updated_at
       FROM specialties
-      WHERE specialtyid = $1
-    `, [id]);
+      WHERE specialtyid = $1 AND workspaceid = $2
+    `, [id, workspaceId]);
 
     await pool.end();
 
@@ -94,6 +99,10 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     });
 
     const { id } = await context.params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     const body = await request.json();
     
     const {
@@ -120,7 +129,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     const result = await pool.query(`
       UPDATE specialties 
       SET name = $1, description = $2, departmentid = $3, code = $4, is_active = $5, updatedat = NOW()
-      WHERE specialtyid = $6
+      WHERE specialtyid = $6 AND workspaceid = $7
       RETURNING specialtyid, name, description, departmentid, code, is_active, createdat, updatedat
     `, [
       name,
@@ -128,7 +137,8 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       department_id || null,
       code,
       is_active !== undefined ? is_active : true,
-      id
+      id,
+      workspaceId
     ]);
 
     await pool.end();
@@ -196,12 +206,16 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     });
 
     const { id } = await context.params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     console.log('Deleting specialty with ID:', id);
 
     // Check if specialty exists
     const existingSpecialty = await pool.query(
-      'SELECT specialtyid FROM specialties WHERE specialtyid = $1',
-      [id]
+      'SELECT specialtyid FROM specialties WHERE specialtyid = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (existingSpecialty.rows.length === 0) {
@@ -216,7 +230,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     }
 
     // Delete the specialty
-    await pool.query('DELETE FROM specialties WHERE specialtyid = $1', [id]);
+    await pool.query('DELETE FROM specialties WHERE specialtyid = $1 AND workspaceid = $2', [id, workspaceId]);
 
     await pool.end();
 
