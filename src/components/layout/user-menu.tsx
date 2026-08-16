@@ -17,6 +17,8 @@ interface SessionUser {
   name: string;
   email: string;
   role: string;
+  workspaceName?: string | null;
+  facilityRole?: string | null;
 }
 
 function getInitials(name: string) {
@@ -99,6 +101,12 @@ export function UserMenu() {
               <p className="text-sm font-semibold text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-500">{formatRole(user.role)}</p>
               <p className="text-xs text-gray-400">{user.email}</p>
+              {user.workspaceName && (
+                <p className="mt-1 text-xs font-medium text-blue-700">
+                  {user.workspaceName.trim()}
+                  {user.facilityRole ? ` · ${formatRole(user.facilityRole)}` : ''}
+                </p>
+              )}
             </div>
           </div>
         </DropdownMenuLabel>
