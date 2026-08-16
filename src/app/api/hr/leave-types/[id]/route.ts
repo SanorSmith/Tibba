@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -13,11 +14,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { id } = await params;
 
     const result = await pool.query(
-      'SELECT * FROM leave_types WHERE id = $1',
-      [id]
+      'SELECT * FROM leave_types WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (result.rows.length === 0) {
@@ -55,13 +61,18 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
 
     // Check if leave type exists
     const checkResult = await pool.query(
-      'SELECT id FROM leave_types WHERE id = $1',
-      [id]
+      'SELECT id FROM leave_types WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (checkResult.rows.length === 0) {
@@ -77,8 +88,8 @@ export async function PUT(
     // Check for duplicate code (excluding current record)
     if (body.code) {
       const duplicateCheck = await pool.query(
-        'SELECT id FROM leave_types WHERE code = $1 AND id != $2',
-        [body.code, id]
+        'SELECT id FROM leave_types WHERE code = $1 AND id != $2 AND workspaceid = $3',
+        [body.code, id, workspaceId]
       );
 
       if (duplicateCheck.rows.length > 0) {
@@ -115,7 +126,7 @@ export async function PUT(
         is_active = COALESCE($18, is_active),
         updated_at = NOW(),
         updated_by = COALESCE($19, updated_by)
-      WHERE id = $20
+      WHERE id = $20 AND workspaceid = $21
       RETURNING *
     `;
 
@@ -140,6 +151,7 @@ export async function PUT(
       body.isActive !== undefined ? body.isActive : null,
       body.updatedBy || 'system',
       id,
+      workspaceId,
     ];
 
     const result = await pool.query(query, values);
@@ -170,12 +182,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { id } = await params;
 
     // Check if leave type exists
     const checkResult = await pool.query(
-      'SELECT id FROM leave_types WHERE id = $1',
-      [id]
+      'SELECT id FROM leave_types WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (checkResult.rows.length === 0) {
@@ -190,8 +207,8 @@ export async function DELETE(
 
     // Check if leave type is being used in leave requests
     const usageCheck = await pool.query(
-      'SELECT COUNT(*) as count FROM leave_requests WHERE leave_type_id = $1',
-      [id]
+      'SELECT COUNT(*) as count FROM leave_requests WHERE leave_type_id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (parseInt(usageCheck.rows[0].count) > 0) {
@@ -206,7 +223,10 @@ export async function DELETE(
     }
 
     // Delete the leave type
-    await pool.query('DELETE FROM leave_types WHERE id = $1', [id]);
+    await pool.query(
+      'DELETE FROM leave_types WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
+    );
 
     return NextResponse.json({
       success: true,

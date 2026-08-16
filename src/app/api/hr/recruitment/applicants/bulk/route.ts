@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-allaqs25.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require',
@@ -8,6 +9,13 @@ const pool = new Pool({
 
 export async function POST(request: NextRequest) {
   try {
+    // A bulk status change takes a list of ids straight from the client, so
+    // every statement below is additionally constrained to this facility.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action, applicantIds } = body;
 
@@ -31,45 +39,45 @@ export async function POST(request: NextRequest) {
           updateQuery = `
             UPDATE job_candidates 
             SET status = 'SCREENING', updated_at = NOW()
-            WHERE id = ANY($1)
+            WHERE id = ANY($1) AND workspace_id = $2
           `;
-          updateValues = [applicantIds];
+          updateValues = [applicantIds, workspaceId];
           break;
           
         case 'interviewing':
           updateQuery = `
             UPDATE job_candidates 
             SET status = 'INTERVIEWING', updated_at = NOW()
-            WHERE id = ANY($1)
+            WHERE id = ANY($1) AND workspace_id = $2
           `;
-          updateValues = [applicantIds];
+          updateValues = [applicantIds, workspaceId];
           break;
           
         case 'offered':
           updateQuery = `
             UPDATE job_candidates 
             SET status = 'OFFERED', updated_at = NOW()
-            WHERE id = ANY($1)
+            WHERE id = ANY($1) AND workspace_id = $2
           `;
-          updateValues = [applicantIds];
+          updateValues = [applicantIds, workspaceId];
           break;
           
         case 'hired':
           updateQuery = `
             UPDATE job_candidates 
             SET status = 'HIRED', updated_at = NOW()
-            WHERE id = ANY($1)
+            WHERE id = ANY($1) AND workspace_id = $2
           `;
-          updateValues = [applicantIds];
+          updateValues = [applicantIds, workspaceId];
           break;
           
         case 'reject':
           updateQuery = `
             UPDATE job_candidates 
             SET status = 'REJECTED', updated_at = NOW()
-            WHERE id = ANY($1)
+            WHERE id = ANY($1) AND workspace_id = $2
           `;
-          updateValues = [applicantIds];
+          updateValues = [applicantIds, workspaceId];
           break;
           
         default:

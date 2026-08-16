@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -7,11 +8,17 @@ const pool = new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const today = new Date().toISOString().split('T')[0];
     
     // Get total active employees (all staff are considered active)
     const activeEmployeesResult = await pool.query(
-      'SELECT COUNT(*) as count FROM staff'
+      'SELECT COUNT(*) as count FROM staff WHERE workspaceid = $1',
+      [workspaceId]
     );
     const totalActiveEmployees = parseInt(activeEmployeesResult.rows[0].count);
 
@@ -19,12 +26,13 @@ export async function GET(request: NextRequest) {
     const attendanceResult = await pool.query(`
       SELECT 
         COUNT(DISTINCT employee_id) as present_count,
-        (SELECT COUNT(*) FROM staff) as total_count
+        (SELECT COUNT(*) FROM staff WHERE workspaceid = $2) as total_count
       FROM attendance_transactions 
       WHERE DATE(timestamp) = $1 
         AND transaction_type = 'IN'
         AND is_valid = true
-    `, [today]);
+        AND workspaceid = $2
+    `, [today, workspaceId]);
     
     const attendanceData = attendanceResult.rows[0];
     const presentCount = parseInt(attendanceData.present_count);
@@ -33,7 +41,8 @@ export async function GET(request: NextRequest) {
 
     // Get pending leave requests
     const pendingLeavesResult = await pool.query(
-      'SELECT COUNT(*) as count FROM leave_requests WHERE status = \'PENDING\''
+      "SELECT COUNT(*) as count FROM leave_requests WHERE status = 'PENDING' AND workspaceid = $1",
+      [workspaceId]
     );
     const pendingLeaveRequests = parseInt(pendingLeavesResult.rows[0].count);
 
@@ -46,7 +55,8 @@ export async function GET(request: NextRequest) {
 
     // Get recent alerts (unread notifications)
     const alertsResult = await pool.query(
-      'SELECT COUNT(*) as count FROM notifications WHERE is_read = false'
+      'SELECT COUNT(*) as count FROM notifications WHERE is_read = false AND workspaceid = $1',
+      [workspaceId]
     );
     const recentAlerts = parseInt(alertsResult.rows[0].count);
 
@@ -54,14 +64,15 @@ export async function GET(request: NextRequest) {
     const attendanceTrendResult = await pool.query(`
       SELECT 
         DATE(timestamp) as date,
-        COUNT(DISTINCT employee_id) * 100.0 / (SELECT COUNT(*) FROM staff) as rate
+        COUNT(DISTINCT employee_id) * 100.0 / NULLIF((SELECT COUNT(*) FROM staff WHERE workspaceid = $1), 0) as rate
       FROM attendance_transactions 
       WHERE DATE(timestamp) >= CURRENT_DATE - INTERVAL '29 days'
         AND transaction_type = 'IN'
         AND is_valid = true
+        AND workspaceid = $1
       GROUP BY DATE(timestamp)
       ORDER BY date ASC
-    `);
+    `, [workspaceId]);
     
     const attendanceTrend = attendanceTrendResult.rows.map(row => ({
       date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -74,9 +85,10 @@ export async function GET(request: NextRequest) {
         COALESCE(unit, 'Unassigned') as department,
         COUNT(*) as count
       FROM staff 
+      WHERE workspaceid = $1
       GROUP BY unit
       ORDER BY count DESC
-    `);
+    `, [workspaceId]);
     
     const departmentHeadcount = departmentResult.rows.map(row => ({
       department: row.department,
@@ -97,9 +109,10 @@ export async function GET(request: NextRequest) {
       WHERE timestamp >= CURRENT_DATE - INTERVAL '7 weeks'
         AND timestamp < CURRENT_DATE
         AND is_valid = true
+        AND workspaceid = $1
       GROUP BY EXTRACT(WEEK FROM timestamp)
       ORDER BY week
-    `);
+    `, [workspaceId]);
     
     const overtimeByWeek = overtimeResult.rows.map(row => ({
       week: row.week,
