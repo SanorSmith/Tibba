@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Force dynamic rendering
@@ -20,6 +21,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('GET /api/invoice-returns/[id] - Request received');
     
     if (!pool) {
@@ -78,8 +84,8 @@ export async function GET(
         created_at,
         updated_at
       FROM invoice_returns
-      WHERE id = $1
-    `, [id]);
+      WHERE id = $1 AND workspaceid = $2
+    `, [id, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -110,6 +116,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('PUT /api/invoice-returns/[id] - Request received');
     
     if (!pool) {
@@ -226,7 +237,7 @@ export async function PUT(
     }
 
     // Add the WHERE condition parameter
-    updateValues.push(id);
+    updateValues.push(id, workspaceId);
 
     console.log('Update fields:', updateFields);
     console.log('Update values:', updateValues);
@@ -234,7 +245,7 @@ export async function PUT(
     const result = await pool.query(`
       UPDATE invoice_returns SET
         ${updateFields.join(', ')}
-      WHERE id = $${paramIndex}
+      WHERE id = $${paramIndex} AND workspaceid = $${paramIndex + 1}
       RETURNING *
     `, updateValues);
 
@@ -270,6 +281,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('DELETE /api/invoice-returns/[id] - Request received');
     
     if (!pool) {
@@ -305,7 +321,7 @@ export async function DELETE(
       );
     }
 
-    const result = await pool.query('DELETE FROM invoice_returns WHERE id = $1 RETURNING *', [id]);
+    const result = await pool.query('DELETE FROM invoice_returns WHERE id = $1 AND workspaceid = $2 RETURNING *', [id, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(

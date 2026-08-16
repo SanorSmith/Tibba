@@ -10,6 +10,7 @@
  * Intended to pre-fill the Create Invoice form line items.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 import { isOpenEHRConfigured, getEhrIdBySubject, getPatientOrders } from '@/lib/openehr/client';
 
@@ -27,6 +28,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'OpenEHR not configured (EHRBASE_URL missing)' }, { status: 503 });
   }
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     let ehrId = searchParams.get('ehr_id') || '';
     const subject = searchParams.get('subject') || '';
@@ -63,8 +69,9 @@ export async function GET(request: NextRequest) {
           `SELECT DISTINCT ii.openehr_source_uid, ii.openehr_order_id
            FROM invoice_items ii JOIN invoices i ON i.id = ii.invoice_id
            WHERE i.status = 'PAID'
+             AND i.workspaceid = $3
              AND (ii.openehr_source_uid = ANY($1::text[]) OR ii.openehr_order_id = ANY($2::text[]))`,
-          [sourceUids, orderIds]
+          [sourceUids, orderIds, workspaceId]
         ).catch(() => ({ rows: [] as any[] }));
         const paidSourceUids = new Set(paidRows.rows.map(r => r.openehr_source_uid).filter(Boolean));
         const paidOrderIds = new Set(paidRows.rows.map(r => r.openehr_order_id).filter(Boolean));
@@ -81,7 +88,8 @@ export async function GET(request: NextRequest) {
     if (pool) {
       const r = await pool.query(
         `SELECT id, code, name, COALESCE(price_self_pay, 0) AS price
-         FROM services WHERE active IS NOT FALSE`
+         FROM services WHERE active IS NOT FALSE AND workspaceid = $1`,
+        [workspaceId]
       ).catch(() => ({ rows: [] as any[] }));
       for (const s of r.rows) {
         catalog.push({ id: s.id, code: s.code, name: (s.name || '').toLowerCase(), price: parseFloat(s.price) || 0 });

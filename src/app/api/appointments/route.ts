@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Force dynamic rendering
@@ -19,6 +20,11 @@ const pool = databaseUrl ? new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -92,10 +98,11 @@ export async function GET(request: NextRequest) {
       FROM appointments a
       LEFT JOIN patients p ON a.patientid = p.patientid
       LEFT JOIN staff s ON a.staff_id = s.staffid
+      WHERE a.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     // Add ordering
     query += ` ORDER BY a.starttime DESC 
@@ -112,9 +119,10 @@ export async function GET(request: NextRequest) {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM appointments
+      WHERE workspaceid = $1
     `;
 
-    const countResult = await pool.query(countQuery, []);
+    const countResult = await pool.query(countQuery, [workspaceId]);
     const totalAppointments = parseInt(countResult.rows[0].total);
 
     console.log(`Found ${result.rows.length} appointments out of ${totalAppointments} total`);
@@ -189,12 +197,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The facility comes from the session; it used to be a required body
+    // field, so a client could book into any hospital's calendar.
+    const workspaceid = getWorkspaceId(request);
+    if (!workspaceid) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     console.log('Creating new appointment:', body);
 
     // Extract form data
     const {
-      workspaceid,
       patientid,
       doctorid,
       starttime,
@@ -210,11 +224,11 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!workspaceid || !patientid || !doctorid || !starttime || !endtime) {
+    if (!patientid || !doctorid || !starttime || !endtime) {
       return NextResponse.json(
         { 
           error: 'Missing required fields',
-          required: ['workspaceid', 'patientid', 'doctorid', 'starttime', 'endtime']
+          required: ['patientid', 'doctorid', 'starttime', 'endtime']
         },
         { status: 400 }
       );

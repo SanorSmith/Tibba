@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Force dynamic rendering
@@ -17,6 +18,11 @@ const pool = databaseUrl ? new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('GET /api/invoice-returns - Request received');
     
     if (!pool) {
@@ -63,11 +69,11 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at
       FROM invoice_returns
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
     
-    const params = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (invoice_id) {
       query += ` AND invoice_id = $${paramIndex}`;
@@ -90,9 +96,9 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(query, params);
 
     // Get total count
-    let countQuery = 'SELECT COUNT(*) as total FROM invoice_returns WHERE 1=1';
-    const countParams = [];
-    let countParamIndex = 1;
+    let countQuery = 'SELECT COUNT(*) as total FROM invoice_returns WHERE workspaceid = $1';
+    const countParams: any[] = [workspaceId];
+    let countParamIndex = 2;
 
     if (invoice_id) {
       countQuery += ` AND invoice_id = $${countParamIndex}`;
@@ -165,6 +171,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     console.log('POST /api/invoice-returns - Request received');
     
     if (!pool) {
@@ -210,8 +221,9 @@ export async function POST(request: NextRequest) {
         notes,
         items,
         created_by,
-        updated_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        updated_by,
+        workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING *
     `, [
       body.organization_id || '00000000-0000-0000-0000-000000000001', // Default org ID
@@ -234,7 +246,8 @@ export async function POST(request: NextRequest) {
       body.notes,
       JSON.stringify(body.items || []), // Store items as JSON
       'system', // created_by
-      'system'  // updated_by
+      'system', // updated_by
+      workspaceId
     ]);
 
     const newReturn = result.rows[0];
