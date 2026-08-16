@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,12 @@ const pool = databaseUrl ? new Pool({
 
 export async function GET(request: NextRequest) {
   try {
+    // Insurers a facility has contracts with are that facility's own list.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -114,10 +121,11 @@ export async function GET(request: NextRequest) {
     const query = `
       SELECT ${selectColumns.join(', ')}
       FROM insurance_companies
+      WHERE workspaceid = $1
       ORDER BY company_name
     `;
 
-    const result = await pool.query(query);
+    const result = await pool.query(query, [workspaceId]);
 
     // Nest flat DB columns into the contact/address/metadata shape the
     // Insurance Company UI (finance/insurance) and Pre-Approval report expect.
@@ -163,6 +171,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -235,9 +248,9 @@ export async function POST(request: NextRequest) {
         contact_person, contact_phone, contact_email, address, coverage_percentage, active,
         discount_percentage, copay_percentage, payment_terms_days,
         contract_start_date, contract_end_date, coverage_limit,
-        website, city, province, notes
+        website, city, province, notes, workspaceid
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
       RETURNING *
     `, [
       `INS-${Math.floor(Math.random() * 100000)}`,
@@ -260,6 +273,7 @@ export async function POST(request: NextRequest) {
       city || '',
       province || '',
       notes,
+      workspaceId,
     ]);
 
     return NextResponse.json({

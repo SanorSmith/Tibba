@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,11 @@ const pool = process.env.DATABASE_URL
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patient_id');
     const policyNumber = searchParams.get('policy_number');
@@ -39,11 +45,12 @@ export async function GET(request: NextRequest) {
         ic.company_code,
         ic.active           AS company_active
       FROM patient_insurance_information pi
-      LEFT JOIN insurance_companies ic ON pi.company_id = ic.company_id
+      LEFT JOIN insurance_companies ic
+        ON pi.company_id = ic.company_id AND ic.workspaceid = $1
       WHERE 1=1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
     if (patientId)    { q += ` AND pi.patientid::text = $${idx++}`; params.push(patientId); }
     if (policyNumber) { q += ` AND pi.insurancenumber = $${idx++}`; params.push(policyNumber); }
 

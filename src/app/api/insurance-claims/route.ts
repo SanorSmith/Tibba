@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   try {
     // Check table exists without DDL (avoids lock contention from Strict Mode double-invoke)
     const tableCheck = await pool.query(`
@@ -97,8 +103,10 @@ export async function GET(request: NextRequest) {
     const offset    = (page - 1) * limit;
 
     // Build WHERE clause with explicit parameter numbering
-    const conditions: string[] = [];
-    const values: unknown[]    = [];
+    // Facility filter first, so it is always present regardless of which
+    // optional filters the caller supplied.
+    const values: unknown[]    = [workspaceId];
+    const conditions: string[] = ['workspaceid = $1'];
 
     if (status && status !== 'ALL')  { conditions.push(`status = $${values.push(status)}`); }
     if (companyId)                   { conditions.push(`insurance_company_id = $${values.push(companyId)}`); }
@@ -106,7 +114,7 @@ export async function GET(request: NextRequest) {
     if (dateTo)                      { conditions.push(`submission_date <= $${values.push(dateTo)}`); }
     if (invoiceId)                   { conditions.push(`invoice_id = $${values.push(invoiceId)}`); }
 
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const where = `WHERE ${conditions.join(' AND ')}`;
 
     // Count
     const countResult = await pool.query(
@@ -163,6 +171,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   try {
     await ensureTable(pool);
 
@@ -190,8 +203,8 @@ export async function POST(request: NextRequest) {
 
     // Prevent duplicate claims for the same invoice
     const existing = await pool.query(
-      `SELECT id, claim_number, status FROM insurance_claims WHERE invoice_id = $1`,
-      [invoice_id]
+      `SELECT id, claim_number, status FROM insurance_claims WHERE invoice_id = $1 AND workspaceid = $2`,
+      [invoice_id, workspaceId]
     );
     if (existing.rows.length > 0) {
       return NextResponse.json(
@@ -216,11 +229,12 @@ export async function POST(request: NextRequest) {
         patient_id, patient_name, patient_name_ar,
         insurance_company_id, insurance_company_name,
         claim_amount, approved_amount, paid_amount,
-        status, service_date, submission_date, notes, authorization_number
+        status, service_date, submission_date, notes, authorization_number,
+        workspaceid
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,
         $10, 0, 0,
-        'SUBMITTED', $11, CURRENT_DATE, $12, $13
+        'SUBMITTED', $11, CURRENT_DATE, $12, $13, $14
       )
       RETURNING *
     `, [
@@ -231,6 +245,7 @@ export async function POST(request: NextRequest) {
       service_date || null,
       notes || null,
       authorization_number || null,
+      workspaceId,
     ]);
 
     return NextResponse.json({ success: true, data: result.rows[0] }, { status: 201 });

@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,10 @@ type Params = { params: Promise<{ id: string }> };
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  // The policy row itself is patient data and stays shared; the insurer
+  // lookup below is this facility's contract, so it needs the session.
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     const b = await req.json();
     const sets: string[] = [];
@@ -30,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (b.policy_type !== undefined)   { sets.push(`policytype = $${idx++}`);     vals.push(b.policy_type); }
     if (b.company_id !== undefined) {
       sets.push(`company_id = $${idx++}`); vals.push(b.company_id);
-      const comp = await pool.query(`SELECT company_name FROM insurance_companies WHERE company_id=$1`, [b.company_id]);
+      const comp = await pool.query(`SELECT company_name FROM insurance_companies WHERE company_id=$1 AND workspaceid=$2`, [b.company_id, workspaceId]);
       if (comp.rows[0]) { sets.push(`insurancecompany = $${idx++}`); vals.push(comp.rows[0].company_name); }
     }
     if (sets.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,20 @@ export async function GET(
     }
 
     const { id: companyId } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
+    // The company must belong to this facility before its list is read or
+    // changed — company_id alone came straight from the URL.
+    const owns = await pool.query(
+      'SELECT 1 FROM insurance_companies WHERE company_id = $1 AND workspaceid = $2',
+      [companyId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ error: 'Insurance company not found' }, { status: 404 });
+    }
     await ensureTable();
 
     const result = await pool.query(
@@ -64,6 +79,20 @@ export async function POST(
     }
 
     const { id: companyId } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
+    // The company must belong to this facility before its list is read or
+    // changed — company_id alone came straight from the URL.
+    const owns = await pool.query(
+      'SELECT 1 FROM insurance_companies WHERE company_id = $1 AND workspaceid = $2',
+      [companyId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ error: 'Insurance company not found' }, { status: 404 });
+    }
     const body = await request.json();
     const { category_name, coverage_percentage } = body;
 
@@ -114,6 +143,20 @@ export async function DELETE(
     }
 
     const { id: companyId } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
+    // The company must belong to this facility before its list is read or
+    // changed — company_id alone came straight from the URL.
+    const owns = await pool.query(
+      'SELECT 1 FROM insurance_companies WHERE company_id = $1 AND workspaceid = $2',
+      [companyId, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      return NextResponse.json({ error: 'Insurance company not found' }, { status: 404 });
+    }
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('categoryId');
 

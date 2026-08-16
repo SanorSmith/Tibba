@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     const body = await request.json();
     const {
       name,
@@ -186,7 +191,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const result = await pool.query(`
       UPDATE insurance_companies SET
         ${updateFields.join(', ')}
-      WHERE company_id = $${paramIndex}
+      WHERE company_id = $${paramIndex} AND workspaceid = $${paramIndex + 1}
       RETURNING *
     `, updateValues);
 
@@ -228,10 +233,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const { id } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
 
     // Check if company exists
     const checkResult = await pool.query(
-      'SELECT company_name FROM insurance_companies WHERE company_id = $1',
+      'SELECT company_name FROM insurance_companies WHERE company_id = $1 AND workspaceid = $2',
       [id]
     );
 
@@ -244,7 +253,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     // Delete the company
     await pool.query(
-      'DELETE FROM insurance_companies WHERE company_id = $1',
+      'DELETE FROM insurance_companies WHERE company_id = $1 AND workspaceid = $2',
       [id]
     );
 
