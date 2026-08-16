@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,13 @@ export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
     const { searchParams } = new URL(request.url);
+    // The cash account is resolved per facility, so both the account lookup
+    // and the journal entries are filtered.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const year = new Date().getFullYear();
     const from = searchParams.get('from') || `${year}-01-01`;
     const to   = searchParams.get('to')   || `${year}-12-31`;
@@ -48,7 +56,8 @@ export async function GET(request: NextRequest) {
       JOIN fin_journal_entries je ON je.journalid = jl.journalid
       JOIN fin_accounts a ON a.accountid = jl.accountid
       WHERE a.accountcode = $1 AND je.journaldate < $2
-    `, [CASH_CODE, from]);
+        AND je.workspaceid = $3 AND a.workspaceid = $3
+    `, [CASH_CODE, from, workspaceId]);
     const opening = parseFloat(openingRes.rows[0].bal) || 0;
 
     // Movements within the period, grouped by sourcetype
@@ -60,8 +69,9 @@ export async function GET(request: NextRequest) {
       JOIN fin_journal_entries je ON je.journalid = jl.journalid
       JOIN fin_accounts a ON a.accountid = jl.accountid
       WHERE a.accountcode = $1 AND je.journaldate >= $2 AND je.journaldate <= $3
+        AND je.workspaceid = $4 AND a.workspaceid = $4
       GROUP BY je.sourcetype
-    `, [CASH_CODE, from, to]);
+    `, [CASH_CODE, from, to, workspaceId]);
 
     const groups: Record<string, { activity: string; label: string; inflow: number; outflow: number; net: number }> = {};
     const subtotal = { operating: 0, investing: 0, financing: 0 };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +16,13 @@ const pool = process.env.DATABASE_URL
  * Returns a single journal entry with its lines.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   try {
     const jeResult = await pool.query(
@@ -34,8 +37,8 @@ export async function GET(
          je.status,
          je.status = 'POSTED' AS posted
        FROM fin_journal_entries je
-       WHERE je.journalid = $1`,
-      [id]
+       WHERE je.journalid = $1 AND je.workspaceid = $2`,
+      [id, workspaceId]
     );
     if (jeResult.rows.length === 0) {
       return NextResponse.json({ error: 'Journal entry not found' }, { status: 404 });

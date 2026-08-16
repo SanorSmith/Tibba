@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,11 @@ const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'periods';
     const status = searchParams.get('status');
@@ -30,10 +36,10 @@ export async function GET(request: NextRequest) {
 
     if (type === 'periods') {
       const query = status
-        ? 'SELECT * FROM budget_periods WHERE status = $1 ORDER BY start_date DESC'
-        : 'SELECT * FROM budget_periods ORDER BY start_date DESC';
+        ? 'SELECT * FROM budget_periods WHERE workspaceid = $1 AND status = $2 ORDER BY start_date DESC'
+        : 'SELECT * FROM budget_periods WHERE workspaceid = $1 ORDER BY start_date DESC';
 
-      const params = status ? [status] : [];
+      const params = status ? [workspaceId, status] : [workspaceId];
       const result = await pool.query(query, params);
 
       // Overlay REAL actuals computed from the posted General Ledger.
@@ -49,8 +55,9 @@ export async function GET(request: NextRequest) {
              JOIN fin_journal_entries je ON l.journalid = je.journalid
              JOIN fin_accounts a ON l.accountid = a.accountid
              WHERE je.status = 'POSTED'
-               AND je.journaldate BETWEEN $1 AND $2`,
-            [row.start_date, row.end_date]
+               AND je.journaldate BETWEEN $1 AND $2
+               AND je.workspaceid = $3 AND a.workspaceid = $3`,
+            [row.start_date, row.end_date, workspaceId]
           );
           const revenueActual = parseFloat(gl.rows[0].revenue_actual) || 0;
           const expenseActual = parseFloat(gl.rows[0].expense_actual) || 0;
@@ -69,7 +76,10 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json(enriched);
     } else if (type === 'categories') {
-      const result = await pool.query('SELECT * FROM budget_categories ORDER BY name');
+      const result = await pool.query(
+        'SELECT * FROM budget_categories WHERE workspaceid = $1 ORDER BY name',
+        [workspaceId]
+      );
       return NextResponse.json(result.rows);
     } else if (type === 'summary') {
       const result = await pool.query(`
@@ -78,9 +88,10 @@ export async function GET(request: NextRequest) {
           COALESCE(SUM(ba.amount), 0) as spent_amount
         FROM budget_periods bp
         LEFT JOIN budget_allocations ba ON bp.id = bp.period_id
+        WHERE bp.workspaceid = $1
         GROUP BY bp.id
         ORDER BY bp.start_date DESC
-      `);
+      `, [workspaceId]);
       return NextResponse.json(result.rows);
     }
 
@@ -110,20 +121,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { type, ...data } = body;
 
     if (type === 'period') {
       const result = await pool.query(`
-        INSERT INTO budget_periods (name, start_date, end_date, total_budget, status)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO budget_periods (name, start_date, end_date, total_budget, status, workspaceid)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `, [
         data.name,
         data.start_date,
         data.end_date,
         data.total_budget,
-        data.status || 'ACTIVE'
+        data.status || 'ACTIVE',
+        workspaceId
       ]);
 
       return NextResponse.json({
@@ -132,13 +149,14 @@ export async function POST(request: NextRequest) {
       });
     } else if (type === 'category') {
       const result = await pool.query(`
-        INSERT INTO budget_categories (name, description, allocated_amount)
-        VALUES ($1, $2, $3)
+        INSERT INTO budget_categories (name, description, allocated_amount, workspaceid)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
       `, [
         data.name,
         data.description,
-        data.allocated_amount
+        data.allocated_amount,
+        workspaceId
       ]);
 
       return NextResponse.json({

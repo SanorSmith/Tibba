@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -28,6 +29,11 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔧 Enhanced Financial Dashboard API called');
     
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'month';
     const startDate = searchParams.get('start_date');
@@ -37,8 +43,9 @@ export async function GET(request: NextRequest) {
     console.log('📊 Parameters:', { period, startDate, endDate, departmentId });
 
     // Build date filter
+    // $1 is always the facility; the optional date range follows it.
     let dateFilter = '';
-    let params: any[] = [];
+    let params: any[] = [workspaceId];
     
     if (startDate && endDate) {
       dateFilter = ` AND DATE(i.invoice_date) BETWEEN $${params.length + 1} AND $${params.length + 2}`;
@@ -69,7 +76,7 @@ export async function GET(request: NextRequest) {
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
       LEFT JOIN services s ON s.id::text = ii.service_id::text
-      WHERE i.status = 'PAID' ${dateFilter}
+      WHERE i.workspaceid = $1 AND i.status = 'PAID' ${dateFilter}
       GROUP BY s.category, s.name
       ORDER BY revenue DESC
     `;
@@ -87,8 +94,8 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN patient_responsibility > 0 THEN patient_responsibility ELSE 0 END) as patient_revenue,
         SUM(amount_paid) as amount_collected,
         SUM(balance_due) as outstanding_balance
-      FROM invoices 
-      WHERE status = 'PAID' ${dateFilter}
+      FROM invoices i
+      WHERE i.workspaceid = $1 AND i.status = 'PAID' ${dateFilter}
     `;
     
     const totalRevenueResult = await pool.query(totalRevenueQuery, params);
@@ -110,10 +117,11 @@ export async function GET(request: NextRequest) {
         JOIN fin_journal_entries je ON l.journalid = je.journalid
         JOIN fin_accounts a ON l.accountid = a.accountid
         WHERE a.accounttype = 'EXPENSE' AND je.status = 'POSTED'
+          AND je.workspaceid = $1 AND a.workspaceid = $1
         GROUP BY a.accountcode, a.accountname
         HAVING SUM(l.debit) - SUM(l.credit) <> 0
         ORDER BY amount DESC
-      `);
+      `, [workspaceId]);
       console.log('🧾 GL expense accounts:', glExpensesResult.rows.length);
     } catch (error) {
       console.log('⚠️ GL expenses query failed:', (error as Error).message);

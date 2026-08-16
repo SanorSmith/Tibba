@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,11 @@ function bucketOf(daysOverdue: number): string {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const asOf = searchParams.get('as_of') || new Date().toISOString().slice(0, 10);
     const r = await pool.query(`
@@ -40,11 +46,12 @@ export async function GET(request: NextRequest) {
         COALESCE(balance_due, 0) AS balance_due,
         ($1::date - COALESCE(due_date, invoice_date)::date) AS days_overdue
       FROM ap_invoices
-      WHERE COALESCE(status,'') NOT IN ('PAID','CANCELLED')
+      WHERE workspaceid = $2
+        AND COALESCE(status,'') NOT IN ('PAID','CANCELLED')
         AND COALESCE(balance_due, 0) > 0
         AND invoice_date::date <= $1::date
       ORDER BY COALESCE(due_date, invoice_date) ASC
-    `, [asOf]);
+    `, [asOf, workspaceId]);
 
     const emptyBuckets = (): Record<string, number> => ({ not_due: 0, d1_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0 });
     const totals = emptyBuckets();
