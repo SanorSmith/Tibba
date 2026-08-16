@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Force dynamic rendering
@@ -14,6 +15,14 @@ const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
 
 export async function GET(request: NextRequest) {
   try {
+    // These queries target columns this schema does not have, so they always
+    // throw and the handler falls back to static mock data. Gated anyway so
+    // the endpoint is not readable without a session.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -284,6 +293,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // These queries target columns this schema does not have, so they always
+    // throw and the handler falls back to static mock data. Gated anyway so
+    // the endpoint is not readable without a session.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 

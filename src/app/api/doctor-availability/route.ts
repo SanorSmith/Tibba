@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 // Force dynamic rendering
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const doctorId = searchParams.get('doctorid');
 
@@ -51,12 +57,13 @@ export async function GET(request: NextRequest) {
       SELECT starttime, endtime
       FROM appointments
       WHERE doctorid = $1
+      AND workspaceid = $2
       AND starttime >= NOW()
       AND status != 'cancelled'
       ORDER BY starttime
     `;
 
-    const result = await pool.query(query, [doctorId]);
+    const result = await pool.query(query, [doctorId, workspaceId]);
 
     // Transform booked slots into availability format
     const bookedSlots = result.rows.map(row => ({

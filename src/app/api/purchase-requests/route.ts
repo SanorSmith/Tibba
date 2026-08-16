@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const vendorId = searchParams.get('vendor_id');
@@ -43,11 +49,11 @@ export async function GET(request: NextRequest) {
       FROM purchase_orders po
       LEFT JOIN vendors v       ON po.vendorid = v.id
       LEFT JOIN warehouses w    ON po.warehouseid = w.id
-      WHERE 1=1
+      WHERE po.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
 
     if (status) {
       query += ` AND po.status = $${idx++}`;
@@ -86,6 +92,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       vendor_id,
@@ -113,12 +124,12 @@ export async function POST(request: NextRequest) {
          ponumber, vendorid, warehouseid, status,
          orderdate, expecteddate, totalamount, currency,
          paymentterms, shippingaddress, notes, sentby,
-         createdat, updatedat
+         workspaceid, createdat, updatedat
        ) VALUES (
          $1, $2, $3, 'draft',
          NOW(), $4, $5, $6,
          $7, $8, $9, $10,
-         NOW(), NOW()
+         $11, NOW(), NOW()
        ) RETURNING *`,
       [
         poNumber,
@@ -131,6 +142,7 @@ export async function POST(request: NextRequest) {
         shipping_address || null,
         notes || null,
         requested_by || null,
+        workspaceId,
       ]
     );
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import { Pool } from 'pg';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,11 @@ function generateUUID(): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const userid = searchParams.get('userid');
     const status = searchParams.get('status');
@@ -36,11 +42,11 @@ export async function GET(request: NextRequest) {
         createdat as "createdAt",
         updatedat as "updatedAt"
       FROM todos
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let paramIndex = 1;
+    const params: any[] = [workspaceId];
+    let paramIndex = 2;
 
     if (userid) {
       query += ` AND userid = $${paramIndex}`;
@@ -92,8 +98,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { userId, workspaceId, title, description, priority, dueDate } = body;
+    const { userId, title, description, priority, dueDate } = body;
 
     if (!title || !userId) {
       return NextResponse.json(
@@ -105,23 +116,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let finalWorkspaceId = workspaceId;
-    
-    if (!finalWorkspaceId) {
-      const existingWorkspace = await pool.query(`
-        SELECT workspaceid FROM workspaces LIMIT 1
-      `);
-      
-      if (existingWorkspace.rows.length > 0) {
-        finalWorkspaceId = existingWorkspace.rows[0].workspaceid;
-      } else {
-        const newWorkspaceId = generateUUID();
-        await pool.query(`
-          INSERT INTO workspaces (workspaceid, name) VALUES ($1, 'Default Workspace')
-        `, [newWorkspaceId]);
-        finalWorkspaceId = newWorkspaceId;
-      }
-    }
+    // Was taken from the request body, and when absent it picked an arbitrary
+    // workspace (SELECT ... LIMIT 1) or created a new one.
+    const finalWorkspaceId = workspaceId;
 
     const todoId = generateUUID();
 
@@ -180,6 +177,11 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { todoId, title, description, completed, priority, dueDate } = body;
 
@@ -238,12 +240,12 @@ export async function PUT(request: NextRequest) {
     }
 
     updateFields.push(`updatedat = NOW()`);
-    updateValues.push(todoId);
+    updateValues.push(todoId, workspaceId);
 
     const query = `
       UPDATE todos 
       SET ${updateFields.join(', ')}
-      WHERE todoid = $${paramIndex}
+      WHERE todoid = $${paramIndex} AND workspaceid = $${paramIndex + 1}
       RETURNING 
         todoid as "todoId",
         workspaceid as "workspaceId",
@@ -289,6 +291,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const todoId = searchParams.get('todoId');
 
@@ -303,8 +310,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const existingTodo = await pool.query(
-      'SELECT * FROM todos WHERE todoid = $1',
-      [todoId]
+      'SELECT * FROM todos WHERE todoid = $1 AND workspaceid = $2',
+      [todoId, workspaceId]
     );
 
     if (existingTodo.rows.length === 0) {
@@ -318,8 +325,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     await pool.query(
-      'DELETE FROM todos WHERE todoid = $1',
-      [todoId]
+      'DELETE FROM todos WHERE todoid = $1 AND workspaceid = $2',
+      [todoId, workspaceId]
     );
 
     return NextResponse.json({

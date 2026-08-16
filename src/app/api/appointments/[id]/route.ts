@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,8 @@ const EDITABLE = [
 export async function PATCH(request: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     const body = await request.json();
     const sets: string[] = [];
@@ -42,15 +45,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
     }
     // touch updatedat if the column exists (ignore failure)
-    values.push(id);
+    values.push(id, workspaceId);
     const r = await pool.query(
       `UPDATE appointments SET ${sets.join(', ')}, updatedat = NOW()
-       WHERE appointmentid = $${i} RETURNING *`,
+       WHERE appointmentid = $${i} AND workspaceid = $${i + 1} RETURNING *`,
       values
     ).catch(async () => {
       // retry without updatedat if that column doesn't exist
       return pool!.query(
-        `UPDATE appointments SET ${sets.join(', ')} WHERE appointmentid = $${i} RETURNING *`,
+        `UPDATE appointments SET ${sets.join(', ')} WHERE appointmentid = $${i} AND workspaceid = $${i + 1} RETURNING *`,
         values
       );
     });
@@ -64,11 +67,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
-    const r = await pool.query(`DELETE FROM appointments WHERE appointmentid = $1 RETURNING appointmentid`, [id]);
+    const r = await pool.query(`DELETE FROM appointments WHERE appointmentid = $1 AND workspaceid = $2 RETURNING appointmentid`, [id, workspaceId]);
     if (r.rows.length === 0) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
     }
