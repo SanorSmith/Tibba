@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
              updatedat      = NOW()
          WHERE id = ANY($3::uuid[])
            AND payment_status = 'PENDING'
+           AND workspaceid = $4
          RETURNING *`,
-        [payment_date, notes ?? null, share_ids]
+        [payment_date, notes ?? null, share_ids, ws]
       );
       updatedShares = result.rows;
     } else {

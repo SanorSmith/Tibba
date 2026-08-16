@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Department confirms receipt — validate key, add stock, log history
     if (status === "RECEIVED") {
-      const transfer = await pool.query(`SELECT * FROM hospital_transfers WHERE id=$1`, [id]);
+      const transfer = await pool.query(`SELECT * FROM hospital_transfers WHERE id=$1 AND workspace_id=$2`, [id, WS]);
       const t = transfer.rows[0];
       if (!t) return NextResponse.json({ error: "Transfer not found" }, { status: 404 });
 
@@ -82,8 +82,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
          received_by = COALESCE($2, received_by),
          sent_by     = COALESCE($3, sent_by),
          updatedat   = NOW()
-       WHERE id=$4`,
-      [status||null, receivedBy||null, sentBy||null, id]
+       WHERE id=$4 AND workspace_id=$5`,
+      [status||null, receivedBy||null, sentBy||null, id, WS]
     );
 
     return NextResponse.json({ success: true });

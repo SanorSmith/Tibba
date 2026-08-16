@@ -19,6 +19,9 @@ const pool = process.env.DATABASE_URL
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
+  const ws = getWorkspaceId(request);
+  if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const status    = searchParams.get('status');
   const vendor_id = searchParams.get('vendor_id');
@@ -36,10 +39,10 @@ export async function GET(request: NextRequest) {
         ho.order_number AS po_number
       FROM ap_invoices ap
       LEFT JOIN hospital_orders ho ON ap.po_id = ho.id
-      WHERE 1=1
+      WHERE ap.workspaceid = $1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [ws];
+    let idx = 2;
     if (status)    { q += ` AND ap.status = $${idx++}`;              params.push(status); }
     if (vendor_id) { q += ` AND ap.vendor_id = $${idx++}`;           params.push(vendor_id); }
     if (from)      { q += ` AND ap.invoice_date >= $${idx++}`;       params.push(from); }

@@ -22,6 +22,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status     = searchParams.get('status');
     const from       = searchParams.get('from');
@@ -41,11 +46,11 @@ export async function GET(request: NextRequest) {
         je.status = 'POSTED' AS posted,
         je.createdat
       FROM fin_journal_entries je
-      WHERE 1=1
+      WHERE je.workspaceid = $1
     `;
 
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
 
     if (status)     { query += ` AND je.status = $${idx++}`;                params.push(status); }
     if (sourceType) { query += ` AND je.sourcetype = $${idx++}`;            params.push(sourceType); }
