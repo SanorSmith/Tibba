@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,11 @@ export async function GET(
 ) {
   try {
     const { supplierId } = await params;
-    const result = await query('SELECT * FROM suppliers WHERE supplierid = $1', [supplierId]);
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+    const result = await query('SELECT * FROM suppliers WHERE supplierid = $1 AND workspaceid = $2', [supplierId, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -39,6 +44,10 @@ export async function PUT(
 ) {
   try {
     const { supplierId } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
     const body = await request.json();
     const {
       code,
@@ -64,7 +73,7 @@ export async function PUT(
     } = body;
 
     // Check if supplier exists
-    const existing = await query('SELECT * FROM suppliers WHERE supplierid = $1', [supplierId]);
+    const existing = await query('SELECT * FROM suppliers WHERE supplierid = $1 AND workspaceid = $2', [supplierId, workspaceId]);
     if (existing.rows.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Supplier not found' },
@@ -129,8 +138,12 @@ export async function DELETE(
 ) {
   try {
     const { supplierId } = await params;
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
 
-    const result = await query('DELETE FROM suppliers WHERE supplierid = $1 RETURNING *', [supplierId]);
+    const result = await query('DELETE FROM suppliers WHERE supplierid = $1 AND workspaceid = $2 RETURNING *', [supplierId, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(

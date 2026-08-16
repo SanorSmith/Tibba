@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,13 +19,18 @@ const pool = process.env.DATABASE_URL
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   try {
     // Resolve the AP number for this invoice
-    const apRes = await pool.query(`SELECT ap_number FROM ap_invoices WHERE id = $1`, [id]);
+    const apRes = await pool.query(
+      `SELECT ap_number FROM ap_invoices WHERE id = $1 AND workspaceid = $2`,
+      [id, workspaceId]
+    );
     if (apRes.rows.length === 0) {
       return NextResponse.json({ error: 'AP invoice not found' }, { status: 404 });
     }
@@ -35,10 +41,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
       `SELECT journalid, journalnumber, journaldate, sourcetype, description,
               totaldebit, totalcredit, status
        FROM fin_journal_entries
-       WHERE sourceid = $1
-          OR ($2 <> '' AND description LIKE '%' || $2 || '%')
+       WHERE workspaceid = $3
+         AND (sourceid = $1
+              OR ($2 <> '' AND description LIKE '%' || $2 || '%'))
        ORDER BY createdat ASC`,
-      [id, apNumber]
+      [id, apNumber, workspaceId]
     );
 
     // Attach lines (with account names) to each entry

@@ -9,8 +9,9 @@
  * Owner's Capital (paid-in) is deliberately EXCLUDED — you cannot pay dividends
  * out of capital. If the result is negative, nothing is available.
  */
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +22,13 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
+
+  // Distributable profit is per facility — this summed every hospital's GL.
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
   try {
     // Revenue (credit-normal) and Expenses (debit-normal) from posted GL
     const pl = await pool.query(`
@@ -33,7 +39,8 @@ export async function GET() {
       JOIN fin_journal_entries je ON l.journalid = je.journalid
       JOIN fin_accounts a ON l.accountid = a.accountid
       WHERE je.status = 'POSTED'
-    `);
+        AND je.workspaceid = $1 AND a.workspaceid = $1
+    `, [workspaceId]);
     const revenue   = parseFloat(pl.rows[0].revenue) || 0;
     const expenses  = parseFloat(pl.rows[0].expenses) || 0;
     const netIncome = revenue - expenses;
@@ -46,13 +53,14 @@ export async function GET() {
       JOIN fin_accounts a ON l.accountid = a.accountid
       WHERE je.status = 'POSTED'
         AND (a.accountcode = '3200' OR LOWER(a.accountname) LIKE '%retained%')
-    `);
+        AND je.workspaceid = $1 AND a.workspaceid = $1
+    `, [workspaceId]);
     const retainedEarnings = parseFloat(re.rows[0].bal) || 0;
 
     // Total dividends already declared (for reference)
     let dividendsDeclared = 0;
     try {
-      const d = await pool.query(`SELECT COALESCE(SUM(amount),0) AS t FROM shareholder_distributions`);
+      const d = await pool.query(`SELECT COALESCE(SUM(amount),0) AS t FROM shareholder_distributions WHERE workspaceid = $1`, [workspaceId]);
       dividendsDeclared = parseFloat(d.rows[0].t) || 0;
     } catch { /* table may not exist yet */ }
 
