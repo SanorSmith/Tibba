@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 export async function GET(request: NextRequest) {
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
   try {
     // Get ALL pending leave requests (admin view)
     const result = await pool.query(
@@ -32,9 +38,10 @@ export async function GET(request: NextRequest) {
         FROM leave_requests lr
         LEFT JOIN leave_types lt ON lr.leave_type_id = lt.id
         LEFT JOIN leave_request_approvals lra ON lr.id = lra.leave_request_id AND lra.approval_level = 1
-        WHERE lr.status = 'PENDING'
+        WHERE lr.status = 'PENDING' AND lr.workspaceid = $1
         ORDER BY lr.start_date
-      `
+      `,
+      [workspaceId]
     );
     
     return NextResponse.json({

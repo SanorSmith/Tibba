@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 import attendanceIntegration from '@/lib/services/attendance-leave-integration';
 
@@ -64,6 +65,31 @@ export async function POST(
         success: false,
         error: 'Missing required fields: approver_id, approver_name',
       }, { status: 400 });
+    }
+
+    // Approval is delegated to the workflow service and to directApprove(),
+    // neither of which knows about facilities, so check ownership here before
+    // either path can write.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+    {
+      const guardPool = new Pool({ connectionString: process.env.DATABASE_URL });
+      try {
+        const owns = await guardPool.query(
+          'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
+          [id, workspaceId]
+        );
+        if (owns.rows.length === 0) {
+          return NextResponse.json(
+            { success: false, error: 'Leave request not found' },
+            { status: 404 }
+          );
+        }
+      } finally {
+        await guardPool.end();
+      }
     }
 
     let result;

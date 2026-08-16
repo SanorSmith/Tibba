@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -11,6 +12,11 @@ const pool = new Pool({
  */
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const year = searchParams.get('year');
@@ -22,9 +28,9 @@ export async function GET(request: NextRequest) {
         total_employees, total_gross, total_deductions, total_net,
         created_at, updated_at
       FROM payroll_periods
-      WHERE 1=1
+      WHERE workspaceid = $1
     `;
-    const params: any[] = [];
+    const params: any[] = [workspaceId];
 
     if (status) {
       params.push(status);
@@ -60,6 +66,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { period_name, period_code, period_type, start_date, end_date, payment_date } = body;
 
@@ -73,10 +84,10 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(`
       INSERT INTO payroll_periods (
         period_name, period_code, period_type,
-        start_date, end_date, payment_date, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT')
+        start_date, end_date, payment_date, status, workspaceid
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT', $7)
       RETURNING *
-    `, [period_name, period_code, period_type || 'MONTHLY', start_date, end_date, payment_date]);
+    `, [period_name, period_code, period_type || 'MONTHLY', start_date, end_date, payment_date, workspaceId]);
 
     return NextResponse.json({
       success: true,

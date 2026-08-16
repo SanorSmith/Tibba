@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 import attendanceIntegration from '@/lib/services/attendance-leave-integration';
 
@@ -19,13 +20,33 @@ export async function POST(
     }
     
     // Admin override - check if user is admin
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { Pool } = require('pg');
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    
-    // Get user role to verify admin privileges
+
+    // The leave request must belong to this facility — an admin of one
+    // hospital must not be able to force-approve another's leave.
+    const owns = await pool.query(
+      'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
+    );
+    if (owns.rows.length === 0) {
+      await pool.end();
+      return NextResponse.json({
+        success: false,
+        error: 'Leave request not found',
+      }, { status: 404 });
+    }
+
+    // Get user role to verify admin privileges. The admin must also be an
+    // employee of this facility.
     const userResult = await pool.query(
-      'SELECT role FROM staff WHERE staffid = $1',
-      [approver_id]
+      'SELECT role FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [approver_id, workspaceId]
     );
     
     const isAdmin = userResult.rows.length > 0 && 

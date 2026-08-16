@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
   const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -58,7 +63,7 @@ export async function PUT(
         gratuity_eligible = $12,
         notice_period_days = $13,
         updated_at = NOW()
-      WHERE staffid = $14
+      WHERE staffid = $14 AND workspaceid = $15
     `, [
       pension_eligible ?? true,
       pension_scheme || 'STANDARD',
@@ -73,7 +78,8 @@ export async function PUT(
       settlement_calculation_method || 'IRAQI_LABOR_LAW',
       gratuity_eligible ?? true,
       notice_period_days ?? 30,
-      id
+      id,
+      workspaceId
     ]);
 
     await pool.end();
@@ -102,6 +108,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
   const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 
   if (!databaseUrl) {
@@ -135,8 +145,8 @@ export async function GET(
         last_settlement_date,
         last_settlement_amount
       FROM staff 
-      WHERE staffid = $1
-    `, [id]);
+      WHERE staffid = $1 AND workspaceid = $2
+    `, [id, workspaceId]);
 
     await pool.end();
 

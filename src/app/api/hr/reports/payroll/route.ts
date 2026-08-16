@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -11,6 +12,13 @@ const pool = new Pool({
  */
 export async function GET(request: NextRequest) {
   try {
+    // Payroll reports aggregate salaries, so each helper below is passed the
+    // caller's facility rather than reading every hospital's transactions.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const reportType = searchParams.get('type') || 'summary';
     const periodId = searchParams.get('period_id');
@@ -21,22 +29,22 @@ export async function GET(request: NextRequest) {
 
     switch (reportType) {
       case 'summary':
-        return await getPayrollSummary(periodId, startDate, endDate, department);
+        return await getPayrollSummary(workspaceId, periodId, startDate, endDate, department);
       
       case 'detailed':
-        return await getDetailedReport(periodId, department);
+        return await getDetailedReport(workspaceId, periodId, department);
       
       case 'department':
-        return await getDepartmentAnalysis(periodId, startDate, endDate);
+        return await getDepartmentAnalysis(workspaceId, periodId, startDate, endDate);
       
       case 'employee':
-        return await getEmployeeReport(employeeId, startDate, endDate);
+        return await getEmployeeReport(workspaceId, employeeId, startDate, endDate);
       
       case 'deductions':
-        return await getDeductionsReport(periodId, startDate, endDate);
+        return await getDeductionsReport(workspaceId, periodId, startDate, endDate);
       
       case 'ytd':
-        return await getYearToDateReport(new Date().getFullYear());
+        return await getYearToDateReport(workspaceId, new Date().getFullYear());
       
       default:
         return NextResponse.json(
@@ -58,6 +66,7 @@ export async function GET(request: NextRequest) {
  * Payroll Summary Report
  */
 async function getPayrollSummary(
+  ws: string,
   periodId?: string | null,
   startDate?: string | null,
   endDate?: string | null,
@@ -87,10 +96,10 @@ async function getPayrollSummary(
       AVG(pt.net_salary) as avg_net
     FROM payroll_transactions pt
     JOIN payroll_periods pp ON pt.period_id = pp.id
-    WHERE 1=1
+    WHERE pt.workspaceid = $1
   `;
   
-  const params: any[] = [];
+  const params: any[] = [ws];
   
   if (periodId) {
     params.push(periodId);
@@ -124,7 +133,7 @@ async function getPayrollSummary(
 /**
  * Detailed Payroll Report
  */
-async function getDetailedReport(periodId?: string | null, department?: string | null) {
+async function getDetailedReport(ws: string, periodId?: string | null, department?: string | null) {
   let query = `
     SELECT 
       pt.employee_number,
@@ -157,10 +166,10 @@ async function getDetailedReport(periodId?: string | null, department?: string |
       pp.end_date
     FROM payroll_transactions pt
     JOIN payroll_periods pp ON pt.period_id = pp.id
-    WHERE 1=1
+    WHERE pt.workspaceid = $1
   `;
   
-  const params: any[] = [];
+  const params: any[] = [ws];
   
   if (periodId) {
     params.push(periodId);
@@ -191,6 +200,7 @@ async function getDetailedReport(periodId?: string | null, department?: string |
  * Department Analysis Report
  */
 async function getDepartmentAnalysis(
+  ws: string,
   periodId?: string | null,
   startDate?: string | null,
   endDate?: string | null
@@ -209,10 +219,10 @@ async function getDepartmentAnalysis(
       SUM(pt.absent_days) as total_absent_days
     FROM payroll_transactions pt
     JOIN payroll_periods pp ON pt.period_id = pp.id
-    WHERE 1=1
+    WHERE pt.workspaceid = $1
   `;
   
-  const params: any[] = [];
+  const params: any[] = [ws];
   
   if (periodId) {
     params.push(periodId);
@@ -242,6 +252,7 @@ async function getDepartmentAnalysis(
  * Employee Earnings Report
  */
 async function getEmployeeReport(
+  ws: string,
   employeeId?: string | null,
   startDate?: string | null,
   endDate?: string | null
@@ -262,10 +273,10 @@ async function getEmployeeReport(
       pp.payment_date
     FROM payroll_transactions pt
     JOIN payroll_periods pp ON pt.period_id = pp.id
-    WHERE pt.employee_id = $1
+    WHERE pt.employee_id = $1 AND pt.workspaceid = $2
   `;
   
-  const params: any[] = [employeeId];
+  const params: any[] = [employeeId, ws];
   
   if (startDate && endDate) {
     params.push(startDate, endDate);
@@ -301,6 +312,7 @@ async function getEmployeeReport(
  * Deductions Analysis Report
  */
 async function getDeductionsReport(
+  ws: string,
   periodId?: string | null,
   startDate?: string | null,
   endDate?: string | null
@@ -318,10 +330,10 @@ async function getDeductionsReport(
       AVG(pt.total_deductions) as avg_deductions_per_employee
     FROM payroll_transactions pt
     JOIN payroll_periods pp ON pt.period_id = pp.id
-    WHERE 1=1
+    WHERE pt.workspaceid = $1
   `;
   
-  const params: any[] = [];
+  const params: any[] = [ws];
   
   if (periodId) {
     params.push(periodId);
@@ -350,7 +362,7 @@ async function getDeductionsReport(
 /**
  * Year-to-Date Report
  */
-async function getYearToDateReport(year: number) {
+async function getYearToDateReport(ws: string, year: number) {
   const query = `
     SELECT 
       pt.employee_id,
@@ -367,12 +379,12 @@ async function getYearToDateReport(year: number) {
       SUM(pt.absent_days) as ytd_absent_days
     FROM payroll_transactions pt
     JOIN payroll_periods pp ON pt.period_id = pp.id
-    WHERE EXTRACT(YEAR FROM pp.start_date) = $1
+    WHERE EXTRACT(YEAR FROM pp.start_date) = $1 AND pt.workspaceid = $2
     GROUP BY pt.employee_id, pt.employee_number, pt.employee_name, pt.department
     ORDER BY pt.employee_name
   `;
   
-  const result = await pool.query(query, [year]);
+  const result = await pool.query(query, [year, ws]);
   
   // Calculate grand totals
   const grandTotals = result.rows.reduce((acc, row) => ({
