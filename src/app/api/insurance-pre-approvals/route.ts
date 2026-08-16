@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,11 @@ async function ensureCompanyCol(p: Pool) {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     await ensureCompanyCol(pool);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -50,10 +56,10 @@ export async function GET(request: NextRequest) {
       FROM insurance_pre_approvals pa
       LEFT JOIN insurance_companies ic ON pa.company_id = ic.company_id
       LEFT JOIN patients p ON pa.patientid::text = p.patientid::text
-      WHERE 1=1
+      WHERE pa.workspaceid = $1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
     if (status)    { q += ` AND pa.status = $${idx++}`;            params.push(status); }
     if (patientId) { q += ` AND pa.patientid::text = $${idx++}`;  params.push(patientId); }
     q += ' ORDER BY pa.request_date DESC NULLS LAST, pa.createdat DESC';
@@ -69,6 +75,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     await ensureCompanyCol(pool);
     const b = await request.json();
     if (!b.patient_id) {
@@ -88,8 +99,8 @@ export async function POST(request: NextRequest) {
       `INSERT INTO insurance_pre_approvals
          (patientid, company_id, request_date, authorization_number, status,
           cpt_codes, icd10_codes, authorized_amount, clinical_justification,
-          requested_services, createdat, updatedat)
-       VALUES ($1,$2,CURRENT_DATE,$3,'PENDING',$4,$5,$6,$7,$8,NOW(),NOW())
+          requested_services, workspaceid, createdat, updatedat)
+       VALUES ($1,$2,CURRENT_DATE,$3,'PENDING',$4,$5,$6,$7,$8,$9,NOW(),NOW())
        RETURNING preapprovalid AS id, authorization_number, status`,
       [
         b.patient_id, b.company_id || null, authNumber,
@@ -97,6 +108,7 @@ export async function POST(request: NextRequest) {
         b.authorized_amount || 0, b.clinical_justification || null,
         // requested_services is jsonb — store as a JSON object
         b.requested_services ? JSON.stringify({ description: b.requested_services }) : null,
+        workspaceId,
       ]
     );
     return NextResponse.json({ success: true, data: r.rows[0] }, { status: 201 });

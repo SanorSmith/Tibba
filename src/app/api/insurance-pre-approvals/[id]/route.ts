@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,10 @@ type Params = { params: Promise<{ id: string }> };
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
+  // Approving or denying a pre-approval authorises spend, so it is limited to
+  // the caller's own facility.
+  const workspaceId = getWorkspaceId(req);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   try {
     const b = await req.json();
     const action = b.action;
@@ -30,8 +35,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
          SET status='APPROVED', response_date=CURRENT_DATE,
              authorized_amount=COALESCE($2, authorized_amount),
              expiration_date=$3, updatedat=NOW()
-         WHERE preapprovalid=$1 RETURNING preapprovalid AS id, status`,
-        [id, b.authorized_amount ?? null, b.expiration_date ?? null]
+         WHERE preapprovalid=$1 AND workspaceid=$4 RETURNING preapprovalid AS id, status`,
+        [id, b.authorized_amount ?? null, b.expiration_date ?? null, workspaceId]
       );
       if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       return NextResponse.json({ success: true, data: r.rows[0] });
@@ -41,8 +46,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
       const r = await pool.query(
         `UPDATE insurance_pre_approvals
          SET status='DENIED', response_date=CURRENT_DATE, denial_reason=$2, updatedat=NOW()
-         WHERE preapprovalid=$1 RETURNING preapprovalid AS id, status`,
-        [id, b.denial_reason || 'Not specified']
+         WHERE preapprovalid=$1 AND workspaceid=$3 RETURNING preapprovalid AS id, status`,
+        [id, b.denial_reason || 'Not specified', workspaceId]
       );
       if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       return NextResponse.json({ success: true, data: r.rows[0] });

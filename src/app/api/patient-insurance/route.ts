@@ -8,6 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,11 @@ const pool = process.env.DATABASE_URL
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patient_id');
     const companyId = searchParams.get('company_id');
@@ -39,11 +45,12 @@ export async function GET(request: NextRequest) {
         ic.coverage_percentage,
         ic.company_code
       FROM patient_insurance_information pi
-      LEFT JOIN insurance_companies ic ON pi.company_id = ic.company_id
+      LEFT JOIN insurance_companies ic
+        ON pi.company_id = ic.company_id AND ic.workspaceid = $1
       WHERE 1=1
     `;
-    const params: any[] = [];
-    let idx = 1;
+    const params: any[] = [workspaceId];
+    let idx = 2;
     if (patientId) { q += ` AND pi.patientid::text = $${idx++}`; params.push(patientId); }
     if (companyId) { q += ` AND pi.company_id = $${idx++}`; params.push(companyId); }
     q += ' ORDER BY pi.createdat DESC';
@@ -59,6 +66,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const b = await request.json();
     if (!b.patient_id || !b.company_id) {
       return NextResponse.json({ error: 'patient_id and company_id are required' }, { status: 400 });
@@ -71,8 +83,8 @@ export async function POST(request: NextRequest) {
 
     // Resolve company name + coverage from insurance_companies
     const comp = await pool.query(
-      `SELECT company_name, coverage_percentage FROM insurance_companies WHERE company_id = $1`,
-      [b.company_id]
+      `SELECT company_name, coverage_percentage FROM insurance_companies WHERE company_id = $1 AND workspaceid = $2`,
+      [b.company_id, workspaceId]
     );
     const companyName = comp.rows[0]?.company_name || b.company_name || 'Unknown';
     const coverage = b.coverage_percentage ?? comp.rows[0]?.coverage_percentage ?? null;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getWorkspaceId } from '@/lib/workspace';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,16 +13,20 @@ const pool = process.env.DATABASE_URL
 
 // GET /api/insurance-claims/[id]
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
 
   try {
     const result = await pool.query(
-      'SELECT * FROM insurance_claims WHERE id = $1',
-      [id]
+      'SELECT * FROM insurance_claims WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
 
     if (result.rows.length === 0) {
@@ -48,6 +53,10 @@ export async function PUT(
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
 
   try {
     const body = await request.json();
@@ -55,8 +64,8 @@ export async function PUT(
 
     // Fetch current claim
     const current = await pool.query(
-      'SELECT * FROM insurance_claims WHERE id = $1',
-      [id]
+      'SELECT * FROM insurance_claims WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
     if (current.rows.length === 0) {
       return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
@@ -91,8 +100,8 @@ export async function PUT(
              SET insurance_coverage_amount = $1,
                  patient_responsibility = GREATEST(total_amount - $1, 0),
                  updatedat = NOW()
-             WHERE id = $2`,
-            [approved_amount, claim.invoice_id]
+             WHERE id = $2 AND workspaceid = $3`,
+            [approved_amount, claim.invoice_id, workspaceId]
           );
         } catch (syncErr) {
           console.warn('[approve] invoice sync error (non-fatal):', syncErr);
@@ -146,8 +155,8 @@ export async function PUT(
       if (claim.invoice_id) {
         try {
           const invRes = await pool.query(
-            'SELECT total_amount, amount_paid FROM invoices WHERE id = $1',
-            [claim.invoice_id]
+            'SELECT total_amount, amount_paid FROM invoices WHERE id = $1 AND workspaceid = $2',
+            [claim.invoice_id, workspaceId]
           );
           if (invRes.rows.length > 0) {
             const inv = invRes.rows[0];
@@ -158,8 +167,8 @@ export async function PUT(
             await pool.query(
               `UPDATE invoices
                SET amount_paid = $1, balance_due = $2, status = $3, updatedat = NOW()
-               WHERE id = $4`,
-              [invAmountPaid, invBalanceDue, invStatus, claim.invoice_id]
+               WHERE id = $4 AND workspaceid = $5`,
+              [invAmountPaid, invBalanceDue, invStatus, claim.invoice_id, workspaceId]
             );
           }
         } catch (syncErr) {
@@ -217,16 +226,20 @@ export async function PUT(
 
 // DELETE /api/insurance-claims/[id]  (only DRAFT or REJECTED claims)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
+  const workspaceId = getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
 
   try {
     const current = await pool.query(
-      'SELECT status FROM insurance_claims WHERE id = $1',
-      [id]
+      'SELECT status FROM insurance_claims WHERE id = $1 AND workspaceid = $2',
+      [id, workspaceId]
     );
     if (current.rows.length === 0) {
       return NextResponse.json({ error: 'Claim not found' }, { status: 404 });
@@ -239,7 +252,7 @@ export async function DELETE(
       );
     }
 
-    await pool.query('DELETE FROM insurance_claims WHERE id = $1', [id]);
+    await pool.query('DELETE FROM insurance_claims WHERE id = $1 AND workspaceid = $2', [id, workspaceId]);
     return NextResponse.json({ success: true, message: 'Claim deleted' });
   } catch (error) {
     console.error('DELETE claim error:', error);
