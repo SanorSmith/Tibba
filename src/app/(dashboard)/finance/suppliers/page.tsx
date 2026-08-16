@@ -63,14 +63,13 @@ export default function SuppliersPage() {
   const [modal, setModal] = useState<'create' | 'edit' | 'view' | null>(null);
   const [current, setCurrent] = useState<FormSupplier | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const workspaceId = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
   useEffect(() => { fetchSuppliers(); setMounted(true); }, []);
 
   const fetchSuppliers = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/finance/suppliers?workspaceId=${workspaceId}`);
+      const res = await fetch(`/api/finance/suppliers`);
       const data = await res.json();
       if (data.success) setSuppliers(data.data);
       else toast.error(data.error);
@@ -112,7 +111,6 @@ export default function SuppliersPage() {
     creditlimit: form.credit_limit || null,
     currency: form.currency || 'USD',
     isactive: form.isactive,
-    workspaceid: workspaceId,
   });
 
   const filtered = useMemo(() => {

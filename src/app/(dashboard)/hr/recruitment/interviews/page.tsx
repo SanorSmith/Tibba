@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { Calendar, Plus, Clock, Users, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
-const WS = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
 const statusColors: Record<string, { bg: string; text: string }> = {
   SCHEDULED: { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -27,7 +26,7 @@ export default function InterviewsPage() {
   const fetchInterviews = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/recruitment/interviews?workspaceId=${WS}`);
+      const res = await fetch(`/api/recruitment/interviews`);
       const data = await res.json();
       if (data.success) setInterviews(data.data || []);
     } catch (error) { console.error(error); }

@@ -7,7 +7,6 @@ import { ArrowLeft, Calendar, X } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
-const WS = 'cec4d702-6dae-4ea5-9a30-ef17842c00fd';
 
 function ScheduleInterviewContent() {
   const router = useRouter();
@@ -62,7 +61,6 @@ function ScheduleInterviewContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workspaceId: WS,
           applicationId: form.applicationId,
           interviewType: form.interviewType,
           interviewRound: parseInt(form.interviewRound),

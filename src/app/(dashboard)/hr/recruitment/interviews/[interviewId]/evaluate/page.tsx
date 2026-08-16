@@ -28,7 +28,7 @@ export default function EvaluateInterviewPage() {
     try {
       const [ivRes, critRes] = await Promise.all([
         fetch(`/api/recruitment/interviews/${params.interviewId}`),
-        fetch(`/api/recruitment/evaluation-criteria?workspaceId=cec4d702-6dae-4ea5-9a30-ef17842c00fd`),
+        fetch(`/api/recruitment/evaluation-criteria`),
       ]);
       const ivData = await ivRes.json();
       const critData = await critRes.json();
