@@ -5,15 +5,19 @@ import { requireAuth } from "@/lib/auth/getCurrentUser";
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
+  const WS = auth.workspaceId;
   const search = req.nextUrl.searchParams.get("search") ?? "";
   try {
     const r = await pool.query(
       `SELECT d.departmentid AS id, d.name, d.description AS location, NULL::text AS type,
-        (SELECT COUNT(*) FROM hospital_stock s WHERE s.department_id = d.departmentid AND s.quantity > 0)::int AS item_count
+        (SELECT COUNT(*) FROM hospital_stock s
+          WHERE s.department_id = d.departmentid AND s.quantity > 0
+            AND s.workspaceid = $2)::int AS item_count
        FROM departments d
-       WHERE ($1 = '' OR d.name ILIKE $1)
+       WHERE d.workspaceid = $2
+         AND ($1 = '' OR d.name ILIKE $1)
        ORDER BY d.name`,
-      [`%${search}%`]
+      [`%${search}%`, WS]
     );
     return NextResponse.json(r.rows);
   } catch (e: any) {

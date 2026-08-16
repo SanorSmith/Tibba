@@ -44,11 +44,18 @@ async function ensureTable(p: Pool) {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
     await ensureTable(pool);
     const view = new URL(request.url).searchParams.get('view') || 'summary';
 
     if (view === 'detail') {
-      const r = await pool.query(`SELECT * FROM shareholder_distributions ORDER BY dividend_date DESC, createdat DESC`);
+      const r = await pool.query(
+        `SELECT * FROM shareholder_distributions WHERE workspaceid = $1
+         ORDER BY dividend_date DESC, createdat DESC`,
+        [workspaceId]
+      );
       return NextResponse.json({ success: true, data: r.rows, count: r.rows.length });
     }
 
@@ -62,9 +69,10 @@ export async function GET(request: NextRequest) {
              MAX(notes) AS notes,
              MAX(createdat) AS createdat
       FROM shareholder_distributions
+      WHERE workspaceid = $1
       GROUP BY declaration_id, declaration_number
       ORDER BY MAX(dividend_date) DESC
-    `);
+    `, [workspaceId]);
     const totalDistributed = r.rows.reduce((s, x) => s + parseFloat(x.distributed || 0), 0);
     return NextResponse.json({ success: true, data: r.rows, count: r.rows.length, total_distributed: totalDistributed });
   } catch (error) {

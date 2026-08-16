@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: Params) {
               ho.order_number
        FROM ap_invoices ap
        LEFT JOIN hospital_orders ho ON ap.po_id = ho.id
-       WHERE ap.id = $1`, [id]
+       WHERE ap.id = $1 AND ap.workspaceid = $2`, [id, ws]
     );
     if (apRes.rows.length === 0) {
       return NextResponse.json({ error: 'AP invoice not found' }, { status: 404 });

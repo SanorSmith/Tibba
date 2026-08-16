@@ -15,7 +15,7 @@ const pool = process.env.DATABASE_URL
  * GET /api/finance/accounts
  * Returns chart of accounts from fin_accounts joined with latest balances.
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   if (!pool) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
@@ -24,10 +24,17 @@ export async function GET(_request: NextRequest) {
     // Optional period filtering on the journal-line balance computation.
     //   ?to=YYYY-MM-DD   → cumulative balance up to a date (Balance Sheet / Trial "as of")
     //   ?from=YYYY-MM-DD → lower bound (combined with `to` gives period activity, for Income Statement)
-    const { searchParams } = new URL(_request.url);
+    // The chart of accounts is per facility, and so are the journal entries
+    // its balances are computed from.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');
     const to   = searchParams.get('to');
-    const params: any[] = [];
+    const params: any[] = [workspaceId];
     let dateFilter = '';
     if (from) { params.push(from); dateFilter += ` AND je.journaldate >= $${params.length}`; }
     if (to)   { params.push(to);   dateFilter += ` AND je.journaldate <= $${params.length}`; }
@@ -59,10 +66,12 @@ export async function GET(_request: NextRequest) {
            FROM fin_journal_lines jl
            JOIN fin_journal_entries je ON jl.journalid = je.journalid
            WHERE jl.accountid = a.accountid
-             AND je.status = 'POSTED'${dateFilter}),
+             AND je.status = 'POSTED'
+             AND je.workspaceid = $1${dateFilter}),
           0
         ) AS balance
       FROM fin_accounts a
+      WHERE a.workspaceid = $1
       ORDER BY a.accountcode
     `, params);
 
@@ -121,8 +130,8 @@ export async function POST(request: NextRequest) {
     let level = 1;
     if (parent_account_id) {
       const parent = await pool.query(
-        'SELECT level FROM fin_accounts WHERE accountid = $1',
-        [parent_account_id]
+        'SELECT level FROM fin_accounts WHERE accountid = $1 AND workspaceid = $2',
+        [parent_account_id, workspace_id]
       );
       if (parent.rows.length > 0) level = (parent.rows[0].level || 1) + 1;
     }

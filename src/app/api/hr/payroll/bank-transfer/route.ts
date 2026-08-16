@@ -108,6 +108,11 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const period_id = searchParams.get('period_id');
 
@@ -119,9 +124,9 @@ export async function GET(request: NextRequest) {
         pp.end_date
       FROM bank_transfers bt
       LEFT JOIN payroll_periods pp ON bt.period_id = pp.id
-      WHERE 1=1
+      WHERE pp.workspaceid = $1
     `;
-    const params: any[] = [];
+    const params: any[] = [workspaceId];
 
     if (period_id) {
       params.push(period_id);
