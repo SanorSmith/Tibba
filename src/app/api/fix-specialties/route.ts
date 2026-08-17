@@ -25,11 +25,11 @@ export async function GET(request: NextRequest) {
     });
 
     // Get current departments
-    const departmentsResult = await pool.query('SELECT departmentid, name FROM departments ORDER BY name');
+    const departmentsResult = await pool.query('SELECT departmentid, name FROM departments WHERE workspaceid = $1 ORDER BY name', [workspaceId]);
     console.log('Departments:', departmentsResult.rows);
 
     // Get current specialties
-    const specialtiesResult = await pool.query('SELECT specialtyid, name, departmentid FROM specialties');
+    const specialtiesResult = await pool.query('SELECT specialtyid, name, departmentid FROM specialties WHERE workspaceid = $1', [workspaceId]);
     console.log('Specialties before fix:', specialtiesResult.rows);
 
     // Create a mapping of department names to new IDs
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
           console.log(`Updating ${specialty.name}: old dept ${specialty.departmentid} -> new dept ${newDeptId}`);
           
           await pool.query(
-            'UPDATE specialties SET departmentid = $1 WHERE specialtyid = $2',
-            [newDeptId, specialty.specialtyid]
+            'UPDATE specialties SET departmentid = $1 WHERE specialtyid = $2 AND workspaceid = $3',
+            [newDeptId, specialty.specialtyid, workspaceId]
           );
           updatedCount++;
         }
@@ -81,8 +81,9 @@ export async function GET(request: NextRequest) {
       SELECT s.name, s.departmentid, d.name as dept_name 
       FROM specialties s 
       LEFT JOIN departments d ON s.departmentid = d.departmentid 
+      WHERE s.workspaceid = $1
       ORDER BY s.name
-    `);
+    `, [workspaceId]);
 
     await pool.end();
 

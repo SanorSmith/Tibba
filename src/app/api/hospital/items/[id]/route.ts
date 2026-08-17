@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
        min_level=$15, reorder_level=$16, max_level=$17,
        unit_cost=$18, selling_price=$19, notes=$20,
        updatedat=NOW()
-     WHERE id=$21 RETURNING *`,
+     WHERE id=$21 AND workspace_id=$22 RETURNING *`,
     [
       b.name,
       b.generic_name    || null,
@@ -55,8 +55,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       parseFloat(b.selling_price) || null,
       b.notes           || null,
       id,
+      auth.workspaceId,
     ]
   );
+  // GET and DELETE both filtered by facility; this one did not, so an item
+  // belonging to another hospital could be renamed and repriced.
+  if (r.rows.length === 0) {
+    return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  }
   return NextResponse.json(r.rows[0]);
 }
 

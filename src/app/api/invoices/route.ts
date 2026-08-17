@@ -438,6 +438,11 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Deleting an invoice and its items — must be one of ours.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    }
     if (!pool) {
       return NextResponse.json(
         { 
@@ -464,11 +469,26 @@ export async function DELETE(request: NextRequest) {
     await pool.query('BEGIN');
 
     try {
+      // Confirm the invoice is ours before removing anything. The items are
+      // keyed by invoice_id alone, so without this an invoice belonging to
+      // another facility could be emptied and then deleted.
+      const owns = await pool.query(
+        'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
+        [invoiceId, workspaceId]
+      );
+      if (owns.rows.length === 0) {
+        await pool.query('ROLLBACK');
+        return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      }
+
       // Delete invoice items first
       await pool.query('DELETE FROM invoice_items WHERE invoice_id = $1', [invoiceId]);
 
       // Delete invoice
-      const result = await pool.query('DELETE FROM invoices WHERE id = $1 RETURNING *', [invoiceId]);
+      const result = await pool.query(
+        'DELETE FROM invoices WHERE id = $1 AND workspaceid = $2 RETURNING *',
+        [invoiceId, workspaceId]
+      );
 
       if (result.rows.length === 0) {
         await pool.query('ROLLBACK');

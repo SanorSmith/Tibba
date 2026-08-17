@@ -81,6 +81,11 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { transaction_id, status, approved_by } = body;
 
@@ -98,9 +103,9 @@ export async function PUT(request: NextRequest) {
         approved_by = $2,
         approved_at = CASE WHEN $1 = 'APPROVED' THEN NOW() ELSE approved_at END,
         updated_at = NOW()
-      WHERE id = $3
+      WHERE id = $3 AND workspaceid = $4
       RETURNING *
-    `, [status, approved_by, transaction_id]);
+    `, [status, approved_by, transaction_id, workspaceId]);
 
     if (result.rows.length === 0) {
       return NextResponse.json(

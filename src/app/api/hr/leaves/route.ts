@@ -171,8 +171,8 @@ export async function POST(request: NextRequest) {
 
     // Get employee details from staff table
     const empResult = await pool.query(
-      'SELECT staffid as id, custom_staff_id as employee_id, firstname as first_name, lastname as last_name, custom_staff_id as employee_number FROM staff WHERE staffid = $1',
-      [employee_id]
+      'SELECT staffid as id, custom_staff_id as employee_id, firstname as first_name, lastname as last_name, custom_staff_id as employee_number FROM staff WHERE staffid = $1 AND workspaceid = $2',
+      [employee_id, workspaceId]
     );
 
     if (empResult.rows.length === 0) {
@@ -188,8 +188,8 @@ export async function POST(request: NextRequest) {
 
     // Get leave type details
     const leaveTypeResult = await pool.query(
-      'SELECT id, code FROM leave_types WHERE id = $1',
-      [leave_type_id]
+      'SELECT id, code FROM leave_types WHERE id = $1 AND workspaceid = $2',
+      [leave_type_id, workspaceId]
     );
 
     if (leaveTypeResult.rows.length === 0) {
@@ -240,8 +240,9 @@ export async function POST(request: NextRequest) {
       `UPDATE leave_balance 
        SET accrued = accrued + $1,
            updated_at = NOW()
-       WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4`,
-      [days_count, employeeUuid, leave_type_id, currentYear]
+       WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4
+         AND workspaceid = $5`,
+      [days_count, employeeUuid, leave_type_id, currentYear, workspaceId]
     );
 
     return NextResponse.json({
@@ -263,6 +264,13 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
+    // Approving a leave request also rewrites that employee's leave balance,
+    // so this must be limited to the caller's own facility.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) {
+      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { id, status, approved_by, rejection_reason } = body;
 
@@ -280,8 +288,8 @@ export async function PUT(request: NextRequest) {
     if (status === 'APPROVED' && approved_by) {
       // Get approver details
       const approverResult = await pool.query(
-        'SELECT first_name, last_name FROM employees WHERE employee_id = $1',
-        [approved_by]
+        'SELECT first_name, last_name FROM employees WHERE employee_id = $1 AND workspaceid = $2',
+        [approved_by, workspaceId]
       );
 
       if (approverResult.rows.length > 0) {
@@ -298,8 +306,9 @@ export async function PUT(request: NextRequest) {
       paramIndex++;
     }
 
-    query += ` WHERE id = $${paramIndex} RETURNING employee_id, leave_type_id, days_count`;
-    params.push(id);
+    query += ` WHERE id = $${paramIndex} AND workspaceid = $${paramIndex + 1}` +
+             ` RETURNING employee_id, leave_type_id, days_count`;
+    params.push(id, workspaceId);
 
     const updateResult = await pool.query(query, params);
     
@@ -314,8 +323,9 @@ export async function PUT(request: NextRequest) {
            SET accrued = GREATEST(0, accrued - $1),
                used = COALESCE(used, 0) + $1,
                updated_at = NOW()
-           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4`,
-          [leaveRequest.days_count, leaveRequest.employee_id, leaveRequest.leave_type_id, currentYear]
+           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4
+             AND workspaceid = $5`,
+          [leaveRequest.days_count, leaveRequest.employee_id, leaveRequest.leave_type_id, currentYear, workspaceId]
         );
       } else if (status === 'REJECTED') {
         // Decrease accrued (restore available)
@@ -323,8 +333,9 @@ export async function PUT(request: NextRequest) {
           `UPDATE leave_balance 
            SET accrued = GREATEST(0, accrued - $1),
                updated_at = NOW()
-           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4`,
-          [leaveRequest.days_count, leaveRequest.employee_id, leaveRequest.leave_type_id, currentYear]
+           WHERE employee_id = $2 AND leave_type_id = $3 AND year = $4
+             AND workspaceid = $5`,
+          [leaveRequest.days_count, leaveRequest.employee_id, leaveRequest.leave_type_id, currentYear, workspaceId]
         );
       }
     }
