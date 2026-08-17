@@ -8,18 +8,35 @@ export default function ReceptionPage() {
   const [stats, setStats] = useState({
     todayPatients: 0,
     pendingPayments: 0,
+    pendingAmount: 0,
     totalRevenue: 0,
     activeAppointments: 0
   });
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // Load reception dashboard stats
-    setStats({
-      todayPatients: 24,
-      pendingPayments: 8,
-      totalRevenue: 1250000,
-      activeAppointments: 15
-    });
+    // Real figures for the facility this session is signed in to. These were
+    // hardcoded placeholders, identical for every hospital.
+    let cancelled = false;
+    fetch('/api/reception/stats')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelled || !d?.data) return;
+        setStats({
+          todayPatients: d.data.todayPatients,
+          pendingPayments: d.data.pendingPayments,
+          pendingAmount: d.data.pendingAmount,
+          totalRevenue: d.data.todayRevenue,
+          activeAppointments: d.data.activeAppointments,
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -48,8 +65,8 @@ export default function ReceptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Today's Patients</p>
-              <p className="text-2xl font-bold text-[#151515] mt-1">{stats.todayPatients}</p>
-              <p className="text-xs text-green-600 mt-1">+12% from yesterday</p>
+              <p className="text-2xl font-bold text-[#151515] mt-1">{loaded ? stats.todayPatients : '—'}</p>
+              <p className="text-xs text-gray-500 mt-1">Seen at this facility today</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <Users className="w-6 h-6 text-blue-600" />
@@ -61,8 +78,10 @@ export default function ReceptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Pending Payments</p>
-              <p className="text-2xl font-bold text-[#151515] mt-1">{stats.pendingPayments}</p>
-              <p className="text-xs text-orange-600 mt-1">Awaiting payment</p>
+              <p className="text-2xl font-bold text-[#151515] mt-1">{loaded ? stats.pendingPayments : '—'}</p>
+              <p className="text-xs text-orange-600 mt-1">
+                {stats.pendingAmount.toLocaleString()} IQD outstanding
+              </p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
               <Receipt className="w-6 h-6 text-orange-600" />
@@ -74,8 +93,10 @@ export default function ReceptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Today's Revenue</p>
-              <p className="text-2xl font-bold text-[#151515] mt-1">{stats.totalRevenue.toLocaleString()} IQD</p>
-              <p className="text-xs text-green-600 mt-1">+8% from average</p>
+              <p className="text-2xl font-bold text-[#151515] mt-1">
+                {loaded ? stats.totalRevenue.toLocaleString() : '—'} IQD
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Collected here today</p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <Receipt className="w-6 h-6 text-green-600" />
@@ -87,8 +108,8 @@ export default function ReceptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Active Appointments</p>
-              <p className="text-2xl font-bold text-[#151515] mt-1">{stats.activeAppointments}</p>
-              <p className="text-xs text-blue-600 mt-1">Next 2 hours</p>
+              <p className="text-2xl font-bold text-[#151515] mt-1">{loaded ? stats.activeAppointments : '—'}</p>
+              <p className="text-xs text-gray-500 mt-1">Scheduled here today</p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <Calendar className="w-6 h-6 text-purple-600" />
