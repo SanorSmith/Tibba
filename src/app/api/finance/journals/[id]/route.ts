@@ -86,6 +86,10 @@ export async function PUT(
   const { id } = await params;
 
   try {
+    // Posting an entry commits it to a facility's ledger.
+    const workspaceId = getWorkspaceId(request);
+    if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
     const body = await request.json();
     const { action, posted_by } = body;
 
@@ -93,9 +97,9 @@ export async function PUT(
       const result = await pool.query(
         `UPDATE fin_journal_entries
          SET status = 'POSTED', postedby = $1, postedat = NOW(), updatedat = NOW()
-         WHERE journalid = $2 AND status = 'DRAFT'
+         WHERE journalid = $2 AND status = 'DRAFT' AND workspaceid = $3
          RETURNING *`,
-        [posted_by || null, id]
+        [posted_by || null, id, workspaceId]
       );
       if (result.rows.length === 0) {
         return NextResponse.json({ error: 'Entry not found or already posted' }, { status: 400 });
