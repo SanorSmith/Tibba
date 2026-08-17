@@ -433,9 +433,10 @@ export async function POST(request: NextRequest) {
             date_of_hire,
             grade_id,
             basic_salary,
-            shift_id
+            shift_id,
+            workspaceid
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
           )
         `, [
           staffId,
@@ -446,7 +447,8 @@ export async function POST(request: NextRequest) {
           dateOfHire || null,
           gradeId || null,
           basicSalary || null,
-          shiftId || null
+          shiftId || null,
+          sessionWorkspaceId
         ]);
       }
       
@@ -456,14 +458,16 @@ export async function POST(request: NextRequest) {
           INSERT INTO bank_details (
             staff_id,
             bank_name,
-            bank_account_number
+            bank_account_number,
+            workspaceid
           ) VALUES (
-            $1, $2, $3
+            $1, $2, $3, $4
           )
         `, [
           staffId,
           bankName || null,
-          bankAccountNumber || null
+          bankAccountNumber || null,
+          sessionWorkspaceId
         ]);
       }
       
@@ -478,9 +482,10 @@ export async function POST(request: NextRequest) {
             certifications,
             languages,
             skills,
-            profile_completed
+            profile_completed,
+            workspaceid
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8
+            $1, $2, $3, $4, $5, $6, $7, $8, $9
           )
         `, [
           staffId,
@@ -490,7 +495,8 @@ export async function POST(request: NextRequest) {
           JSON.stringify(certifications || []),
           JSON.stringify(languages || []),
           JSON.stringify(skills || []),
-          (cvSummary && education && workHistory && certifications && languages && skills) ? true : false
+          (cvSummary && education && workHistory && certifications && languages && skills) ? true : false,
+          sessionWorkspaceId
         ]);
       }
       
@@ -510,9 +516,10 @@ export async function POST(request: NextRequest) {
           settlement_eligible,
           settlement_calculation_method,
           notice_period_days,
-          gratuity_eligible
+          gratuity_eligible,
+          workspaceid
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
         )
       `, [
         staffId,
@@ -528,7 +535,8 @@ export async function POST(request: NextRequest) {
         settlementEligible !== undefined ? settlementEligible : true,
         settlementCalculationMethod || 'IRAQI_LABOR_LAW',
         noticePeriodDays || 30,
-        gratuityEligible !== undefined ? gratuityEligible : true
+        gratuityEligible !== undefined ? gratuityEligible : true,
+        sessionWorkspaceId
       ]);
       
       // Insert national ID if provided
@@ -536,13 +544,15 @@ export async function POST(request: NextRequest) {
         await client.query(`
           INSERT INTO national_id (
             staff_id,
-            national_id
+            national_id,
+            workspaceid
           ) VALUES (
-            $1, $2
+            $1, $2, $3
           )
         `, [
           staffId,
-          nationalId
+          nationalId,
+          sessionWorkspaceId
         ]);
       }
       
@@ -827,13 +837,13 @@ export async function PUT(request: NextRequest) {
       if (nationalId !== undefined) {
         if (nationalId) {
           await client.query(`
-            INSERT INTO national_id (staff_id, national_id)
-            VALUES ($1, $2)
+            INSERT INTO national_id (staff_id, national_id, workspaceid)
+            VALUES ($1, $2, $3)
             ON CONFLICT (staff_id) 
             DO UPDATE SET 
               national_id = EXCLUDED.national_id,
               updated_at = NOW()
-          `, [staffId, nationalId]);
+          `, [staffId, nationalId, updateWorkspaceId]);
         } else {
           await client.query(`
             DELETE FROM national_id WHERE staff_id = $1
