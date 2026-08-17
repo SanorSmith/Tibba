@@ -45,8 +45,12 @@ function promptHidden(question) {
     if (!process.stdin.isTTY) {
       reject(
         new Error(
-          'No interactive terminal available. Run this from your own shell so ' +
-            'the password can be typed without being recorded.'
+          'No interactive terminal available.\n' +
+            'Either run this from your own shell, or set the password via an ' +
+            'environment variable so it stays out of your command history:\n\n' +
+            '  PowerShell:  $env:NEW_PASSWORD="your-password"\n' +
+            '               node scripts/set-user-password.js <email>\n' +
+            '               Remove-Item Env:NEW_PASSWORD\n'
         )
       );
       return;
@@ -106,17 +110,31 @@ async function setPassword(email) {
   }
   const user = found.rows[0];
 
-  const password = await promptHidden(`New password for ${user.email}: `);
+  // NEW_PASSWORD lets this run where a hidden prompt is not possible (CI, a
+  // non-TTY shell). Prefer the prompt: an environment variable can linger in
+  // the shell session, so unset it afterwards.
+  const fromEnv = process.env.NEW_PASSWORD;
+  let password;
+  if (fromEnv) {
+    console.log('Using NEW_PASSWORD from the environment.');
+    password = fromEnv;
+  } else {
+    password = await promptHidden(`New password for ${user.email}: `);
+  }
+
   if (!password || password.length < 8) {
     console.error('Password must be at least 8 characters. Nothing was changed.');
     process.exitCode = 1;
     return;
   }
-  const confirm = await promptHidden('Confirm password: ');
-  if (password !== confirm) {
-    console.error('Passwords did not match. Nothing was changed.');
-    process.exitCode = 1;
-    return;
+
+  if (!fromEnv) {
+    const confirm = await promptHidden('Confirm password: ');
+    if (password !== confirm) {
+      console.error('Passwords did not match. Nothing was changed.');
+      process.exitCode = 1;
+      return;
+    }
   }
 
   const hashed = await hashPassword(password);
