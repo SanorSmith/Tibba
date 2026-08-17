@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, Suspense } from 'react';
+import { useState, useEffect, FormEvent, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Hospital, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 
@@ -44,13 +44,80 @@ function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  // The Google flow reports failures by redirecting back with ?error=...
+  const [error, setError] = useState(searchParams.get('error') || '');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Set when Google verified an identity that belongs to several facilities.
+  // The picker then finishes the sign-in through /api/auth/google/select
+  // instead of re-posting a password.
+  const googleEmail = searchParams.get('googleEmail');
 
   // Second login step: shown only when the account belongs to more than one
   // facility, so the user picks which to open instead of the server guessing.
   type Facility = { workspaceId: string; name: string; type: string; role: string };
   const [facilities, setFacilities] = useState<Facility[] | null>(null);
+
+  // Google verified the identity but it maps to more than one facility. Ask
+  // the server which ones, using the signed pending cookie it set.
+  useEffect(() => {
+    if (!googleEmail) return;
+    setUsername(googleEmail);
+    fetch('/api/auth/google/facilities')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (d?.facilities?.length) setFacilities(d.facilities);
+        else setError('Sign-in expired. Please try again.');
+      })
+      .catch(() => setError('Sign-in expired. Please try again.'));
+  }, [googleEmail]);
+
+  const landAfterLogin = (role: string) => {
+    const ROLE_HOME: Record<string, string> = {
+      SUPER_ADMIN: '/dashboard',
+      FINANCE_ADMIN: '/finance',
+      HR_ADMIN: '/hr',
+      INVENTORY_ADMIN: '/hospital',
+      RECEPTION_ADMIN: '/reception',
+    };
+    const ROLE_MODULES: Record<string, string[]> = {
+      SUPER_ADMIN: ['*'],
+      FINANCE_ADMIN: ['/finance'],
+      HR_ADMIN: ['/hr'],
+      INVENTORY_ADMIN: ['/inventory', '/hospital'],
+      RECEPTION_ADMIN: ['/reception'],
+    };
+    const home = ROLE_HOME[role] ?? '/dashboard';
+    const allowed = ROLE_MODULES[role] ?? [];
+    const canReturn =
+      !!returnTo &&
+      returnTo.startsWith('/') &&
+      !returnTo.startsWith('//') &&
+      (allowed.includes('*') || allowed.some(p => returnTo.startsWith(p)));
+    window.location.href = canReturn ? returnTo : home;
+  };
+
+  // Finish a Google sign-in once a facility has been chosen.
+  const pickGoogleFacility = async (workspaceId: string) => {
+    setError('');
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/google/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) landAfterLogin(data.role);
+      else {
+        setError(data.error || 'Could not open that facility');
+        setIsLoading(false);
+      }
+    } catch {
+      setError('Network error — please try again');
+      setIsLoading(false);
+    }
+  };
 
   const doLogin = async (u: string, p: string, workspaceId?: string) => {
     setError('');
@@ -162,7 +229,11 @@ function LoginForm() {
               {facilities.map(f => (
                 <button
                   key={f.workspaceId}
-                  onClick={() => doLogin(username.trim(), password.trim(), f.workspaceId)}
+                  onClick={() =>
+                    googleEmail
+                      ? pickGoogleFacility(f.workspaceId)
+                      : doLogin(username.trim(), password.trim(), f.workspaceId)
+                  }
                   disabled={isLoading}
                   className="w-full flex items-center justify-between gap-3 p-3.5 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition text-left disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -205,9 +276,30 @@ function LoginForm() {
             </div>
           </div>
 
+          {/* Google sign-in — the primary route for real staff accounts, which
+              are provisioned in the Tibbna platform and have no password here. */}
+          <div className="px-6 pt-6">
+            <a
+              href={`/api/auth/google${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+                />
+              </svg>
+              Continue with Google
+            </a>
+            <div className="relative my-5 text-center text-xs">
+              <span className="absolute inset-0 top-1/2 border-t border-gray-200" aria-hidden="true" />
+              <span className="relative bg-white px-2 text-gray-400">or</span>
+            </div>
+          </div>
+
           {/* Manual Form */}
-          <div className="p-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Or sign in manually</p>
+          <div className="px-6 pb-6">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Sign in with a password</p>
 
             {error && (
               <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
