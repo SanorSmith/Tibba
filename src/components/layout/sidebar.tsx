@@ -135,10 +135,39 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     return () => { active = false; };
   }, []);
 
+  // Which modules this session's role may open. The middleware already blocks
+  // navigation to a module a role cannot reach — this stops the sidebar
+  // *offering* it in the first place, so a receptionist sees only Reception
+  // rather than every module with the disallowed ones bouncing to
+  // /unauthorized on click.
+  const [allowedModules, setAllowedModules] = useState<string[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/session')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!active) return;
+        // Fail toward showing nothing extra rather than everything: an
+        // unrecognised or missing role gets no modules, not '*'.
+        setAllowedModules(Array.isArray(d?.user?.allowedModules) ? d.user.allowedModules : []);
+      })
+      .catch(() => {
+        if (active) setAllowedModules([]);
+      });
+    return () => { active = false; };
+  }, []);
+  const isSuperAdmin = allowedModules?.includes('*') ?? false;
+
   // Merge dynamic department children into the Inventory module
-  const navLinks = moduleLinks.map(link =>
+  const navLinksAll = moduleLinks.map(link =>
     link.href === '/hospital' ? { ...link, children: deptChildren } : link
   );
+  const navLinks =
+    allowedModules === null
+      ? [] // session not resolved yet — render nothing rather than everything
+      : isSuperAdmin
+      ? navLinksAll
+      : navLinksAll.filter(link => allowedModules.some(prefix => link.href.startsWith(prefix)));
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -160,19 +189,21 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   const SidebarNav = () => (
     <div className="flex-1 overflow-y-auto py-3 sm:py-4">
-      <Link
-        href="/dashboard"
-        className={cn(
-          'flex items-center gap-3 mx-2 px-3 py-2.5 sm:py-3 rounded transition-colors',
-          pathname === '/dashboard'
-            ? 'bg-[#f5f5f5] text-black font-semibold'
-            : 'text-[#151515] hover:bg-[#f5f5f5]'
-        )}
-        style={{ fontSize: '14px', lineHeight: '20px' }}
-      >
-        <LayoutDashboard className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
-        <span className="text-sm sm:text-base">Dashboard</span>
-      </Link>
+      {isSuperAdmin && (
+        <Link
+          href="/dashboard"
+          className={cn(
+            'flex items-center gap-3 mx-2 px-3 py-2.5 sm:py-3 rounded transition-colors',
+            pathname === '/dashboard'
+              ? 'bg-[#f5f5f5] text-black font-semibold'
+              : 'text-[#151515] hover:bg-[#f5f5f5]'
+          )}
+          style={{ fontSize: '14px', lineHeight: '20px' }}
+        >
+          <LayoutDashboard className="w-[18px] h-[18px] sm:w-5 sm:h-5 flex-shrink-0" />
+          <span className="text-sm sm:text-base">Dashboard</span>
+        </Link>
+      )}
 
       <div className="px-4 mt-5 mb-1.5 sm:mt-6 sm:mb-2">
         <h3 className="text-[11px] sm:text-xs font-semibold text-[#a3a3a3] uppercase tracking-wider">

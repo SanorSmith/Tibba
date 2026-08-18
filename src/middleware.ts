@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 const ROLE_MODULES: Record<string, string[]> = {
   SUPER_ADMIN:      ['*'],
   FINANCE_ADMIN:    ['/finance'],
-  HR_ADMIN:         ['/hr'],
+  HR_ADMIN:         ['/hr', '/staff'],
   INVENTORY_ADMIN:  ['/inventory', '/hospital'],
   RECEPTION_ADMIN:  ['/reception'],
 };
