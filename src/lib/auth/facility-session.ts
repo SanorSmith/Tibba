@@ -39,12 +39,21 @@ export type FacilityResolution =
  */
 export const WS_ROLE_TO_APP_ROLE: Record<string, string> = {
   administrator: 'SUPER_ADMIN',
+  // Clinical roles are reception-facing only. A doctor or nurse with no
+  // other facility role must not reach Inventory — they book, register and
+  // bill patients, they do not manage stock.
   doctor: 'RECEPTION_ADMIN',
   nurse: 'RECEPTION_ADMIN',
   receptionist: 'RECEPTION_ADMIN',
   plastic_surgeon: 'RECEPTION_ADMIN',
   lab_technician: 'RECEPTION_ADMIN',
   pharmacist: 'INVENTORY_ADMIN',
+  // Added so Finance, HR and Inventory each have their own facility role
+  // rather than only being reachable through the disabled-by-default demo
+  // logins or the pharmacist title.
+  accountant: 'FINANCE_ADMIN',
+  hr_officer: 'HR_ADMIN',
+  inventory_officer: 'INVENTORY_ADMIN',
 };
 
 export function appRoleFor(membership: Membership): string {

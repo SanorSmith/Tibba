@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { verifyPassword } from '@/lib/auth/password';
+import { WS_ROLE_TO_APP_ROLE } from '@/lib/auth/facility-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -197,18 +198,9 @@ export async function POST(request: NextRequest) {
       workspaceName: membership?.workspace_name ?? 'Hospital 1',
     };
 
-    // Map the platform's facility role onto this app's module-access roles.
-    // Clinical roles get reception (patients/appointments/billing); admins get
-    // everything; pharmacists additionally need inventory.
-    const wsRoleMap: Record<string, string> = {
-      administrator:   'SUPER_ADMIN',
-      doctor:          'RECEPTION_ADMIN',
-      nurse:           'RECEPTION_ADMIN',
-      receptionist:    'RECEPTION_ADMIN',
-      plastic_surgeon: 'RECEPTION_ADMIN',
-      lab_technician:  'RECEPTION_ADMIN',
-      pharmacist:      'INVENTORY_ADMIN',
-    };
+    // Single source of truth for facility-role -> module-access role, shared
+    // with the Google sign-in path (src/lib/auth/facility-session.ts) so the
+    // two cannot drift apart the way they did before this was extracted.
 
     // Legacy demo logins — these have no `users` row, so there is no stored
     // password to check them against. They are therefore only usable when
@@ -244,7 +236,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = membership
-      ? (wsRoleMap[membership.ws_role] ?? 'RECEPTION_ADMIN')
+      ? (WS_ROLE_TO_APP_ROLE[membership.ws_role] ?? 'RECEPTION_ADMIN')
       : (roleMap[loginIdentifier.toLowerCase()] || 'SUPER_ADMIN');
 
     // Create session object for cookie — now includes userId, workspaceId, email
