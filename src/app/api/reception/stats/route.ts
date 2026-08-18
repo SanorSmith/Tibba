@@ -78,6 +78,26 @@ export async function GET(request: NextRequest) {
       [workspaceId]
     );
 
+    // Last few things that actually happened at this facility, newest first —
+    // replaces the "Ahmed Mohammed - 2 mins ago" placeholder that used to be
+    // shown identically to every hospital regardless of what really occurred.
+    const activity = await pool.query(
+      `SELECT * FROM (
+         SELECT 'invoice' AS kind, createdat AS at,
+                COALESCE(patient_name, 'Patient') AS who,
+                total_amount AS amount, status
+           FROM invoices WHERE workspaceid = $1
+         UNION ALL
+         SELECT 'appointment' AS kind, createdat AS at,
+                COALESCE(appointmentname::text, 'Appointment') AS who,
+                NULL AS amount, status::text
+           FROM appointments WHERE workspaceid = $1
+       ) recent
+       ORDER BY at DESC
+       LIMIT 5`,
+      [workspaceId]
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -86,6 +106,13 @@ export async function GET(request: NextRequest) {
         pendingPayments: pending.rows[0].n,
         pendingAmount: Math.round(parseFloat(pending.rows[0].amount) || 0),
         todayRevenue: Math.round(parseFloat(revenue.rows[0].amount) || 0),
+        recentActivity: activity.rows.map((r) => ({
+          kind: r.kind,
+          who: r.who,
+          amount: r.amount != null ? Math.round(parseFloat(r.amount)) : null,
+          status: r.status,
+          at: r.at,
+        })),
       },
     });
   } catch (error) {

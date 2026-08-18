@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { verifyPassword } from '@/lib/auth/password';
-import { WS_ROLE_TO_APP_ROLE } from '@/lib/auth/facility-session';
+import { WS_ROLE_TO_APP_ROLE, resolveFacility } from '@/lib/auth/facility-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -121,69 +121,31 @@ export async function POST(request: NextRequest) {
     type Membership = { workspaceid: string; workspace_name: string; ws_type: string; ws_role: string };
     let membership: Membership | null = null;
     if (dbUser?.userid) {
-      try {
-        // Ordering when a user belongs to several facilities: this app is the
-        // hospital ERP, so hospitals sort first, then earliest-created — that
-        // keeps existing staff in the facility they've always used rather than
-        // whichever was created most recently.
-        const m = await pool.query(
-          `SELECT wu.workspaceid, w.name AS workspace_name, w.type AS ws_type, wu.role AS ws_role
-           FROM workspaceusers wu
-           JOIN workspaces w ON w.workspaceid = wu.workspaceid
-           WHERE wu.userid = $1 AND w.isactive IS NOT FALSE
-           ORDER BY (w.type = 'hospital') DESC, w.createdat ASC`,
-          [dbUser.userid]
-        );
-        const memberships: Membership[] = m.rows;
+      // Same facility resolution as Google sign-in (src/lib/auth/facility-session.ts)
+      // so the two paths cannot drift apart — including which facility roles
+      // are even allowed to open this app.
+      const resolution = await resolveFacility(pool, dbUser.userid, chosenWorkspaceId);
 
-        if (chosenWorkspaceId) {
-          // Second step of the login: honour the facility the user picked, but
-          // only if they actually belong to it.
-          const picked = memberships.find(x => x.workspaceid === chosenWorkspaceId);
-          if (!picked) {
-            return NextResponse.json(
-              { error: 'You do not have access to that facility' },
-              { status: 403 }
-            );
-          }
-          membership = picked;
-        } else if (memberships.length > 1) {
-          // Belongs to more than one facility — ask which to open rather than
-          // guessing. No session cookie is issued until they choose.
-          return NextResponse.json({
-            success: false,
-            requiresFacilitySelection: true,
-            facilities: memberships.map(x => ({
-              workspaceId: x.workspaceid,
-              name: x.workspace_name.trim(),
-              type: x.ws_type,
-              role: x.ws_role,
-            })),
-          });
-        } else if (memberships.length === 1) {
-          membership = memberships[0];
-        } else {
-          // A real user with no facility grant at all. Previously this fell
-          // through to the demo fallback and opened Hospital 1, so anyone
-          // provisioned in `users` but never added to a facility could read
-          // Hospital 1's data. Deny instead.
-          return NextResponse.json(
-            {
-              error:
-                'Your account is not assigned to any facility. Ask an administrator to grant you access.',
-            },
-            { status: 403 }
-          );
-        }
-      } catch (e) {
-        // A lookup failure is not the same as "no membership": we cannot tell
-        // which facility this user belongs to, so refuse rather than guess.
-        console.error('Workspace lookup failed:', e);
-        return NextResponse.json(
-          { error: 'Could not resolve your facility. Please try again.' },
-          { status: 503 }
-        );
+      if (resolution.kind === 'error') {
+        return NextResponse.json({ error: resolution.error }, { status: resolution.status });
       }
+
+      if (resolution.kind === 'choose') {
+        // Belongs to more than one facility — ask which to open rather than
+        // guessing. No session cookie is issued until they choose.
+        return NextResponse.json({
+          success: false,
+          requiresFacilitySelection: true,
+          facilities: resolution.facilities.map(f => ({
+            workspaceId: f.workspaceId,
+            name: f.name,
+            type: f.type,
+            role: f.role,
+          })),
+        });
+      }
+
+      membership = resolution.membership;
     }
 
     const resolvedUser = {
