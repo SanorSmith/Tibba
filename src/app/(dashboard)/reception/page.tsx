@@ -12,6 +12,9 @@ export default function ReceptionPage() {
     totalRevenue: 0,
     activeAppointments: 0
   });
+  const [activity, setActivity] = useState<Array<{
+    kind: string; who: string; amount: number | null; status: string | null; at: string;
+  }>>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -29,6 +32,7 @@ export default function ReceptionPage() {
           totalRevenue: d.data.todayRevenue,
           activeAppointments: d.data.activeAppointments,
         });
+        setActivity(d.data.recentActivity ?? []);
       })
       .catch(() => {})
       .finally(() => {
@@ -38,6 +42,15 @@ export default function ReceptionPage() {
       cancelled = true;
     };
   }, []);
+
+  function timeAgo(iso: string): string {
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    return `${Math.round(hours / 24)} day${Math.round(hours / 24) === 1 ? '' : 's'} ago`;
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -180,44 +193,32 @@ export default function ReceptionPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-[#151515] mb-4">Recent Activity</h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Users className="w-4 h-4 text-blue-600" />
+            {!loaded ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : activity.length === 0 ? (
+              <p className="text-sm text-gray-500">No activity yet at this facility.</p>
+            ) : (
+              activity.map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${item.kind === 'invoice' ? 'bg-green-100' : 'bg-purple-100'}`}>
+                      {item.kind === 'invoice'
+                        ? <Receipt className="w-4 h-4 text-green-600" />
+                        : <Calendar className="w-4 h-4 text-purple-600" />}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {item.kind === 'invoice' ? 'Invoice created' : 'Appointment booked'}
+                      </p>
+                      <p className="text-xs text-gray-600">{item.who} - {timeAgo(item.at)}</p>
+                    </div>
+                  </div>
+                  <span className={`text-xs ${item.status === 'PAID' || item.status === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>
+                    {item.amount != null ? `${item.amount.toLocaleString()} IQD` : (item.status ?? '')}
+                  </span>
                 </div>
-                <div>
-                  <p className="font-medium text-sm">New patient registered</p>
-                  <p className="text-xs text-gray-600">Ahmed Mohammed - 2 mins ago</p>
-                </div>
-              </div>
-              <span className="text-xs text-green-600">Completed</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <Receipt className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Payment received</p>
-                  <p className="text-xs text-gray-600">Consultation fee - 5 mins ago</p>
-                </div>
-              </div>
-              <span className="text-xs text-green-600">50,000 IQD</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Receipt className="w-4 h-4 text-orange-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Invoice created</p>
-                  <p className="text-xs text-gray-600">Dr. Smith consultation - 10 mins ago</p>
-                </div>
-              </div>
-              <span className="text-xs text-orange-600">Pending</span>
-            </div>
+              ))
+            )}
           </div>
         </div>
       </div>

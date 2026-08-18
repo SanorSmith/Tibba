@@ -61,6 +61,25 @@ export function appRoleFor(membership: Membership): string {
 }
 
 /**
+ * Facility roles allowed to sign in to this ERP at all. Pure clinical roles
+ * (doctor, nurse, plastic_surgeon, lab_technician) work through the separate
+ * EHR/care app, not this one — a membership that is only one of those roles
+ * must not reach any module here, not even Reception.
+ */
+const LOGIN_ALLOWED_ROLES = new Set([
+  'administrator',
+  'receptionist',
+  'accountant',
+  'pharmacist',
+  'inventory_officer',
+  'hr_officer',
+]);
+
+export function canLogIn(wsRole: string): boolean {
+  return LOGIN_ALLOWED_ROLES.has(wsRole);
+}
+
+/**
  * Which facility should this user open?
  *
  * Ordering when they belong to several: this app is the hospital ERP, so
@@ -73,7 +92,7 @@ export async function resolveFacility(
   userid: string,
   chosenWorkspaceId?: string | null
 ): Promise<FacilityResolution> {
-  let memberships: Membership[];
+  let allMemberships: Membership[];
   try {
     const m = await pool.query(
       `SELECT wu.workspaceid, w.name AS workspace_name, w.type AS ws_type, wu.role AS ws_role
@@ -83,7 +102,7 @@ export async function resolveFacility(
         ORDER BY (w.type = 'hospital') DESC, w.createdat ASC`,
       [userid]
     );
-    memberships = m.rows;
+    allMemberships = m.rows;
   } catch (e) {
     // A lookup failure is not the same as "no membership": we cannot tell which
     // facility this user belongs to, so refuse rather than guess.
@@ -92,6 +111,19 @@ export async function resolveFacility(
       kind: 'error',
       status: 503,
       error: 'Could not resolve your facility. Please try again.',
+    };
+  }
+
+  // Clinical-only memberships (doctor, nurse, plastic_surgeon, lab_technician)
+  // don't get to open this app — they belong in the separate EHR/care app.
+  // A user with several facilities still gets in if at least one of those
+  // memberships carries a role this app actually serves.
+  const memberships = allMemberships.filter((x) => canLogIn(x.ws_role));
+  if (memberships.length === 0 && allMemberships.length > 0) {
+    return {
+      kind: 'error',
+      status: 403,
+      error: 'Your role does not have access to this application.',
     };
   }
 
