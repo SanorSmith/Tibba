@@ -21,6 +21,7 @@ import {
   Loader2, Search, Receipt, CheckCircle2, AlertCircle, RefreshCw,
   Wallet, BarChart3, ClipboardList, LockOpen, Lock, Undo2,
 } from "lucide-react";
+import { printReceipt } from "./LabReceipt";
 
 interface PendingLine {
   source: "LIMS" | "EHR"; ref: string; orderId: string;
@@ -179,6 +180,18 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
       setOk(refundMode
         ? `Refunded ${money(Number(amount))} — balance now ${money(d.newBalance)}`
         : `Received ${money(Number(amount))} — ${d.status === "PAID" ? "invoice settled" : `${money(d.newBalance)} still owed`}`);
+      // Hand the counter its paper immediately; re-printable from the row later.
+      printReceipt({
+        kind: refundMode ? "REFUND" : "PAYMENT",
+        facility: "Laboratory",
+        number: d.payment?.id ? String(d.payment.id).slice(0, 8).toUpperCase() : payFor.invoiceNumber,
+        dateTime: new Date().toLocaleString(),
+        patientName: payFor.patientName,
+        invoiceNumber: payFor.invoiceNumber,
+        lines: [{ label: refundMode ? "Refund" : "Payment received", amount: Number(amount) }],
+        total: payFor.total, paid: d.newPaid, balance: d.newBalance,
+        method, cashier: undefined,
+      });
       setPayFor(null); load();
     } finally { setBusy(false); }
   };
@@ -210,6 +223,15 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
       const v = Number(d.variance);
       setOk(v === 0 ? "Shift closed, drawer balanced"
         : `Shift closed with ${v > 0 ? "surplus" : "shortfall"} of ${money(Math.abs(v))}`);
+      printReceipt({
+        kind: "SHIFT", facility: "Laboratory", number: openShift.shiftnumber,
+        dateTime: new Date().toLocaleString(),
+        lines: [{ label: "Transactions", qty: openShift.transactions },
+                { label: "Collected (all methods)", amount: Number(openShift.collected) },
+                { label: "Cash collected", amount: Number(openShift.cashCollected) }],
+        openingCash: Number(openShift.openingcash), expectedCash: d.expected,
+        countedCash: d.actual, variance: d.variance, cashier: openShift.cashiername,
+      });
       setActualCash(""); setVarianceReason(""); load();
     } finally { setBusy(false); }
   };
@@ -398,6 +420,13 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
                         <td className="px-3 py-2 text-right whitespace-nowrap">
                           {inv.balance > 0.001 && <Button size="sm" onClick={() => startPayment(inv)} className="gap-1"><Receipt className="h-3 w-3" /> Pay</Button>}
                           {inv.paid > 0.001 && <Button size="sm" variant="outline" className="ml-1 gap-1" onClick={() => startPayment(inv, true)}><Undo2 className="h-3 w-3" /> Refund</Button>}
+                          <Button size="sm" variant="ghost" className="ml-1" onClick={() => printReceipt({
+                            kind: "PAYMENT", facility: "Laboratory", number: inv.invoiceNumber,
+                            dateTime: new Date(inv.invoiceDate).toLocaleDateString(),
+                            patientName: inv.patientName, invoiceNumber: inv.invoiceNumber,
+                            lines: inv.payments.map((p) => ({ label: `${p.isrefund ? "Refund" : "Payment"} — ${p.method}`, amount: Number(p.amount) })),
+                            total: inv.total, paid: inv.paid, balance: inv.balance,
+                          })}>Receipt</Button>
                         </td>
                       </tr>
                     ))}
