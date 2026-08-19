@@ -23,7 +23,7 @@ import {
   ClipboardCheck,
   FlaskConical,
   Receipt,
-  ShieldAlert,
+  PackageMinus,
 } from "lucide-react";
 import OrdersTab from "./components/OrdersTab";
 import RegisterSample from "./components/RegisterSample";
@@ -35,6 +35,7 @@ import ContactsTab from "./components/ContactsTab";
 import LabManagementTab from "./components/LabManagementTab";
 import QCCalibrationTab from "./components/QCCalibrationTab";
 import LabInventory from "./components/LabInventory";
+import PullPanel from "./components/PullPanel";
 import BillingTab from "./components/BillingTab";
 import { useWorkspace } from "@/hooks/use-workspace";
 
@@ -171,6 +172,16 @@ export default function LabTechDashboard({
 
           {canManageInventoryBilling && (
             <TabsTrigger
+              value="pull"
+              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
+            >
+              <PackageMinus className="h-4 w-4" />
+              Pull Items
+            </TabsTrigger>
+          )}
+
+          {canManageInventoryBilling && (
+            <TabsTrigger
               value="billing"
               className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
             >
@@ -235,6 +246,12 @@ export default function LabTechDashboard({
         {canManageInventoryBilling && (
           <TabsContent value="inventory" className="mt-2 flex-1 min-h-0 overflow-auto">
             {loadedTabs.has("inventory") && <LabInventory workspaceid={workspaceid} />}
+          </TabsContent>
+        )}
+
+        {canManageInventoryBilling && (
+          <TabsContent value="pull" className="mt-2 flex-1 min-h-0 overflow-auto">
+            {loadedTabs.has("pull") && <PullPanel workspaceid={workspaceid} />}
           </TabsContent>
         )}
 

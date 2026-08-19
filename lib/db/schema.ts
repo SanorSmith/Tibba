@@ -521,16 +521,22 @@ export const reagentAssignments = pgTable("reagent_assignments", {
 
 export const labConsumptionLog = pgTable("lab_consumption_log", {
   id:               uuid("id").primaryKey().defaultRandom(),
-  assignmentid:     uuid("assignment_id").references(() => reagentAssignments.id).notNull(),
+  // Nullable: a manual pull from the Lab Inventory panel has no reagent
+  // assignment behind it — the user chooses the items. Matches the database,
+  // which has always allowed null here. See migration 0057.
+  assignmentid:     uuid("assignment_id").references(() => reagentAssignments.id),
   itemid:           uuid("item_id").references(() => items.id).notNull(),
   storeid:          uuid("store_id").references(() => stores.id),
   batchid:          uuid("batch_id").references(() => itemBatches.id),
+  warehouseid:      uuid("warehouse_id"),
+  workspaceid:      uuid("workspaceid"),
   testcount:        integer("test_count").notNull().default(1),
   quantityconsumed: decimal("quantity_consumed", { precision: 10, scale: 4 }).notNull(),
   patientref:       text("patient_ref"),
   sampleref:        text("sample_ref"),
   runnotes:         text("run_notes"),
   createdby:        text("created_by"),
+  createdbyname:    text("created_by_name"),
   createdat:        timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
