@@ -29,7 +29,7 @@ export async function GET(
                  currency, isactive, totalorders, totalpurchases, lastorderdate, notes
             FROM vendors WHERE workspaceid = ${workspaceid} ORDER BY name`);
 
-    return NextResponse.json({ vendors: result.rows ?? result });
+    return NextResponse.json({ vendors: Array.from(result as unknown as Record<string, unknown>[]) });
   } catch (error) {
     console.error("[lab vendors GET]", error);
     return NextResponse.json({ error: "Failed to load vendors" }, { status: 500 });
@@ -56,7 +56,7 @@ export async function POST(
               ${b.paymentterms ?? null}, ${b.currency ?? null}, ${b.notes ?? null}, true)
       RETURNING id, name`);
 
-    return NextResponse.json({ vendor: (result.rows ?? result)[0] });
+    return NextResponse.json({ vendor: Array.from(result as unknown as Record<string, unknown>[])[0] });
   } catch (error) {
     console.error("[lab vendors POST]", error);
     return NextResponse.json({ error: "Failed to create vendor" }, { status: 500 });
