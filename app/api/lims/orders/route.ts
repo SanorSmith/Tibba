@@ -437,24 +437,12 @@ export async function GET(request: NextRequest) {
     // Try to fetch openEHR orders, but don't fail if OpenEHR is unavailable
     const openEHROrders: any[] = [];
     try {
-      // Patients belonging to this facility only.
-      //
-      // This previously selected every patient in the database, so a lab
-      // opened in one workspace listed other facilities' patients and their
-      // orders. The intent was to support a lab receiving referrals from a
-      // hospital, but nothing here targeted a specific lab — it simply showed
-      // everything, which is not a referral model.
-      //
-      // Routing referrals properly needs an order to name the lab facility it
-      // is destined for. The `target_lab` field on EHR orders points at the
-      // `labs` directory table, which has no workspace column, so it cannot
-      // identify a lab workspace today. Until that link exists, scope by the
-      // patient's facility — matching /api/lims/orders/openehr.
+      // Get all patients with EHR IDs across all workspaces
+      // (lab tech workspace may differ from doctor/patient workspace)
       const patientsQuery = await db
         .select()
-        .from(patients)
-        .where(eq(patients.workspaceid, workspaceId));
-
+        .from(patients);
+      
       const patientsWithEhr = patientsQuery.filter(p => p.ehrid);
 
       // Limit concurrent OpenEHR requests to avoid overwhelming the server
