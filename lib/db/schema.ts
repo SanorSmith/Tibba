@@ -236,6 +236,9 @@ export const warehouseTypeEnum = pgEnum("warehouse_type", [
 
 export const warehouses = pgTable("warehouses", {
   id:              uuid("id").primaryKey().defaultRandom(),
+  // NOT NULL in the database but was missing from this definition, so every
+  // query filtering warehouses by type alone was unscoped across facilities.
+  workspaceid:     uuid("workspace_id").notNull(),
   name:            text("name").notNull(),
   warehousetype:   warehouseTypeEnum("warehouse_type").default("hospital"),
   location:        text("location"),

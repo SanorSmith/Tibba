@@ -70,7 +70,13 @@ export const generalInvoiceItems = pgTable(
     quantity: numeric("quantity", { precision: 8, scale: 2 }).notNull().default("1"),
     unit_price: numeric("unit_price", { precision: 12, scale: 2 }).notNull().default("0"),
     total_price: numeric("total_price", { precision: 12, scale: 2 }).notNull().default("0"),
-    
+
+    // Which pending lab order/test this line was billed from (Lab Billing tab),
+    // so the same test can't be billed twice. See migration 0056.
+    lims_order_test_ref: text("lims_order_test_ref"),
+    lims_order_source: text("lims_order_source"), // 'LIMS' | 'EHR'
+    workspaceid: uuid("workspaceid"),
+
     // Timestamp
     createdat: timestamp("createdat").defaultNow(),
   }

@@ -10,17 +10,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { 
-  ClipboardList, 
-  ListChecks, 
-  CheckCircle2, 
-  TestTube2, 
+import {
+  ClipboardList,
+  ListChecks,
+  CheckCircle2,
+  TestTube2,
   Bell,
   Users,
   Settings,
   Home,
   ScanBarcode,
   ClipboardCheck,
+  FlaskConical,
+  Receipt,
+  ShieldAlert,
 } from "lucide-react";
 import OrdersTab from "./components/OrdersTab";
 import RegisterSample from "./components/RegisterSample";
@@ -31,6 +34,14 @@ import NotificationTab from "./components/NotificationTab";
 import ContactsTab from "./components/ContactsTab";
 import LabManagementTab from "./components/LabManagementTab";
 import QCCalibrationTab from "./components/QCCalibrationTab";
+import LabInventory from "./components/LabInventory";
+import BillingTab from "./components/BillingTab";
+import { useWorkspace } from "@/hooks/use-workspace";
+
+// Inventory and Billing touch stock and money, so — unlike the rest of this
+// dashboard, which is open to any workspace member — they're restricted to
+// the roles that already get equivalent access in Pharmacy/POS.
+const INVENTORY_BILLING_ROLES = new Set(["lab_technician", "administrator"]);
 
 export default function LabTechDashboard({
   workspaceid,
@@ -40,6 +51,8 @@ export default function LabTechDashboard({
   const [loadedTabs, setLoadedTabs] = useState<Set<string>>(
     new Set(["orders"])
   );
+  const { workspace } = useWorkspace();
+  const canManageInventoryBilling = INVENTORY_BILLING_ROLES.has(workspace.role);
 
   // Fetch unread notification count
   const { data: unreadCountData } = useQuery({
@@ -145,6 +158,26 @@ export default function LabTechDashboard({
             <Settings className="h-4 w-4" />
             Lab Management
           </TabsTrigger>
+
+          {canManageInventoryBilling && (
+            <TabsTrigger
+              value="inventory"
+              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
+            >
+              <FlaskConical className="h-4 w-4" />
+              Inventory
+            </TabsTrigger>
+          )}
+
+          {canManageInventoryBilling && (
+            <TabsTrigger
+              value="billing"
+              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
+            >
+              <Receipt className="h-4 w-4" />
+              Billing
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="orders" className="mt-2 flex-1 min-h-0 overflow-auto">
@@ -198,6 +231,18 @@ export default function LabTechDashboard({
             <LabManagementTab workspaceid={workspaceid} />
           )}
         </TabsContent>
+
+        {canManageInventoryBilling && (
+          <TabsContent value="inventory" className="mt-2 flex-1 min-h-0 overflow-auto">
+            {loadedTabs.has("inventory") && <LabInventory workspaceid={workspaceid} />}
+          </TabsContent>
+        )}
+
+        {canManageInventoryBilling && (
+          <TabsContent value="billing" className="mt-2 flex-1 min-h-0 overflow-auto">
+            {loadedTabs.has("billing") && <BillingTab workspaceid={workspaceid} />}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
