@@ -969,6 +969,7 @@ export * from "./tables/pos-returns-schema";
 // ─── Pharmacy Procurement Module ────────────────────────────────────────────
 export * from "./tables/pharmacy-procurement";
 export * from "./tables/lab-procurement";
+export * from "./tables/lab-pos";
 
 // ─── Operation Prices ────────────────────────────────────────────────────────
 

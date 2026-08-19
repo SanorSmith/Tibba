@@ -25,6 +25,7 @@ import {
   Receipt,
   PackageMinus,
   Truck,
+  Wallet,
 } from "lucide-react";
 import OrdersTab from "./components/OrdersTab";
 import RegisterSample from "./components/RegisterSample";
@@ -39,6 +40,7 @@ import LabInventory from "./components/LabInventory";
 import PullPanel from "./components/PullPanel";
 import ProcurementPanel from "./components/ProcurementPanel";
 import BillingTab from "./components/BillingTab";
+import LabPosTab from "./components/LabPosTab";
 import { useWorkspace } from "@/hooks/use-workspace";
 
 // Inventory and Billing touch stock and money, so — unlike the rest of this
@@ -194,6 +196,16 @@ export default function LabTechDashboard({
 
           {canManageInventoryBilling && (
             <TabsTrigger
+              value="pos"
+              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
+            >
+              <Wallet className="h-4 w-4" />
+              POS
+            </TabsTrigger>
+          )}
+
+          {canManageInventoryBilling && (
+            <TabsTrigger
               value="billing"
               className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
             >
@@ -270,6 +282,12 @@ export default function LabTechDashboard({
         {canManageInventoryBilling && (
           <TabsContent value="pull" className="mt-2 flex-1 min-h-0 overflow-auto">
             {loadedTabs.has("pull") && <PullPanel workspaceid={workspaceid} />}
+          </TabsContent>
+        )}
+
+        {canManageInventoryBilling && (
+          <TabsContent value="pos" className="mt-2 flex-1 min-h-0 overflow-auto">
+            {loadedTabs.has("pos") && <LabPosTab workspaceid={workspaceid} />}
           </TabsContent>
         )}
 
