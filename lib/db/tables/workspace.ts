@@ -18,7 +18,10 @@ export type WorkspaceUserRole =
   | "pharmacist"
   | "receptionist"
   | "administrator"
-  | "plastic_surgeon";
+  | "plastic_surgeon"
+  | "accountant"
+  | "hr_officer"
+  | "inventory_officer";
 
 export interface WorkspaceSettings {
   icon?: string;
