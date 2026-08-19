@@ -1,31 +1,35 @@
 /**
- * GET /api/lims/billing/pending?workspaceid=&patientid=
+ * GET /api/lims/billing/pending?workspaceid=[&patientid=]
  *
- * The Lab Billing tab's data source. Unlike Pharmacy's POS, this does NOT
- * sell from lab inventory — it lists a patient's outstanding lab test
- * orders from two sources: this app's own LIMS orders (lims_orders /
- * lims_order_tests) and doctor referrals pulled from the EHR via the
- * existing /api/lims/orders/openehr route. Already-billed lines are
- * excluded by checking invoice_items.lims_order_test_ref (see migration
- * 0056) so the same test can't be invoiced twice.
+ * Every lab test this facility has been asked to run and hasn't billed yet.
+ * Mirrors what the Orders tab lists, minus anything already invoiced, so
+ * billing staff work from the same picture as the bench.
+ *
+ * patientid is optional: without it you get the whole outstanding list,
+ * which is how billing is normally worked. Already-billed lines are
+ * excluded via invoice_items.lims_order_test_ref (migration 0056).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { limsOrders, limsOrderTests } from "@/lib/db/tables/lims-order";
 import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { generalInvoiceItems } from "@/lib/db/tables/invoices";
+import { patients } from "@/lib/db/schema";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 
 interface PendingLine {
   source: "LIMS" | "EHR";
-  ref: string; // ordertestid (LIMS) or composition_uid (EHR)
+  ref: string;
   orderId: string;
+  patientId: string | null;
+  patientName: string;
   testCode: string | null;
   testName: string;
   price: number;
   orderedAt: string | null;
   orderingProvider: string | null;
+  status: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -36,91 +40,120 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
     const patientid = searchParams.get("patientid");
-    if (!workspaceid || !patientid) {
-      return NextResponse.json({ error: "workspaceid and patientid are required" }, { status: 400 });
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
     }
 
-    // Already-billed refs for this workspace, so we can exclude them below.
+    // Refs already invoiced by this facility.
     const billed = await db
       .select({ ref: generalInvoiceItems.lims_order_test_ref })
       .from(generalInvoiceItems)
       .where(eq(generalInvoiceItems.workspaceid, workspaceid));
     const billedRefs = new Set(billed.map((b) => b.ref).filter(Boolean) as string[]);
 
-    // ── LIMS-sourced pending tests ──────────────────────────────────────
-    const limsRows = await db
+    // ── Orders raised in this lab ────────────────────────────────────────
+    const where = [eq(limsOrders.workspaceid, workspaceid), ne(limsOrders.status, "CANCELLED")];
+    if (patientid) where.push(eq(limsOrders.subjectidentifier, patientid));
+
+    const rows = await db
       .select({
         ordertestid: limsOrderTests.ordertestid,
         orderid: limsOrderTests.orderid,
         testcode: limsOrderTests.testcode,
         testname: limsOrderTests.testname,
+        teststatus: limsOrderTests.teststatus,
         createdat: limsOrderTests.createdat,
+        subjectidentifier: limsOrders.subjectidentifier,
         orderingprovidername: limsOrders.orderingprovidername,
-        orderstatus: limsOrders.status,
       })
       .from(limsOrderTests)
       .innerJoin(limsOrders, eq(limsOrderTests.orderid, limsOrders.orderid))
-      .where(
-        and(
-          eq(limsOrders.workspaceid, workspaceid),
-          eq(limsOrders.subjectidentifier, patientid),
-          ne(limsOrders.status, "CANCELLED")
-        )
-      );
+      .where(and(...where));
 
-    const testCodes = [...new Set(limsRows.map((r) => r.testcode).filter(Boolean) as string[])];
-    const prices = testCodes.length
+    const unbilled = rows.filter((r) => !billedRefs.has(r.ordertestid));
+
+    // Prices, in one lookup rather than per row.
+    const codes = [...new Set(unbilled.map((r) => r.testcode).filter(Boolean) as string[])];
+    const priceRows = codes.length
       ? await db
           .select({ testcode: testReferenceRanges.testcode, price: testReferenceRanges.price })
           .from(testReferenceRanges)
-          .where(and(eq(testReferenceRanges.workspaceid, workspaceid), inArray(testReferenceRanges.testcode, testCodes)))
+          .where(
+            and(eq(testReferenceRanges.workspaceid, workspaceid), inArray(testReferenceRanges.testcode, codes))
+          )
       : [];
-    const priceByCode = new Map(prices.map((p) => [p.testcode, p.price ? Number(p.price) : 0]));
+    const priceByCode = new Map(priceRows.map((p) => [p.testcode, p.price ? Number(p.price) : 0]));
 
-    const limsPending: PendingLine[] = limsRows
-      .filter((r) => !billedRefs.has(r.ordertestid))
-      .map((r) => ({
-        source: "LIMS",
-        ref: r.ordertestid,
-        orderId: r.orderid,
-        testCode: r.testcode,
-        testName: r.testname ?? r.testcode ?? "Unknown test",
-        price: r.testcode ? priceByCode.get(r.testcode) ?? 0 : 0,
-        orderedAt: r.createdat ? String(r.createdat) : null,
-        orderingProvider: r.orderingprovidername ?? null,
-      }));
+    // Patient names, likewise batched. subjectidentifier holds a patient id.
+    const patientIds = [...new Set(unbilled.map((r) => r.subjectidentifier).filter(Boolean) as string[])];
+    const patientRows = patientIds.length
+      ? await db
+          .select({
+            patientid: patients.patientid,
+            firstname: patients.firstname,
+            middlename: patients.middlename,
+            lastname: patients.lastname,
+          })
+          .from(patients)
+          .where(inArray(patients.patientid, patientIds))
+      : [];
+    const nameById = new Map(
+      patientRows.map((p) => [
+        p.patientid,
+        [p.firstname, p.middlename, p.lastname].filter(Boolean).join(" ").trim(),
+      ])
+    );
 
-    // ── EHR-referred pending tests ──────────────────────────────────────
+    const pending: PendingLine[] = unbilled.map((r) => ({
+      source: "LIMS",
+      ref: r.ordertestid,
+      orderId: r.orderid,
+      patientId: r.subjectidentifier ?? null,
+      // Fall back to the raw identifier so a row is never nameless.
+      patientName: nameById.get(r.subjectidentifier ?? "") || r.subjectidentifier || "Unknown patient",
+      testCode: r.testcode,
+      testName: r.testname ?? r.testcode ?? "Unknown test",
+      price: r.testcode ? priceByCode.get(r.testcode) ?? 0 : 0,
+      orderedAt: r.createdat ? String(r.createdat) : null,
+      orderingProvider: r.orderingprovidername ?? null,
+      status: r.teststatus ?? null,
+    }));
+
+    // ── Doctor referrals from the EHR ────────────────────────────────────
     let ehrPending: PendingLine[] = [];
     try {
       const origin = request.nextUrl.origin;
-      const ehrRes = await fetch(
-        `${origin}/api/lims/orders/openehr?workspaceid=${workspaceid}&patientid=${patientid}`,
-        { headers: { cookie: request.headers.get("cookie") ?? "" } }
-      );
-      if (ehrRes.ok) {
-        const ehrData = await ehrRes.json();
-        const orders: Array<Record<string, unknown>> = ehrData.orders ?? [];
+      const url = `${origin}/api/lims/orders/openehr?workspaceid=${workspaceid}${patientid ? `&patientid=${patientid}` : ""}`;
+      const res = await fetch(url, { headers: { cookie: request.headers.get("cookie") ?? "" } });
+      if (res.ok) {
+        const data = await res.json();
+        const orders: Array<Record<string, unknown>> = data.orders ?? [];
         ehrPending = orders
           .filter((o) => o.status !== "CANCELLED" && !billedRefs.has(String(o.composition_uid)))
           .map((o) => ({
-            source: "EHR",
+            source: "EHR" as const,
             ref: String(o.composition_uid),
             orderId: String(o.request_id ?? o.composition_uid),
+            patientId: (o.patientId as string) ?? null,
+            patientName: (o.patientName as string) ?? "Unknown patient",
             testCode: (o.service_type_code as string) ?? null,
             testName: (o.service_name as string) ?? "Referred test",
-            price: 0, // EHR referrals don't carry a lab price code here; set on invoice creation if needed
+            price: 0,
             orderedAt: (o.recorded_time as string) ?? null,
             orderingProvider: (o.requesting_provider as string) ?? null,
+            status: (o.status as string) ?? null,
           }));
       }
     } catch (e) {
+      // A slow or unreachable EHR shouldn't hide this lab's own orders.
       console.error("[lab billing pending] EHR pull failed:", e);
-      // Don't fail the whole response if EHR is unreachable — LIMS-sourced
-      // lines are still useful on their own.
     }
 
-    return NextResponse.json({ pending: [...limsPending, ...ehrPending] });
+    const all = [...pending, ...ehrPending].sort((a, b) =>
+      (b.orderedAt ?? "").localeCompare(a.orderedAt ?? "")
+    );
+
+    return NextResponse.json({ pending: all });
   } catch (error) {
     console.error("[lab billing pending]", error);
     return NextResponse.json({ error: "Failed to load pending lab orders" }, { status: 500 });
