@@ -12,6 +12,7 @@ import {
   stockLevels,
   posSales,
   posPayments,
+  invoices,
 } from "@/lib/db/schema";
 import { eq, and, sql, lt, gte, count } from "drizzle-orm";
 
@@ -307,7 +308,7 @@ export async function GET(
         },
       },
       budget: {
-        todayRevenue: parseFloat(todaySales?.[0]?.total || "0") + parseFloat(todayPosSales?.[0]?.total || "0"),
+        todayRevenue: parseFloat(todayPosSales?.[0]?.total || "0") + parseFloat(todayPosSales?.[0]?.total || "0"),
         paymentBreakdown: {
           cash: parseFloat(todayPaymentBreakdown.find(p => p.paymentmethod === "CASH")?.total || "0"),
           card: parseFloat(todayPaymentBreakdown.find(p => p.paymentmethod === "CARD")?.total || "0"),

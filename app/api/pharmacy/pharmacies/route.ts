@@ -1,65 +1,38 @@
 /**
- * API Route: /api/d/[workspaceid]/pharmacies
- * - GET: List all pharmacies for a workspace
- * - POST: Create a new pharmacy
+ * API Route: /api/pharmacy/pharmacies
+ * - GET: List all pharmacies for a workspace (tenant-isolated)
+ * - POST: Create a new pharmacy (tenant-isolated)
+ *
+ * NOTE: This route requires a workspaceid query parameter since it is
+ * not nested under /api/d/[workspaceid]. Consider using the primary
+ * route at /api/d/[workspaceid]/pharmacies instead.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
-import { db } from "@/lib/db";
-import { pharmacies } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  pharmacySql,
+  withPharmacySchema,
+} from "@/lib/db/pharmacy-db";
 
-/**
- * GET /api/d/[workspaceid]/pharmacies
- * 
- * Retrieves all pharmacies associated with a specific workspace.
- * 
- * @param req - Next.js request object
- * @param params - Route parameters (awaited Promise containing workspaceid)
- * 
- * @returns JSON response with pharmacies array or error message
- * 
- * @example
- * // Success response (200)
- * {
- *   "pharmacies": [
- *     {
- *       "pharmacyid": "uuid",
- *       "workspaceid": "workspace-uuid",
- *       "name": "Pharmacy Name",
- *       "phone": "+1234567890",
- *       "email": "pharmacy@example.com",
- *       "address": "123 Main St",
- *       "createdat": "2024-01-01T00:00:00Z",
- *       "updatedat": "2024-01-01T00:00:00Z"
- *     }
- *   ]
- * }
- * 
- * @throws {401} Unauthorized - User not authenticated
- * @throws {500} Internal Server Error - Database or server error
- * 
- * @remarks
- * - Requires user authentication via getUser()
- * - Params must be awaited before accessing properties (Next.js 15+)
- * - Returns empty array if no pharmacies found for workspace
- */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ workspaceid: string }> }
-) {
+export async function GET(req: NextRequest) {
   try {
     const user = await getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { workspaceid } = await params;
+    const workspaceid = req.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid query param required" }, { status: 400 });
+    }
 
-    const allPharmacies = await db
-      .select()
-      .from(pharmacies)
-      .where(eq(pharmacies.workspaceid, workspaceid));
+    const allPharmacies = await withPharmacySchema(
+      pharmacySql,
+      workspaceid,
+      async (tx) => {
+        return tx`SELECT * FROM pharmacies ORDER BY createdat DESC`;
+      }
+    );
 
     return NextResponse.json({ pharmacies: allPharmacies });
   } catch (error) {
@@ -71,63 +44,19 @@ export async function GET(
   }
 }
 
-/**
- * POST /api/d/[workspaceid]/pharmacies
- * 
- * Creates a new pharmacy within a specific workspace.
- * 
- * @param req - Next.js request object with JSON body
- * @param params - Route parameters (awaited Promise containing workspaceid)
- * 
- * @returns JSON response with created pharmacy object or error message
- * 
- * @example
- * // Request body
- * {
- *   "name": "Central Pharmacy",
- *   "phone": "+1234567890",
- *   "email": "central@pharmacy.com",
- *   "address": "123 Medical Center Dr"
- * }
- * 
- * // Success response (201)
- * {
- *   "pharmacy": {
- *     "pharmacyid": "uuid",
- *     "workspaceid": "workspace-uuid",
- *     "name": "Central Pharmacy",
- *     "phone": "+1234567890",
- *     "email": "central@pharmacy.com",
- *     "address": "123 Medical Center Dr",
- *     "createdat": "2024-01-01T00:00:00Z",
- *     "updatedat": "2024-01-01T00:00:00Z"
- *   }
- * }
- * 
- * @throws {400} Bad Request - Missing or invalid pharmacy name
- * @throws {401} Unauthorized - User not authenticated
- * @throws {500} Internal Server Error - Database or server error
- * 
- * @remarks
- * - Requires user authentication via getUser()
- * - Pharmacy name is required and will be trimmed
- * - Phone, email, and address are optional fields
- * - Params must be awaited before accessing properties (Next.js 15+)
- */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ workspaceid: string }> }
-) {
+export async function POST(req: NextRequest) {
   try {
     const user = await getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { workspaceid } = await params;
     const body = await req.json();
+    const { workspaceid, name, phone, email, address, city } = body;
 
-    const { name, phone, email, address } = body;
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    }
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json(
@@ -136,16 +65,17 @@ export async function POST(
       );
     }
 
-    const [newPharmacy] = await db
-      .insert(pharmacies)
-      .values({
-        workspaceid,
-        name: name.trim(),
-        phone: phone || null,
-        email: email || null,
-        address: address || null,
-      })
-      .returning();
+    const [newPharmacy] = await withPharmacySchema(
+      pharmacySql,
+      workspaceid,
+      async (tx) => {
+        return tx`
+          INSERT INTO pharmacies (name, phone, email, address, city)
+          VALUES (${name.trim()}, ${phone || null}, ${email || null}, ${address || null}, ${city || null})
+          RETURNING *
+        `;
+      }
+    );
 
     return NextResponse.json({ pharmacy: newPharmacy }, { status: 201 });
   } catch (error) {

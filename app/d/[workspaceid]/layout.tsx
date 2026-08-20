@@ -57,6 +57,7 @@ export default async function HomeLayout({
               }
               userRole={workspace.role}
               workspaceid={workspaceid}
+              workspaceName={workspace.workspace.name}
             />
             <div className="px-4 h-[calc(100dvh-64px)] min-h-0 overflow-hidden">
               {children}

@@ -11,10 +11,19 @@ import { Workspace } from "@/lib/db/tables/workspace";
 import { WorkspaceUser } from "@/lib/db/tables/workspace";
 import { User, users } from "@/lib/db/tables/user";
 import { withAdminCheck } from "./shared";
+import { pharmacySql, provisionPharmacySchema } from "@/lib/db/pharmacy-db";
+import { dropPharmacySchema } from "@/lib/db/pharmacy-tenant";
 
 export const deleteWorkspace = withAdminCheck(
   async (workspaceId: string): Promise<boolean> => {
     try {
+      // Drop pharmacy tenant schema if it exists
+      try {
+        await dropPharmacySchema(pharmacySql, workspaceId);
+      } catch (dropErr) {
+        console.error("Error dropping pharmacy schema:", dropErr);
+      }
+
       // Delete workspace users
       await db
         .delete(workspaceusers)
@@ -49,6 +58,16 @@ export const createWorkspace = withAdminCheck(
           settings: settings || {},
         })
         .returning();
+
+      // Auto-provision tenant schema for pharmacy workspaces
+      if (type === "pharmacy" && workspace) {
+        try {
+          await provisionPharmacySchema(pharmacySql, workspace.workspaceid);
+          console.log(`Provisioned pharmacy schema for workspace ${workspace.workspaceid}`);
+        } catch (provisionError) {
+          console.error("Error provisioning pharmacy schema:", provisionError);
+        }
+      }
 
       return workspace;
     } catch (error) {

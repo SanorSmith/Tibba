@@ -1,14 +1,15 @@
 /**
  * API: /api/d/[workspaceid]/pharmacies/[pharmacyid]
- * - PATCH: update pharmacy information
- * - DELETE: delete pharmacy
+ * - PATCH: update pharmacy information (tenant-isolated)
+ * - DELETE: delete pharmacy (tenant-isolated)
  * - Role: authenticated users
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { pharmacies } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import {
+  pharmacySql,
+  withPharmacySchema,
+} from "@/lib/db/pharmacy-db";
 
 export async function PATCH(
   req: NextRequest,
@@ -19,28 +20,44 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const payload: Record<string, unknown> = {};
-  
-  if (body.name) payload.name = String(body.name);
-  if ("phone" in body) payload.phone = body.phone || null;
-  if ("email" in body) payload.email = body.email || null;
-  if ("address" in body) payload.address = body.address || null;
-  
-  if (Object.keys(payload).length === 0) {
+
+  // Build SET clause dynamically from allowed fields
+  const allowed = ["name", "phone", "email", "address", "city", "namear", "nameku",
+    "latitude", "longitude", "deliveryfee", "minorderamount",
+    "avgdeliverytimeminutes", "rating", "isactive", "logourl"];
+  const updates: string[] = [];
+  const values: (string | number | boolean | null)[] = [];
+  let idx = 2; // $1 = pharmacyid
+  for (const key of allowed) {
+    if (key in body) {
+      updates.push(`${key} = $${idx}`);
+      values.push(body[key] ?? null);
+      idx++;
+    }
+  }
+
+  if (updates.length === 0) {
     return NextResponse.json({ error: "No updatable fields" }, { status: 400 });
   }
 
+  updates.push(`updatedat = now()`);
+
   try {
-    const res = await db
-      .update(pharmacies)
-      .set(payload)
-      .where(and(eq(pharmacies.workspaceid, workspaceid), eq(pharmacies.pharmacyid, pharmacyid)))
-      .returning();
-      
+    const res = await withPharmacySchema(
+      pharmacySql,
+      workspaceid,
+      async (tx) => {
+        return tx.unsafe(
+          `UPDATE pharmacies SET ${updates.join(", ")} WHERE pharmacyid = $1 RETURNING *`,
+          [pharmacyid, ...values]
+        );
+      }
+    );
+
     if (!res.length) {
       return NextResponse.json({ error: "Pharmacy not found" }, { status: 404 });
     }
-    
+
     return NextResponse.json({ pharmacy: res[0] });
   } catch (e) {
     console.error("[pharmacies][PATCH] error:", e);
@@ -57,15 +74,20 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const res = await db
-      .delete(pharmacies)
-      .where(and(eq(pharmacies.workspaceid, workspaceid), eq(pharmacies.pharmacyid, pharmacyid)))
-      .returning();
-      
+    const res = await withPharmacySchema(
+      pharmacySql,
+      workspaceid,
+      async (tx) => {
+        return tx`
+          DELETE FROM pharmacies WHERE pharmacyid = ${pharmacyid} RETURNING *
+        `;
+      }
+    );
+
     if (!res.length) {
       return NextResponse.json({ error: "Pharmacy not found" }, { status: 404 });
     }
-    
+
     return NextResponse.json({ success: true, deleted: res[0] });
   } catch (e) {
     console.error("[pharmacies][DELETE] error:", e);

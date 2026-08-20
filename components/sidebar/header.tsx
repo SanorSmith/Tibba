@@ -7,11 +7,13 @@ export function Header({
   rightSlot,
   userRole,
   workspaceid,
+  workspaceName,
 }: {
   middleSlot?: React.ReactNode;
   rightSlot?: React.ReactNode;
   userRole?: string;
   workspaceid?: string;
+  workspaceName?: string;
 }) {
   const headerBg = "bg-[#618FF5]";
 
@@ -47,6 +49,9 @@ export function Header({
           <h1 className="text-xl font-bold whitespace-nowrap mr-8">
             {headerTitle}
           </h1>
+          {workspaceName && (
+            <p className="text-xs opacity-80 -mt-1 whitespace-nowrap">{workspaceName}</p>
+          )}
         </Link>
         {middleSlot && (
           <div className="flex-1 max-w-xl ml-16">
