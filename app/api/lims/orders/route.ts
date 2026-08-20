@@ -447,11 +447,18 @@ export async function GET(request: NextRequest) {
     try {
       openEHROrders = await cachedByKey<any[]>(ehrOrdersKey(workspaceId), async () => {
       const collected: any[] = [];
-      // Get all patients with EHR IDs across all workspaces
-      // (lab tech workspace may differ from doctor/patient workspace)
+      // Only this facility's own patients. Sweeping every patient in the
+      // database meant a brand-new lab opened onto another facility's order
+      // list, because an EHR lab order records which discipline it is for
+      // (target_lab) but never which facility it was sent to — the patient is
+      // the only workspace signal there is.
+      //
+      // Patients with no workspace are therefore invisible here rather than
+      // visible everywhere; assigning them an owner is what brings them back.
       const patientsQuery = await db
         .select()
-        .from(patients);
+        .from(patients)
+        .where(eq(patients.workspaceid, workspaceId));
       
       const patientsWithEhr = patientsQuery.filter(p => p.ehrid);
 
