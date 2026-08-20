@@ -59,7 +59,7 @@ export default async function HomeLayout({
               workspaceid={workspaceid}
               workspaceName={workspace.workspace.name}
             />
-            <div className="px-4 h-[calc(100dvh-64px)] min-h-0 overflow-hidden">
+            <div className="px-4 h-[calc(100dvh-64px)] min-h-0 overflow-hidden flex flex-col">
               {children}
             </div>
           </SidebarInset>
