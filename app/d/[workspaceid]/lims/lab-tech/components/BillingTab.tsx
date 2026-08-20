@@ -19,9 +19,10 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2, Search, Receipt, CheckCircle2, AlertCircle, RefreshCw,
-  Wallet, BarChart3, ClipboardList, LockOpen, Lock, Undo2,
+  Wallet, BarChart3, ClipboardList, LockOpen, Lock, Undo2, ShoppingCart,
 } from "lucide-react";
 import { printReceipt } from "./LabReceipt";
+import LabPosPage from "./LabPosPage";
 
 interface PendingLine {
   source: "LIMS" | "EHR"; ref: string; orderId: string;
@@ -64,7 +65,7 @@ const statusColor: Record<string, string> = {
 const money = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
 export default function BillingTab({ workspaceid }: { workspaceid: string }) {
-  const [view, setView] = useState<"bill" | "collect" | "shift" | "reports">("bill");
+  const [view, setView] = useState<"pos" | "bill" | "collect" | "shift" | "reports">("pos");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +254,9 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
           ) : (
             <Badge className="bg-gray-100 text-gray-800 gap-1"><Lock className="h-3 w-3" /> No shift</Badge>
           )}
+          <Button size="sm" variant={view === "pos" ? "default" : "outline"} onClick={() => setView("pos")} className="gap-1">
+            <ShoppingCart className="h-4 w-4" /> POS
+          </Button>
           <Button size="sm" variant={view === "bill" ? "default" : "outline"} onClick={() => setView("bill")} className="gap-1">
             <ClipboardList className="h-4 w-4" /> To Bill{pending.length ? ` (${pending.length})` : ""}
           </Button>
@@ -274,6 +278,11 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
+      ) : view === "pos" ? (
+        <LabPosPage
+          workspaceid={workspaceid}
+          onNavigate={(v) => setView(v === "refunds" ? "collect" : v)}
+        />
       ) : view === "bill" ? (
         <>
           <div className="relative flex-shrink-0">
