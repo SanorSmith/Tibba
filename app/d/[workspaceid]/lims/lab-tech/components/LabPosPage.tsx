@@ -60,6 +60,7 @@ export default function LabPosPage({
   const [cart, setCart] = useState<LabCartItem[]>([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [nextId, setNextId] = useState(1);
+  const [savedCodes, setSavedCodes] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,15 +117,50 @@ export default function LabPosPage({
     setNextId((n) => n + 1);
   };
 
+  // Recalculate the line from price and discount together — changing either
+  // has to move the total, and doing it in one place keeps them consistent.
+  const reprice = (c: LabCartItem, unitPrice: number, discountPercent: number): LabCartItem => {
+    const pct = Math.min(100, Math.max(0, discountPercent));
+    const discountAmount = (unitPrice * pct) / 100;
+    return { ...c, unitPrice, discountPercent: pct, discountAmount, totalAmount: unitPrice - discountAmount };
+  };
+
+  const updatePrice = (id: number, price: number) =>
+    setCart((prev) => prev.map((c) => (c.cartItemId === id ? reprice(c, Math.max(0, price), c.discountPercent) : c)));
+
+  // Persisting the price means the next order for this test arrives already
+  // priced, rather than being typed again at the counter.
+  const savePrice = async (item: LabCartItem) => {
+    if (!item.testCode) return;
+    try {
+      const res = await fetch("/api/lims/billing/test-price", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceid,
+          testCode: item.testCode,
+          testName: item.testName,
+          price: item.unitPrice,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setError(d.error ?? "Could not save the price");
+        return;
+      }
+      setSavedCodes((prev) => new Set(prev).add(item.testCode as string));
+      setOk(`${item.testName} priced at ${item.unitPrice.toLocaleString()} for future orders`);
+      // Other lines for the same test should show the new price immediately.
+      setCart((prev) =>
+        prev.map((c) => (c.testCode === item.testCode ? reprice(c, item.unitPrice, c.discountPercent) : c))
+      );
+    } catch {
+      setError("Could not save the price");
+    }
+  };
+
   const updateDiscount = (id: number, pct: number) =>
-    setCart((prev) =>
-      prev.map((c) => {
-        if (c.cartItemId !== id) return c;
-        const clamped = Math.min(100, Math.max(0, pct));
-        const discountAmount = (c.unitPrice * clamped) / 100;
-        return { ...c, discountPercent: clamped, discountAmount, totalAmount: c.unitPrice - discountAmount };
-      })
-    );
+    setCart((prev) => prev.map((c) => (c.cartItemId === id ? reprice(c, c.unitPrice, pct) : c)));
 
   const subtotal = cart.reduce((s, c) => s + c.unitPrice, 0);
   const discountAmount = cart.reduce((s, c) => s + c.discountAmount, 0);
@@ -327,6 +363,9 @@ export default function LabPosPage({
             <div className="lg:col-span-4">
               <LabCart
                 items={cart}
+                onUpdatePrice={updatePrice}
+                onSavePrice={savePrice}
+                savedCodes={savedCodes}
                 onUpdateDiscount={updateDiscount}
                 onRemove={(id) => setCart((p) => p.filter((c) => c.cartItemId !== id))}
                 onClear={() => setCart([])}

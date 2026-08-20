@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ShoppingCart as CartIcon, Trash2, X, AlertCircle } from "lucide-react";
+import { ShoppingCart as CartIcon, Trash2, X, AlertCircle, Save, Check } from "lucide-react";
 
 export interface LabCartItem {
   cartItemId: number;
@@ -33,6 +33,9 @@ export interface LabCartItem {
 
 type Props = {
   items: LabCartItem[];
+  onUpdatePrice: (cartItemId: number, price: number) => void;
+  onSavePrice: (item: LabCartItem) => void;
+  savedCodes: Set<string>;
   onUpdateDiscount: (cartItemId: number, discountPercent: number) => void;
   onRemove: (cartItemId: number) => void;
   onClear: () => void;
@@ -45,6 +48,9 @@ type Props = {
 
 export function LabCart({
   items,
+  onUpdatePrice,
+  onSavePrice,
+  savedCodes,
   onUpdateDiscount,
   onRemove,
   onClear,
@@ -112,7 +118,7 @@ export function LabCart({
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <Badge
                       className={
                         item.source === "LIMS"
@@ -122,6 +128,40 @@ export function LabCart({
                     >
                       {item.source === "LIMS" ? "Lab Order" : "EHR Referral"}
                     </Badge>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Price</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={item.unitPrice || ""}
+                        placeholder="0"
+                        onChange={(e) => onUpdatePrice(item.cartItemId, parseFloat(e.target.value) || 0)}
+                        className="h-6 w-20 text-center text-xs p-0"
+                        title="Unit price"
+                        aria-label="Unit price"
+                      />
+                      {/* Saving keeps the price for the next order of this test.
+                          Without a code there is nothing to match against, so
+                          the price applies to this sale only. */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        disabled={!item.testCode || item.unitPrice <= 0}
+                        title={
+                          item.testCode
+                            ? "Save this price for future orders of this test"
+                            : "No test code, so this price applies to this sale only"
+                        }
+                        onClick={() => onSavePrice(item)}
+                      >
+                        {item.testCode && savedCodes.has(item.testCode) ? (
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-muted-foreground">Disc.</span>
                       <Input
@@ -137,7 +177,7 @@ export function LabCart({
                       />
                       <span className="text-xs text-muted-foreground">%</span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right ml-auto">
                       <p className="text-sm font-medium">{item.totalAmount.toLocaleString()} IQD</p>
                       {item.discountPercent > 0 && (
                         <p className="text-[10px] text-green-600">
@@ -149,7 +189,7 @@ export function LabCart({
                   {item.unitPrice <= 0 && (
                     <div className="flex items-center gap-1 text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/20 rounded px-2 py-1">
                       <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                      No price set for this test
+                      Enter a price for this test
                     </div>
                   )}
                 </div>
@@ -191,14 +231,14 @@ export function LabCart({
               {unpriced && (
                 <div className="flex items-center gap-1 text-xs text-orange-600 bg-orange-50 dark:bg-orange-950/20 rounded px-2 py-1.5">
                   <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                  Some tests have no price
+                  Every line needs a price before checkout
                 </div>
               )}
               <Button
                 className="w-full gap-2 bg-[#618FF5] text-white hover:bg-[#4a7ae0] font-semibold"
                 size="lg"
                 onClick={onCheckout}
-                disabled={items.length === 0 || !hasShift || mixedPatients}
+                disabled={items.length === 0 || !hasShift || mixedPatients || unpriced}
               >
                 <CartIcon className="h-5 w-5" />
                 Checkout ({total.toFixed(2)})
