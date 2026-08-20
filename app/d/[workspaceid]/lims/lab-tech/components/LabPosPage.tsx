@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { LabCart, type LabCartItem } from "./LabCart";
 import { LabCheckoutDialog } from "./LabCheckoutDialog";
-import { printReceipt } from "./LabReceipt";
+import LabReprintDialog from "./LabReprintDialog";
 
 interface PendingLine {
   source: "LIMS" | "EHR"; ref: string; orderId: string;
@@ -52,6 +52,7 @@ export default function LabPosPage({
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [openShift, setOpenShift] = useState<ShiftRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reprintOpen, setReprintOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -198,19 +199,7 @@ export default function LabPosPage({
               variant="outline"
               size="sm"
               className="gap-1"
-              onClick={() => {
-                const last = invoices[0];
-                if (!last) { setError("No invoice to reprint yet"); return; }
-                printReceipt({
-                  kind: "PAYMENT", facility: "Laboratory", number: last.invoiceNumber,
-                  dateTime: new Date(last.invoiceDate).toLocaleDateString(),
-                  patientName: last.patientName, invoiceNumber: last.invoiceNumber,
-                  lines: last.payments.map((p) => ({
-                    label: `${p.isrefund ? "Refund" : "Payment"} — ${p.method}`, amount: Number(p.amount),
-                  })),
-                  total: last.total, paid: last.paid, balance: last.balance,
-                });
-              }}
+              onClick={() => setReprintOpen(true)}
             >
               <FileText className="h-4 w-4" /> Reprint Receipt
             </Button>
@@ -394,6 +383,12 @@ export default function LabPosPage({
           setOk("Sale completed");
           load();
         }}
+      />
+
+      <LabReprintDialog
+        open={reprintOpen}
+        onClose={() => setReprintOpen(false)}
+        workspaceid={workspaceid}
       />
     </div>
   );

@@ -18,6 +18,8 @@ export interface ReceiptLine {
 
 export interface ReceiptData {
   kind: "PAYMENT" | "REFUND" | "SHIFT";
+  /** Marks the copy so a duplicate can never be mistaken for the original. */
+  isReprint?: boolean;
   facility: string;
   number: string;
   dateTime: string;
@@ -76,8 +78,10 @@ function buildHtml(d: ReceiptData): string {
   .muted { color: #555; }
   .bold td { font-weight: bold; }
   .foot { text-align: center; font-size: 10px; margin-top: 8px; }
+  .reprint { text-align: center; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
   @media print { .noprint { display: none; } }
 </style></head><body><div class="wrap">
+  ${d.isReprint ? `<div class="reprint">*** REPRINT ***</div>` : ""}
   <div class="facility">${escapeHtml(d.facility)}</div>
   <h1>${title}</h1>
   <div class="meta">${escapeHtml(d.number)}<br/>${escapeHtml(d.dateTime)}</div>

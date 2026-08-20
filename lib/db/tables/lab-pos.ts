@@ -55,3 +55,23 @@ export type LabShift = typeof labShifts.$inferSelect;
 export type NewLabShift = typeof labShifts.$inferInsert;
 export type LabPayment = typeof labPayments.$inferSelect;
 export type NewLabPayment = typeof labPayments.$inferInsert;
+
+/**
+ * Audit trail for reprinted receipts. A reprint puts a second copy of a paid
+ * receipt into circulation, so it is recorded rather than silently allowed.
+ */
+export const labReceiptReprints = pgTable("lab_receipt_reprints", {
+  id:              uuid("id").primaryKey().defaultRandom(),
+  workspaceid:     uuid("workspace_id").notNull(),
+  receipttype:     text("receipt_type").notNull(),
+  invoiceid:       uuid("invoice_id"),
+  paymentid:       uuid("payment_id"),
+  shiftid:         uuid("shift_id"),
+  printformat:     text("print_format").notNull(),
+  reason:          text("reason"),
+  reprintedby:     uuid("reprinted_by"),
+  reprintedbyname: varchar("reprinted_by_name", { length: 200 }),
+  createdat:       timestamp("createdat", { withTimezone: true }).defaultNow(),
+});
+
+export type LabReceiptReprint = typeof labReceiptReprints.$inferSelect;
