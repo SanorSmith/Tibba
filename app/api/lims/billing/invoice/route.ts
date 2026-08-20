@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { generalInvoices, generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 interface SelectedLine {
@@ -37,6 +38,12 @@ export async function POST(request: NextRequest) {
     if (!workspaceid || !patientid || !Array.isArray(lines) || lines.length === 0) {
       return NextResponse.json({ error: "workspaceid, patientid and at least one line are required" }, { status: 400 });
     }
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
 
     const [patient] = await db.select().from(patients).where(eq(patients.patientid, patientid)).limit(1);
 

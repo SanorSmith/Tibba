@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { labGoodsReceipt, labGoodsReceiptItems } from "@/lib/db/tables/lab-procurement";
 import { inventoryStock, stockTransactions, itemBatches } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
@@ -26,6 +27,11 @@ export async function POST(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { receiptId, reason } = await request.json();
     if (!receiptId) return NextResponse.json({ error: "receiptId is required" }, { status: 400 });

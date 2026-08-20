@@ -16,6 +16,7 @@ import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { patients } from "@/lib/db/schema";
 import { eq, and, ne, inArray } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 interface PendingLine {
@@ -43,6 +44,12 @@ export async function GET(request: NextRequest) {
     if (!workspaceid) {
       return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
     }
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
 
     // Refs already invoiced by this facility.
     const billed = await db

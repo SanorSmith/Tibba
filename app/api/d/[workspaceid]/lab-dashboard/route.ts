@@ -13,6 +13,7 @@ import { labPayments } from "@/lib/db/tables/lab-pos";
 import { labPurchaseOrders, labVendorReturns, labClaims } from "@/lib/db/tables/lab-procurement";
 import { items, inventoryStock, itemBatches, warehouses, stockTransactions } from "@/lib/db/schema";
 import { eq, and, ne, sql, desc, inArray, gte } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function GET(
@@ -23,6 +24,11 @@ export async function GET(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const today = new Date().toISOString().slice(0, 10);
     const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);

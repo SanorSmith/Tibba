@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { generalInvoices, generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { labPayments } from "@/lib/db/tables/lab-pos";
 import { eq, sql, desc, inArray } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function GET(request: NextRequest) {
@@ -22,6 +23,12 @@ export async function GET(request: NextRequest) {
     const workspaceid = searchParams.get("workspaceid");
     const status = searchParams.get("status");
     if (!workspaceid) return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
 
     // Invoice ids this lab raised.
     const owned = await db

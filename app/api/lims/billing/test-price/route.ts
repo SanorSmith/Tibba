@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { eq, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function PUT(request: NextRequest) {
@@ -28,6 +29,12 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (!(Number(price) >= 0)) {
       return NextResponse.json({ error: "Price must be zero or above" }, { status: 400 });
     }

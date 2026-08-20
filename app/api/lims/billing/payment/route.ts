@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { labPayments, labShifts } from "@/lib/db/tables/lab-pos";
 import { generalInvoices } from "@/lib/db/tables/invoices";
 import { eq, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function POST(request: NextRequest) {
@@ -51,6 +52,12 @@ export async function POST(request: NextRequest) {
     if (!workspaceid || !invoiceId || !method) {
       return NextResponse.json({ error: "workspaceid, invoiceId and method are required" }, { status: 400 });
     }
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (!(Number(amount) > 0)) {
       return NextResponse.json({ error: "Amount must be above zero" }, { status: 400 });
     }

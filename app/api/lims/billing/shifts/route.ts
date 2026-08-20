@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { labShifts, labPayments } from "@/lib/db/tables/lab-pos";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function GET(request: NextRequest) {
@@ -21,6 +22,12 @@ export async function GET(request: NextRequest) {
 
     const workspaceid = request.nextUrl.searchParams.get("workspaceid");
     if (!workspaceid) return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
 
     const shifts = await db
       .select({
@@ -63,6 +70,12 @@ export async function POST(request: NextRequest) {
 
     const { workspaceid, openingCash, notes } = await request.json();
     if (!workspaceid) return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
 
     const [existing] = await db
       .select({ id: labShifts.id })
@@ -102,6 +115,12 @@ export async function PATCH(request: NextRequest) {
     if (!workspaceid || !shiftId) {
       return NextResponse.json({ error: "workspaceid and shiftId are required" }, { status: 400 });
     }
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
 
     const result = await db.transaction(async (tx) => {
       const [shift] = await tx

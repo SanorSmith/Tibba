@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { generalInvoices, generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { eq, and, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function POST(request: NextRequest) {
@@ -25,6 +26,12 @@ export async function POST(request: NextRequest) {
     if (!workspaceid || !invoiceId) {
       return NextResponse.json({ error: "workspaceid and invoiceId are required" }, { status: 400 });
     }
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (!reason?.trim()) {
       // A void with no stated reason is indistinguishable from a mistake.
       return NextResponse.json({ error: "A reason is required to cancel an invoice" }, { status: 400 });

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function GET(
@@ -17,6 +18,11 @@ export async function GET(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const activeOnly = request.nextUrl.searchParams.get("active") === "active";
     const result = activeOnly
@@ -44,6 +50,11 @@ export async function POST(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const b = await request.json();
     if (!b.name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -71,6 +82,11 @@ export async function PATCH(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const b = await request.json();
     if (!b.id) return NextResponse.json({ error: "id is required" }, { status: 400 });

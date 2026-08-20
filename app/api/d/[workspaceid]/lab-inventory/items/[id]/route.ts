@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { items, itemBatches, inventoryStock, stockTransactions, warehouses } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
 export async function GET(
@@ -19,6 +20,11 @@ export async function GET(
     const { workspaceid, id } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const [item] = await db
       .select()
@@ -79,6 +85,11 @@ export async function PATCH(
     const { workspaceid, id } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const b = await request.json();
     const [updated] = await db

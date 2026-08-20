@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { labVendorReturns, labVendorReturnItems } from "@/lib/db/tables/lab-procurement";
 import { items, itemBatches, inventoryStock, stockTransactions } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
@@ -29,6 +30,11 @@ export async function GET(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const rows = await db
       .select({
@@ -61,6 +67,11 @@ export async function POST(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Being signed in is not the same as belonging here: without this, one
+    // lab's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await request.json();
     const { vendorId, vendorName, reason, notes, lines } = body as {

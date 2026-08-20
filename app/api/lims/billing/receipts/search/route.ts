@@ -17,6 +17,7 @@ import { labPayments, labShifts } from "@/lib/db/tables/lab-pos";
 import { and, eq, gte, lte, ilike, desc, inArray, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 
 const searchSchema = z.object({
   workspaceId: z.string().uuid(),
@@ -40,6 +41,12 @@ export async function POST(request: NextRequest) {
       );
     }
     const d = parsed.data;
+    // Signed in is not the same as belonging here: without this, one lab's
+    // money is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, d.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const results: { payments: any[]; refunds: any[]; shifts: any[] } = {
       payments: [], refunds: [], shifts: [],
     };
