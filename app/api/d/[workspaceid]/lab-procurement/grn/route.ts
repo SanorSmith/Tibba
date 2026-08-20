@@ -23,9 +23,9 @@ import {
   itemBatches,
   inventoryStock,
   stockTransactions,
-  warehouses,
 } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
 interface ReceiptLine {
@@ -112,20 +112,8 @@ export async function POST(
       return NextResponse.json({ error: "No items provided" }, { status: 400 });
     }
 
-    // Deliveries land in this lab's own warehouse. Without one there is
-    // nowhere to put the goods.
-    const [labWarehouse] = await db
-      .select({ id: warehouses.id })
-      .from(warehouses)
-      .where(and(eq(warehouses.workspaceid, workspaceid), eq(warehouses.warehousetype, "lab")))
-      .limit(1);
-
-    if (!labWarehouse) {
-      return NextResponse.json(
-        { error: "This lab has no warehouse configured yet, so deliveries cannot be received." },
-        { status: 400 }
-      );
-    }
+    // Deliveries land in this lab's own warehouse, created on first use.
+    const labWarehouse = await ensureLabWarehouse(workspaceid);
 
     const anyReceived = grItems.some((i) => Number(i.receivedQty) > 0);
     const allComplete = grItems.every(

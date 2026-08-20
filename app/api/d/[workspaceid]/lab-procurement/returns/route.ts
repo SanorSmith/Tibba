@@ -8,8 +8,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { labVendorReturns, labVendorReturnItems } from "@/lib/db/tables/lab-procurement";
-import { items, itemBatches, inventoryStock, stockTransactions, warehouses } from "@/lib/db/schema";
+import { items, itemBatches, inventoryStock, stockTransactions } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
 interface ReturnLine {
@@ -77,14 +78,7 @@ export async function POST(
       return NextResponse.json({ error: "Every line needs an item and a quantity above zero" }, { status: 400 });
     }
 
-    const [labWarehouse] = await db
-      .select({ id: warehouses.id })
-      .from(warehouses)
-      .where(and(eq(warehouses.workspaceid, workspaceid), eq(warehouses.warehousetype, "lab")))
-      .limit(1);
-    if (!labWarehouse) {
-      return NextResponse.json({ error: "This lab has no warehouse, so there is no stock to return." }, { status: 400 });
-    }
+    const labWarehouse = await ensureLabWarehouse(workspaceid);
 
     const returnNumber = `LRTN-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-4)}`;
 

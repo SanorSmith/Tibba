@@ -13,8 +13,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { labGoodsReceipt, labGoodsReceiptItems } from "@/lib/db/tables/lab-procurement";
-import { inventoryStock, stockTransactions, warehouses, itemBatches } from "@/lib/db/schema";
+import { inventoryStock, stockTransactions, itemBatches } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
 export async function POST(
@@ -54,12 +55,7 @@ export async function POST(
         .from(labGoodsReceiptItems)
         .where(eq(labGoodsReceiptItems.receiptid, receiptId));
 
-      const [labWarehouse] = await tx
-        .select({ id: warehouses.id })
-        .from(warehouses)
-        .where(and(eq(warehouses.workspaceid, workspaceid), eq(warehouses.warehousetype, "lab")))
-        .limit(1);
-      if (!labWarehouse) throw new Error("This lab has no warehouse");
+      const labWarehouse = await ensureLabWarehouse(workspaceid, null, tx);
 
       const reversalNumber = `LGRN-REV-${Date.now().toString().slice(-6)}`;
       const [reversal] = await tx

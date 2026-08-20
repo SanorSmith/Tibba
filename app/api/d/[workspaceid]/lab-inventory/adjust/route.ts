@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { items, inventoryStock, stockTransactions, warehouses, itemBatches } from "@/lib/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
+import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
 const REASONS = ["STOCK_COUNT", "SPILLAGE", "EXPIRED", "DAMAGED", "OTHER"] as const;
@@ -86,12 +87,7 @@ export async function POST(
         .limit(1);
       if (!item) throw new Error("Item not found in this lab's inventory");
 
-      const [labWarehouse] = await tx
-        .select({ id: warehouses.id })
-        .from(warehouses)
-        .where(and(eq(warehouses.workspaceid, workspaceid), eq(warehouses.warehousetype, "lab")))
-        .limit(1);
-      if (!labWarehouse) throw new Error("This lab has no warehouse");
+      const labWarehouse = await ensureLabWarehouse(workspaceid, null, tx);
 
       const [current] = await tx
         .select({ id: inventoryStock.id, quantity: inventoryStock.quantity, batchid: inventoryStock.batchid })

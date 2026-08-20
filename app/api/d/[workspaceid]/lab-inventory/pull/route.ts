@@ -22,11 +22,11 @@ import {
   items,
   itemBatches,
   inventoryStock,
-  warehouses,
   stockTransactions,
   labConsumptionLog,
 } from "@/lib/db/schema";
 import { eq, and, sql, desc, isNull, or, gt } from "drizzle-orm";
+import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
 
 interface PullLine {
@@ -100,19 +100,9 @@ export async function POST(
     }
 
     // This facility's lab warehouse. Stock lives per (item, warehouse, batch),
-    // so without it there is nowhere to pull from.
-    const [labWarehouse] = await db
-      .select({ id: warehouses.id, name: warehouses.name })
-      .from(warehouses)
-      .where(and(eq(warehouses.workspaceid, workspaceid), eq(warehouses.warehousetype, "lab")))
-      .limit(1);
-
-    if (!labWarehouse) {
-      return NextResponse.json(
-        { error: "This lab has no warehouse configured yet, so there is no stock to pull from." },
-        { status: 400 }
-      );
-    }
+    // so without it there is nowhere to pull from — created on first use for
+    // labs that never had one.
+    const labWarehouse = await ensureLabWarehouse(workspaceid);
 
     const result = await db.transaction(async (tx) => {
       const applied: Array<{ itemId: string; itemName: string; batchId: string | null; quantity: number }> = [];
