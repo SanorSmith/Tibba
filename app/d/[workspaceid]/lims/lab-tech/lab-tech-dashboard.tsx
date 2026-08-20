@@ -25,6 +25,7 @@ import {
   Receipt,
   PackageMinus,
   Truck,
+  LayoutDashboard,
 } from "lucide-react";
 import OrdersTab from "./components/OrdersTab";
 import RegisterSample from "./components/RegisterSample";
@@ -35,6 +36,7 @@ import NotificationTab from "./components/NotificationTab";
 import ContactsTab from "./components/ContactsTab";
 import LabManagementTab from "./components/LabManagementTab";
 import QCCalibrationTab from "./components/QCCalibrationTab";
+import LabDashboard from "./components/LabDashboard";
 import LabInventory from "./components/LabInventory";
 import PullPanel from "./components/PullPanel";
 import ProcurementPanel from "./components/ProcurementPanel";
@@ -164,6 +166,16 @@ export default function LabTechDashboard({
 
           {canManageInventoryBilling && (
             <TabsTrigger
+              value="overview"
+              className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+          )}
+
+          {canManageInventoryBilling && (
+            <TabsTrigger
               value="inventory"
               className="rounded-md data-[state=active]:bg-orange-500 data-[state=active]:text-white bg-[#4E95D9] text-white border border-gray-300 font-semibold px-2 py-2 flex items-center gap-1 text-sm"
             >
@@ -254,6 +266,12 @@ export default function LabTechDashboard({
             <LabManagementTab workspaceid={workspaceid} />
           )}
         </TabsContent>
+
+        {canManageInventoryBilling && (
+          <TabsContent value="overview" className="mt-2 flex-1 min-h-0 overflow-auto">
+            {loadedTabs.has("overview") && <LabDashboard workspaceid={workspaceid} />}
+          </TabsContent>
+        )}
 
         {canManageInventoryBilling && (
           <TabsContent value="inventory" className="mt-2 flex-1 min-h-0 overflow-auto">
