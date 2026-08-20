@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Loader2, Search, Receipt, CheckCircle2, AlertCircle, RefreshCw,
-  Wallet, BarChart3, ClipboardList, LockOpen, Lock, Undo2, ShoppingCart,
+  Wallet, BarChart3, ClipboardList, LockOpen, Lock, Undo2, ShoppingCart, Ban,
 } from "lucide-react";
 import { printReceipt } from "./LabReceipt";
 import LabPosPage from "./LabPosPage";
@@ -53,6 +53,7 @@ const statusColor: Record<string, string> = {
   PAID: "bg-green-100 text-green-800",
   PARTIALLY_PAID: "bg-orange-100 text-orange-800",
   PENDING: "bg-gray-100 text-gray-800",
+  CANCELLED: "bg-red-100 text-red-800",
 };
 const money = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
@@ -77,6 +78,9 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
   const [insurer, setInsurer] = useState("");
   const [refundMode, setRefundMode] = useState(false);
   const [refundReason, setRefundReason] = useState("");
+
+  const [cancelFor, setCancelFor] = useState<InvoiceRow | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -179,6 +183,29 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
         method, cashier: undefined,
       });
       setPayFor(null); load();
+    } finally { setBusy(false); }
+  };
+
+  // Cancelling is not refunding. A refund returns money while the debt
+  // stands; cancelling says the work was never billable, so the tests go back
+  // on the pending list to be billed correctly or left alone.
+  const cancelInvoice = async () => {
+    if (!cancelFor || !cancelReason.trim()) return;
+    setBusy(true); setError(null); setOk(null);
+    try {
+      const res = await fetch("/api/lims/billing/invoice/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceid, invoiceId: cancelFor.id, reason: cancelReason }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error ?? "Could not cancel"); return; }
+      setOk(
+        d.released
+          ? `${d.invoiceNumber} cancelled — ${d.released} test(s) back on the billing list`
+          : `${d.invoiceNumber} cancelled`
+      );
+      setCancelFor(null); setCancelReason(""); load();
     } finally { setBusy(false); }
   };
 
@@ -347,6 +374,29 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
               </CardContent>
             </Card>
           )}
+          {cancelFor && (
+            <Card className="flex-shrink-0 border-red-300">
+              <CardHeader className="py-2 px-3 border-b">
+                <CardTitle className="text-sm font-semibold">Cancel {cancelFor.invoiceNumber}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Voids the invoice and puts its tests back on the billing list. Use this when the work should not
+                  have been billed &mdash; to give money back while the debt stands, refund instead.
+                </p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground">Reason (required)</label>
+                    <Input value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="e.g. billed in error" />
+                  </div>
+                  <Button variant="destructive" onClick={cancelInvoice} disabled={busy || !cancelReason.trim()} className="gap-1">
+                    <Ban className="h-4 w-4" /> Cancel Invoice
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setCancelFor(null); setCancelReason(""); }}>Keep</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="flex-1 min-h-0 flex flex-col">
             <CardHeader className="py-2 px-3 border-b flex-shrink-0">
               <CardTitle className="text-sm font-semibold">Invoices ({invoices.length}) &mdash; {unpaidCount} unpaid</CardTitle>
@@ -377,6 +427,11 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
                         <td className="px-3 py-2 text-right whitespace-nowrap">
                           {inv.balance > 0.001 && <Button size="sm" onClick={() => startPayment(inv)} className="gap-1"><Receipt className="h-3 w-3" /> Pay</Button>}
                           {inv.paid > 0.001 && <Button size="sm" variant="outline" className="ml-1 gap-1" onClick={() => startPayment(inv, true)}><Undo2 className="h-3 w-3" /> Refund</Button>}
+                          {inv.paid <= 0.001 && inv.status !== "CANCELLED" && (
+                            <Button size="sm" variant="ghost" className="ml-1 gap-1 text-destructive" onClick={() => setCancelFor(inv)}>
+                              <Ban className="h-3 w-3" /> Cancel
+                            </Button>
+                          )}
                           <Button size="sm" variant="ghost" className="ml-1" onClick={() => printReceipt({
                             kind: "PAYMENT", facility: "Laboratory", number: inv.invoiceNumber,
                             dateTime: new Date(inv.invoiceDate).toLocaleDateString(),
