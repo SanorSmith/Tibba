@@ -19,12 +19,21 @@ export default function UnauthorizedPage() {
     window.location.href = '/login';
   };
 
-  const getHomeRoute = () => {
-    if (role === 'FINANCE_ADMIN') return '/finance';
-    if (role === 'HR_ADMIN') return '/hr';
-    if (role === 'INVENTORY_ADMIN') return '/inventory';
-    return '/dashboard';
+  // Where this role can actually go. RECEPTION_ADMIN was missing here and fell
+  // through to /dashboard, which that role also cannot open — so the only
+  // button on this page led straight back to this page. /dashboard is
+  // super-admin only, which makes it the wrong default for everyone else.
+  const HOME_BY_ROLE: Record<string, string> = {
+    SUPER_ADMIN: '/dashboard',
+    FINANCE_ADMIN: '/finance',
+    HR_ADMIN: '/hr',
+    INVENTORY_ADMIN: '/inventory',
+    RECEPTION_ADMIN: '/reception',
   };
+
+  // Null while the role is still loading, so the button waits rather than
+  // pointing at a guess. Logging out stays available either way.
+  const homeRoute = role ? HOME_BY_ROLE[role] ?? null : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
@@ -44,12 +53,14 @@ export default function UnauthorizedPage() {
         </p>
 
         <div className="flex flex-col gap-3">
-          <a
-            href={getHomeRoute()}
-            className="flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition"
-          >
-            <ArrowLeft className="w-4 h-4" /> Go to My Module
-          </a>
+          {homeRoute && (
+            <a
+              href={homeRoute}
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition"
+            >
+              <ArrowLeft className="w-4 h-4" /> Go to My Module
+            </a>
+          )}
           <button
             onClick={handleLogout}
             className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg text-sm transition"
