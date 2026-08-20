@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, User, ClipboardList, Clock, RotateCcw, BarChart3, FileText,
+  Search, User, ClipboardList, Clock, Receipt, BarChart3, FileText,
   Plus, Loader2, AlertCircle, CheckCircle2,
 } from "lucide-react";
 import { LabCart, type LabCartItem } from "./LabCart";
@@ -46,7 +46,7 @@ export default function LabPosPage({
   onNavigate,
 }: {
   workspaceid: string;
-  onNavigate: (view: "shift" | "reports" | "refunds") => void;
+  onNavigate: (view: "bill" | "collect" | "shift" | "reports") => void;
 }) {
   const [pending, setPending] = useState<PendingLine[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
@@ -181,12 +181,15 @@ export default function LabPosPage({
               <Badge variant="outline" className="text-xs">No shift open</Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => onNavigate("bill")} className="gap-1">
+              <ClipboardList className="h-4 w-4" /> To Bill{pending.length ? ` (${pending.length})` : ""}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onNavigate("collect")} className="gap-1">
+              <Receipt className="h-4 w-4" /> Invoices{unpaid.length ? ` (${unpaid.length})` : ""}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => onNavigate("shift")} className="gap-1">
               <Clock className="h-4 w-4" /> Shifts
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onNavigate("refunds")} className="gap-1">
-              <RotateCcw className="h-4 w-4" /> Refunds
             </Button>
             <Button variant="outline" size="sm" onClick={() => onNavigate("reports")} className="gap-1">
               <BarChart3 className="h-4 w-4" /> Reports

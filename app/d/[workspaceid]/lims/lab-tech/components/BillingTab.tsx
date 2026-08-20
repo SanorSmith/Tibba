@@ -18,8 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Loader2, Search, Receipt, CheckCircle2, AlertCircle, RefreshCw,
-  Wallet, BarChart3, ClipboardList, LockOpen, Lock, Undo2, ShoppingCart, Ban,
+  Loader2, Search, Receipt, CheckCircle2, AlertCircle,
+  Undo2, Ban, ArrowLeft,
 } from "lucide-react";
 import { printReceipt } from "./LabReceipt";
 import LabPosPage from "./LabPosPage";
@@ -216,49 +216,24 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
 
   return (
     <div className="flex flex-col h-full gap-2">
-      <div className="flex items-center justify-between flex-shrink-0 flex-wrap gap-2">
-        <div>
-          <h2 className="text-lg font-bold leading-tight">Lab Billing &amp; POS</h2>
-          <p className="text-xs text-muted-foreground">
-            Invoice lab orders, take payment, reconcile the drawer. Reagent stock is unaffected.
-          </p>
-        </div>
-        <div className="flex gap-1 items-center flex-wrap">
-          {openShift ? (
-            <Badge className="bg-green-100 text-green-800 gap-1"><LockOpen className="h-3 w-3" /> {openShift.shiftnumber}</Badge>
-          ) : (
-            <Badge className="bg-gray-100 text-gray-800 gap-1"><Lock className="h-3 w-3" /> No shift</Badge>
-          )}
-          <Button size="sm" variant={view === "pos" ? "default" : "outline"} onClick={() => setView("pos")} className="gap-1">
-            <ShoppingCart className="h-4 w-4" /> POS
-          </Button>
-          <Button size="sm" variant={view === "bill" ? "default" : "outline"} onClick={() => setView("bill")} className="gap-1">
-            <ClipboardList className="h-4 w-4" /> To Bill{pending.length ? ` (${pending.length})` : ""}
-          </Button>
-          <Button size="sm" variant={view === "collect" ? "default" : "outline"} onClick={() => setView("collect")} className="gap-1">
-            <Receipt className="h-4 w-4" /> Collect{unpaidCount ? ` (${unpaidCount})` : ""}
-          </Button>
-          <Button size="sm" variant={view === "shift" ? "default" : "outline"} onClick={() => setView("shift")} className="gap-1">
-            <Wallet className="h-4 w-4" /> Shift
-          </Button>
-          <Button size="sm" variant={view === "reports" ? "default" : "outline"} onClick={() => setView("reports")} className="gap-1">
-            <BarChart3 className="h-4 w-4" /> Reports
-          </Button>
-          <Button size="sm" variant="outline" onClick={load}><RefreshCw className="h-4 w-4" /></Button>
-        </div>
-      </div>
-
       {error && <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 rounded p-2 flex-shrink-0"><AlertCircle className="h-4 w-4" /> {error}</div>}
       {ok && <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded p-2 flex-shrink-0"><CheckCircle2 className="h-4 w-4" /> {ok}</div>}
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-blue-500" /></div>
       ) : view === "pos" ? (
-        <LabPosPage
-          workspaceid={workspaceid}
-          onNavigate={(v) => setView(v === "refunds" ? "collect" : v)}
-        />
+        <LabPosPage workspaceid={workspaceid} onNavigate={setView} />
       ) : view === "bill" ? (
+        <>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setView("pos")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-lg font-bold leading-tight">To Bill</h2>
+            <p className="text-xs text-muted-foreground">Unbilled tests across every patient</p>
+          </div>
+        </div>
         <>
           <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -320,7 +295,18 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
             </div>
           </Card>
         </>
+        </>
       ) : view === "collect" ? (
+        <>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setView("pos")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-lg font-bold leading-tight">Invoices</h2>
+            <p className="text-xs text-muted-foreground">Take payment, refund, or cancel</p>
+          </div>
+        </div>
         <>
           {payFor && (
             <Card className="flex-shrink-0 border-blue-300">
@@ -447,6 +433,7 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
               )}
             </CardContent>
           </Card>
+        </>
         </>
       ) : view === "shift" ? (
         <LabShiftsPage workspaceid={workspaceid} onBack={() => setView("pos")} />
