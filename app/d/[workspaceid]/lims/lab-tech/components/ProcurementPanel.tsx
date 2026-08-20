@@ -66,6 +66,9 @@ export default function ProcurementPanel({ workspaceid }: { workspaceid: string 
   const [claimAmount, setClaimAmount] = useState("");
   const [claimReason, setClaimReason] = useState("");
 
+  const [reversing, setReversing] = useState<ReceiptRow | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -141,6 +144,22 @@ export default function ProcurementPanel({ workspaceid }: { workspaceid: string 
       receiptId: claimReceipt || undefined, claimAmount: Number(claimAmount), reason: claimReason,
     }, (d: { claim: { claimnumber: string } }) => `Claim ${d.claim.claimnumber} raised`)
       .then((d) => { if (d) { setClaimAmount(""); setClaimReason(""); setClaimReceipt(""); } });
+  };
+
+  const submitReversal = async () => {
+    if (!reversing || !reverseReason.trim()) return;
+    setBusy(true); setError(null); setOk(null);
+    try {
+      const res = await fetch(`/api/d/${workspaceid}/lab-procurement/grn/correction`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiptId: reversing.id, reason: reverseReason }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error ?? "Could not reverse"); return; }
+      const n = (d.pulledBack ?? []).reduce((a: number, x: { quantity: number }) => a + x.quantity, 0);
+      setOk(`${reversing.receiptnumber} reversed — ${n} unit(s) taken back off the shelf`);
+      setReversing(null); setReverseReason(""); load();
+    } finally { setBusy(false); }
   };
 
   const setClaimStatus = async (id: string, status: string, settledAmount?: number) => {
@@ -263,19 +282,39 @@ export default function ProcurementPanel({ workspaceid }: { workspaceid: string 
               </div>
             </CardContent>
           </Card>
+          {reversing && (
+            <Card className="flex-shrink-0 border-red-300">
+              <CardHeader className="py-2 px-3 border-b"><CardTitle className="text-sm font-semibold">Reverse {reversing.receiptnumber}</CardTitle></CardHeader>
+              <CardContent className="p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  This writes a reversal receipt and takes the stock back off the shelf. The original delivery stays in the
+                  history. If the reagent has already been used, adjust stock instead.
+                </p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1"><label className="text-xs text-muted-foreground">Reason (required)</label>
+                    <Input value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} placeholder="e.g. quantity keyed wrong" /></div>
+                  <Button onClick={submitReversal} disabled={busy || !reverseReason.trim()} className="gap-1"><Undo2 className="h-4 w-4" /> Reverse</Button>
+                  <Button variant="ghost" onClick={() => { setReversing(null); setReverseReason(""); }}>Cancel</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="flex-1 min-h-0 flex flex-col">
             <CardHeader className="py-2 px-3 border-b flex-shrink-0"><CardTitle className="text-sm font-semibold">Deliveries Received</CardTitle></CardHeader>
             <CardContent className="p-0 flex-1 min-h-0 overflow-auto">
               {receipts.length === 0 ? <div className="flex justify-center py-12 text-sm text-muted-foreground">No deliveries yet.</div> : (
                 <table className="w-full text-sm"><thead className="sticky top-0 bg-white border-b"><tr className="text-left text-xs text-muted-foreground">
                   <th className="px-3 py-2">Receipt #</th><th className="px-3 py-2">Order</th><th className="px-3 py-2">Note #</th>
-                  <th className="px-3 py-2 text-right">Items</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Received by</th><th className="px-3 py-2">When</th></tr></thead>
+                  <th className="px-3 py-2 text-right">Items</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Received by</th><th className="px-3 py-2">When</th><th className="px-3 py-2"></th></tr></thead>
                   <tbody>{receipts.map((r) => (<tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
                     <td className="px-3 py-2 font-medium">{r.receiptnumber}</td><td className="px-3 py-2 text-muted-foreground">{r.ordernumber ?? "direct"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{r.deliverynotenumber ?? "—"}</td><td className="px-3 py-2 text-right">{r.item_count}</td>
                     <td className="px-3 py-2"><Badge className={statusColor[r.status] ?? "bg-gray-100"}>{r.status}</Badge></td>
                     <td className="px-3 py-2"><Badge className="bg-blue-100 text-blue-800">{r.receivedby}</Badge></td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.receiptdate ? new Date(r.receiptdate).toLocaleDateString() : "—"}</td></tr>))}</tbody></table>
+                    <td className="px-3 py-2 text-muted-foreground">{r.receiptdate ? new Date(r.receiptdate).toLocaleDateString() : "—"}</td>
+                    <td className="px-3 py-2 text-right">
+                      {r.status !== "CORRECTION" && <Button size="sm" variant="ghost" onClick={() => setReversing(r)}>Reverse</Button>}
+                    </td></tr>))}</tbody></table>
               )}
             </CardContent>
           </Card>

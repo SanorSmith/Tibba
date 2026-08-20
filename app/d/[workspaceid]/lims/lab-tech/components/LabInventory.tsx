@@ -61,6 +61,11 @@ export default function LabInventory({ workspaceid }: { workspaceid: string }) {
   const [showVendor, setShowVendor] = useState(false);
   const [vForm, setVForm] = useState({ name: "", contactname: "", phone: "", email: "" });
 
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjQty, setAdjQty] = useState("");
+  const [adjReason, setAdjReason] = useState("STOCK_COUNT");
+  const [adjNotes, setAdjNotes] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -134,6 +139,22 @@ export default function LabInventory({ workspaceid }: { workspaceid: string }) {
     } finally { setBusy(false); }
   };
 
+  const submitAdjust = async () => {
+    if (!detail || adjQty === "") return;
+    setBusy(true); setError(null); setOk(null);
+    try {
+      const res = await fetch(`/api/d/${workspaceid}/lab-inventory/adjust`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: detail.item.id, newQuantity: Number(adjQty), reason: adjReason, notes: adjNotes }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error ?? "Adjustment failed"); return; }
+      setOk(`${d.item}: ${d.before} → ${d.after} (${d.delta > 0 ? "+" : ""}${d.delta})`);
+      setAdjusting(false); setAdjQty(""); setAdjNotes("");
+      openDetail(String(detail.item.id)); load();
+    } finally { setBusy(false); }
+  };
+
   const addVendor = async () => {
     if (!vForm.name.trim()) return;
     setBusy(true); setError(null);
@@ -191,7 +212,10 @@ export default function LabInventory({ workspaceid }: { workspaceid: string }) {
             <CardTitle className="text-sm font-semibold">{String(detail.item.name)}</CardTitle>
             <div className="flex gap-1">
               {!editing ? (
-                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit</Button>
+                <>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(true)}>Edit</Button>
+                  <Button size="sm" variant="outline" onClick={() => setAdjusting(!adjusting)}>Adjust stock</Button>
+                </>
               ) : (
                 <Button size="sm" onClick={saveItem} disabled={busy} className="gap-1"><Save className="h-3 w-3" /> Save</Button>
               )}
@@ -199,6 +223,24 @@ export default function LabInventory({ workspaceid }: { workspaceid: string }) {
             </div>
           </CardHeader>
           <CardContent className="p-3 space-y-3">
+            {adjusting && (
+              <div className="flex flex-wrap gap-2 items-end bg-orange-50 rounded p-2">
+                <div className="w-32"><label className="text-xs text-muted-foreground">Counted quantity</label>
+                  <Input type="number" min={0} value={adjQty} onChange={(e) => setAdjQty(e.target.value)} /></div>
+                <div className="w-44"><label className="text-xs text-muted-foreground">Reason</label>
+                  <select className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                    value={adjReason} onChange={(e) => setAdjReason(e.target.value)}>
+                    {["STOCK_COUNT", "SPILLAGE", "EXPIRED", "DAMAGED", "OTHER"].map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
+                  </select></div>
+                <div className="flex-1 min-w-[160px]"><label className="text-xs text-muted-foreground">Notes</label>
+                  <Input value={adjNotes} onChange={(e) => setAdjNotes(e.target.value)} /></div>
+                <Button size="sm" onClick={submitAdjust} disabled={busy || adjQty === ""}>Apply</Button>
+                <Button size="sm" variant="ghost" onClick={() => setAdjusting(false)}>Cancel</Button>
+                <p className="w-full text-xs text-muted-foreground">
+                  Sets stock to the counted figure and records the difference as a movement, so the history still adds up.
+                </p>
+              </div>
+            )}
             {editing ? (
               <div className="grid grid-cols-3 gap-2">
                 {[["name", "Name"], ["itemcode", "Code"], ["uom", "Unit"], ["manufacturer", "Manufacturer"], ["reorderlevel", "Reorder level"]].map(([k, label]) => (
