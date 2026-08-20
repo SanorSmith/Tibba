@@ -47,16 +47,6 @@ interface ShiftRow {
   expectedcash: string | null; actualcash: string | null; variance: string | null;
   collected: string; cashCollected: string; transactions: number;
 }
-interface Reports {
-  range: { from: string; to: string };
-  invoiced: { count: number; total: number };
-  collected: { total: number; byMethod: Array<{ method: string; amount: number; count: number }> };
-  outstanding: { count: number; total: number };
-  refunds: { count: number; total: number };
-  topTests: Array<{ name: string; count: number; revenue: number }>;
-  byCashier: Array<{ name: string; amount: number; count: number }>;
-  daily: Array<{ day: string; invoiced: number; collected: number }>;
-}
 
 const METHODS = ["CASH", "CARD", "INSURANCE", "TRANSFER"] as const;
 const statusColor: Record<string, string> = {
@@ -75,9 +65,7 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
 
   const [pending, setPending] = useState<PendingLine[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
-  const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [openShift, setOpenShift] = useState<ShiftRow | null>(null);
-  const [reports, setReports] = useState<Reports | null>(null);
 
   const [query, setQuery] = useState("");
   const [selectedRefs, setSelectedRefs] = useState<Set<string>>(new Set());
@@ -90,25 +78,18 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
   const [refundMode, setRefundMode] = useState(false);
   const [refundReason, setRefundReason] = useState("");
 
-  const [openingCash, setOpeningCash] = useState("0");
-  const [actualCash, setActualCash] = useState("");
-  const [varianceReason, setVarianceReason] = useState("");
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, i, s, r] = await Promise.all([
+      const [p, i, s] = await Promise.all([
         fetch(`/api/lims/billing/pending?workspaceid=${workspaceid}`),
         fetch(`/api/lims/billing/invoices?workspaceid=${workspaceid}`),
         fetch(`/api/lims/billing/shifts?workspaceid=${workspaceid}`),
-        fetch(`/api/lims/billing/reports?workspaceid=${workspaceid}`),
       ]);
-      const pj = await p.json(), ij = await i.json(), sj = await s.json(), rj = await r.json();
+      const pj = await p.json(), ij = await i.json(), sj = await s.json();
       setPending(pj.pending ?? []);
       setInvoices(ij.invoices ?? []);
-      setShifts(sj.shifts ?? []);
       setOpenShift(sj.openShift ?? null);
-      setReports(rj.error ? null : rj);
     } catch { setError("Could not load billing data"); }
     finally { setLoading(false); }
   }, [workspaceid]);
@@ -131,7 +112,9 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
   const mixedPatients = new Set(selectedLines.map((l) => l.patientId ?? l.patientName)).size > 1;
 
   const toggle = (ref: string) => setSelectedRefs((prev) => {
-    const n = new Set(prev); n.has(ref) ? n.delete(ref) : n.add(ref); return n;
+    const n = new Set(prev);
+    if (n.has(ref)) n.delete(ref); else n.add(ref);
+    return n;
   });
   const toggleAll = () => {
     const all = visible.length > 0 && visible.every((l) => selectedRefs.has(l.ref));
@@ -200,44 +183,7 @@ export default function BillingTab({ workspaceid }: { workspaceid: string }) {
   };
 
   // ── Shift ─────────────────────────────────────────────────────────────
-  const openNewShift = async () => {
-    setBusy(true); setError(null);
-    try {
-      const res = await fetch("/api/lims/billing/shifts", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceid, openingCash: Number(openingCash) }),
-      });
-      const d = await res.json();
-      if (!res.ok) { setError(d.error ?? "Could not open shift"); return; }
-      setOk(`Shift ${d.shift.shiftnumber} opened`); load();
-    } finally { setBusy(false); }
-  };
 
-  const closeShift = async () => {
-    if (!openShift) return;
-    setBusy(true); setError(null);
-    try {
-      const res = await fetch("/api/lims/billing/shifts", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceid, shiftId: openShift.id, actualCash: Number(actualCash), varianceReason }),
-      });
-      const d = await res.json();
-      if (!res.ok) { setError(d.error ?? "Could not close shift"); return; }
-      const v = Number(d.variance);
-      setOk(v === 0 ? "Shift closed, drawer balanced"
-        : `Shift closed with ${v > 0 ? "surplus" : "shortfall"} of ${money(Math.abs(v))}`);
-      printReceipt({
-        kind: "SHIFT", facility: "Laboratory", number: openShift.shiftnumber,
-        dateTime: new Date().toLocaleString(),
-        lines: [{ label: "Transactions", qty: openShift.transactions },
-                { label: "Collected (all methods)", amount: Number(openShift.collected) },
-                { label: "Cash collected", amount: Number(openShift.cashCollected) }],
-        openingCash: Number(openShift.openingcash), expectedCash: d.expected,
-        countedCash: d.actual, variance: d.variance, cashier: openShift.cashiername,
-      });
-      setActualCash(""); setVarianceReason(""); load();
-    } finally { setBusy(false); }
-  };
 
   const unpaidCount = invoices.filter((i) => i.balance > 0.001).length;
 
