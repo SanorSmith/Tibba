@@ -120,29 +120,42 @@ export async function GET(request: NextRequest) {
     }));
 
     // ── Doctor referrals from the EHR ────────────────────────────────────
+    //
+    // Read the same combined list the Orders tab shows, rather than the
+    // workspace-scoped patient pull. A lab is asked to run tests for patients
+    // registered at the hospital that referred them, so scoping referrals to
+    // the lab's own patients meant the bench saw work it could never bill.
     let ehrPending: PendingLine[] = [];
     try {
       const origin = request.nextUrl.origin;
-      const url = `${origin}/api/lims/orders/openehr?workspaceid=${workspaceid}${patientid ? `&patientid=${patientid}` : ""}`;
+      const url = `${origin}/api/lims/orders?workspaceid=${workspaceid}&limit=500`;
       const res = await fetch(url, { headers: { cookie: request.headers.get("cookie") ?? "" } });
       if (res.ok) {
         const data = await res.json();
         const orders: Array<Record<string, unknown>> = data.orders ?? [];
         ehrPending = orders
-          .filter((o) => o.status !== "CANCELLED" && !billedRefs.has(String(o.composition_uid)))
-          .map((o) => ({
-            source: "EHR" as const,
-            ref: String(o.composition_uid),
-            orderId: String(o.request_id ?? o.composition_uid),
-            patientId: (o.patientId as string) ?? null,
-            patientName: (o.patientName as string) ?? "Unknown patient",
-            testCode: (o.service_type_code as string) ?? null,
-            testName: (o.service_name as string) ?? "Referred test",
-            price: 0,
-            orderedAt: (o.recorded_time as string) ?? null,
-            orderingProvider: (o.requesting_provider as string) ?? null,
-            status: (o.status as string) ?? null,
-          }));
+          .filter((o) => o.source === "openEHR")
+          .filter((o) => o.status !== "CANCELLED" && o.status !== "COMPLETED")
+          .filter((o) => !billedRefs.has(String(o.composition_uid)))
+          .filter((o) => (patientid ? String(o.patientId) === patientid : true))
+          .map((o) => {
+            const code = (o.service_type_code as string) ?? null;
+            return {
+              source: "EHR" as const,
+              ref: String(o.composition_uid),
+              orderId: String(o.request_id ?? o.composition_uid),
+              patientId: (o.patientId as string) ?? null,
+              patientName: (o.patientName as string) ?? "Unknown patient",
+              testCode: code,
+              testName: (o.service_name as string) ?? "Referred test",
+              // Referred tests are priced from this lab's own reference list
+              // when the code matches; otherwise they need a price setting.
+              price: code ? priceByCode.get(code) ?? 0 : 0,
+              orderedAt: (o.recorded_time as string) ?? null,
+              orderingProvider: (o.requesting_provider as string) ?? null,
+              status: (o.status as string) ?? null,
+            };
+          });
       }
     } catch (e) {
       // A slow or unreachable EHR shouldn't hide this lab's own orders.
