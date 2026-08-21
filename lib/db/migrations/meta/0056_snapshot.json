@@ -1,6 +1,6 @@
 {
-  "id": "71c65b11-b071-4cc8-882b-ed42b3277cfc",
-  "prevId": "c884e01f-26ff-4728-8cf4-1a269d803985",
+  "id": "54777f17-38a2-436a-bf87-e4dc0a275b5c",
+  "prevId": "71c65b11-b071-4cc8-882b-ed42b3277cfc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -5450,6 +5450,18 @@
         "sample_recommendations": {
           "name": "sample_recommendations",
           "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blood_type": {
+          "name": "blood_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blood_comment": {
+          "name": "blood_comment",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -15015,6 +15027,89 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
+    },
+    "public.workspace_roles": {
+      "name": "workspace_roles",
+      "schema": "",
+      "columns": {
+        "roleid": {
+          "name": "roleid",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspacetype": {
+          "name": "workspacetype",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lablear": {
+          "name": "lablear",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labelku": {
+          "name": "labelku",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isactive": {
+          "name": "isactive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdat": {
+          "name": "createdat",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedat": {
+          "name": "updatedat",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "workspace_roles_type_name_unique": {
+          "name": "workspace_roles_type_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "workspacetype",
+            "name"
+          ]
+        }
+      }
     },
     "public.workspaces": {
       "name": "workspaces",

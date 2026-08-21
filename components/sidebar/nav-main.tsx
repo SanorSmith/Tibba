@@ -47,7 +47,6 @@ import { usePathname } from "next/navigation";
 
 // Define types for workspace and role combinations
 type WorkspaceType = "hospital" | "laboratory" | "pharmacy";
-type WorkspaceRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator" | "plastic_surgeon";
 
 type MenuItem = {
   title: string;
@@ -59,7 +58,7 @@ type MenuItem = {
 
 type NavigationConfig = {
   [K in WorkspaceType]: {
-    [R in WorkspaceRole]?: MenuItem[];
+    [role: string]: MenuItem[] | undefined;
   };
 };
 
