@@ -35,6 +35,7 @@ import { createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { getOpenEHRTestOrders } from "@/lib/openehr/openehr";
 import { createAndSubmitLabOrder } from "@/lib/lims/openehr-order-service";
 import { eq, and, inArray } from "drizzle-orm";
+import { cachedByKey, invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
 
 /**
  * POST /api/lims/orders
@@ -220,6 +221,9 @@ export async function POST(request: NextRequest) {
           console.error("OpenEHR lab order submission failed:", err)
         );
     }
+
+    // The cached list this order belongs to is now stale.
+    invalidate(ehrOrdersKey(orderData.workspaceId!));
 
     // Return success response
     return NextResponse.json({
@@ -435,18 +439,33 @@ export async function GET(request: NextRequest) {
     );
 
     // Try to fetch openEHR orders, but don't fail if OpenEHR is unavailable
-    const openEHROrders: any[] = [];
+    // Asking EHRbase once per patient is by far the slowest part of this
+    // request, so the list is cached briefly and shared with anything else
+    // wanting it — Billing reads this route too, and without that every tab
+    // paid the cost again.
+    let openEHROrders: any[] = [];
     try {
-      // Get all patients with EHR IDs across all workspaces
-      // (lab tech workspace may differ from doctor/patient workspace)
+      openEHROrders = await cachedByKey<any[]>(ehrOrdersKey(workspaceId), async () => {
+      const collected: any[] = [];
+      // Only this facility's own patients. Sweeping every patient in the
+      // database meant a brand-new lab opened onto another facility's order
+      // list, because an EHR lab order records which discipline it is for
+      // (target_lab) but never which facility it was sent to — the patient is
+      // the only workspace signal there is.
+      //
+      // Patients with no workspace are therefore invisible here rather than
+      // visible everywhere; assigning them an owner is what brings them back.
       const patientsQuery = await db
         .select()
-        .from(patients);
+        .from(patients)
+        .where(eq(patients.workspaceid, workspaceId));
       
       const patientsWithEhr = patientsQuery.filter(p => p.ehrid);
 
       // Limit concurrent OpenEHR requests to avoid overwhelming the server
-      const batchSize = 5;
+      // These are independent network calls; five at a time meant two dozen
+      // sequential rounds before anything could render.
+      const batchSize = 20;
       for (let i = 0; i < patientsWithEhr.length; i += batchSize) {
         const batch = patientsWithEhr.slice(i, i + batchSize);
         
@@ -477,13 +496,15 @@ export async function GET(request: NextRequest) {
                 patientage: patientAge,
                 patientsex: patient.gender,
               }));
-              openEHROrders.push(...ordersWithPatient);
+              collected.push(...ordersWithPatient);
             } catch (error) {
               // Silently continue if OpenEHR fetch fails for a patient
             }
           })
         );
       }
+      return collected;
+      });
     } catch (error) {
       console.error("Error fetching openEHR orders (continuing with local orders only):", error);
       // Don't throw - continue with local orders only

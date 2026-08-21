@@ -103,7 +103,7 @@ export const workspaceusers = pgTable("workspaceusers", {
   createdat: timestamp("createdat", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export type WorkspaceUserRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator" | "plastic_surgeon";
+export type WorkspaceUserRole = "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator" | "plastic_surgeon" | "accountant" | "hr_officer" | "inventory_officer";
 
 // ─── Drug Categories ──────────────────────────────────────────────────────────
 
@@ -236,6 +236,9 @@ export const warehouseTypeEnum = pgEnum("warehouse_type", [
 
 export const warehouses = pgTable("warehouses", {
   id:              uuid("id").primaryKey().defaultRandom(),
+  // NOT NULL in the database but was missing from this definition, so every
+  // query filtering warehouses by type alone was unscoped across facilities.
+  workspaceid:     uuid("workspace_id").notNull(),
   name:            text("name").notNull(),
   warehousetype:   warehouseTypeEnum("warehouse_type").default("hospital"),
   location:        text("location"),
@@ -518,16 +521,22 @@ export const reagentAssignments = pgTable("reagent_assignments", {
 
 export const labConsumptionLog = pgTable("lab_consumption_log", {
   id:               uuid("id").primaryKey().defaultRandom(),
-  assignmentid:     uuid("assignment_id").references(() => reagentAssignments.id).notNull(),
+  // Nullable: a manual pull from the Lab Inventory panel has no reagent
+  // assignment behind it — the user chooses the items. Matches the database,
+  // which has always allowed null here. See migration 0057.
+  assignmentid:     uuid("assignment_id").references(() => reagentAssignments.id),
   itemid:           uuid("item_id").references(() => items.id).notNull(),
   storeid:          uuid("store_id").references(() => stores.id),
   batchid:          uuid("batch_id").references(() => itemBatches.id),
+  warehouseid:      uuid("warehouse_id"),
+  workspaceid:      uuid("workspaceid"),
   testcount:        integer("test_count").notNull().default(1),
   quantityconsumed: decimal("quantity_consumed", { precision: 10, scale: 4 }).notNull(),
   patientref:       text("patient_ref"),
   sampleref:        text("sample_ref"),
   runnotes:         text("run_notes"),
   createdby:        text("created_by"),
+  createdbyname:    text("created_by_name"),
   createdat:        timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -960,6 +969,8 @@ export * from "./tables/pos-returns-schema";
 
 // ─── Pharmacy Procurement Module ────────────────────────────────────────────
 export * from "./tables/pharmacy-procurement";
+export * from "./tables/lab-procurement";
+export * from "./tables/lab-pos";
 
 // ─── Operation Prices ────────────────────────────────────────────────────────
 
