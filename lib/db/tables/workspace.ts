@@ -21,6 +21,9 @@ export type WorkspaceUserRole =
   | "receptionist"
   | "administrator"
   | "plastic_surgeon"
+  | "accountant"
+  | "hr_officer"
+  | "inventory_officer"
   | (string & {}); // allows DB-driven roles without breaking existing checks
 
 export interface WorkspaceSettings {

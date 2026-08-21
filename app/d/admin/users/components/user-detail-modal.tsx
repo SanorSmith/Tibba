@@ -56,6 +56,9 @@ const roleColors: Record<string, string> = {
   receptionist: "bg-yellow-100 text-yellow-800",
   administrator: "bg-red-100 text-red-800",
   plastic_surgeon: "bg-pink-100 text-pink-800",
+  accountant: "bg-teal-100 text-teal-800",
+  hr_officer: "bg-indigo-100 text-indigo-800",
+  inventory_officer: "bg-amber-100 text-amber-800",
 };
 
 interface DbRole {
