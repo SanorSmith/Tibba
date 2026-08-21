@@ -5,7 +5,7 @@
  * - Administrators can add and edit staff
  */
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,13 +28,11 @@ type Staff = {
   email?: string | null;
 };
 
-const roles = [
-  { value: "doctor", label: "Doctor" },
-  { value: "nurse", label: "Nurse" },
-  { value: "lab_technician", label: "Lab technician" },
-  { value: "pharmacist", label: "Pharmacist" },
-  { value: "receptionist", label: "Receptionist" },
-] as const;
+interface DbRole {
+  roleid: string;
+  name: string;
+  label: string;
+}
 
 const departments = [
   "Outpatient Department",
@@ -55,12 +53,28 @@ const departments = [
 
 export default function StaffList({ workspaceid, isAdmin }: { workspaceid: string; isAdmin: boolean }) {
   const queryClient = useQueryClient();
+  const [roles, setRoles] = useState<DbRole[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState<string>(roles[0].value);
+  const [selectedRole, setSelectedRole] = useState<string>("");
   const [selectedUnit, setSelectedUnit] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    async function loadRoles() {
+      try {
+        const res = await fetch(`/api/admin/workspace-roles`);
+        if (res.ok) {
+          const data = await res.json();
+          setRoles(data.roles || []);
+        }
+      } catch (e) {
+        console.error("Failed to load roles", e);
+      }
+    }
+    loadRoles();
+  }, []);
 
   const { data: rows = [], isLoading, error } = useQuery({
     queryKey: ["staff", workspaceid],
@@ -104,7 +118,7 @@ export default function StaffList({ workspaceid, isAdmin }: { workspaceid: strin
 
   function handleOpenAdd() {
     setEditingStaff(null);
-    setSelectedRole(roles[0].value);
+    setSelectedRole(roles[0]?.name || "");
     setSelectedUnit(undefined);
     setFormError(null);
     setDialogOpen(true);
@@ -317,7 +331,7 @@ export default function StaffList({ workspaceid, isAdmin }: { workspaceid: strin
                 </SelectTrigger>
                 <SelectContent>
                   {roles.map((r) => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    <SelectItem key={r.name} value={r.name}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

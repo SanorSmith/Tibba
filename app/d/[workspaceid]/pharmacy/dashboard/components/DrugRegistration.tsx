@@ -399,37 +399,42 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
   const paginatedDrugs = drugList.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
-    <div className="space-y-4">
-      {/* Add New Drug form — inline at top */}
-      {showAddForm && (
-        <Card className="shadow-sm border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-sm text-blue-700">New Drug Registration</h3>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => { setShowAddForm(false); setFormData(emptyForm); }}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            {renderDrugFormContent(() => { setShowAddForm(false); setFormData(emptyForm); })}
-          </CardContent>
-        </Card>
-      )}
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Fixed header: title + search */}
+      <div className="flex-shrink-0 space-y-4 pb-3">
+        {/* Add New Drug form — inline at top */}
+        {showAddForm && (
+          <Card className="shadow-sm border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm text-blue-700">New Drug Registration</h3>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => { setShowAddForm(false); setFormData(emptyForm); }}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              {renderDrugFormContent(() => { setShowAddForm(false); setFormData(emptyForm); })}
+            </CardContent>
+          </Card>
+        )}
 
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Drug Registration</h2>
-        <div className="flex items-center gap-3">
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search with product Drug or name"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="pl-9 h-9"
-            />
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold">Drug Registration</h2>
+          <div className="flex items-center gap-3">
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search with product Drug or name"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                className="pl-9 h-9"
+              />
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Scrollable content */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
       {/* Medication List */}
       <Card className="shadow-sm">
         <CardContent className="p-4">
@@ -890,6 +895,7 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

@@ -905,6 +905,7 @@ export const unitConversionsRelations = relations(unitConversions, ({ one }) => 
 }));
 
 // ─── Re-export from modular table files ───────────────────────────────────────
+export * from "./tables/workspace-roles";
 export * from "./tables/patient";
 export * from "./tables/appointment";
 export * from "./tables/staff";

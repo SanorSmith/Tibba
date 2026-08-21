@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { users, workspaceusers } from "@/lib/db/schema";
+import { users, workspaceusers, workspaceRoles } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
@@ -45,9 +45,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and role are required" }, { status: 400 });
     }
 
-    // Valid roles
-    const validRoles = ["doctor", "nurse", "lab_technician", "pharmacist", "receptionist", "administrator"];
-    if (!validRoles.includes(role)) {
+    // Validate role exists in DB
+    const roleExists = await db
+      .select()
+      .from(workspaceRoles)
+      .where(and(
+        eq(workspaceRoles.name, role),
+        eq(workspaceRoles.isactive, true)
+      ))
+      .limit(1);
+    
+    if (roleExists.length === 0) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 

@@ -48,7 +48,7 @@ interface UserDetailModalProps {
   onUserUpdate?: (user: User) => void;
 }
 
-const roleColors = {
+const roleColors: Record<string, string> = {
   doctor: "bg-blue-100 text-blue-800",
   nurse: "bg-green-100 text-green-800",
   lab_technician: "bg-purple-100 text-purple-800",
@@ -57,6 +57,14 @@ const roleColors = {
   administrator: "bg-red-100 text-red-800",
   plastic_surgeon: "bg-pink-100 text-pink-800",
 };
+
+interface DbRole {
+  roleid: string;
+  workspacetype: string;
+  name: string;
+  label: string;
+  isactive: boolean;
+}
 
 type UserWorkspaceWithDetails = WorkspaceUser & { workspace: Workspace };
 
@@ -72,6 +80,7 @@ export function UserDetailModal({
   >([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState("");
   const [selectedRole, setSelectedRole] = useState<WorkspaceUserRole>("doctor");
+  const [availableRoles, setAvailableRoles] = useState<DbRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: "", email: "" });
@@ -94,6 +103,31 @@ export function UserDetailModal({
       setLoading(false);
     }
   }, [user]);
+
+  const loadRolesForWorkspace = useCallback(async (workspaceId: string) => {
+    const ws = allWorkspaces.find((w) => w.workspaceid === workspaceId);
+    if (!ws) return;
+    try {
+      const res = await fetch(`/api/admin/workspace-roles?workspacetype=${ws.type}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableRoles(data.roles || []);
+        if (data.roles?.length > 0) {
+          setSelectedRole(data.roles[0].name);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading roles:", error);
+    }
+  }, [allWorkspaces]);
+
+  useEffect(() => {
+    if (selectedWorkspace) {
+      loadRolesForWorkspace(selectedWorkspace);
+    } else {
+      setAvailableRoles([]);
+    }
+  }, [selectedWorkspace, loadRolesForWorkspace]);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -281,13 +315,11 @@ export function UserDetailModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="item-aligned">
-                  <SelectItem value="doctor">Doctor</SelectItem>
-                  <SelectItem value="nurse">Nurse</SelectItem>
-                  <SelectItem value="lab_technician">Lab Technician</SelectItem>
-                  <SelectItem value="pharmacist">Pharmacist</SelectItem>
-                  <SelectItem value="receptionist">Receptionist</SelectItem>
-                  <SelectItem value="administrator">Administrator</SelectItem>
-                  <SelectItem value="plastic_surgeon">Plastic Surgeon</SelectItem>
+                  {availableRoles.map((r) => (
+                    <SelectItem key={r.roleid} value={r.name}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
