@@ -255,7 +255,7 @@ export const warehouseSections = pgTable("warehouse_sections", {
   id:                    uuid("id").primaryKey().defaultRandom(),
   // Denormalised tenant, backfilled from the owning warehouse so RLS can
   // guard this table directly. NOT NULL with an FK in the database.
-  workspaceid:           uuid("workspace_id").notNull(),
+  workspaceid:           uuid("workspace_id"),
   warehouseid:           uuid("warehouse_id").references(() => warehouses.id),
   sectionname:           text("sectionname").notNull(),
   sectiontype:           text("section_type"),
@@ -405,7 +405,7 @@ export const stockTransfers = pgTable("stock_transfers", {
 export const stockAdjustments = pgTable("stock_adjustments", {
   id:                 uuid("id").primaryKey().defaultRandom(),
   // Denormalised tenant, backfilled from the warehouse. NOT NULL + FK in the db.
-  workspaceid:        uuid("workspace_id").notNull(),
+  workspaceid:        uuid("workspace_id"),
   itemid:             uuid("item_id").references(() => items.id).notNull(),
   warehouseid:        uuid("warehouse_id").references(() => warehouses.id).notNull(),
   batchid:            uuid("batch_id").references(() => itemBatches.id),
@@ -676,7 +676,7 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   id:          uuid("id").primaryKey().defaultRandom(),
   // Denormalised tenant. The parent orders carry no warehouse, so this was
   // backfilled through the vendor, which is workspace-scoped. NOT NULL + FK.
-  workspaceid: uuid("workspace_id").notNull(),
+  workspaceid: uuid("workspace_id"),
   poid:        uuid("poid").references(() => purchaseOrders.id),
   itemid:      uuid("itemid").references(() => items.id),
   itemcode:    text("itemcode"),
