@@ -11,6 +11,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import {
   items,
   itemBatches,
@@ -43,6 +44,11 @@ export async function GET(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
@@ -203,6 +209,7 @@ export async function GET(
       .limit(20);
 
     return NextResponse.json({ inventory: filtered, summary, recentMovements });
+    });
   } catch (error) {
     console.error("[Lab Inventory]", error);
     return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
@@ -222,6 +229,11 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { name, itemcode, itemtype, uom, manufacturer, barcode, reorderlevel, minlevel, maxlevel, criticalreagent, analyzercompat } = body;
@@ -252,6 +264,7 @@ export async function POST(
       .returning();
 
     return NextResponse.json({ item: created });
+    });
   } catch (error) {
     console.error("[Lab Inventory POST]", error);
     return NextResponse.json({ error: "Failed to create item" }, { status: 500 });

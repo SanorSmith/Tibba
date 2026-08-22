@@ -18,6 +18,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import {
   items,
   itemBatches,
@@ -50,6 +51,11 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
+
     const history = await db
       .select({
         id: labConsumptionLog.id,
@@ -75,6 +81,7 @@ export async function GET(
       .limit(100);
 
     return NextResponse.json({ history });
+    });
   } catch (error) {
     console.error("[Lab Pull GET]", error);
     return NextResponse.json({ error: "Failed to load pull history" }, { status: 500 });
@@ -94,6 +101,11 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { lines, sampleRef, patientRef, notes } = body as {
@@ -228,6 +240,7 @@ export async function POST(
       pulled: result,
       pulledBy: user.name ?? user.email,
       pulledAt: new Date().toISOString(),
+    });
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to record pull";

@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import { sql } from "drizzle-orm";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
@@ -24,6 +25,11 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
+
     const activeOnly = request.nextUrl.searchParams.get("active") === "active";
     const result = activeOnly
       ? await db.execute(sql`
@@ -36,6 +42,7 @@ export async function GET(
             FROM vendors WHERE workspaceid = ${workspaceid} ORDER BY name`);
 
     return NextResponse.json({ vendors: Array.from(result as unknown as Record<string, unknown>[]) });
+    });
   } catch (error) {
     console.error("[lab vendors GET]", error);
     return NextResponse.json({ error: "Failed to load vendors" }, { status: 500 });
@@ -56,6 +63,11 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
+
     const b = await request.json();
     if (!b.name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
@@ -68,6 +80,7 @@ export async function POST(
       RETURNING id, name`);
 
     return NextResponse.json({ vendor: Array.from(result as unknown as Record<string, unknown>[])[0] });
+    });
   } catch (error) {
     console.error("[lab vendors POST]", error);
     return NextResponse.json({ error: "Failed to create vendor" }, { status: 500 });
@@ -88,6 +101,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
+
     const b = await request.json();
     if (!b.id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
@@ -105,6 +123,7 @@ export async function PATCH(
       WHERE id = ${b.id} AND workspaceid = ${workspaceid}`);
 
     return NextResponse.json({ ok: true });
+    });
   } catch (error) {
     console.error("[lab vendors PATCH]", error);
     return NextResponse.json({ error: "Failed to update vendor" }, { status: 500 });
