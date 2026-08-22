@@ -207,6 +207,7 @@ export async function POST(
 
           // Log reversal transaction
           await tx.insert(stockTransactions).values({
+            workspaceid: workspaceid,
             itemid: item.itemId,
             warehouseid: warehouseId,
             transactiontype: "CORRECTION_REVERSAL",
@@ -218,6 +219,7 @@ export async function POST(
 
           // Log correction transaction
           await tx.insert(stockTransactions).values({
+            workspaceid: workspaceid,
             itemid: item.itemId,
             warehouseid: warehouseId,
             transactiontype: "CORRECTION_IN",

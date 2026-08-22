@@ -29,11 +29,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, location, manager, description, warehousetype } = await req.json();
+    const { name, location, manager, description, warehousetype, workspaceid } = await req.json();
     if (!name?.trim()) return NextResponse.json({ error: "Warehouse name is required" }, { status: 400 });
+    // A warehouse without an owner is how Pharma's stock ended up inside
+    // Alis's warehouse — every warehouse belongs to exactly one facility.
+    if (!workspaceid) return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
 
     const [created] = await db.insert(warehouses).values({
-      name, location, manager, description,
+      name, location, manager, description, workspaceid,
       warehousetype: warehousetype ?? "hospital",
     }).returning();
 

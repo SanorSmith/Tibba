@@ -126,6 +126,7 @@ export async function POST(
         const [newSection] = await db
           .insert(warehouseSections)
           .values({
+            workspaceid: workspaceid,
             warehouseid: warehouseId,
             sectionname: body.storage_location,
             sectiontype: body.storage_type || 'shelf',

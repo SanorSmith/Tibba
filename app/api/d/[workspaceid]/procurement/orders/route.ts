@@ -180,6 +180,7 @@ export async function POST(
         const [newItem] = await db
           .insert(purchaseOrderItems)
           .values({
+            workspaceid: workspaceid,
             poid: newPO.id,
             itemid: item.itemid,
             orderedqty: item.orderedqty,

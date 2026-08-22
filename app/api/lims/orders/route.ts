@@ -34,7 +34,7 @@ import {
 import { createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { getOpenEHRTestOrders } from "@/lib/openehr/openehr";
 import { createAndSubmitLabOrder } from "@/lib/lims/openehr-order-service";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, or, isNull, inArray } from "drizzle-orm";
 import { cachedByKey, invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
 
 /**
@@ -447,18 +447,19 @@ export async function GET(request: NextRequest) {
     try {
       openEHROrders = await cachedByKey<any[]>(ehrOrdersKey(workspaceId), async () => {
       const collected: any[] = [];
-      // Only this facility's own patients. Sweeping every patient in the
-      // database meant a brand-new lab opened onto another facility's order
-      // list, because an EHR lab order records which discipline it is for
-      // (target_lab) but never which facility it was sent to — the patient is
-      // the only workspace signal there is.
+      // This facility's patients, plus global ones. A NULL workspaceid means
+      // "global patient" — a deliberate state with an admin route that sets it
+      // (/api/admin/patients/make-global), and the same rule the patient list
+      // itself applies. Scoping to the workspace alone hid 109 of the 116
+      // patients that have EHR ids, which is why labs stopped being able to
+      // read patient information at all.
       //
-      // Patients with no workspace are therefore invisible here rather than
-      // visible everywhere; assigning them an owner is what brings them back.
+      // Whether an order belongs to *this* lab is a separate question, settled
+      // per order below rather than by which patient it is attached to.
       const patientsQuery = await db
         .select()
         .from(patients)
-        .where(eq(patients.workspaceid, workspaceId));
+        .where(or(eq(patients.workspaceid, workspaceId), isNull(patients.workspaceid)));
       
       const patientsWithEhr = patientsQuery.filter(p => p.ehrid);
 

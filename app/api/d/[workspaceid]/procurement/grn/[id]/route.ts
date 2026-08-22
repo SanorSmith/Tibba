@@ -61,7 +61,7 @@ export async function POST(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
-    const { id } = params;
+    const { workspaceid, id } = params;
     const body = await req.json();
     const validated = postGRNSchema.parse(body);
 
@@ -157,6 +157,7 @@ export async function POST(
         await tx
           .insert(stockTransactions)
           .values({
+            workspaceid: workspaceid,
             itemid: item.itemid,
             warehouseid: grn[0].warehouseid!,
             batchid: batchId,

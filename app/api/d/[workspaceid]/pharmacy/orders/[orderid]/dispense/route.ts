@@ -191,6 +191,7 @@ export async function POST(
               await db
                 .insert(stockTransactions)
                 .values({
+                  workspaceid: workspaceid,
                   itemid: item.drugid,
                   warehouseid: pharmacyWarehouse[0].id,
                   batchid: dispenseData.batchid || item.batchid,

@@ -272,6 +272,7 @@ export async function POST(
         }
 
         await tx.insert(stockTransactions).values({
+          workspaceid: workspaceid,
           itemid: line.itemId,
           warehouseid: labWarehouse.id,
           batchid: batchId,

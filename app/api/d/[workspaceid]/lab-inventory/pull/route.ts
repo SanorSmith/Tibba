@@ -205,6 +205,7 @@ export async function POST(
         // Same event in the shared stock audit trail, negative because it left
         // the shelf — matching how dispensing records a decrement.
         await tx.insert(stockTransactions).values({
+          workspaceid: workspaceid,
           itemid: line.itemId,
           warehouseid: labWarehouse.id,
           batchid: batchId,

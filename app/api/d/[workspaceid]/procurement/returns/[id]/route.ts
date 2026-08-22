@@ -124,6 +124,7 @@ export async function POST(
         await tx
           .insert(stockTransactions)
           .values({
+            workspaceid: workspaceid,
             itemid: item.itemid,
             warehouseid: '', // Will need to be determined from batch or passed in request
             batchid: item.batchid,

@@ -137,6 +137,7 @@ export async function POST(
       }
 
       await tx.insert(stockTransactions).values({
+        workspaceid: workspaceid,
         itemid: itemId,
         warehouseid: labWarehouse.id,
         batchid: batchId ?? null,
