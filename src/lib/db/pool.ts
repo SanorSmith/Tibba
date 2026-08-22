@@ -1,4 +1,6 @@
 import { Pool } from 'pg';
+import type { PoolClient } from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 // The one connection pool for the whole application. Every route and service
 // shares it — nothing else may call `new Pool`. That single choke point is
@@ -24,6 +26,15 @@ const realPool = new Pool({
 /** The underlying pool. Only the tenant wrapper should reach for this. */
 export const rawPool = realPool;
 
+/**
+ * The transaction client carrying the current facility's identity, when the
+ * work is inside `withTenant`. It lives here rather than in tenant.ts so the
+ * proxy below can read it with a plain import — an earlier version reached for
+ * it with `require()` to dodge a circular import, which is not available in
+ * the bundled server and made every query throw.
+ */
+export const tenantClient = new AsyncLocalStorage<PoolClient>();
+
 // Every call site says `pool.query(...)`. Inside withTenant that must run on
 // the transaction holding the tenant setting, and outside it on the pool as
 // before — so `pool` forwards to whichever applies. 212 files keep working
@@ -31,12 +42,9 @@ export const rawPool = realPool;
 export const pool = new Proxy(realPool, {
   get(target, prop, receiver) {
     if (prop === 'query') {
-      return (...args: unknown[]) => {
-        // required lazily: tenant.ts imports rawPool from this module
-        const { currentClient } = require('./tenant') as typeof import('./tenant');
-        const client = currentClient();
-        return (client ?? target).query(...(args as [never]));
-      };
+      const client = tenantClient.getStore();
+      const source = client ?? target;
+      return source.query.bind(source);
     }
     const value = Reflect.get(target, prop, receiver);
     return typeof value === 'function' ? value.bind(target) : value;
