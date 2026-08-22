@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -55,7 +55,7 @@ interface WorkspaceDetailModalProps {
   onWorkspaceUpdate?: (workspace: Workspace) => void;
 }
 
-const roleColors = {
+const roleColors: Record<string, string> = {
   doctor: "bg-blue-100 text-blue-800",
   nurse: "bg-green-100 text-green-800",
   lab_technician: "bg-purple-100 text-purple-800",
@@ -67,6 +67,14 @@ const roleColors = {
   hr_officer: "bg-indigo-100 text-indigo-800",
   inventory_officer: "bg-amber-100 text-amber-800",
 };
+
+interface DbRole {
+  roleid: string;
+  workspacetype: string;
+  name: string;
+  label: string;
+  isactive: boolean;
+}
 
 const workspaceTypeColors = {
   hospital: "bg-red-100 text-red-800",
@@ -89,6 +97,7 @@ export function WorkspaceDetailModal({
   >([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedRole, setSelectedRole] = useState<WorkspaceUserRole>("doctor");
+  const [availableRoles, setAvailableRoles] = useState<DbRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -116,9 +125,25 @@ export function WorkspaceDetailModal({
     }
   };
 
+  const loadRoles = useCallback(async (wsType: string) => {
+    try {
+      const res = await fetch(`/api/admin/workspace-roles?workspacetype=${wsType}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableRoles(data.roles || []);
+        if (data.roles?.length > 0) {
+          setSelectedRole(data.roles[0].name);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading roles:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (workspace && isOpen) {
       loadWorkspaceUsers();
+      loadRoles(workspace.type);
       setEditForm({
         name: workspace.name,
         type: workspace.type,
@@ -349,16 +374,11 @@ export function WorkspaceDetailModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="item-aligned">
-                  <SelectItem value="doctor">Doctor</SelectItem>
-                  <SelectItem value="nurse">Nurse</SelectItem>
-                  <SelectItem value="lab_technician">Lab Technician</SelectItem>
-                  <SelectItem value="pharmacist">Pharmacist</SelectItem>
-                  <SelectItem value="receptionist">Receptionist</SelectItem>
-                  <SelectItem value="administrator">Administrator</SelectItem>
-                  <SelectItem value="plastic_surgeon">Plastic Surgeon</SelectItem>
-                  <SelectItem value="accountant">Accountant</SelectItem>
-                  <SelectItem value="hr_officer">HR Officer</SelectItem>
-                  <SelectItem value="inventory_officer">Inventory Officer</SelectItem>
+                  {availableRoles.map((r) => (
+                    <SelectItem key={r.roleid} value={r.name}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 

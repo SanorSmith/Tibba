@@ -5,26 +5,42 @@
  * - On success: redirect to /d/[workspaceid]/staff
  */
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const roles = [
-  { value: "doctor", label: "Doctor" },
-  { value: "nurse", label: "Nurse" },
-  { value: "lab_technician", label: "Lab technician" },
-  { value: "pharmacist", label: "Pharmacist" },
-  { value: "receptionist", label: "Receptionist" },
-] as const;
+interface DbRole {
+  roleid: string;
+  name: string;
+  label: string;
+}
 
 export default function StaffForm({ workspaceid }: { workspaceid: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [role, setRole] = useState<string>(roles[0].value);
+  const [roles, setRoles] = useState<DbRole[]>([]);
+  const [role, setRole] = useState<string>("");
+
+  useEffect(() => {
+    async function loadRoles() {
+      try {
+        const res = await fetch(`/api/admin/workspace-roles`);
+        if (res.ok) {
+          const data = await res.json();
+          const allRoles = (data.roles || []) as DbRole[];
+          setRoles(allRoles);
+          if (allRoles.length > 0) setRole(allRoles[0].name);
+        }
+      } catch (e) {
+        console.error("Failed to load roles", e);
+      }
+    }
+    loadRoles();
+  }, []);
   const departments = [
     "Outpatient Department",
     "ENT (Ear, Nose, Throat)",
@@ -102,7 +118,7 @@ export default function StaffForm({ workspaceid }: { workspaceid: string }) {
           </SelectTrigger>
           <SelectContent>
             {roles.map((r) => (
-              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+              <SelectItem key={r.name} value={r.name}>{r.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

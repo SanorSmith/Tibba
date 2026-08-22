@@ -67,6 +67,7 @@ export interface TestOrderRecord {
   test_category?: string;
   is_package?: boolean;
   target_lab?: string;
+  target_lab_workspace_id?: string;
   status?: string; // Order status: REQUESTED, IN_PROGRESS, COMPLETED, CANCELLED
 }
 
@@ -351,6 +352,7 @@ export async function getOpenEHRTestOrders(
             // Extract enhanced fields
             let testCategory = "";
             let targetLab = receivingProvider;
+            let targetLabWorkspaceId = "";
 
             if (description) {
               const categoryMatch = description.match(/Category:\s*([^|]+)/);
@@ -361,6 +363,11 @@ export async function getOpenEHRTestOrders(
               const labMatch = description.match(/Laboratory:\s*([^|]+)/);
               if (labMatch) {
                 targetLab = labMatch[1].trim();
+              }
+
+              const labWorkspaceMatch = description.match(/LabWorkspaceId:\s*([a-f0-9-]+)/i);
+              if (labWorkspaceMatch) {
+                targetLabWorkspaceId = labWorkspaceMatch[1].trim();
               }
             }
 
@@ -380,6 +387,7 @@ export async function getOpenEHRTestOrders(
               test_category: testCategory,
               is_package: true,
               target_lab: targetLab,
+              target_lab_workspace_id: targetLabWorkspaceId,
               status: status, // Include status in the returned record
             });
           }
@@ -413,6 +421,120 @@ export async function getOpenEHRTestOrders(
     return ordersWithComputedStatus;
   } catch (error) {
     console.error("Error fetching test orders via AQL:", error);
+    return [];
+  }
+}
+
+/**
+ * Get test orders explicitly routed to a given lab workspace, regardless of
+ * which workspace the patient themselves belongs to.
+ *
+ * Doctors ordering from the hospital/EHR side pick a destination lab
+ * facility; that choice is embedded as `LabWorkspaceId: <uuid>` in the
+ * order's description (see createLabOrderComposition /
+ * app/api/d/[workspaceid]/patients/[patientid]/test-orders route). Since the
+ * patient usually isn't owned by that lab's workspace, the per-patient
+ * lookup in getOpenEHRTestOrders never surfaces these orders for the lab —
+ * this function runs a single AQL query across every EHR to find them.
+ */
+export async function getOpenEHRTestOrdersForLabWorkspace(
+  labWorkspaceId: string
+): Promise<Array<TestOrderRecord & { ehr_id: string; subject_id: string }>> {
+  console.log(`[getOpenEHRTestOrdersForLabWorkspace] Searching for orders targeted to lab ${labWorkspaceId}`);
+  const query = `SELECT
+    c/uid/value as composition_uid,
+    c/context/start_time/value as recorded_time,
+    c as full_composition,
+    e/ehr_id/value as ehr_id,
+    e/ehr_status/subject/external_ref/id/value as subject_id
+  FROM
+    EHR e
+    CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.encounter.v1]
+  WHERE
+    c/archetype_details/template_id/value = 'template_clinical_encounter_v1'
+  ORDER BY
+    c/context/start_time/value DESC`;
+
+  try {
+    const results = await queryOpenEHR<
+      OpenEHRResult & { ehr_id: string; subject_id: string }
+    >(query);
+
+    const testOrders: Array<TestOrderRecord & { ehr_id: string; subject_id: string }> = [];
+
+    for (const row of results) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const composition = row.full_composition as any;
+      if (!composition?.content) continue;
+
+      for (const item of composition.content) {
+        if (item.archetype_node_id !== "openEHR-EHR-INSTRUCTION.service_request.v1") {
+          continue;
+        }
+
+        const description = findValueByName(item, "Description") || "";
+        const labWorkspaceMatch = description.match(/LabWorkspaceId:\s*([a-f0-9-]+)/i);
+        const matchedLabWorkspaceId = labWorkspaceMatch?.[1]?.trim();
+
+        // Only interested in orders explicitly routed to this lab
+        if (!matchedLabWorkspaceId || matchedLabWorkspaceId !== labWorkspaceId) {
+          continue;
+        }
+        console.log(`[getOpenEHRTestOrdersForLabWorkspace] Found lab-targeted order composition ${row.composition_uid} for subject ${row.subject_id}`);
+
+        const serviceName = findValueByName(item, "Service Name") || "";
+        const clinicalIndication = findValueByName(item, "Clinical Indication") || "";
+        const requestingProvider = findValueByName(item, "Requesting Provider") || "";
+        const receivingProvider = findValueByName(item, "Receiving Provider") || "";
+        const requestId = findValueByName(item, "request_id") || "";
+        const narrative = item.narrative?.value || findValueByName(item, "narrative") || "";
+
+        let status = "REQUESTED";
+        if (narrative && narrative.includes("[CANCELLED]")) {
+          status = "CANCELLED";
+        } else {
+          const statusMatch = description.match(/Status:\s*(REQUESTED|CANCELLED|IN_PROGRESS|COMPLETED)/);
+          if (statusMatch) status = statusMatch[1];
+        }
+
+        let urgency = "routine";
+        if (description.toLowerCase().includes("urgency: urgent")) urgency = "urgent";
+
+        let testCategory = "";
+        const categoryMatch = description.match(/Category:\s*([^|]+)/);
+        if (categoryMatch) testCategory = categoryMatch[1].trim();
+
+        let targetLab = receivingProvider;
+        const labMatch = description.match(/Laboratory:\s*([^|]+)/);
+        if (labMatch) targetLab = labMatch[1].trim();
+
+        testOrders.push({
+          composition_uid: row.composition_uid,
+          recorded_time: row.recorded_time,
+          service_name: serviceName,
+          service_type_code: "",
+          service_type_value: "",
+          description,
+          clinical_indication: clinicalIndication,
+          urgency,
+          requesting_provider: requestingProvider,
+          receiving_provider: receivingProvider,
+          request_id: requestId,
+          narrative,
+          test_category: testCategory,
+          is_package: true,
+          target_lab: targetLab,
+          target_lab_workspace_id: matchedLabWorkspaceId,
+          status,
+          ehr_id: row.ehr_id,
+          subject_id: row.subject_id,
+        });
+      }
+    }
+
+    return testOrders;
+  } catch (error) {
+    console.error("Error fetching lab-targeted test orders via AQL:", error);
     return [];
   }
 }
@@ -515,6 +637,7 @@ export async function getOpenEHRTestOrdersWithCancelled(
 
             let testCategory = "";
             let targetLab = receivingProvider;
+            let targetLabWorkspaceId = "";
 
             if (description) {
               const categoryMatch = description.match(/Category:\s*([^|]+)/);
@@ -525,6 +648,11 @@ export async function getOpenEHRTestOrdersWithCancelled(
               const labMatch = description.match(/Laboratory:\s*([^|]+)/);
               if (labMatch) {
                 targetLab = labMatch[1].trim();
+              }
+
+              const labWorkspaceMatch = description.match(/LabWorkspaceId:\s*([a-f0-9-]+)/i);
+              if (labWorkspaceMatch) {
+                targetLabWorkspaceId = labWorkspaceMatch[1].trim();
               }
             }
 
@@ -544,6 +672,7 @@ export async function getOpenEHRTestOrdersWithCancelled(
               test_category: testCategory,
               is_package: true,
               target_lab: targetLab,
+              target_lab_workspace_id: targetLabWorkspaceId,
               status: status, // Include status (REQUESTED, CANCELLED, etc.)
             });
           }

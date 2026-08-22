@@ -2,6 +2,7 @@
  * Client Component: RolesTable
  * - Fetches staff data and displays roles with permissions in a table
  * - Shows role-based permissions for each staff member
+ * - Role config (label, icon, color, permissions) is fetched from the DB
  */
 "use client";
 import { useEffect, useState } from "react";
@@ -14,19 +15,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Shield, 
-  Stethoscope, 
-  Heart, 
-  TestTube, 
-  Pill, 
+import {
+  Shield,
+  Stethoscope,
+  Heart,
+  TestTube,
+  Pill,
   UserCircle,
-  CheckCircle2
+  CheckCircle2,
+  type LucideIcon,
 } from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  Shield,
+  Stethoscope,
+  Heart,
+  TestTube,
+  Pill,
+  UserCircle,
+};
 
 type Staff = {
   staffid: string;
-  role: "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist";
+  role: string;
   firstname: string;
   middlename?: string | null;
   lastname: string;
@@ -42,90 +53,33 @@ type WorkspaceUser = {
   name: string | null;
   image: string | null;
   permissions: string[];
-  role: "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator";
+  role: string;
 };
 
 type CombinedMember = {
   id: string;
   name: string;
   email: string | null;
-  role: "doctor" | "nurse" | "lab_technician" | "pharmacist" | "receptionist" | "administrator";
+  role: string;
   unit?: string | null;
   specialty?: string | null;
   source: "staff" | "user";
   isAdmin?: boolean;
 };
 
-// Define permissions for each role
-const rolePermissions: Record<CombinedMember["role"], string[]> = {
-  doctor: [
-    "View Patients",
-    "Edit Patient Records",
-    "Prescribe Medications",
-    "Order Tests",
-    "View Lab Results",
-    "Create Diagnoses",
-    "Schedule Appointments",
-    "View Medical History",
-  ],
-  nurse: [
-    "View Patients",
-    "Update Vital Signs",
-    "Administer Medications",
-    "View Prescriptions",
-    "Update Care Plans",
-    "View Lab Results",
-    "Schedule Appointments",
-  ],
-  lab_technician: [
-    "View Test Orders",
-    "Update Lab Results",
-    "Manage Lab Equipment",
-    "View Patient Lab History",
-    "Generate Lab Reports",
-  ],
-  pharmacist: [
-    "View Prescriptions",
-    "Dispense Medications",
-    "Manage Inventory",
-    "Check Drug Interactions",
-    "Update Medication Records",
-    "Generate Pharmacy Reports",
-  ],
-  receptionist: [
-    "Schedule Appointments",
-    "View Patient List",
-    "Check-in Patients",
-    "Manage Billing",
-    "Generate Invoices",
-    "Process Payments",
-  ],
-  administrator: [
-    "Full System Access",
-    "Manage Users",
-    "Manage Staff",
-    "View All Records",
-    "Edit All Records",
-    "System Configuration",
-    "Generate All Reports",
-    "Manage Departments",
-    "Manage Inventory",
-    "Financial Management",
-  ],
-};
-
-// Role display configuration
-const roleConfig: Record<CombinedMember["role"], { label: string; icon: React.ElementType; color: string }> = {
-  doctor: { label: "Doctor", icon: Stethoscope, color: "bg-blue-100 text-blue-800 border-blue-200" },
-  nurse: { label: "Nurse", icon: Heart, color: "bg-pink-100 text-pink-800 border-pink-200" },
-  lab_technician: { label: "Lab Technician", icon: TestTube, color: "bg-purple-100 text-purple-800 border-purple-200" },
-  pharmacist: { label: "Pharmacist", icon: Pill, color: "bg-green-100 text-green-800 border-green-200" },
-  receptionist: { label: "Receptionist", icon: UserCircle, color: "bg-orange-100 text-orange-800 border-orange-200" },
-  administrator: { label: "Administrator", icon: Shield, color: "bg-red-100 text-red-800 border-red-200" },
-};
+interface DbRole {
+  roleid: string;
+  workspacetype: string;
+  name: string;
+  label: string;
+  permissions: string[];
+  icon: string | null;
+  color: string | null;
+}
 
 export default function RolesTable({ workspaceid }: { workspaceid: string }) {
   const [members, setMembers] = useState<CombinedMember[] | null>(null);
+  const [rolesMap, setRolesMap] = useState<Record<string, DbRole>>({});
   const [error, setError] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -133,10 +87,11 @@ export default function RolesTable({ workspaceid }: { workspaceid: string }) {
     let active = true;
     async function load() {
       try {
-        // Fetch both staff and workspace users in parallel
-        const [staffRes, usersRes] = await Promise.all([
+        // Fetch staff, workspace users, and roles in parallel
+        const [staffRes, usersRes, rolesRes] = await Promise.all([
           fetch(`/api/d/${workspaceid}/staff`, { cache: "no-store" }),
           fetch(`/api/d/${workspaceid}/users`, { cache: "no-store" }),
+          fetch(`/api/admin/workspace-roles`, { cache: "no-store" }),
         ]);
 
         if (!staffRes.ok || !usersRes.ok) {
@@ -145,8 +100,16 @@ export default function RolesTable({ workspaceid }: { workspaceid: string }) {
 
         const staffData = await staffRes.json();
         const usersData = await usersRes.json();
+        const rolesData = rolesRes.ok ? await rolesRes.json() : { roles: [] };
 
         if (!active) return;
+
+        // Build roles lookup by name
+        const rMap: Record<string, DbRole> = {};
+        for (const r of rolesData.roles as DbRole[]) {
+          rMap[r.name] = r;
+        }
+        setRolesMap(rMap);
 
         // Convert staff to combined format
         const staffMembers: CombinedMember[] = (staffData.staff as Staff[] || []).map((s) => ({
@@ -172,7 +135,7 @@ export default function RolesTable({ workspaceid }: { workspaceid: string }) {
         // Combine and remove duplicates (prefer staff entries)
         const staffEmails = new Set(staffMembers.map(s => s.email?.toLowerCase()).filter(Boolean));
         const uniqueUsers = userMembers.filter(u => !staffEmails.has(u.email?.toLowerCase() || ""));
-        
+
         setMembers([...staffMembers, ...uniqueUsers]);
       } catch (e: unknown) {
         if (!active) return;
@@ -185,6 +148,17 @@ export default function RolesTable({ workspaceid }: { workspaceid: string }) {
       active = false;
     };
   }, [workspaceid]);
+
+  const getConfig = (roleName: string) => {
+    const dbRole = rolesMap[roleName];
+    const Icon = iconMap[dbRole?.icon || ""] || Shield;
+    return {
+      label: dbRole?.label || roleName,
+      icon: Icon,
+      color: dbRole?.color || "bg-gray-100 text-gray-800 border-gray-200",
+      permissions: dbRole?.permissions || [],
+    };
+  };
 
   if (error) {
     return (
@@ -225,9 +199,9 @@ export default function RolesTable({ workspaceid }: { workspaceid: string }) {
         </TableHeader>
         <TableBody>
           {members.map((member: CombinedMember) => {
-            const config = roleConfig[member.role];
+            const config = getConfig(member.role);
             const Icon = config.icon;
-            const permissions = rolePermissions[member.role];
+            const permissions = config.permissions;
             const isExpanded = expandedRow === member.id;
 
             return (

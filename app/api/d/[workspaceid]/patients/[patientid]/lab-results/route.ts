@@ -379,14 +379,14 @@ const labResultsStore: Record<string, LabTestResult[]> = {
   "78fc988b-941b-46ec-aa9c-44493179345c": [
     {
       composition_uid: "lab-result-khalid-cbc-001",
-      recorded_time: "2024-11-16T08:15:00.000Z",
+      recorded_time: "2026-07-10T08:15:00.000Z",
       test_name: "Complete Blood Count (CBC)",
       test_name_code: "58410-2",
-      protocol: "LAB-2024-002456",
+      protocol: "LAB-2026-002456",
       specimen_type: "Blood (EDTA tube)",
-      specimen_collection_time: "2024-11-16T07:00:00.000Z",
-      specimen_received_time: "2024-11-16T07:30:00.000Z",
-      specimen_id: "SPEC-2024-002456",
+      specimen_collection_time: "2026-07-10T07:00:00.000Z",
+      specimen_received_time: "2026-07-10T07:30:00.000Z",
+      specimen_id: "SPEC-2026-002456",
       overall_test_status: "final",
       clinical_information_provided: "Patient presents with fatigue and pallor. Rule out anemia.",
       test_results: [
@@ -441,20 +441,20 @@ const labResultsStore: Record<string, LabTestResult[]> = {
       laboratory_name: "Central Haematology Laboratory",
       reported_by: "Dr. Fatima Al-Rashid, MD",
       verified_by: "Dr. Ahmed Khalil, MD",
-      report_date: "2024-11-16T09:00:00.000Z",
+      report_date: "2026-07-10T09:00:00.000Z",
       price: 55,
       currency: "USD"
     },
     {
       composition_uid: "lab-result-khalid-iron-002",
-      recorded_time: "2024-11-16T10:30:00.000Z",
+      recorded_time: "2026-07-10T10:30:00.000Z",
       test_name: "Iron Studies Panel",
       test_name_code: "24352-6",
-      protocol: "LAB-2024-002457",
+      protocol: "LAB-2026-002457",
       specimen_type: "Blood (Serum)",
-      specimen_collection_time: "2024-11-16T07:00:00.000Z",
-      specimen_received_time: "2024-11-16T07:30:00.000Z",
-      specimen_id: "SPEC-2024-002457",
+      specimen_collection_time: "2026-07-10T07:00:00.000Z",
+      specimen_received_time: "2026-07-10T07:30:00.000Z",
+      specimen_id: "SPEC-2026-002457",
       overall_test_status: "final",
       clinical_information_provided: "Follow-up to CBC showing microcytic anemia.",
       test_results: [
@@ -500,7 +500,7 @@ const labResultsStore: Record<string, LabTestResult[]> = {
       laboratory_name: "Clinical Chemistry Laboratory",
       reported_by: "Dr. Omar Youssef, PhD",
       verified_by: "Dr. Layla Ibrahim, MD",
-      report_date: "2024-11-16T11:00:00.000Z",
+      report_date: "2026-07-10T11:00:00.000Z",
       price: 65,
       currency: "USD"
     }
@@ -531,14 +531,14 @@ const imagingResultsStore: Record<string, ImagingResult[]> = {
   "78fc988b-941b-46ec-aa9c-44493179345c": [
     {
       composition_uid: "img-result-khalid-abdomen-001",
-      recorded_time: "2024-11-16T11:45:00.000Z",
+      recorded_time: "2026-07-11T11:45:00.000Z",
       study_name: "Abdominal Ultrasound",
       modality: "Ultrasound",
       body_part: "Abdomen",
       finding_summary: "Liver and spleen normal in size and echotexture. Gallbladder shows no stones. Kidneys normal. No free fluid in abdomen.",
       impression: "Normal abdominal ultrasound. No evidence of organomegaly or masses.",
       radiologist: "Dr. Nadia Mansour",
-      report_date: "2024-11-16T12:15:00.000Z",
+      report_date: "2026-07-11T12:15:00.000Z",
       overall_status: "final",
       price: 85,
       currency: "USD",
@@ -652,7 +652,7 @@ const ecgResultsStore: Record<string, ECGResult[]> = {
   "78fc988b-941b-46ec-aa9c-44493179345c": [
     {
       composition_uid: "ecg-result-khalid-001",
-      recorded_time: "2024-11-16T09:15:00.000Z",
+      recorded_time: "2026-07-11T09:15:00.000Z",
       test_name: "12-Lead ECG",
       heart_rate: 68,
       rhythm: "Sinus rhythm",
@@ -663,7 +663,7 @@ const ecgResultsStore: Record<string, ECGResult[]> = {
       findings: "Normal sinus rhythm. No ST-T wave abnormalities. No conduction defects. QT interval within normal limits.",
       interpretation: "Normal ECG. No acute cardiac abnormalities detected.",
       reported_by: "Dr. Hassan Mahmoud, Cardiology",
-      report_date: "2024-11-16T09:30:00.000Z",
+      report_date: "2026-07-11T09:30:00.000Z",
       overall_status: "final",
       price: 45,
       currency: "USD",

@@ -3,7 +3,11 @@ import postgres from "postgres";
 import { AsyncLocalStorage } from "node:async_hooks";
 import * as schema from "./schema";
 
-const client = postgres(`${process.env.DATABASE_URL}?sslmode=require`);
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
+const client = postgres(dbUrl.includes("sslmode=") ? dbUrl : `${dbUrl}?sslmode=require`);
 const baseDb = drizzle(client, { schema });
 
 export type Database = typeof baseDb;

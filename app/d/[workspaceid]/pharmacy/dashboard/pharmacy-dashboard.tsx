@@ -96,6 +96,7 @@ export default function PharmacyDashboard({
     <div className="flex flex-col flex-1 overflow-hidden">
       <PharmacyNav workspaceid={workspaceid} activeTab={activeTab} />
 
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
       {/* Dashboard Tab */}
       {activeTab === "dashboard" && (
         <div className="mt-3 px-4">
@@ -414,7 +415,7 @@ export default function PharmacyDashboard({
 
       {/* Drug Registration Tab */}
       {activeTab === "drug-registration" && (
-        <div className="mt-4 px-4">
+        <div className="mt-4 px-4 flex flex-col flex-1 min-h-0">
           {loadedTabs.has("drug-registration") && (
             <DrugRegistration workspaceid={workspaceid} />
           )}
@@ -438,6 +439,7 @@ export default function PharmacyDashboard({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

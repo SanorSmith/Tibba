@@ -11,6 +11,7 @@ import {
   getOpenEHRTestOrdersWithCancelled,
 } from "@/lib/openehr/openehr";
 import { ensurePatientEHR } from "@/lib/openehr/ensure-ehr";
+import { invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
 
 export async function GET(
   request: NextRequest,
@@ -115,7 +116,14 @@ export async function POST(
       narrative,
       is_package,
       target_lab,
+      target_lab_workspace_id,
+      target_lab_workspace_name,
     } = body.testOrder;
+
+    // Prefer the selected lab facility's name for the receiving provider so
+    // the order clearly shows which lab it was routed to.
+    const effectiveReceivingProvider =
+      target_lab_workspace_name || receiving_provider || "Clinical Laboratory";
 
     console.log("DEBUG: Received testOrder data:", body.testOrder);
     console.log("DEBUG: urgency value:", urgency);
@@ -172,7 +180,9 @@ export async function POST(
     ] = service_name;
     compositionData[
       "template_clinical_encounter_v1/service_request/request/description"
-    ] = `Status: REQUESTED | ${description || ""}`;
+    ] = `Status: REQUESTED | ${description || ""}${
+      target_lab_workspace_id ? ` | LabWorkspaceId: ${target_lab_workspace_id}` : ""
+    }`;
     if (clinical_indication) {
       compositionData[
         "template_clinical_encounter_v1/service_request/request/clinical_indication"
@@ -186,7 +196,7 @@ export async function POST(
     ] = requesting_provider || user.name || "Dr. Unknown";
     compositionData[
       "template_clinical_encounter_v1/service_request/request/receiving_provider"
-    ] = receiving_provider || "Clinical Laboratory";
+    ] = effectiveReceivingProvider;
 
     // Store test order marker in the request_id - this is already working and supported
     compositionData[
@@ -201,7 +211,7 @@ export async function POST(
       narrative ||
       `${
         is_package ? "Package" : "Individual"
-      } test order: ${service_name} to ${target_lab || receiving_provider} (${
+      } test order: ${service_name} to ${target_lab_workspace_name || target_lab || receiving_provider} (${
         urgency || "routine"
       })${clinical_indication ? ` ordered due to ${clinical_indication}` : " ordered"}` +
         (description ? `\n\nTest Details: ${description}` : "");
@@ -234,6 +244,13 @@ export async function POST(
     );
 
     console.log(`Created test order composition: ${compositionId}`);
+
+    // Invalidate the target lab's LIMS order list cache so the order appears
+    // immediately when the receiving lab opens its dashboard.
+    if (target_lab_workspace_id) {
+      console.log(`[Test Orders POST] Invalidating LIMS orders cache for target lab ${target_lab_workspace_id}`);
+      invalidate(ehrOrdersKey(target_lab_workspace_id));
+    }
 
     return NextResponse.json({
       success: true,

@@ -11,6 +11,8 @@ import {
 import { users } from "./user";
 
 export type WorkspaceType = "hospital" | "laboratory" | "pharmacy";
+// Roles are stored in the workspace_roles DB table, scoped per workspace type.
+// This union is kept for compile-time safety; add new roles here AND in the DB.
 export type WorkspaceUserRole =
   | "doctor"
   | "nurse"
@@ -21,7 +23,8 @@ export type WorkspaceUserRole =
   | "plastic_surgeon"
   | "accountant"
   | "hr_officer"
-  | "inventory_officer";
+  | "inventory_officer"
+  | (string & {}); // allows DB-driven roles without breaking existing checks
 
 export interface WorkspaceSettings {
   icon?: string;
