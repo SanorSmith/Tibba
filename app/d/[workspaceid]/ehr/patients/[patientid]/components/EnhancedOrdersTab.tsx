@@ -49,6 +49,7 @@ export interface TestOrderRecord {
   clinical_indication: string;
   urgency: string;
   requested_date?: string;
+  ordered_date?: string;
   requesting_provider?: string;
   receiving_provider?: string;
   request_status?: string;
@@ -956,6 +957,7 @@ export default function EnhancedOrdersTab({
         onOpenChange={setShowTestOrderForm}
         onSubmit={saveTestOrder}
         workspaceid={workspaceid}
+        showLabFacilitySelector={true}
       />
 
       {/* Edit Order Dialog - Full form with test catalog */}
@@ -973,6 +975,7 @@ export default function EnhancedOrdersTab({
           editMode={true}
           initialData={editFormData}
           workspaceid={workspaceid}
+          showLabFacilitySelector={true}
         />
       )}
 

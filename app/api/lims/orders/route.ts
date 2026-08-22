@@ -32,7 +32,7 @@ import {
   CreateOrderInput,
 } from "@/lib/lims/order-validation";
 import { createOpenEHRComposition } from "@/lib/openehr/openehr";
-import { getOpenEHRTestOrders } from "@/lib/openehr/openehr";
+import { getOpenEHRTestOrders, getOpenEHRTestOrdersForLabWorkspace } from "@/lib/openehr/openehr";
 import { createAndSubmitLabOrder } from "@/lib/lims/openehr-order-service";
 import { eq, and, inArray } from "drizzle-orm";
 import { cachedByKey, invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
@@ -503,6 +503,54 @@ export async function GET(request: NextRequest) {
           })
         );
       }
+
+      // Orders explicitly routed to this lab by a doctor picking it as the
+      // destination facility. These patients may not be owned by this
+      // workspace at all, so they're found via a separate global query
+      // rather than the per-patient loop above.
+      try {
+        console.log(`[LIMS Orders GET] Fetching lab-targeted orders for workspace ${workspaceId}`);
+        const labTargetedOrders = await getOpenEHRTestOrdersForLabWorkspace(workspaceId);
+        console.log(`[LIMS Orders GET] Found ${labTargetedOrders.length} lab-targeted openEHR orders`);
+        if (labTargetedOrders.length > 0) {
+          const subjectIds = [...new Set(labTargetedOrders.map(o => o.subject_id).filter(Boolean))];
+          const matchedPatients = subjectIds.length > 0
+            ? await db
+                .select()
+                .from(patients)
+                .where(inArray(patients.nationalid, subjectIds))
+            : [];
+          const patientByNationalId = new Map(matchedPatients.map(p => [p.nationalid, p]));
+
+          for (const order of labTargetedOrders) {
+            const patient = patientByNationalId.get(order.subject_id);
+            let patientAge = undefined;
+            if (patient?.dateofbirth) {
+              const today = new Date();
+              const birthDate = new Date(patient.dateofbirth);
+              patientAge = today.getFullYear() - birthDate.getFullYear();
+              const monthDiff = today.getMonth() - birthDate.getMonth();
+              if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                patientAge--;
+              }
+            }
+            collected.push({
+              ...order,
+              source: "openEHR",
+              patientId: patient?.patientid || order.subject_id,
+              patientName: patient
+                ? [patient.firstname, patient.middlename, patient.lastname].filter(Boolean).join(' ')
+                : "Unknown Patient",
+              subjectidentifier: patient?.patientid || order.subject_id,
+              patientage: patientAge,
+              patientsex: patient?.gender,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching lab-targeted openEHR orders:", error);
+      }
+
       return collected;
       });
     } catch (error) {
