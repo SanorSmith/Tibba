@@ -6,16 +6,12 @@
  * request, so this cannot be used to enumerate another account's facilities.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { GOOGLE_PENDING_COOKIE, readPendingIdentity } from '@/lib/auth/google';
 import { resolveFacility } from '@/lib/auth/facility-session';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const databaseUrl = process.env.OPENEHR_DATABASE_URL || process.env.DATABASE_URL;
-const pool = databaseUrl
-  ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
-  : null;
 
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });

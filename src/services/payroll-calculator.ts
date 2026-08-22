@@ -2,7 +2,8 @@
  * Payroll Calculator Service
  * Enhanced with attendance exceptions integration
  */
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 // Types matching test expectations
 interface GrossSalaryBreakdown {
@@ -58,11 +59,8 @@ export class PayrollCalculator {
   private pool: Pool | null = null;
 
   constructor() {
-    if (process.env.DATABASE_URL) {
-      this.pool = new Pool({
-        connectionString: process.env.DATABASE_URL
-      });
-    }
+    // Shares the app-wide pool instead of opening its own connections.
+    this.pool = pool;
   }
 
   async getAttendanceExceptions(employeeId: string, startDate: string, endDate: string): Promise<AttendanceExceptions> {
@@ -302,7 +300,6 @@ export class PayrollCalculator {
 
   async close() {
     if (this.pool) {
-      await this.pool.end();
     }
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +22,6 @@ export async function PUT(
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const body = await request.json();
@@ -63,7 +59,6 @@ export async function PUT(
       workspaceId
     ]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -72,7 +67,6 @@ export async function PUT(
 
   } catch (error) {
     console.error('Error updating employee profile:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 
@@ -102,10 +96,6 @@ export async function GET(
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const result = await pool.query(`
@@ -122,7 +112,6 @@ export async function GET(
       WHERE staffid = $1 AND workspaceid = $2
     `, [id, workspaceId]);
 
-    await pool.end();
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -138,7 +127,6 @@ export async function GET(
 
   } catch (error) {
     console.error('Error fetching employee profile:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

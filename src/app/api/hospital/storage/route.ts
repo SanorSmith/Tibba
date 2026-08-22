@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getWorkspaceId } from "@/lib/workspace";
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { pool } from '@/lib/db/pool';
 
 export async function GET(req: NextRequest) {
   // Inventory is facility-private: resolve the caller’s facility per request.

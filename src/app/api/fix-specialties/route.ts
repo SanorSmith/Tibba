@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export async function GET(request: NextRequest) {
   // Schema/seed utility. These endpoints create tables, seed rows and — in
@@ -19,10 +20,6 @@ export async function GET(request: NextRequest) {
     const { Pool } = await import('pg');
     const databaseUrl = process.env.OPENEHR_DATABASE_URL;
     
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     // Get current departments
     const departmentsResult = await pool.query('SELECT departmentid, name FROM departments WHERE workspaceid = $1 ORDER BY name', [workspaceId]);
@@ -85,7 +82,6 @@ export async function GET(request: NextRequest) {
       ORDER BY s.name
     `, [workspaceId]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,

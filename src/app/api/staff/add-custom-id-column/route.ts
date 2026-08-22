@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,6 @@ export async function GET() {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     // Check if custom_staff_id column exists
@@ -28,7 +24,6 @@ export async function GET() {
     `);
 
     if (checkColumn.rows.length > 0) {
-      await pool.end();
       return NextResponse.json({
         success: true,
         message: 'custom_staff_id column already exists',
@@ -44,7 +39,6 @@ export async function GET() {
 
     console.log('✅ Added custom_staff_id column to staff table');
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -54,7 +48,6 @@ export async function GET() {
 
   } catch (error) {
     console.error('Error adding custom_staff_id column:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

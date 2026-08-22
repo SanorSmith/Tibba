@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-const pool = new Pool({
-  connectionString: process.env.OPENEHR_DATABASE_URL,
-});
 
 export async function POST() {
   try {

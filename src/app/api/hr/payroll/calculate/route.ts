@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
-import { Pool } from 'pg';
 import { createPayrollCalculationEngine } from '@/lib/services/payroll-calculation-engine';
+import { pool } from '@/lib/db/pool';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 /**
  * POST /api/hr/payroll/calculate

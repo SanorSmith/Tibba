@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +52,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -124,7 +120,6 @@ export async function GET(request: NextRequest) {
 
     const result = await pool.query(query, params);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -134,7 +129,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching leave requests:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 
@@ -162,10 +156,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const body = await request.json();
@@ -195,7 +185,6 @@ export async function POST(request: NextRequest) {
       [employee_id, workspaceId]
     );
     if (emp.rows.length === 0) {
-      await pool.end();
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
@@ -219,7 +208,6 @@ export async function POST(request: NextRequest) {
     `, [leave_type_id, workspaceId]);
 
     if (leaveType.rows.length === 0) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Invalid leave type' },
         { status: 400 }
@@ -231,7 +219,6 @@ export async function POST(request: NextRequest) {
     // Validate consecutive days
     const maxConsecutive = leaveTypeData.max_consecutive_days ?? leaveTypeData.max_consecutive;
     if (maxConsecutive && totalDays > maxConsecutive) {
-      await pool.end();
       return NextResponse.json(
         { error: `Maximum consecutive days for ${leaveTypeData.name} is ${maxConsecutive}` },
         { status: 400 }
@@ -249,7 +236,6 @@ export async function POST(request: NextRequest) {
     if (balance.rows.length > 0) {
       const availableBalance = balance.rows[0].available_balance ?? 0;
       if (totalDays > availableBalance) {
-        await pool.end();
         return NextResponse.json(
           { error: `Insufficient leave balance. Available: ${availableBalance} days, Requested: ${totalDays} days` },
           { status: 400 }
@@ -287,7 +273,6 @@ export async function POST(request: NextRequest) {
       // non-fatal — approval record creation is best-effort
     }
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -297,7 +282,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating leave request:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 import attendanceIntegration from '@/lib/services/attendance-leave-integration';
+import { pool } from '@/lib/db/pool';
 
 export async function POST(
   request: NextRequest,
@@ -26,7 +27,6 @@ export async function POST(
     }
 
     const { Pool } = require('pg');
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     // The leave request must belong to this facility — an admin of one
     // hospital must not be able to force-approve another's leave.
@@ -35,7 +35,6 @@ export async function POST(
       [id, workspaceId]
     );
     if (owns.rows.length === 0) {
-      await pool.end();
       return NextResponse.json({
         success: false,
         error: 'Leave request not found',
@@ -53,7 +52,6 @@ export async function POST(
       ['HR_ADMIN', 'Administrator'].includes(userResult.rows[0].role);
     
     if (!isAdmin) {
-      await pool.end();
       return NextResponse.json({
         success: false,
         error: 'Admin privileges required for this action',
@@ -76,7 +74,6 @@ export async function POST(
     );
     
     if (approvalResult.rows.length === 0) {
-      await pool.end();
       return NextResponse.json({
         success: false,
         error: 'No pending approval found for this request',
@@ -118,7 +115,6 @@ export async function POST(
       }
     }
     
-    await pool.end();
     
     return NextResponse.json({
       success: true,

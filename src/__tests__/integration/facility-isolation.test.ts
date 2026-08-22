@@ -15,9 +15,9 @@
  *
  *     npm run test:isolation
  */
-import { Pool } from 'pg';
 import { randomBytes, scrypt } from 'crypto';
 import { promisify } from 'util';
+import { pool } from '@/lib/db/pool';
 
 // Next.js deliberately does not load .env.local when NODE_ENV=test, so the
 // database URL is not present by default and pg would silently fall back to
@@ -80,10 +80,6 @@ interface Actor {
   facility: string;
 }
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
 
 async function hash(password: string): Promise<string> {
   const salt = randomBytes(16).toString('hex');
@@ -201,7 +197,6 @@ describeIntegration('facility isolation', () => {
   afterAll(async () => {
     if (a) await removeActor(a);
     if (b) await removeActor(b);
-    await pool.end();
   });
 
   it('signs the two actors into different facilities', () => {

@@ -1,5 +1,5 @@
+import { pool } from '@/lib/db/pool';
 import Link from 'next/link';
-import { Pool } from 'pg';
 import {
   CreditCard, CheckCircle2, Clock, AlertCircle, FileText,
   Plus, Receipt, ArrowRight, TrendingUp, Users,
@@ -7,12 +7,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    })
-  : null;
 
 const fmt = (n: number | string) =>
   new Intl.NumberFormat('en-IQ').format(Math.round(parseFloat(String(n)) || 0));

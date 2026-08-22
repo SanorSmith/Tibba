@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,17 +21,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const body = await request.json();
     const { employee_id, leave_type_id, adjustment_days, reason, year } = body;
 
     if (!employee_id || !leave_type_id || adjustment_days === undefined || !reason || !year) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Missing required fields: employee_id, leave_type_id, adjustment_days, reason, year' },
         { status: 400 }
@@ -46,7 +41,6 @@ export async function POST(request: NextRequest) {
     `, [employee_id, leave_type_id, year, workspaceId]);
 
     if (currentBalance.rows.length === 0) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Balance record not found for this employee and leave type' },
         { status: 404 }
@@ -79,7 +73,6 @@ export async function POST(request: NextRequest) {
       ) VALUES ($1, $2, 'ADJUSTMENT', CURRENT_DATE, $3, $4)
     `, [employee_id, leave_type_id, adjustment_days, reason]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -89,7 +82,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error adjusting leave balance:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

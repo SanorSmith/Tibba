@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 const databaseUrl = process.env.OPENEHR_DATABASE_URL;
 
@@ -8,10 +8,6 @@ if (!databaseUrl) {
   console.error('OPENEHR_DATABASE_URL is not configured in environment variables');
 }
 
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-}) : null;
 
 export async function GET(request: NextRequest) {
   // Schema/seed utility. These endpoints create tables, seed rows and — in

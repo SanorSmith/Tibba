@@ -1,13 +1,7 @@
 import { Shield, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    })
-  : null;
 
 const fmt = (n: number | string) =>
   new Intl.NumberFormat('en-IQ').format(parseFloat(String(n)) || 0);

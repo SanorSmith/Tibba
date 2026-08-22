@@ -7,8 +7,8 @@
  * never takes the identity from the request body, so a caller cannot sign in
  * as somebody else by posting their email.
  */
+import { pool } from '@/lib/db/pool';
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { GOOGLE_PENDING_COOKIE, readPendingIdentity } from '@/lib/auth/google';
 import {
   appRoleFor,
@@ -20,10 +20,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const databaseUrl = process.env.OPENEHR_DATABASE_URL || process.env.DATABASE_URL;
-const pool = databaseUrl
-  ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
-  : null;
 
 export async function POST(request: NextRequest) {
   if (!pool) {

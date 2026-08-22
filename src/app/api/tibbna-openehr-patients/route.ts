@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -12,10 +12,6 @@ if (!databaseUrl) {
 }
 
 // Neon database connection for non-medical patient data
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-}) : null;
 
 // Generate patient number function
 function generatePatientNumber(): string {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,6 @@ export async function POST() {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     // Create leave_types table
@@ -164,7 +160,6 @@ export async function POST() {
       CREATE INDEX IF NOT EXISTS idx_holidays_date ON holidays(date);
     `);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -182,7 +177,6 @@ export async function POST() {
 
   } catch (error) {
     console.error('Error creating leave management schema:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

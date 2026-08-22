@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { verifyPassword } from '@/lib/auth/password';
 import { WS_ROLE_TO_APP_ROLE, resolveFacility } from '@/lib/auth/facility-session';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +11,6 @@ if (!databaseUrl) {
   console.error('OPENEHR_DATABASE_URL is not configured in environment variables');
 }
 
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-}) : null;
 
 export async function POST(request: NextRequest) {
   try {

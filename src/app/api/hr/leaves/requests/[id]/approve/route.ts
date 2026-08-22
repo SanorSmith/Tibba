@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,17 +25,12 @@ export async function POST(
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const body = await request.json();
     const { approver_id, approver_name, action, comments } = body;
 
     if (!approver_id || !action) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Missing required fields: approver_id, action' },
         { status: 400 }
@@ -43,7 +38,6 @@ export async function POST(
     }
 
     if (!['APPROVE', 'REJECT'].includes(action)) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Invalid action. Must be APPROVE or REJECT' },
         { status: 400 }
@@ -56,7 +50,6 @@ export async function POST(
     `, [id, workspaceId]);
 
     if (leaveRequest.rows.length === 0) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Leave request not found' },
         { status: 404 }
@@ -74,7 +67,6 @@ export async function POST(
     `, [id, approver_id]);
 
     if (approval.rows.length === 0) {
-      await pool.end();
       return NextResponse.json(
         { error: 'No pending approval found for this approver' },
         { status: 400 }
@@ -102,7 +94,6 @@ export async function POST(
         WHERE id = $2
       `, [comments || 'Rejected by ' + approver_name, id]);
 
-      await pool.end();
 
       return NextResponse.json({
         success: true,
@@ -121,7 +112,6 @@ export async function POST(
 
     if (nextApproval.rows.length > 0) {
       // More approvals needed
-      await pool.end();
       return NextResponse.json({
         success: true,
         message: 'Approval recorded. Waiting for next level approval',
@@ -141,7 +131,6 @@ export async function POST(
       WHERE id = $3
     `, [approver_id, approver_name || 'System', id]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -151,7 +140,6 @@ export async function POST(
 
   } catch (error) {
     console.error('Error processing approval:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

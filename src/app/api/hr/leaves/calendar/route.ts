@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +19,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -31,7 +27,6 @@ export async function GET(request: NextRequest) {
     const departmentId = searchParams.get('departmentId');
 
     if (!startDate || !endDate) {
-      await pool.end();
       return NextResponse.json(
         { error: 'startDate and endDate parameters are required' },
         { status: 400 }
@@ -80,7 +75,6 @@ export async function GET(request: NextRequest) {
       ORDER BY date ASC
     `, [startDate, endDate]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -93,7 +87,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching leave calendar:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 
