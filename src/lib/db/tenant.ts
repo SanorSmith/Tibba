@@ -18,11 +18,8 @@
  * The id must come from the verified session — taking it from the URL would
  * hand the caller the decision the policy exists to make.
  */
-import { AsyncLocalStorage } from 'node:async_hooks';
 import type { PoolClient } from 'pg';
-import { rawPool } from './pool';
-
-const tenantClient = new AsyncLocalStorage<PoolClient>();
+import { rawPool, tenantClient } from './pool';
 
 /** The client for the current tenant scope, if any work is inside one. */
 export function currentClient(): PoolClient | undefined {
