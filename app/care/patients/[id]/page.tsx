@@ -1736,6 +1736,7 @@ export default function EmergencyPatientDashboardPage() {
         patientId={params.id}
         patientName={patientName}
         workspaceid={workspaceId}
+        showLabFacilitySelector={true}
       />
 
       <Dialog open={vitalsModalOpen} onOpenChange={setVitalsModalOpen}>

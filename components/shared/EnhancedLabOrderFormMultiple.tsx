@@ -37,10 +37,23 @@ interface EnhancedLabOrderFormProps {
   editMode?: boolean;
   initialData?: any;
   workspaceid?: string;
+  // When true, shows a "Destination Laboratory Facility" selector so the
+  // ordering clinician can choose which lab workspace should receive the
+  // order (e.g. "Lab one" vs "LAB 2"). Used by hospital/EHR ordering
+  // contexts; not needed when a lab technician creates an order from
+  // inside their own lab workspace.
+  showLabFacilitySelector?: boolean;
+}
+
+interface LabFacility {
+  workspaceid: string;
+  name: string;
 }
 
 interface TestOrderForm {
   target_lab: string;
+  targetLabWorkspaceId: string;
+  targetLabWorkspaceName: string;
   selectedPackages: string[];
   selectedTests: string[];
   clinical_indication: string;
@@ -58,6 +71,8 @@ interface TestOrderForm {
 
 const DEFAULT_FORM: TestOrderForm = {
   target_lab: "",
+  targetLabWorkspaceId: "",
+  targetLabWorkspaceName: "",
   selectedPackages: [],
   selectedTests: [],
   clinical_indication: "",
@@ -132,11 +147,26 @@ export default function EnhancedLabOrderFormMultiple({
   editMode = false,
   initialData,
   workspaceid,
+  showLabFacilitySelector = false,
 }: EnhancedLabOrderFormProps) {
   const [formState, dispatch] = useReducer(
     formReducer,
     editMode && initialData ? { ...DEFAULT_FORM, ...initialData } : DEFAULT_FORM
   );
+  const [labFacilities, setLabFacilities] = useState<LabFacility[]>([]);
+  const [loadingLabFacilities, setLoadingLabFacilities] = useState(false);
+
+  // Fetch active lab workspaces so the clinician can pick a destination lab
+  useEffect(() => {
+    if (open && showLabFacilitySelector) {
+      setLoadingLabFacilities(true);
+      fetch("/api/workspaces/labs")
+        .then((res) => res.json())
+        .then((data) => setLabFacilities(data.labs || []))
+        .catch((err) => console.error("Failed to fetch lab facilities:", err))
+        .finally(() => setLoadingLabFacilities(false));
+    }
+  }, [open, showLabFacilitySelector]);
   const [currentStep, setCurrentStep] = useState(() => {
     if (editMode && initialData) {
       if (initialData.target_lab && (initialData.selectedPackages?.length > 0 || initialData.selectedTests?.length > 0)) return 3;
@@ -551,6 +581,11 @@ export default function EnhancedLabOrderFormMultiple({
       return;
     }
 
+    if (showLabFacilitySelector && !formState.targetLabWorkspaceId) {
+      alert("Please select the destination laboratory");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Build the submission data
@@ -689,6 +724,8 @@ export default function EnhancedLabOrderFormMultiple({
         service_type_value: "Test Group",
         description: description,
         target_lab: selectedLab?.name || labCategory,
+        target_lab_workspace_id: formState.targetLabWorkspaceId || "",
+        target_lab_workspace_name: formState.targetLabWorkspaceName || "",
         test_category: testCategory,
         is_package: true,
         selected_packages: formState.selectedPackages || [],
@@ -768,7 +805,41 @@ export default function EnhancedLabOrderFormMultiple({
                 Step 1: Laboratory or Package
               </Label>
             </div>
-            
+
+            {/* Destination Lab Facility Selection */}
+            {showLabFacilitySelector && (
+              <div className="mb-3">
+                <Label className="text-xs text-muted-foreground mb-1 block">Send Order To Laboratory</Label>
+                <Select
+                  value={formState.targetLabWorkspaceId}
+                  onValueChange={(value: string) => {
+                    const facility = labFacilities.find((f) => f.workspaceid === value);
+                    dispatch({ type: "SET_FIELD", field: "targetLabWorkspaceId", value });
+                    dispatch({ type: "SET_FIELD", field: "targetLabWorkspaceName", value: facility?.name || "" });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose destination lab..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingLabFacilities ? (
+                      <SelectItem value="_loading" disabled>
+                        <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading...</span>
+                      </SelectItem>
+                    ) : labFacilities.length === 0 ? (
+                      <SelectItem value="_none" disabled>No laboratories available</SelectItem>
+                    ) : (
+                      labFacilities.map((lab) => (
+                        <SelectItem key={lab.workspaceid} value={lab.workspaceid}>
+                          {lab.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Laboratory Selection */}
             <div className="mb-3">
               <Label className="text-xs text-muted-foreground mb-1 block">Select Laboratory Department</Label>
