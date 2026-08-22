@@ -13,13 +13,35 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is not set — refusing to start without a database.');
 }
 
-export const pool = new Pool({
+const realPool = new Pool({
   connectionString: databaseUrl,
   ssl: { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
+
+/** The underlying pool. Only the tenant wrapper should reach for this. */
+export const rawPool = realPool;
+
+// Every call site says `pool.query(...)`. Inside withTenant that must run on
+// the transaction holding the tenant setting, and outside it on the pool as
+// before — so `pool` forwards to whichever applies. 212 files keep working
+// unchanged, and a handler opts in simply by being wrapped.
+export const pool = new Proxy(realPool, {
+  get(target, prop, receiver) {
+    if (prop === 'query') {
+      return (...args: unknown[]) => {
+        // required lazily: tenant.ts imports rawPool from this module
+        const { currentClient } = require('./tenant') as typeof import('./tenant');
+        const client = currentClient();
+        return (client ?? target).query(...(args as [never]));
+      };
+    }
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+}) as typeof realPool;
 
 export async function query(text: string, params?: any[]) {
   const client = await pool.connect();
