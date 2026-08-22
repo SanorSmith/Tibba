@@ -11,8 +11,8 @@
  *   3. if they belong to several facilities, they pick one before any session
  *      cookie is issued
  */
+import { pool } from '@/lib/db/pool';
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { timingSafeEqual } from 'crypto';
 import {
   GOOGLE_PENDING_COOKIE,
@@ -32,10 +32,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const databaseUrl = process.env.OPENEHR_DATABASE_URL || process.env.DATABASE_URL;
-const pool = databaseUrl
-  ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
-  : null;
 
 /** Where each app role can actually land — mirrors ROLE_HOME on the login page. */
 const ROLE_HOME: Record<string, string> = {

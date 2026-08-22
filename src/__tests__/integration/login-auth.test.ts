@@ -9,9 +9,9 @@
  *
  *     npm run test:isolation
  */
-import { Pool } from 'pg';
 import { randomBytes, scrypt } from 'crypto';
 import { promisify } from 'util';
+import { pool } from '@/lib/db/pool';
 
 require('dotenv').config({ path: '.env.local' });
 
@@ -20,10 +20,6 @@ const scryptAsync = promisify(scrypt);
 const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000';
 const describeIntegration = process.env.RUN_INTEGRATION === '1' ? describe : describe.skip;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
 
 const PASSWORD = 'a-real-password-' + randomBytes(4).toString('hex');
 const EMAIL = `_authtest_${randomBytes(6).toString('hex')}@example.invalid`;
@@ -81,7 +77,6 @@ describeIntegration('login authentication', () => {
       await pool.query('DELETE FROM workspaceusers WHERE userid = $1', [userid]);
       await pool.query('DELETE FROM users WHERE userid = $1', [userid]);
     }
-    await pool.end();
   });
 
   it('accepts the correct password and issues a session', async () => {

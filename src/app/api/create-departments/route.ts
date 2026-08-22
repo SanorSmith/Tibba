@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export async function GET(request: NextRequest) {
   // Schema/seed utility. These endpoints create tables, seed rows and — in
@@ -24,10 +25,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database URL not configured' }, { status: 500 });
     }
 
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     console.log('Creating departments table...');
 
@@ -68,7 +65,6 @@ export async function GET(request: NextRequest) {
     const result = await pool.query('SELECT COUNT(*) as count FROM departments');
     console.log('Departments count:', result.rows[0].count);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,

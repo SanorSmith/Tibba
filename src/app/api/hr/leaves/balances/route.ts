@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +19,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -30,7 +26,6 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get('year') || new Date().getFullYear().toString();
 
     if (!employeeId) {
-      await pool.end();
       return NextResponse.json(
         { error: 'employeeId parameter is required' },
         { status: 400 }
@@ -59,7 +54,6 @@ export async function GET(request: NextRequest) {
       ORDER BY lt.name ASC
     `, [employeeId, year]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -69,7 +63,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching leave balances:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 
@@ -97,10 +90,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const body = await request.json();
@@ -157,7 +146,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await pool.end();
 
       return NextResponse.json({
         success: true,
@@ -213,7 +201,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await pool.end();
 
       return NextResponse.json({
         success: true,
@@ -223,7 +210,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    await pool.end();
 
     return NextResponse.json(
       { error: 'Invalid action. Supported actions: initialize, accrual' },
@@ -232,7 +218,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error processing leave balance action:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 

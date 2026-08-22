@@ -1,4 +1,5 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 interface AttendanceExceptions {
   total_exceptions: number;
@@ -24,9 +25,8 @@ export class PerformanceCalculator {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_RBybikcu3tz5@ep-long-river-a25.eu-central-1.aws.neon.tech/neondb?sslmode=require'
-    });
+    // Shares the app-wide pool instead of opening its own connections.
+    this.pool = pool;
   }
 
   async getAttendanceExceptions(employeeId: string, startDate: string, endDate: string): Promise<AttendanceExceptions> {
@@ -218,6 +218,5 @@ export class PerformanceCalculator {
   }
 
   async close() {
-    await this.pool.end();
   }
 }

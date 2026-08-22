@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   HeadingLevel, BorderStyle, WidthType, ShadingType, AlignmentType,
 } from 'docx';
 import { isOpenEHRConfigured, getEhrIdBySubject, getPatientOrders, getPatientDiagnoses } from '@/lib/openehr/client';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    })
-  : null;
 
 // ── Layout constants (US Letter, 0.75" margins) ──────────────────────────
 const PAGE_WIDTH = 12240;

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getWorkspaceId } from "@/lib/workspace";
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { pool } from '@/lib/db/pool';
 const CENTRAL = '00000000-0000-0000-0000-000000000000';
 
 export async function GET(req: NextRequest) {

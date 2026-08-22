@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
 // Database connection
-const databaseUrl = process.env.DATABASE_URL;
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-}) : null;
 
 export async function GET(
   request: NextRequest,

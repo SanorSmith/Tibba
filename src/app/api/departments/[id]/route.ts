@@ -7,13 +7,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 // Neon database connection
-const pool = new Pool({
-  connectionString: process.env.OPENEHR_DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
 
 // Helper function to extract ID from URL
 function getIdFromRequest(request: NextRequest): string | null {

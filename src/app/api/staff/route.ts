@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -65,10 +65,6 @@ if (!databaseUrl) {
 }
 
 // Neon database connection
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-}) : null;
 
 export async function GET(request: NextRequest) {
   try {

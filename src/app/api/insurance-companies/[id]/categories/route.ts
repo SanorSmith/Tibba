@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const databaseUrl = process.env.DATABASE_URL;
 
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-}) : null;
 
 async function ensureTable() {
   if (!pool) return;

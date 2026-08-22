@@ -6,16 +6,10 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    })
-  : null;
 
 export async function GET(request: NextRequest) {
   // Schema/seed utility. These endpoints create tables, seed rows and — in

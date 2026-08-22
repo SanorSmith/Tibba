@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 // Updated: Fixed duplicate PUT handlers - 2026-03-07
 // Fixed controlled input warnings - 2026-03-07
@@ -14,10 +14,6 @@ if (!databaseUrl) {
   console.error('DATABASE_URL is not configured in environment variables');
 }
 
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-}) : null;
 
 export async function GET(request: NextRequest) {
   try {

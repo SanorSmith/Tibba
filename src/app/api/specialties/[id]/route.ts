@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -18,10 +19,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     const { id } = await context.params;
     const workspaceId = getWorkspaceId(request);
@@ -44,7 +41,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       WHERE specialtyid = $1 AND workspaceid = $2
     `, [id, workspaceId]);
 
-    await pool.end();
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -93,10 +89,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     const { id } = await context.params;
     const workspaceId = getWorkspaceId(request);
@@ -114,7 +106,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
     } = body;
 
     if (!name || !code) {
-      await pool.end();
       return NextResponse.json(
         { 
           error: 'Missing required fields',
@@ -141,7 +132,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       workspaceId
     ]);
 
-    await pool.end();
 
     if (result.rows.length === 0) {
       return NextResponse.json(
@@ -200,10 +190,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       );
     }
 
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     const { id } = await context.params;
     const workspaceId = getWorkspaceId(request);
@@ -219,7 +205,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     );
 
     if (existingSpecialty.rows.length === 0) {
-      await pool.end();
       return NextResponse.json(
         { 
           error: 'Specialty not found',
@@ -232,7 +217,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     // Delete the specialty
     await pool.query('DELETE FROM specialties WHERE specialtyid = $1 AND workspaceid = $2', [id, workspaceId]);
 
-    await pool.end();
 
     console.log('Specialty deleted successfully');
 

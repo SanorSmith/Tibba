@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,10 +29,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Creating pool...');
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     console.log('Fetching departments from database...');
 
@@ -65,7 +62,6 @@ export async function GET(request: NextRequest) {
       updated_at: dept.updated_at
     }));
 
-    await pool.end();
     console.log('Pool closed');
 
     return NextResponse.json({
@@ -149,16 +145,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
 
     const body = await request.json();
     const { name, description } = body;
 
     if (!name) {
-      await pool.end();
       return NextResponse.json(
         { error: 'Department name is required' },
         { status: 400 }
@@ -200,7 +191,6 @@ export async function POST(request: NextRequest) {
       updated_at: result.rows[0].updatedat
     };
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,

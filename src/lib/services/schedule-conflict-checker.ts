@@ -1,8 +1,5 @@
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 // =====================================================
 // TYPES

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { createBankFileGenerator } from '@/lib/services/bank-file-generator';
 import { postPayrollPayment } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 /**
  * POST /api/hr/payroll/bank-transfer

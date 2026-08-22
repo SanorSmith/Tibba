@@ -5,17 +5,11 @@
  * Source: invoices table (status NOT IN PAID/CANCELLED, balance_due > 0).
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId } from '@/lib/workspace';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    })
-  : null;
 
 function bucketOf(days: number): string {
   if (days <= 0) return 'current';

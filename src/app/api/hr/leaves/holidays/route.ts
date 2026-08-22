@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +13,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -57,7 +53,6 @@ export async function GET(request: NextRequest) {
 
     const result = await pool.query(query, params);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -67,7 +62,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching holidays:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 
@@ -89,10 +83,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: { rejectUnauthorized: false },
-  });
 
   try {
     const body = await request.json();
@@ -118,7 +108,6 @@ export async function POST(request: NextRequest) {
       applicable_departments ? JSON.stringify(applicable_departments) : null
     ]);
 
-    await pool.end();
 
     return NextResponse.json({
       success: true,
@@ -128,7 +117,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating holiday:', error);
-    await pool.end();
     
     return NextResponse.json(
       { 
