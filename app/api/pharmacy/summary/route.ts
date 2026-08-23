@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
         FROM items i
         WHERE i.is_active = true 
           AND i.workspace_id = $2
-          AND (i.inventory_category = 'pharmacy' OR i.inventorycategory = 'pharmacy')
+          AND (i.inventory_category = 'pharmacy' OR i.inventory_category = 'pharmacy')
           AND EXISTS (
             SELECT 1 FROM item_batches ib
             WHERE ib.item_id = i.id

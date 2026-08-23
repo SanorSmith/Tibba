@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       AND ist.warehouse_id = ANY($1::uuid[])
     WHERE i.is_active = true
       AND (
-        i.inventorycategory = 'pharmacy'
+        i.inventory_category = 'pharmacy'
         OR i.inventory_category = 'pharmacy'
         OR ist.item_id IS NOT NULL
       )

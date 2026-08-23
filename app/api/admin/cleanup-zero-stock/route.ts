@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         i.created_at,
         i.workspace_id
       FROM items i
-      WHERE (i.inventory_category = 'pharmacy' OR i.inventorycategory = 'pharmacy')
+      WHERE i.inventory_category = 'pharmacy'
         AND i.is_active = true
         AND (
           -- No batches or stock records at all
@@ -83,7 +83,7 @@ export async function DELETE(request: NextRequest) {
       WHERE id IN (
         SELECT i.id
         FROM items i
-        WHERE (i.inventory_category = 'pharmacy' OR i.inventorycategory = 'pharmacy')
+        WHERE i.inventory_category = 'pharmacy'
           AND i.is_active = true
           AND (
             -- No batches or stock records at all

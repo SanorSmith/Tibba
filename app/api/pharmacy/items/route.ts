@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
       i.name,
       i.generic_name       AS "generic_Name",
       i.item_type          AS "itemType",
-      i.inventorycategory  AS "inventoryCategory",
+      i.inventory_category  AS "inventoryCategory",
       i.uom,
       i.min_level          AS "minLevel",
       i.reorder_level      AS "reorderLevel",
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
       ON ws.id = i.storage_location_id
     WHERE i.is_active = true
       ${workspaceFilter}
-      AND (i.inventorycategory = 'pharmacy' OR i.inventory_category = 'pharmacy')
+      AND i.inventory_category = 'pharmacy'
       AND EXISTS (
         SELECT 1 FROM item_batches ib_check
         WHERE ib_check.item_id = i.id
@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
       )
     GROUP BY
       i.id, i.itemcode, i.name, i.generic_name, i.itemtype,
-      i.inventorycategory, i.uom, i.min_level, i.reorder_level,
+      i.inventory_category, i.uom, i.min_level, i.reorder_level,
       i.max_level, i.controlled, i.manufacturer, i.packaging_type,
       i.package_size, i.tablets_per_pack, i.is_active,
       i.description, i.barcode, i.created_at, i.storage_location_id,
