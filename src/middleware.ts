@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { verifySession } from '@/lib/auth/session-token';
 import type { NextRequest } from 'next/server';
 
 // Role → allowed path prefixes (* means all)
@@ -17,23 +18,25 @@ function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(p => pathname.startsWith(p));
 }
 
-function getSession(request: NextRequest) {
-  const cookie = request.cookies.get('tibbna_session')?.value;
-  if (!cookie) return null;
-  try {
-    return JSON.parse(Buffer.from(cookie, 'base64').toString());
-  } catch {
-    return null;
-  }
+// Verifies rather than merely decodes. This used to JSON.parse whatever was
+// in the cookie, so a hand-written payload naming any facility and any role
+// was accepted here and everywhere downstream.
+async function getSession(request: NextRequest) {
+  return verifySession<{
+    username?: string;
+    role?: string;
+    timestamp?: number;
+    workspaceId?: string;
+  }>(request.cookies.get('tibbna_session')?.value);
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Always allow public paths and static assets
   if (isPublic(pathname)) return NextResponse.next();
 
-  const session = getSession(request);
+  const session = await getSession(request);
 
   // Not authenticated → redirect to login
   if (!session?.username || !session?.role) {
@@ -42,8 +45,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Check session expiry (8 hours)
-  if (Date.now() - session.timestamp > 8 * 60 * 60 * 1000) {
+  // Check session expiry (8 hours). A signed payload with no timestamp is
+  // treated as expired rather than as eternal.
+  if (!session.timestamp || Date.now() - session.timestamp > 8 * 60 * 60 * 1000) {
     const url = new URL('/login', request.url);
     url.searchParams.set('returnTo', pathname);
     const res = NextResponse.redirect(url);

@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
   }
 
   const res = NextResponse.redirect(new URL(target, request.url));
-  res.cookies.set('tibbna_session', encodeSession(session), SESSION_COOKIE_OPTIONS);
+  res.cookies.set('tibbna_session', await encodeSession(session), SESSION_COOKIE_OPTIONS);
   res.cookies.delete(GOOGLE_STATE_COOKIE);
   return res;
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifySession } from '@/lib/auth/session-token';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +25,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, user: null }, { status: 401 });
     }
 
-    let session: any;
-    try {
-      session = JSON.parse(Buffer.from(raw, 'base64').toString('utf-8'));
-    } catch {
+    // Verified, not merely decoded — this endpoint feeds AuthContext and the
+    // /unauthorized page, so an unverified payload would let a forged cookie
+    // decide what the UI believes the user may do.
+    const session: any = await verifySession(raw);
+    if (!session) {
       return NextResponse.json({ success: false, user: null }, { status: 401 });
     }
 
