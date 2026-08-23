@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { patientReminders } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // PATCH — update/complete a reminder
 export async function PATCH(
@@ -13,6 +15,15 @@ export async function PATCH(
     const { workspaceid, reminderid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const updates: Record<string, unknown> = { updatedat: new Date() };
@@ -33,6 +44,7 @@ export async function PATCH(
 
     if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ reminder: row });
+    });
   } catch (err) {
     console.error("[patient-reminders PATCH]", err);
     return NextResponse.json({ error: "Failed to update reminder" }, { status: 500 });
@@ -48,12 +60,22 @@ export async function DELETE(
     const { workspaceid, reminderid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     await db
       .delete(patientReminders)
       .where(and(eq(patientReminders.reminderid, reminderid), eq(patientReminders.workspaceid, workspaceid)));
 
     return NextResponse.json({ ok: true });
+    });
   } catch (err) {
     console.error("[patient-reminders DELETE]", err);
     return NextResponse.json({ error: "Failed to delete reminder" }, { status: 500 });

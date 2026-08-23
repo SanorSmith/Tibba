@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { patients, workspaces } from "@/lib/db/schema";
 import { eq, ilike, or, and, isNull } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   req: NextRequest,
@@ -20,6 +22,15 @@ export async function GET(
     }
 
     const { workspaceid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
     const { searchParams } = new URL(req.url);
     const searchTerm = searchParams.get("search");
     const includeGlobal = searchParams.get("includeGlobal") === "true";
@@ -92,6 +103,7 @@ export async function GET(
         includeGlobal,
       }
     });
+    });
   } catch (e) {
     console.error("[enhanced-patients][GET] error:", e);
     return NextResponse.json({ error: "Failed to load patients" }, { status: 500 });
@@ -109,6 +121,15 @@ export async function POST(
     }
 
     const { workspaceid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const { 
       firstname, 
@@ -175,6 +196,7 @@ export async function POST(
         ? "Global patient created successfully" 
         : "Workspace-specific patient created successfully"
     }, { status: 201 });
+    });
   } catch (e) {
     console.error("[enhanced-patients][POST] error:", e);
     return NextResponse.json({ error: "Failed to create patient" }, { status: 500 });

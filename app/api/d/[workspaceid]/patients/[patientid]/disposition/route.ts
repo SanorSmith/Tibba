@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getOpenEHRDiagnoses, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 /**
  * POST /api/d/[workspaceid]/patients/[patientid]/disposition
@@ -24,6 +26,15 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Verify workspace access
     const memberships = await getUserWorkspaces(user.userid);
@@ -193,6 +204,7 @@ export async function POST(
       disposition: dispositionData,
       message: `Patient disposition set to ${dispositionData.type.toUpperCase()}`,
     });
+    });
   } catch (error) {
     console.error("Error creating disposition:", error);
     return NextResponse.json(
@@ -218,6 +230,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Verify workspace access
     const memberships = await getUserWorkspaces(user.userid);
@@ -243,6 +264,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       disposition,
+    });
     });
   } catch (error) {
     console.error("Error fetching disposition:", error);

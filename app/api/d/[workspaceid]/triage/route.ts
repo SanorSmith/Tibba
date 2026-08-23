@@ -5,6 +5,8 @@ import { eq, or, isNull, inArray, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { queryOpenEHR, getOpenEHRComposition } from "@/lib/openehr/openehr";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 interface TriageCompositionRow {
   ehr_id: string;
@@ -47,6 +49,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const workspaces = await getUserWorkspaces(user.userid);
     const membership = workspaces.find(
@@ -259,6 +270,7 @@ export async function GET(
     }
 
     return NextResponse.json({ records: result });
+    });
   } catch (error) {
     console.error("[triage][GET] error:", error);
     return NextResponse.json(

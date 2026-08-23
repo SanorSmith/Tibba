@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getOpenEHREHRBySubjectId, getOpenEHRCompositions, getOpenEHRComposition } from "@/lib/openehr/openehr";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   req: NextRequest,
@@ -17,6 +19,15 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   // Verify user has access to this workspace
   const userWorkspaces = await getUserWorkspaces(user.userid);
@@ -89,4 +100,5 @@ export async function GET(
       { status: 500 }
     );
   }
+  });
 }

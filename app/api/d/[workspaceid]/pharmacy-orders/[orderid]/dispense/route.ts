@@ -19,6 +19,8 @@ import { createMedicationDispenseComposition, MEDICATION_DISPENSE_ACTION_STATES 
 import { createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { patients } from "@/lib/db/tables/patient";
 import { Pool } from "pg";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // UUID validation function
 function isValidUUID(uuid: string): boolean {
@@ -33,6 +35,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { workspaceid, orderid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     console.log(`User data for dispensing:`, {
       userid: user.userid,
@@ -605,6 +616,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       backorderedCount,
       backorderedItems: backorderedCount > 0 ? backorderedItems : undefined,
       expiryWarnings: expiryWarnings.length > 0 ? expiryWarnings : undefined,
+    });
     });
   } catch (error) {
     console.error("[Pharmacy Dispense POST]", error);

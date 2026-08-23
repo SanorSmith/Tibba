@@ -10,6 +10,8 @@ import {
   deleteOpenEHRComposition,
 } from "@/lib/openehr/openehr";
 import { TEST_PACKAGES, INDIVIDUAL_TESTS, LABORATORIES } from "@/lib/test-catalog";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 /**
  * GET - Fetch full order details from OpenEHR with reverse-matched catalog IDs
@@ -25,6 +27,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const workspaces = await getUserWorkspaces(user.userid);
     const membership = workspaces.find(
@@ -157,6 +168,7 @@ export async function GET(
         lab_name: labNameFromDesc,
       },
     });
+    });
   } catch (error) {
     console.error("Error fetching order details:", error);
     return NextResponse.json(
@@ -180,6 +192,15 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -262,6 +283,7 @@ export async function PATCH(
       message: "Test order updated successfully",
       data: result,
     });
+    });
   } catch (error) {
     console.error("Error updating test order:", error);
     return NextResponse.json(
@@ -286,6 +308,15 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -374,6 +405,7 @@ export async function DELETE(
       success: true,
       message: "Test order cancelled successfully",
       cancellationReason,
+    });
     });
   } catch (error) {
     console.error("Error cancelling test order:", error);

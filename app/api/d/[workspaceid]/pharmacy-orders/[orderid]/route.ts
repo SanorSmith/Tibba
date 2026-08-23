@@ -21,6 +21,8 @@ import { drugBatches } from "@/lib/db/tables/pharmacy-drugs";
 import { asc, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { Pool } from "pg";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 type RouteParams = { params: Promise<{ workspaceid: string; orderid: string }> };
 
@@ -29,6 +31,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { workspaceid, orderid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -187,6 +198,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       items: itemsWithPrices,
       invoice: invoice ? { ...invoice, lines: invLines } : null,
     });
+    });
   } catch (error) {
     console.error("[Pharmacy Order Detail GET]", error);
     return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 });
@@ -198,6 +210,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { workspaceid, orderid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { status, notes, prescriberName, patientid, priority, items: newItems } = body;
@@ -368,6 +389,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       items: allItems.length > 0 ? allItems : undefined,
       message: newItems ? "Order updated with new items" : "Order updated",
     });
+    });
   } catch (error) {
     console.error("[Pharmacy Order PATCH]", error);
     return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
@@ -380,6 +402,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { workspaceid, orderid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const [order] = await db
       .select()
@@ -432,6 +463,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     await db.delete(pharmacyOrders).where(eq(pharmacyOrders.orderid, orderid));
 
     return NextResponse.json({ message: "Order deleted successfully" });
+    });
   } catch (error) {
     console.error("[Pharmacy Order DELETE]", error);
     return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });

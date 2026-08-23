@@ -10,6 +10,8 @@ import { testResults, resultValidationHistory } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
 import { notifyDoctorOnResultRelease, notifyDoctorOnResultApproval } from "@/lib/notifications";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const statusChangeSchema = z.object({
   action: z.enum(["validate_technical", "validate_medical", "release", "reject"]),
@@ -28,6 +30,15 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const validatedData = statusChangeSchema.parse(body);
@@ -169,6 +180,7 @@ export async function POST(
     }
 
     return NextResponse.json({ result: updatedResult[0] });
+    });
   } catch (error) {
     console.error("Error validating test result:", error);
     if (error instanceof z.ZodError) {

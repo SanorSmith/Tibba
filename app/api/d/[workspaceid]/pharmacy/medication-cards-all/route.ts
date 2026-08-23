@@ -9,6 +9,8 @@ import { getUser } from "@/lib/user";
 import { pharmacyOrders, pharmacyOrderItems, patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import jsPDF from "jspdf";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 interface AllMedicationCardsRequest {
   orderId: string;
@@ -23,6 +25,15 @@ export async function POST(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body: AllMedicationCardsRequest = await request.json();
     
@@ -205,6 +216,7 @@ export async function POST(
       pageCount: items.length
     });
 
+    });
   } catch (error) {
     console.error("[All Medication Cards PDF]", error);
     return NextResponse.json({ error: "Failed to generate medication cards PDF" }, { status: 500 });
