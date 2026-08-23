@@ -11,6 +11,7 @@ import { labReceiptReprints } from "@/lib/db/tables/lab-pos";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const reprintSchema = z.object({
   workspaceId: z.string().uuid(),
@@ -41,6 +42,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(d.workspaceId, async () => {
+
 
     if (d.receiptType === "SHIFT" && !d.shiftId) {
       return NextResponse.json({ error: "shiftId required for SHIFT receipts" }, { status: 400 });
@@ -69,6 +74,7 @@ export async function POST(request: NextRequest) {
       reprintId: log.id,
       isReprint: true,
       printFormat: d.printFormat,
+    });
     });
   } catch (error) {
     console.error("[lab receipt reprint]", error);

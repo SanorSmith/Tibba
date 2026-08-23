@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { labPurchaseOrders, labPurchaseOrderItems } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -25,6 +26,10 @@ export async function GET(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const status = req.nextUrl.searchParams.get("status") ?? "";
     const conditions = [eq(labPurchaseOrders.workspaceid, workspaceid)];
@@ -50,6 +55,7 @@ export async function GET(
       .orderBy(desc(labPurchaseOrders.createdat));
 
     return NextResponse.json({ orders });
+    });
   } catch (error) {
     console.error("[Lab PO GET]", error);
     return NextResponse.json({ error: "Failed to load purchase orders" }, { status: 500 });
@@ -69,6 +75,10 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await req.json();
     const { supplierName, supplierEmail, supplierPhone, expectedDate, notes, items: poItems } = body;
@@ -121,6 +131,7 @@ export async function POST(
     });
 
     return NextResponse.json({ order });
+    });
   } catch (error) {
     console.error("[Lab PO POST]", error);
     return NextResponse.json({ error: "Failed to create purchase order" }, { status: 500 });

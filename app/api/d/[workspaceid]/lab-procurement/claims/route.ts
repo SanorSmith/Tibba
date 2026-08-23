@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { labClaims, labGoodsReceipt } from "@/lib/db/tables/lab-procurement";
 import { eq, and, desc } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -27,6 +28,10 @@ export async function GET(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const status = request.nextUrl.searchParams.get("status");
     const rows = await db
@@ -49,6 +54,7 @@ export async function GET(
       .orderBy(desc(labClaims.createdat));
 
     return NextResponse.json({ claims: status ? rows.filter((r) => r.status === status) : rows });
+    });
   } catch (error) {
     console.error("[lab claims GET]", error);
     return NextResponse.json({ error: "Failed to load claims" }, { status: 500 });
@@ -68,6 +74,10 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const { receiptId, vendorId, vendorName, claimAmount, reason } = await request.json();
     if (!(Number(claimAmount) > 0)) {
@@ -91,6 +101,7 @@ export async function POST(
       .returning();
 
     return NextResponse.json({ claim });
+    });
   } catch (error) {
     console.error("[lab claims POST]", error);
     return NextResponse.json({ error: "Failed to raise claim" }, { status: 500 });
@@ -110,6 +121,10 @@ export async function PATCH(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const { id, status, settledAmount, resolution } = await request.json();
     if (!id || !status) {
@@ -133,6 +148,7 @@ export async function PATCH(
 
     if (!updated) return NextResponse.json({ error: "Claim not found" }, { status: 404 });
     return NextResponse.json({ claim: updated });
+    });
   } catch (error) {
     console.error("[lab claims PATCH]", error);
     return NextResponse.json({ error: "Failed to update claim" }, { status: 500 });

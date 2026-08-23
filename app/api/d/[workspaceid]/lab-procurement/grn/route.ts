@@ -25,6 +25,7 @@ import {
   stockTransactions,
 } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
@@ -59,6 +60,10 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
+
     const receipts = await db
       .select({
         id: labGoodsReceipt.id,
@@ -78,6 +83,7 @@ export async function GET(
       .orderBy(desc(labGoodsReceipt.createdat));
 
     return NextResponse.json({ receipts });
+    });
   } catch (error) {
     console.error("[Lab GRN GET]", error);
     return NextResponse.json({ error: "Failed to load goods receipts" }, { status: 500 });
@@ -97,6 +103,10 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await req.json();
     const {
@@ -315,6 +325,7 @@ export async function POST(
       receipt: result.receipt,
       shelved: result.shelved,
       receivedBy,
+    });
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to record goods receipt";

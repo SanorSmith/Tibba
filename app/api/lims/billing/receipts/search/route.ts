@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { generalInvoices, generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { labPayments, labShifts } from "@/lib/db/tables/lab-pos";
 import { and, eq, gte, lte, ilike, desc, inArray, sql } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
@@ -46,6 +47,10 @@ export async function POST(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, d.workspaceId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(d.workspaceId, async () => {
 
     const results: { payments: any[]; refunds: any[]; shifts: any[] } = {
       payments: [], refunds: [], shifts: [],
@@ -124,6 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(results);
+    });
   } catch (error) {
     console.error("[lab receipt search]", error);
     return NextResponse.json({ error: "Failed to search receipts" }, { status: 500 });

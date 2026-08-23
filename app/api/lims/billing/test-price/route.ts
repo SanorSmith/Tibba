@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { eq, and } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -34,6 +35,10 @@ export async function PUT(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     if (!(Number(price) >= 0)) {
       return NextResponse.json({ error: "Price must be zero or above" }, { status: 400 });
@@ -76,6 +81,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, created: true });
+    });
   } catch (error) {
     console.error("[lab test-price]", error);
     return NextResponse.json({ error: "Could not save the price" }, { status: 500 });

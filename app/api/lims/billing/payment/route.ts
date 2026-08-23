@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { labPayments, labShifts } from "@/lib/db/tables/lab-pos";
 import { generalInvoices } from "@/lib/db/tables/invoices";
 import { eq, and } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -57,6 +58,10 @@ export async function POST(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     if (!(Number(amount) > 0)) {
       return NextResponse.json({ error: "Amount must be above zero" }, { status: 400 });
@@ -130,6 +135,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(result);
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Payment failed";
     console.error("[lab payment]", error);
