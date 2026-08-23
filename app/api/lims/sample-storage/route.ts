@@ -12,6 +12,8 @@ import { sampleStorage, accessionSamples, storageLocations, users } from "@/lib/
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Validation schema for creating storage record
 const storageCreateSchema = z.object({
@@ -32,6 +34,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const status = searchParams.get("status") || "stored";
     const locationid = searchParams.get("locationid");
     const expiringSoon = searchParams.get("expiringSoon") === "true";
@@ -102,6 +111,7 @@ export async function GET(request: NextRequest) {
       success: true,
       samples: storedSamples,
       count: storedSamples.length,
+    });
     });
   } catch (error) {
     console.error("Error fetching stored samples:", error);

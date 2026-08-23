@@ -4,6 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { getUser } from "@/lib/user";
 import { qcRuns } from "@/lib/db/schema";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const qcRunCreateSchema = z.object({
   workspaceid: z.string().min(1),
@@ -31,6 +33,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const qctype = searchParams.get("qctype");
     const equipmentid = searchParams.get("equipmentid");
     const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 200);
@@ -51,6 +60,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     return NextResponse.json({ runs: rows });
+    });
   } catch (error) {
     console.error("Error fetching QC runs:", error);
     return NextResponse.json({ error: "Failed to fetch QC runs" }, { status: 500 });

@@ -9,6 +9,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { getUserNotifications, markAllNotificationsAsRead, deleteNotification } from "@/lib/notifications";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +21,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const limit = parseInt(searchParams.get("limit") || "50");
     const unreadOnly = searchParams.get("unreadOnly") === "true";
     const countOnly = searchParams.get("countOnly") === "true";
@@ -52,6 +61,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       notifications: result.notifications,
       total: result.notifications.length,
+    });
     });
   } catch (error) {
     console.error("Error fetching notifications:", error);

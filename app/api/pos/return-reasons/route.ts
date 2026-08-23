@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { posReturnReasons } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +27,13 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceId || !(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
 
     const reasons = await db
       .select()
@@ -38,6 +47,7 @@ export async function GET(request: NextRequest) {
       .orderBy(asc(posReturnReasons.displayorder));
 
     return NextResponse.json({ reasons });
+    });
   } catch (error) {
     console.error("[Return Reasons] Error:", error);
     return NextResponse.json(

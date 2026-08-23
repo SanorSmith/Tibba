@@ -36,6 +36,8 @@ import { getOpenEHRTestOrders, getOpenEHRTestOrdersForLabWorkspace } from "@/lib
 import { createAndSubmitLabOrder } from "@/lib/lims/openehr-order-service";
 import { eq, and, or, isNull, inArray } from "drizzle-orm";
 import { cachedByKey, invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 /**
  * POST /api/lims/orders
@@ -267,6 +269,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceId || !(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
     const status = searchParams.get("status");
     const subjectIdentifier = searchParams.get("subjectIdentifier");
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -597,6 +606,7 @@ export async function GET(request: NextRequest) {
         localCount: localOrders.length,
         openEHRCount: openEHROrders.length,
       },
+    });
     });
   } catch (error) {
     console.error("Error fetching orders:", error);

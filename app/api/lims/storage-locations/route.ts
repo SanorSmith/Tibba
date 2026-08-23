@@ -3,6 +3,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { storageLocations } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // GET - Fetch storage locations
 export async function GET(request: NextRequest) {
@@ -14,6 +16,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const type = searchParams.get("type");
     const status = searchParams.get("status");
 
@@ -41,6 +50,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       locations,
+    });
     });
   } catch (error) {
     console.error("Storage locations fetch error:", error);

@@ -14,6 +14,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, like, gte, desc, or, inArray } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +28,13 @@ export async function GET(request: NextRequest) {
     const saleNumber = searchParams.get("saleNumber");
     const phone = searchParams.get("phone");
     const workspaceId = searchParams.get("workspaceId");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceId || !(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
     const saleId = searchParams.get("saleId");
 
     if (!workspaceId) {
@@ -107,6 +116,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ sales: salesWithDetails });
+    });
   } catch (error) {
     console.error("[Returns Lookup] Error:", error);
     return NextResponse.json(
