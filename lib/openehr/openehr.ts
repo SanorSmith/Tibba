@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getOpenEHROrderStatus } from "@/lib/openehr-order-status";
+import { ownedCompositionUids } from "./composition-ownership";
 
 const username = process.env.EHRBASE_USER?.trim() || "";
 const password = process.env.EHRBASE_PASSWORD?.trim() || "";
@@ -441,6 +442,24 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
   labWorkspaceId: string
 ): Promise<Array<TestOrderRecord & { ehr_id: string; subject_id: string }>> {
   console.log(`[getOpenEHRTestOrdersForLabWorkspace] Searching for orders targeted to lab ${labWorkspaceId}`);
+
+  // Ask Postgres first which compositions this lab may see. Under row-level
+  // security that answer is the database's, not this function's — where the
+  // old behaviour was to pull every composition in the instance and drop the
+  // unwanted ones here, which made the separation a property of a regex.
+  //
+  // Null means nothing is recorded for this lab yet, which is not the same as
+  // "nothing is yours": orders written before ownership was tracked are not
+  // in that table at all. In that case the query stays as it was and the
+  // Description filter below still applies, so existing orders keep showing.
+  const ownedUids = await ownedCompositionUids(labWorkspaceId);
+  const uidFilter =
+    ownedUids && ownedUids.length > 0
+      ? `AND c/uid/value MATCHES {${ownedUids
+          .map((u) => `'${u.replace(/'/g, "''")}'`)
+          .join(", ")}}`
+      : "";
+
   const query = `SELECT
     c/uid/value as composition_uid,
     c/context/start_time/value as recorded_time,
@@ -452,6 +471,7 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
     CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.encounter.v1]
   WHERE
     c/archetype_details/template_id/value = 'template_clinical_encounter_v1'
+    ${uidFilter}
   ORDER BY
     c/context/start_time/value DESC`;
 

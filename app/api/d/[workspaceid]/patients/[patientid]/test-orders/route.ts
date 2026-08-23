@@ -14,6 +14,7 @@ import { ensurePatientEHR } from "@/lib/openehr/ensure-ehr";
 import { invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 export async function GET(
   request: NextRequest,
@@ -265,6 +266,18 @@ export async function POST(
     );
 
     console.log(`Created test order composition: ${compositionId}`);
+
+    // Record which facility this order belongs to, and which lab it was
+    // routed to, so the receiving lab's view is decided by the database
+    // rather than by matching a substring in a free-text field.
+    await recordCompositionOwner({
+      compositionUid: compositionId,
+      workspaceId: workspaceid,
+      ownerWorkspaceId: target_lab_workspace_id ?? null,
+      ehrId,
+      patientId: patientid,
+      kind: "test_order",
+    });
 
     // Invalidate the target lab's LIMS order list cache so the order appears
     // immediately when the receiving lab opens its dashboard.
