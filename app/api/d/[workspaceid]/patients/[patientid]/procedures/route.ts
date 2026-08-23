@@ -3,6 +3,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/tables/patient";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 import {
   getOpenEHRProcedures,
   createProcedure,
@@ -26,7 +28,16 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { patientid } = await params;
+    const { workspaceid, patientid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Get patient from database
     const patient = await db.query.patients.findFirst({
@@ -53,6 +64,7 @@ export async function GET(
     const procedures = await getOpenEHRProcedures(ehrId);
 
     return NextResponse.json({ procedures }, { status: 200 });
+    });
   } catch (error) {
     console.error("Error fetching procedures:", error);
     return NextResponse.json(
@@ -76,7 +88,16 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { patientid } = await params;
+    const { workspaceid, patientid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
 
     // Get patient from database
@@ -147,6 +168,7 @@ export async function POST(
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     console.error("Error creating procedure:", error);
     return NextResponse.json(
