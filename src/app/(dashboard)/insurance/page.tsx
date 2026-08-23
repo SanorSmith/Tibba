@@ -1,6 +1,8 @@
 import { Shield, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { pool } from '@/lib/db/pool';
+import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { withTenant } from '@/lib/db/tenant';
 
 
 const fmt = (n: number | string) =>
@@ -10,7 +12,17 @@ async function getInsuranceStats() {
   if (!pool) {
     return { total: 0, approved: 0, approvedAmount: 0, pending: 0, pendingAmount: 0, rejected: 0, paid: 0, paidAmount: 0 };
   }
+  // Same shape as the billing dashboard: this counted and summed every
+  // facility's claims into one set of figures. Filtered explicitly, since the
+  // app still connects as the role that bypasses row-level security.
+  const user = await getCurrentUser();
+  if (!user) {
+    return { total: 0, approved: 0, approvedAmount: 0, pending: 0, pendingAmount: 0, rejected: 0, paid: 0, paidAmount: 0 };
+  }
+  const ws = user.workspaceId;
+
   try {
+    return await withTenant(ws, async () => {
     const result = await pool.query(`
       SELECT
         COUNT(*)                                                                                  AS total,
@@ -22,7 +34,8 @@ async function getInsuranceStats() {
         COUNT(*) FILTER (WHERE status = 'PAID')                                                  AS paid,
         COALESCE(SUM(paid_amount) FILTER (WHERE status = 'PAID'), 0)                             AS paid_amount
       FROM insurance_claims
-    `);
+      WHERE workspaceid = $1
+    `, [ws]);
     const r = result.rows[0];
     return {
       total:          parseInt(r.total) || 0,
@@ -34,6 +47,7 @@ async function getInsuranceStats() {
       paid:           parseInt(r.paid) || 0,
       paidAmount:     parseFloat(r.paid_amount) || 0,
     };
+    });
   } catch {
     return { total: 0, approved: 0, approvedAmount: 0, pending: 0, pendingAmount: 0, rejected: 0, paid: 0, paidAmount: 0 };
   }
@@ -41,7 +55,13 @@ async function getInsuranceStats() {
 
 async function getInsuranceCompanies() {
   if (!pool) return [];
+  // The company list is shared, but the claim counts and totals beside each
+  // name are this facility's, not everyone's.
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const ws = user.workspaceId;
   try {
+    return await withTenant(ws, async () => {
     const result = await pool.query(`
       SELECT
         ic.company_id,
@@ -53,12 +73,15 @@ async function getInsuranceCompanies() {
         COALESCE(SUM(cl.claim_amount), 0)                  AS total_claimed,
         COALESCE(SUM(cl.paid_amount), 0)                  AS total_paid
       FROM insurance_companies ic
-      LEFT JOIN insurance_claims cl ON ic.company_id = cl.insurance_company_id
+      LEFT JOIN insurance_claims cl
+        ON ic.company_id = cl.insurance_company_id
+       AND cl.workspaceid = $1
       WHERE ic.active = true
       GROUP BY ic.company_id, ic.company_name, ic.company_code, ic.coverage_percentage, ic.active
       ORDER BY claims_count DESC
-    `);
+    `, [ws]);
     return result.rows;
+    });
   } catch {
     return [];
   }

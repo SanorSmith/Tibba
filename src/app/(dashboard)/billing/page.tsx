@@ -1,5 +1,7 @@
 import { pool } from '@/lib/db/pool';
 import Link from 'next/link';
+import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { withTenant } from '@/lib/db/tenant';
 import {
   CreditCard, CheckCircle2, Clock, AlertCircle, FileText,
   Plus, Receipt, ArrowRight, TrendingUp, Users,
@@ -27,7 +29,19 @@ async function getData() {
     recent: [] as RecentInvoice[],
   };
   if (!pool) return empty;
+
+  // These three queries read `FROM invoices` with nothing scoping them, so
+  // this dashboard has been showing every facility's totals to every user —
+  // 15.7M IQD belonging to one hospital summed into another's collection
+  // rate. The filter is explicit rather than left to row-level security
+  // because the app still connects as the bypassing role; withTenant below
+  // is what will enforce it once that changes.
+  const user = await getCurrentUser();
+  if (!user) return empty;
+  const ws = user.workspaceId;
+
   try {
+    return await withTenant(ws, async () => {
     const [statsRes, agingRes, recentRes] = await Promise.all([
       pool.query(`
         SELECT
@@ -39,7 +53,8 @@ async function getData() {
           COUNT(*) FILTER (WHERE status IN ('PARTIAL','PARTIALLY_PAID')) AS partial,
           COALESCE(SUM(balance_due) FILTER (WHERE status IN ('PARTIAL','PARTIALLY_PAID')), 0) AS partial_amount
         FROM invoices
-      `),
+        WHERE workspaceid = $1
+      `, [ws]),
       pool.query(`
         SELECT
           COALESCE(SUM(balance_due) FILTER (WHERE CURRENT_DATE - invoice_date::date <= 0), 0) AS current,
@@ -49,12 +64,14 @@ async function getData() {
           COALESCE(SUM(balance_due) FILTER (WHERE CURRENT_DATE - invoice_date::date > 90), 0) AS d90p,
           COALESCE(SUM(balance_due), 0) AS total
         FROM invoices
-        WHERE status NOT IN ('PAID','CANCELLED') AND COALESCE(balance_due,0) > 0
-      `),
+        WHERE workspaceid = $1
+          AND status NOT IN ('PAID','CANCELLED') AND COALESCE(balance_due,0) > 0
+      `, [ws]),
       pool.query(`
         SELECT invoice_number, invoice_date, patient_name, total_amount, balance_due, status
-        FROM invoices ORDER BY createdat DESC NULLS LAST, invoice_date DESC LIMIT 8
-      `),
+        FROM invoices WHERE workspaceid = $1
+        ORDER BY createdat DESC NULLS LAST, invoice_date DESC LIMIT 8
+      `, [ws]),
     ]);
     const s = statsRes.rows[0];
     const a = agingRes.rows[0];
@@ -71,6 +88,7 @@ async function getData() {
       },
       recent: recentRes.rows as RecentInvoice[],
     };
+    });
   } catch {
     return empty;
   }
