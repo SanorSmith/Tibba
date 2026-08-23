@@ -9,9 +9,8 @@
  * and writable by any account that changed the id in the request. Workspace
  * separation held in the UI and nowhere else.
  */
-import { db } from "@/lib/db";
-import { workspaceusers } from "@/lib/db/tables/workspace";
-import { and, eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import { rootDb } from "@/lib/db";
 
 /** The caller's role in the workspace, or null if they are not a member. */
 export async function workspaceRoleOf(
@@ -19,12 +18,16 @@ export async function workspaceRoleOf(
   workspaceid: string | null | undefined
 ): Promise<string | null> {
   if (!workspaceid) return null;
-  const [row] = await db
-    .select({ role: workspaceusers.role })
-    .from(workspaceusers)
-    .where(and(eq(workspaceusers.userid, userid), eq(workspaceusers.workspaceid, workspaceid)))
-    .limit(1);
-  return row?.role ?? null;
+  // This lookup is what establishes the tenant, so it cannot run inside one.
+  // `workspaceusers` is itself tenant-scoped: read through the ordinary
+  // connection under the restricted role it returns nothing, every guard
+  // answers 403, and the application locks itself out. The SECURITY DEFINER
+  // function (migration 0068) stands outside the scheme it is guarding and
+  // answers about the one membership it was asked about.
+  const rows = (await rootDb.execute(
+    sql`SELECT public.app_user_role_in(${userid}::uuid, ${workspaceid}::uuid) AS role`,
+  )) as unknown as Array<{ role: string | null }>;
+  return rows[0]?.role ?? null;
 }
 
 export async function isWorkspaceMember(
