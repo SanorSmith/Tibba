@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import { labs } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function PATCH(
   req: NextRequest,
@@ -17,6 +19,15 @@ export async function PATCH(
   const { workspaceid, labid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   const body = await req.json();
   const payload: Record<string, unknown> = {};
@@ -46,6 +57,7 @@ export async function PATCH(
     console.error("[labs][PATCH] error:", e);
     return NextResponse.json({ error: "Failed to update lab" }, { status: 500 });
   }
+  });
 }
 
 export async function DELETE(
@@ -55,6 +67,15 @@ export async function DELETE(
   const { workspaceid, labid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   try {
     const res = await db
@@ -71,4 +92,5 @@ export async function DELETE(
     console.error("[labs][DELETE] error:", e);
     return NextResponse.json({ error: "Failed to delete lab" }, { status: 500 });
   }
+  });
 }

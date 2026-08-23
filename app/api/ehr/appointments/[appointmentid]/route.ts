@@ -10,6 +10,8 @@ import { appointments } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function PATCH(
   req: NextRequest,
@@ -18,6 +20,15 @@ export async function PATCH(
   const { workspaceid, appointmentid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   const uws = await getUserWorkspaces(user.userid);
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
@@ -58,6 +69,7 @@ export async function PATCH(
     console.error("[appointments][PATCH] error:", e);
     return NextResponse.json({ error: "Failed to update appointment" }, { status: 500 });
   }
+  });
 }
 
 export async function DELETE(
@@ -67,6 +79,15 @@ export async function DELETE(
   const { workspaceid, appointmentid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   const uws = await getUserWorkspaces(user.userid);
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
@@ -88,4 +109,5 @@ export async function DELETE(
     console.error("[appointments][DELETE] error:", e);
     return NextResponse.json({ error: "Failed to delete appointment" }, { status: 500 });
   }
+  });
 }

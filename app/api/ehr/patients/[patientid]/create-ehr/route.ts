@@ -11,6 +11,8 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createOpenEHREHR, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 interface RouteParams {
   params: {
@@ -30,6 +32,15 @@ export async function POST(
     }
 
     const { workspaceid, patientid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Fetch patient
     const [patient] = await db
@@ -103,6 +114,7 @@ export async function POST(
       message: "EHR ID created and assigned to patient successfully",
     });
 
+    });
   } catch (error) {
     console.error("Error creating EHR ID:", error);
     return NextResponse.json(

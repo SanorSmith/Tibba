@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/tables/patient";
 import { eq } from "drizzle-orm";
 import { getOpenEHRTestOrders, TestOrderRecord, createOpenEHRComposition } from "@/lib/openehr/openehr";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 interface EnrichedTestOrder extends TestOrderRecord {
   patient_id: string;
@@ -23,6 +25,15 @@ export async function GET(
     }
 
     const { workspaceid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Get all patients in this workspace
     const workspacePatients = await db
@@ -72,6 +83,7 @@ export async function GET(
     console.log(`Order request IDs: ${orders.map(o => o.request_id).join(', ')}`);
 
     return NextResponse.json({ orders });
+    });
   } catch (error) {
     console.error("Error fetching lab orders:", error);
     return NextResponse.json(
@@ -86,10 +98,20 @@ export async function POST(
   { params }: { params: Promise<{ workspaceid: string }> }
 ) {
   try {
+    const { workspaceid } = await params;
     const user = await getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
 
@@ -183,6 +205,7 @@ export async function POST(
       message: "Lab order created successfully",
       compositionId: result,
       requestId: `OrderId-${Date.now()}`
+    });
     });
   } catch (error) {
     console.error("Error creating lab order:", error);

@@ -14,6 +14,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const DEFAULT_LOW_STOCK_THRESHOLD = 10;
 const DEFAULT_REORDER_QUANTITY = 100;
@@ -26,6 +28,15 @@ export async function GET(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
@@ -174,6 +185,7 @@ export async function GET(
       summary,
       recentMovements,
     });
+    });
   } catch (error) {
     console.error("[Pharmacy Inventory]", error);
     return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
@@ -189,6 +201,15 @@ export async function POST(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { drugids } = body; // array of drugids to reorder
@@ -238,6 +259,7 @@ export async function POST(
     return NextResponse.json({
       message: `Auto-reorder generated for ${reorderItems.length} items`,
       reorderItems,
+    });
     });
   } catch (error) {
     console.error("[Pharmacy Inventory POST]", error);

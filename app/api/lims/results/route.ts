@@ -12,6 +12,8 @@ import { testResults, resultValidationHistory } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
 import { createWorkspaceNotification } from "@/lib/notifications";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Validation schema for test result creation
 const testResultCreateSchema = z.object({
@@ -52,6 +54,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const sampleid = searchParams.get("sampleid");
@@ -94,6 +105,7 @@ export async function GET(
       .orderBy(desc(testResults.createdat));
 
     return NextResponse.json({ results });
+    });
   } catch (error) {
     console.error("Error fetching test results:", error);
     return NextResponse.json(
@@ -108,13 +120,24 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceid: string }> }
 ) {
+  const { workspaceid } = await params;
   const user = await getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   return NextResponse.json(
     { error: "Results entry has been removed from LIMS." },
     { status: 410 }
   );
+  });
 }
