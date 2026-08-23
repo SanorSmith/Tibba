@@ -6,6 +6,7 @@
  * see* must not.
  */
 import type { Pool } from 'pg';
+import { signSession } from './session-token';
 
 export interface DbUser {
   userid: string;
@@ -173,8 +174,12 @@ export function buildSession(dbUser: DbUser, membership: Membership, username?: 
   };
 }
 
-export function encodeSession(session: object): string {
-  return Buffer.from(JSON.stringify(session)).toString('base64');
+/**
+ * Signs the session. Was a bare base64 encode, which anyone could reproduce —
+ * see `session-token.ts` for what that allowed.
+ */
+export function encodeSession(session: object): Promise<string> {
+  return signSession(session);
 }
 
 export const SESSION_COOKIE_OPTIONS = {

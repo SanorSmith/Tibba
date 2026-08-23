@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { signSession } from '@/lib/auth/session-token';
 import { verifyPassword } from '@/lib/auth/password';
 import { WS_ROLE_TO_APP_ROLE, resolveFacility } from '@/lib/auth/facility-session';
 import { pool } from '@/lib/db/pool';
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
     const mockUser = resolvedUser;
 
     // Encode session as base64 cookie
-    const sessionCookie = Buffer.from(JSON.stringify(session)).toString('base64');
+    const sessionCookie = await signSession(session);
 
     const response = NextResponse.json({
       success: true,

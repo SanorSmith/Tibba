@@ -1,4 +1,6 @@
 import { cookies } from 'next/headers';
+import { verifySession } from './session-token';
+import { WS_ROLE_TO_APP_ROLE } from './facility-session';
 import { NextRequest } from 'next/server';
 import { query } from '@/lib/db/pool';
 
@@ -22,13 +24,8 @@ interface RawSession {
   email?: string;
 }
 
-function decodeCookie(cookieValue: string | undefined): RawSession | null {
-  if (!cookieValue) return null;
-  try {
-    return JSON.parse(Buffer.from(cookieValue, 'base64').toString());
-  } catch {
-    return null;
-  }
+function decodeCookie(cookieValue: string | undefined): Promise<RawSession | null> {
+  return verifySession<RawSession>(cookieValue);
 }
 
 /**
@@ -49,7 +46,7 @@ export async function getCurrentUser(request?: NextRequest): Promise<SessionUser
     cookieValue = cookieStore.get(SESSION_COOKIE)?.value;
   }
 
-  const session = decodeCookie(cookieValue);
+  const session = await decodeCookie(cookieValue);
   if (!session?.username || !session?.role) return null;
   if (!session.workspaceId) return null;
 
@@ -78,12 +75,40 @@ export async function getCurrentUser(request?: NextRequest): Promise<SessionUser
     console.error('getCurrentUser: DB lookup failed', err);
   }
 
+  const userId =
+    session.userId ?? userRecord?.userid ?? '00000000-0000-0000-0000-000000000000';
+
+  // A signature proves the payload came from this server. It does not prove
+  // the claims are still true: a membership can be revoked, or a role changed,
+  // long after a cookie was issued, and the cookie would go on asserting the
+  // old answer for its full eight hours. So the membership is re-read here on
+  // every request, and the role is derived from it rather than believed from
+  // the cookie — which also means a valid signature cannot carry a role the
+  // user does not hold.
+  let membership;
+  try {
+    const result = await query(
+      `SELECT wu.role AS ws_role
+         FROM workspaceusers wu
+        WHERE wu.userid = $1 AND wu.workspaceid = $2
+        LIMIT 1`,
+      [userId, session.workspaceId]
+    );
+    membership = result.rows[0];
+  } catch (err) {
+    console.error('getCurrentUser: membership check failed', err);
+    // Fail closed. An unavailable database must not become a way in.
+    return null;
+  }
+
+  if (!membership) return null;
+
   return {
-    userId: session.userId ?? userRecord?.userid ?? '00000000-0000-0000-0000-000000000000',
+    userId,
     username: session.username,
     name: userRecord?.name ?? session.username,
     email: userRecord?.email ?? session.email ?? `${session.username}@hospital.com`,
-    role: session.role,
+    role: WS_ROLE_TO_APP_ROLE[membership.ws_role] ?? 'RECEPTION_ADMIN',
     workspaceId: session.workspaceId,
   };
 }

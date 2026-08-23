@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifySession } from '@/lib/auth/session-token';
 import { getWorkspaceId } from '@/lib/workspace';
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
@@ -106,10 +107,8 @@ export async function GET(
     let sessionPhone: string | null = null;
     try {
       const raw = request.cookies.get('tibbna_session')?.value;
-      if (raw) {
-        const session = JSON.parse(Buffer.from(raw, 'base64').toString('utf-8'));
-        sessionEmail = session?.email || null;
-      }
+      const session: any = await verifySession(raw);
+      sessionEmail = session?.email || null;
     } catch { /* non-fatal — malformed/missing cookie */ }
     if (sessionEmail) {
       try {
