@@ -4,6 +4,8 @@ import { ValidationService } from "@/lib/lims/validation-service";
 import { db } from "@/lib/db";
 import { workspaceusers } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 /**
  * POST /api/lims/samples/[sampleid]/reject
@@ -37,6 +39,14 @@ export async function POST(
       );
     }
 
+    // The id comes from the request body, so belonging has to be proved
+    // before it is used as the tenant identity.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
+
     // Get user's role in this workspace
     const workspaceUser = await db.query.workspaceusers.findFirst({
       where: and(
@@ -64,6 +74,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Validation rejected successfully",
+    });
     });
   } catch (error) {
     console.error("[API] Error rejecting validation:", error);
