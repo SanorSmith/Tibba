@@ -49,3 +49,19 @@ export async function withoutTenant<T>(reason: string, fn: () => Promise<T>): Pr
   void reason;
   return fn();
 }
+
+/**
+ * For records that may legitimately have no owning facility.
+ *
+ * A global patient belongs to no workspace by design, and there is no tenant
+ * to establish for one. Running such a write untenanted is correct rather
+ * than lax: the policies allow exactly the NULL-workspace rows through and
+ * nothing else, so the database still decides.
+ */
+export async function withTenantIfOwned<T>(
+  workspaceId: string | null | undefined,
+  fn: () => Promise<T>,
+): Promise<T> {
+  if (!workspaceId) return fn();
+  return withTenant(workspaceId, () => fn());
+}
