@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function GET(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const workspaceId = req.nextUrl.searchParams.get("workspaceId");
     
     console.log('[Pharmacy Summary API] Received workspace ID:', workspaceId);

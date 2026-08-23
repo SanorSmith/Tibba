@@ -2,11 +2,20 @@ import { NextResponse } from "next/server";
 import { db as db } from "@/lib/db";
 import { stores, warehouses, storeStock, items } from "@/lib/db/schema";
 import { eq, and, count, sum } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 const WORKSPACE_ID = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 
 export async function GET() {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const rows = await db.select().from(stores).where(eq(stores.isactive, true)).orderBy(stores.name);
 
     // enrich with stock count per store
@@ -32,6 +41,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, storetype, department, warehouseid, manager, location, description } = body;
 
@@ -52,6 +69,14 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });

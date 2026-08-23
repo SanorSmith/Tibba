@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkIsAdmin } from "@/lib/db/queries/admin/shared";
+import { getUser } from "@/lib/user";
 
 interface RouteParams {
   params: Promise<{
@@ -9,6 +10,14 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const isAdmin = await checkIsAdmin();
 
     if (!isAdmin) {
@@ -32,6 +41,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const isAdmin = await checkIsAdmin();
 
     if (!isAdmin) {
@@ -55,6 +72,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const isAdmin = await checkIsAdmin();
 
     if (!isAdmin) {

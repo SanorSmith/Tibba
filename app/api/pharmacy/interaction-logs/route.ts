@@ -7,10 +7,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { drugInteractionLogs } from "@/lib/db/tables/drug-interaction-logs";
 import { desc, eq, and } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 // Log an interaction check
 export async function POST(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       workspaceid,
@@ -78,6 +87,14 @@ export async function POST(request: NextRequest) {
 // Get interaction logs
 export async function GET(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
     const patientid = searchParams.get("patientid");

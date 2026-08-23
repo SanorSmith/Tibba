@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 export async function GET(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const workspaceId = req.nextUrl.searchParams.get("workspaceId") ?? "";
   const source = req.nextUrl.searchParams.get("source") ?? "global"; // 'global', 'inventory', or undefined
@@ -161,6 +170,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, form, strength, sellingprice, unitcost, workspaceid, initial_quantity, warehouseid, lotnumber, expirydate } = body;
 

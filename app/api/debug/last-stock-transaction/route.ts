@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 export async function GET() {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const stockTransaction = await db.execute(sql`
       SELECT * FROM stock_transactions ORDER BY created_at DESC LIMIT 1
     `);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { ilike, or, sql } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 // Reads across facilities on purpose: admin tooling and the sign-in flow
 // both need to look beyond a single workspace — sign-in has to find the
@@ -12,6 +13,14 @@ import { ilike, or, sql } from "drizzle-orm";
 // these return nothing, which is the safe direction for a mistake.
 export async function GET(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("q") || "";
 

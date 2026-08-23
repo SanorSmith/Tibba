@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { pharmacyOrders, pharmacyOrderItems, drugs, patients } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getOpenEHREHRBySubjectId, createOpenEHREHR } from "@/lib/openehr";
+import { getUser } from "@/lib/user";
 
 // Reads across facilities on purpose: admin tooling and the sign-in flow
 // both need to look beyond a single workspace — sign-in has to find the
@@ -16,6 +17,14 @@ export async function GET(
   { params }: { params: Promise<{ patientid: string }> }
 ) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { patientid } = await params;
 
     // Fetch medications from pharmacy orders

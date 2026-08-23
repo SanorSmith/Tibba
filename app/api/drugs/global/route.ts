@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
 
 // Use main database connection for global_drugs table
 const globalPool = new Pool({
@@ -8,6 +9,14 @@ const globalPool = new Pool({
 
 export async function GET(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const search = req.nextUrl.searchParams.get("search")?.trim();
     if (!search || search.length < 2) {
       return NextResponse.json([]);

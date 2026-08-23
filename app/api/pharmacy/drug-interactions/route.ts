@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkDrugWarnings } from "@/lib/clinical-data/drug-warnings";
 import { findAlternatives } from "@/lib/clinical-data/drug-alternatives";
+import { getUser } from "@/lib/user";
 
 interface DrugInput {
   name: string;
@@ -24,6 +25,14 @@ interface InteractionResult {
 
 export async function POST(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { drugs, patientId, workspaceId, checkAllergies = false } = body as { 
       drugs: DrugInput[];

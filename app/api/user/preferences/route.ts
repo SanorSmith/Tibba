@@ -4,9 +4,18 @@ import { type UserPreferences, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/user";
 import { LANGUAGE_IDS } from "@/content/common";
+import { getUser } from "@/lib/user";
 
 export async function GET() {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const sessionUser = await getUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const session = await auth();
 
     if (!session?.user?.email) {
@@ -39,6 +48,14 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const sessionUser = await getUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const session = await auth();
 
     if (!session?.user?.email) {

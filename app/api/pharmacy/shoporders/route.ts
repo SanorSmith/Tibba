@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 
 export async function GET(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const status = req.nextUrl.searchParams.get("status") ?? "";
   const r = await pool.query(
     `SELECT o.*,
@@ -23,6 +32,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { supplier, createdBy, items, totalAmount } = await req.json();
   if (!items?.length) return NextResponse.json({ error: "No items" }, { status: 400 });
 

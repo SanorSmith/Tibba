@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaceRoles } from "@/lib/db/tables/workspace-roles";
 import { eq, and } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 // GET /api/admin/workspace-roles?workspacetype=hospital
 // Reads across facilities on purpose: admin tooling and the sign-in flow
@@ -12,6 +13,14 @@ import { eq, and } from "drizzle-orm";
 // Requires a connection holding BYPASSRLS (app_admin); under app_user
 // these return nothing, which is the safe direction for a mistake.
 export async function GET(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const workspacetype = req.nextUrl.searchParams.get("workspacetype");
 
   try {
@@ -41,6 +50,14 @@ export async function GET(req: NextRequest) {
 // POST /api/admin/workspace-roles — create a new role
 export async function POST(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { workspacetype, name, label, lablear, labelku, description } = body;
 

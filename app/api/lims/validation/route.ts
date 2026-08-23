@@ -3,12 +3,21 @@ import { db } from "@/lib/db";
 import { validationStates } from "@/lib/db/schema";
 import { createWorkspaceNotification } from "@/lib/notifications";
 import { eq } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceid: string }> }
 ) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { workspaceid } = await params;
     const body = await request.json();
     const { sampleid, state } = body;
