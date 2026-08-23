@@ -7,6 +7,12 @@
  * not nested under /api/d/[workspaceid]. Consider using the primary
  * route at /api/d/[workspaceid]/pharmacies instead.
  */
+
+/**
+ * Scoped through `withPharmacySchema`, which takes the workspace id directly
+ * rather than going through `withTenant`. The membership check above is what
+ * makes that caller-supplied id trustworthy.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";

@@ -4,6 +4,11 @@
  * Updates invoice status to PAID for all dispensed orders
  * This is a one-time fix for orders that were dispensed before the payment status fix
  */
+
+/**
+ * Maintenance route, deliberately unscoped. It repairs payment status across
+ * whatever rows are wrong; it is not part of any user flow.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";

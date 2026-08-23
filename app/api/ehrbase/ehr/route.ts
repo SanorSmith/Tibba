@@ -1,3 +1,8 @@
+/**
+ * Talks to EHRbase, not to Postgres, so there is no tenant to set on a
+ * connection here. Composition ownership is tracked separately — see the
+ * EHRbase tenancy work, which is not part of this phase.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { checkIsAdmin } from "@/lib/db/queries/admin/shared";
 import { getUser } from "@/lib/user";

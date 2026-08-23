@@ -3,6 +3,14 @@
  * - GET: List all patients across all workspaces
  * - POST: Create patient (no workspace assignment)
  */
+
+/**
+ * GET is deliberately unscoped: patient general information is readable from
+ * any facility by design, and migration 0068 opens SELECT on `patients` to
+ * match. POST is left unguarded on purpose too — `workspaceid` is optional
+ * there because a patient may be global, belonging to no facility, and the
+ * write policy allows exactly that row and the caller's own.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { patients, workspaces } from "@/lib/db/schema";

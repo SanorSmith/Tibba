@@ -7,6 +7,11 @@
  * NOTE: Requires workspaceid as a query parameter.
  * Prefer using /api/d/[workspaceid]/pharmacies/[pharmacyid] instead.
  */
+
+/**
+ * Scoped through `withPharmacySchema` rather than `withTenant`; see the
+ * membership check in each handler.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";

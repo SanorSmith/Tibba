@@ -3,6 +3,13 @@
  * Lists active laboratory workspaces so ordering clinicians can pick which
  * lab facility a test order should be routed to.
  */
+
+/**
+ * Deliberately unscoped: a clinician choosing where to send a test order has
+ * to see labs other than their own. Migration 0068 opens SELECT on
+ * `workspaces` for exactly this, and the query returns names and ids only —
+ * no clinical or financial data crosses a facility boundary here.
+ */
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
