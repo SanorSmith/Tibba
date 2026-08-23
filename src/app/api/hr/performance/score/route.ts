@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // Calculate comprehensive performance score
@@ -17,10 +18,15 @@ export async function POST(request: NextRequest) {
 
     // Every lookup below is keyed on this employee, so gating on the employee
     // belonging to the caller's facility scopes the whole scorecard.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const emp = await pool.query(
       'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
       [employee_id, workspaceId]
@@ -168,6 +174,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    });
   } catch (error: any) {
     console.error('Error calculating performance score:', error);
     return NextResponse.json(

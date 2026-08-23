@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   // The policy row itself is patient data and stays shared; the insurer
   // lookup below is this facility's contract, so it needs the session.
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const b = await req.json();
     const sets: string[] = [];
@@ -45,6 +51,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {

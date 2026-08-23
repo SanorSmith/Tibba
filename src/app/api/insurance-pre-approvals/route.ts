@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,10 +29,15 @@ async function ensureCompanyCol(p: Pool) {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     await ensureCompanyCol(pool);
     const { searchParams } = new URL(request.url);
@@ -60,6 +66,7 @@ export async function GET(request: NextRequest) {
 
     const r = await pool.query(q, params);
     return NextResponse.json({ success: true, data: r.rows, count: r.rows.length });
+    });
   } catch (error) {
     console.error('[pre-approvals GET]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -69,10 +76,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     await ensureCompanyCol(pool);
     const b = await request.json();
@@ -106,6 +118,7 @@ export async function POST(request: NextRequest) {
       ]
     );
     return NextResponse.json({ success: true, data: r.rows[0] }, { status: 201 });
+    });
   } catch (error) {
     console.error('[pre-approvals POST]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

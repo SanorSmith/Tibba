@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,13 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const r = await pool.query('SELECT * FROM shareholders WHERE id = $1 AND workspaceid = $2', [id, workspaceId]);
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -25,13 +31,19 @@ export async function GET(req: NextRequest, { params }: Params) {
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const b = await req.json();
     // Allowed columns for partial update
@@ -62,13 +74,19 @@ export async function PUT(req: NextRequest, { params }: Params) {
     console.error('[shareholders PUT]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const r = await pool.query('DELETE FROM shareholders WHERE id = $1 AND workspaceid = $2 RETURNING id', [id, workspaceId]);
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -76,4 +94,5 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }

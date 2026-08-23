@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,10 +24,15 @@ function bucketOf(daysOverdue: number): string {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const asOf = searchParams.get('as_of') || new Date().toISOString().slice(0, 10);
@@ -83,6 +89,7 @@ export async function GET(request: NextRequest) {
       totals,
       by_vendor: Object.values(byVendor).sort((a: any, b: any) => b.total - a.total),
       invoices: rows,
+    });
     });
   } catch (error) {
     console.error('[ap-aging GET]', error);

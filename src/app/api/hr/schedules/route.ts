@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // =====================================================
@@ -8,10 +9,15 @@ import { pool } from '@/lib/db/pool';
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -236,6 +242,7 @@ export async function GET(request: NextRequest) {
       data: formattedSchedules,
       count: formattedSchedules.length,
     });
+    });
   } catch (error: any) {
     console.error('Error fetching schedules:', error);
     return NextResponse.json(
@@ -250,10 +257,15 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const {
@@ -385,6 +397,7 @@ export async function POST(request: NextRequest) {
       data: { id: scheduleId },
       message: 'Schedule created successfully',
     });
+    });
   } catch (error: any) {
     console.error('Error creating schedule:', error);
     return NextResponse.json(
@@ -399,10 +412,15 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { id, status, end_date, notes, approved_by } = body;
@@ -465,6 +483,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: 'Schedule updated successfully',
     });
+    });
   } catch (error: any) {
     console.error('Error updating schedule:', error);
     return NextResponse.json(
@@ -479,10 +498,15 @@ export async function PUT(request: NextRequest) {
 // =====================================================
 export async function DELETE(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -508,6 +532,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Schedule deleted successfully',
+    });
     });
   } catch (error: any) {
     console.error('Error deleting schedule:', error);

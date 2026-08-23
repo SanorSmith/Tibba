@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postAPPayment } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +16,13 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
   // GL entries post to the caller’s facility ledger.
-  const ws = getWorkspaceId(req);
+  const ws = await getWorkspaceId(req);
   if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
@@ -93,4 +99,5 @@ export async function POST(req: NextRequest, { params }: Params) {
   } finally {
     client.release();
   }
+  });
 }

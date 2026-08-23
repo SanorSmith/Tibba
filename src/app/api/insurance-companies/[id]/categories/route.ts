@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +31,15 @@ export async function GET(
     }
 
     const { id: companyId } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     // The company must belong to this facility before its list is read or
     // changed — company_id alone came straight from the URL.
@@ -55,6 +61,7 @@ export async function GET(
     );
 
     return NextResponse.json({ success: true, data: result.rows });
+    });
   } catch (error) {
     console.error('Error fetching insurance categories:', error);
     return NextResponse.json(
@@ -74,10 +81,15 @@ export async function POST(
     }
 
     const { id: companyId } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     // The company must belong to this facility before its list is read or
     // changed — company_id alone came straight from the URL.
@@ -119,6 +131,7 @@ export async function POST(
     );
 
     return NextResponse.json({ success: true, data: result.rows[0] });
+    });
   } catch (error) {
     console.error('Error creating insurance category:', error);
     return NextResponse.json(
@@ -138,10 +151,15 @@ export async function DELETE(
     }
 
     const { id: companyId } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     // The company must belong to this facility before its list is read or
     // changed — company_id alone came straight from the URL.
@@ -171,6 +189,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true, message: 'Category deleted' });
+    });
   } catch (error) {
     console.error('Error deleting insurance category:', error);
     return NextResponse.json(

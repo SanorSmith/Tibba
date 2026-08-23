@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // =====================================================
@@ -8,10 +9,15 @@ import { pool } from '@/lib/db/pool';
 // =====================================================
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
@@ -89,6 +95,7 @@ export async function GET(request: NextRequest) {
       data: formattedStaff,
       count: formattedStaff.length,
     });
+    });
   } catch (error: any) {
     console.error('Error fetching staff:', error);
     return NextResponse.json(
@@ -103,10 +110,15 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const {
@@ -158,6 +170,7 @@ export async function POST(request: NextRequest) {
       data: { staffid: result.rows[0].staffid },
       message: 'Staff member created successfully',
     });
+    });
   } catch (error: any) {
     console.error('Error creating staff:', error);
     return NextResponse.json(
@@ -172,10 +185,15 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { staffid, ...updates } = body;
@@ -228,6 +246,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: 'Staff member updated successfully',
     });
+    });
   } catch (error: any) {
     console.error('Error updating staff:', error);
     return NextResponse.json(
@@ -242,10 +261,15 @@ export async function PUT(request: NextRequest) {
 // =====================================================
 export async function DELETE(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const staffid = searchParams.get('staffid');
@@ -272,6 +296,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Staff member deleted successfully',
+    });
     });
   } catch (error: any) {
     console.error('Error deleting staff:', error);

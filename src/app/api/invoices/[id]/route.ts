@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postInvoicePayment } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -41,10 +42,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Scoped to the caller's facility — an invoice id from another hospital
     // must read as "not found", not be served.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     // Get invoice
     const result = await pool.query(`
@@ -106,6 +112,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     });
 
+    });
   } catch (error) {
     console.error('Error fetching invoice:', error);
     return NextResponse.json(
@@ -156,10 +163,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Refuse to edit another facility's invoice.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const ownedPut = await pool.query(
       'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
       [id, workspaceId]
@@ -475,6 +487,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       throw error;
     }
 
+    });
   } catch (error) {
     console.error('Error updating invoice:', error);
     return NextResponse.json(
@@ -521,10 +534,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     // Refuse to delete another facility's invoice.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const owned = await pool.query(
       'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
       [id, workspaceId]
@@ -565,6 +583,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       throw error;
     }
 
+    });
   } catch (error) {
     console.error('Error deleting invoice:', error);
     return NextResponse.json(

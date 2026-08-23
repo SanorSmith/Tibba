@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,10 +14,15 @@ export async function GET(request: NextRequest) {
 
     // Supplier list is facility-private. The workspace came from a query
     // param before, so omitting it listed every facility's suppliers.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     let sql = 'SELECT * FROM suppliers WHERE workspaceid = $1';
     const params: any[] = [workspaceId];
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: result.rows,
       count: result.rows.length
+    });
     });
   } catch (error: any) {
     console.error('Get suppliers error:', error);
@@ -78,10 +85,15 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // New suppliers belong to the creator's facility, not one the client picks.
-    const workspaceid = getWorkspaceId(request);
+    const workspaceid = await getWorkspaceId(request);
     if (!workspaceid) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceid, async () => {
 
     // Generate code if not provided
     const supplierCode = code || `SUP-${Date.now().toString().slice(-6)}`;
@@ -127,6 +139,7 @@ export async function POST(request: NextRequest) {
       data: result.rows[0],
       message: 'Supplier created successfully'
     }, { status: 201 });
+    });
   } catch (error: any) {
     console.error('Create supplier error:', error);
     return NextResponse.json(

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,10 +35,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     // The cash account is resolved per facility, so both the account lookup
     // and the journal entries are filtered.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const year = new Date().getFullYear();
     const from = searchParams.get('from') || `${year}-01-01`;
@@ -96,6 +102,7 @@ export async function GET(request: NextRequest) {
       financing: { lines: lines.filter(l => l.activity === 'financing'), subtotal: subtotal.financing },
       net_change: netChange,
       closing_balance: closing,
+    });
     });
   } catch (error) {
     console.error('[cash-flow GET]', error);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,10 +59,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     // Check table exists without DDL (avoids lock contention from Strict Mode double-invoke)
@@ -158,6 +164,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 // POST /api/insurance-claims
@@ -165,10 +172,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     await ensureTable(pool);
@@ -247,4 +259,5 @@ export async function POST(request: NextRequest) {
     console.error('POST insurance-claims error:', error);
     return NextResponse.json({ error: 'Failed to create insurance claim' }, { status: 500 });
   }
+  });
 }

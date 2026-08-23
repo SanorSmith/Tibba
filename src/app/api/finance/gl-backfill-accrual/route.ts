@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { postInvoiceAccrual } from '@/lib/gl-posting';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,13 @@ export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
   // Backfill only the caller's facility — this swept every hospital's invoices.
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   // Invoices with NO existing journal entry (by sourceid or invoice number in description)
   const invoices = await pool.query(`
@@ -73,5 +79,6 @@ export async function POST(request: NextRequest) {
     skipped_already_in_gl: 'invoices already posted were excluded',
     errors,
     message: `Posted accrual revenue for ${posted} invoices. ${errors.length} errors.`,
+  });
   });
 }

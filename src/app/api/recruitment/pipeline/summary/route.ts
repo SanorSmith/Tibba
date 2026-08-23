@@ -9,7 +9,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     // Was a query param, so any facility's pipeline could be requested.
-    const workspaceId = getWorkspaceId(request);
+    // Left unwrapped: the "not signed in" guard sits after other work here,
+    // so a wrapper would have to run before the facility is known to exist.
+    const workspaceId = await getWorkspaceId(request);
     const vacancyId = searchParams.get('vacancyId');
 
     if (!workspaceId) {

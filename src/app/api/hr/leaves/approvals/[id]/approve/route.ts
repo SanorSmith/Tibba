@@ -3,6 +3,7 @@ import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 import attendanceIntegration from '@/lib/services/attendance-leave-integration';
 import { pool, pool as guardPool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 const ORG_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -68,10 +69,15 @@ export async function POST(
     // Approval is delegated to the workflow service and to directApprove(),
     // neither of which knows about facilities, so check ownership here before
     // either path can write.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     {
       try {
         const owns = await guardPool.query(
@@ -139,6 +145,7 @@ export async function POST(
       message: result.message,
     });
     
+    });
   } catch (error: any) {
     console.error('Error approving leave request:', error);
     return NextResponse.json({

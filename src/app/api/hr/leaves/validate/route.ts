@@ -3,6 +3,7 @@ import { getWorkspaceId } from '@/lib/workspace';
 import policyEngine from '@/lib/services/leave-policy-engine';
 import scheduleConflicts from '@/lib/services/schedule-conflict-checker';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 export async function POST(request: NextRequest) {
@@ -21,10 +22,15 @@ export async function POST(request: NextRequest) {
     // services that read that employee's schedule and leave history. The
     // services are keyed by id alone, so the facility check has to happen
     // here.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const owns = await pool.query(
       'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
       [employee_id, workspaceId]
@@ -79,6 +85,7 @@ export async function POST(request: NextRequest) {
       data: result,
     });
     
+    });
   } catch (error: any) {
     console.error('Error validating leave request:', error);
     return NextResponse.json({

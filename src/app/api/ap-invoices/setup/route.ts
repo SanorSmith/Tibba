@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +19,15 @@ export async function GET(request: NextRequest) {
   // hospital. A workspace filter is not the right control here; requiring a
   // session is the minimum. These should probably be deleted outright, but
   // that is a call for the repo owner, not something to do silently.
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
@@ -145,4 +151,5 @@ export async function GET(request: NextRequest) {
   } finally {
     client.release();
   }
+  });
 }

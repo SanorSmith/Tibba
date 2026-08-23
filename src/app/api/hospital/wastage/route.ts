@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 const ensureTable = () => pool.query(`
   CREATE TABLE IF NOT EXISTS hospital_wastage (
@@ -22,8 +23,13 @@ const ensureTable = () => pool.query(`
 export async function GET(req: NextRequest) {
   // Inventory is facility-private: resolve the caller’s facility per request.
   // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
-  const WS = getWorkspaceId(req);
+  const WS = await getWorkspaceId(req);
   if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(WS, async () => {
   const deptId = req.nextUrl.searchParams.get("department_id") ?? "";
   try {
     await ensureTable();
@@ -41,13 +47,19 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }
 
 export async function POST(req: NextRequest) {
   // Inventory is facility-private: resolve the caller’s facility per request.
   // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
-  const WS = getWorkspaceId(req);
+  const WS = await getWorkspaceId(req);
   if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(WS, async () => {
   try {
     const { itemId, itemName, departmentId, quantity, reason, type, recordedBy, notes, batchNumber } = await req.json();
     if (!itemId || !quantity || !type) return NextResponse.json({ error: "Item, quantity and type required" }, { status: 400 });
@@ -81,4 +93,5 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }

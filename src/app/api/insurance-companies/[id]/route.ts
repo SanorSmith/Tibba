@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -25,10 +26,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const body = await request.json();
     const {
       name,
@@ -207,6 +213,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       data: result.rows[0]
     });
 
+    });
   } catch (error) {
     console.error('Error updating insurance company:', error);
     return NextResponse.json(
@@ -232,10 +239,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const { id } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     // Check if company exists
     const checkResult = await pool.query(
@@ -261,6 +273,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       message: 'Insurance company deleted successfully'
     });
 
+    });
   } catch (error) {
     console.error('Error deleting insurance company:', error);
     return NextResponse.json(

@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postDividend } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +39,13 @@ async function ensureTable(p: Pool) {
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     await ensureTable(pool);
     const view = new URL(request.url).searchParams.get('view') || 'summary';
@@ -69,6 +75,7 @@ export async function GET(request: NextRequest) {
     `, [workspaceId]);
     const totalDistributed = r.rows.reduce((s, x) => s + parseFloat(x.distributed || 0), 0);
     return NextResponse.json({ success: true, data: r.rows, count: r.rows.length, total_distributed: totalDistributed });
+    });
   } catch (error) {
     console.error('[sh-distributions GET]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
@@ -77,8 +84,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   // GL entries post to the caller’s facility ledger.
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const client = await pool.connect();
@@ -161,4 +173,5 @@ export async function POST(request: NextRequest) {
   } finally {
     client.release();
   }
+  });
 }

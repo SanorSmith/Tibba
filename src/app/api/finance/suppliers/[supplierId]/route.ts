@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +12,15 @@ export async function GET(
 ) {
   try {
     const { supplierId } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const result = await query('SELECT * FROM suppliers WHERE supplierid = $1 AND workspaceid = $2', [supplierId, workspaceId]);
 
     if (result.rows.length === 0) {
@@ -27,6 +33,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: result.rows[0]
+    });
     });
   } catch (error: any) {
     console.error('Get supplier error:', error);
@@ -44,10 +51,15 @@ export async function PUT(
 ) {
   try {
     const { supplierId } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const body = await request.json();
     const {
       code,
@@ -122,6 +134,7 @@ export async function PUT(
       data: result.rows[0],
       message: 'Supplier updated successfully'
     });
+    });
   } catch (error: any) {
     console.error('Update supplier error:', error);
     return NextResponse.json(
@@ -138,10 +151,15 @@ export async function DELETE(
 ) {
   try {
     const { supplierId } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const result = await query('DELETE FROM suppliers WHERE supplierid = $1 AND workspaceid = $2 RETURNING *', [supplierId, workspaceId]);
 
@@ -156,6 +174,7 @@ export async function DELETE(
       success: true,
       data: result.rows[0],
       message: 'Supplier deleted successfully'
+    });
     });
   } catch (error: any) {
     console.error('Delete supplier error:', error);

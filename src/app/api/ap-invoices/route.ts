@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postAPInvoiceReceived } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +14,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   const { searchParams } = new URL(request.url);
   const status    = searchParams.get('status');
@@ -63,12 +69,18 @@ export async function GET(request: NextRequest) {
     console.error('[ap-invoices GET]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function POST(request: NextRequest) {
   // GL entries post to the caller’s facility ledger.
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
@@ -130,4 +142,5 @@ export async function POST(request: NextRequest) {
   } finally {
     client.release();
   }
+  });
 }

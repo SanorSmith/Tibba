@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -21,10 +22,15 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
 
     const { id } = await context.params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     console.log('Fetching specialty with ID:', id);
 
     const result = await pool.query(`
@@ -59,6 +65,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       data: result.rows[0]
     });
 
+    });
   } catch (error) {
     console.error('Error fetching specialty:', error);
     
@@ -91,10 +98,15 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
 
     const { id } = await context.params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const body = await request.json();
     
     const {
@@ -160,6 +172,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       }
     });
 
+    });
   } catch (error) {
     console.error('Error updating specialty:', error);
     
@@ -192,10 +205,15 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 
 
     const { id } = await context.params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     console.log('Deleting specialty with ID:', id);
 
     // Check if specialty exists
@@ -225,6 +243,7 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
       message: 'Specialty deleted successfully'
     });
 
+    });
   } catch (error) {
     console.error('Error deleting specialty:', error);
     

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +12,13 @@ export async function GET(
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     const result = await pool.query(
@@ -33,6 +39,7 @@ export async function GET(
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch stakeholder', detail: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function PUT(
@@ -41,8 +48,13 @@ export async function PUT(
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     const body = await request.json();
@@ -96,6 +108,7 @@ export async function PUT(
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update stakeholder', detail: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function DELETE(
@@ -104,8 +117,13 @@ export async function DELETE(
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     // Soft delete — set is_active = false
@@ -120,4 +138,5 @@ export async function DELETE(
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete stakeholder', detail: (error as Error).message }, { status: 500 });
   }
+  });
 }

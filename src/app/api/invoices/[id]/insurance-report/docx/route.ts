@@ -7,6 +7,7 @@ import {
 } from 'docx';
 import { isOpenEHRConfigured, getEhrIdBySubject, getPatientOrders, getPatientDiagnoses } from '@/lib/openehr/client';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,10 +82,15 @@ export async function GET(
   const { id } = await params;
 
   // Reports expose patient and billing detail, so only for the caller's facility.
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     const invoiceResult = await pool.query('SELECT * FROM invoices WHERE id = $1 AND workspaceid = $2', [id, workspaceId]);
@@ -534,4 +540,5 @@ export async function GET(
       { status: 500 }
     );
   }
+  });
 }

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +15,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patient_id');
@@ -69,6 +75,7 @@ export async function GET(request: NextRequest) {
       has_active_coverage: policies.some((p) => p.is_active),
       policy_count: policies.length,
       policies,
+    });
     });
   } catch (error) {
     console.error('[insurance-verify]', error);

@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
 
     // employee_id comes from the client and is handed to a calculator that
     // reads that employee's attendance and payroll history keyed by id alone.
-    const workspaceId = getWorkspaceId(request);
+    // Left unwrapped: same finally-block cleanup as the payroll calculator.
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
 
   // employee_id comes from the client and is handed to a calculator that
   // reads that employee's attendance and payroll history keyed by id alone.
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) {
     return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
   }

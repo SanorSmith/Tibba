@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // GET - Get single performance review by ID
@@ -10,10 +11,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const result = await pool.query(
       `SELECT 
@@ -41,6 +47,7 @@ export async function GET(
       data: result.rows[0]
     });
 
+    });
   } catch (error: any) {
     console.error('Error fetching performance review:', error);
     return NextResponse.json(
@@ -57,10 +64,15 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
 
@@ -161,6 +173,7 @@ export async function PUT(
       message: 'Performance review updated successfully'
     });
 
+    });
   } catch (error: any) {
     console.error('Error updating performance review:', error);
     return NextResponse.json(
@@ -176,10 +189,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { id } = await params;
 
@@ -200,6 +218,7 @@ export async function DELETE(
       message: 'Performance review deleted successfully'
     });
 
+    });
   } catch (error: any) {
     console.error('Error deleting performance review:', error);
     return NextResponse.json(

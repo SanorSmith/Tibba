@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 const CENTRAL = '00000000-0000-0000-0000-000000000000'; // hospital central store
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Inventory is facility-private: resolve the caller’s facility per request.
   // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
-  const WS = getWorkspaceId(req);
+  const WS = await getWorkspaceId(req);
   if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(WS, async () => {
   const { id } = await params;
   const items = await pool.query(`SELECT * FROM hospital_transfer_items WHERE transfer_id = $1`, [id]);
   return NextResponse.json(items.rows);
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Inventory is facility-private: resolve the caller’s facility per request.
   // This was a hardcoded Hospital 1 id, so every facility saw Hospital 1’s stock.
-  const WS = getWorkspaceId(req);
+  const WS = await getWorkspaceId(req);
   if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(WS, async () => {
   const { id } = await params;
   try {
     const { status, receivedBy, sentBy, items, deliveryKey } = await req.json();
@@ -90,4 +102,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     console.error("PATCH /api/hospital/transfers/[id] error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 export async function POST(
@@ -15,10 +16,15 @@ export async function POST(
 
     // This handler passes a client-supplied id to a service that reads
     // facility data keyed by that id alone, so the check belongs here.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const owns = await pool.query(
       'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
       [id, workspaceId]
@@ -47,6 +53,7 @@ export async function POST(
       message: result.message,
     });
     
+    });
   } catch (error: any) {
     console.error('Error rejecting leave request:', error);
     return NextResponse.json({

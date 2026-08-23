@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +16,15 @@ function generateUUID(): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const userid = searchParams.get('userid');
@@ -80,6 +86,7 @@ export async function GET(request: NextRequest) {
       count: result.rows.length
     });
 
+    });
   } catch (error) {
     console.error('Error fetching todos:', error);
     return NextResponse.json(
@@ -94,10 +101,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { userId, title, description, priority, dueDate } = body;
@@ -159,6 +171,7 @@ export async function POST(request: NextRequest) {
       todo: result.rows[0]
     });
 
+    });
   } catch (error) {
     console.error('Error creating todo:', error);
     return NextResponse.json(
@@ -173,10 +186,15 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { todoId, title, description, completed, priority, dueDate } = body;
@@ -273,6 +291,7 @@ export async function PUT(request: NextRequest) {
       todo: result.rows[0]
     });
 
+    });
   } catch (error) {
     console.error('Error updating todo:', error);
     return NextResponse.json(
@@ -287,10 +306,15 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const todoId = searchParams.get('todoId');
@@ -330,6 +354,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Todo deleted successfully'
     });
 
+    });
   } catch (error) {
     console.error('Error deleting todo:', error);
     return NextResponse.json(

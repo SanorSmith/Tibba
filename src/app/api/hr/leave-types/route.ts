@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // =====================================================
@@ -10,10 +11,15 @@ export async function GET(request: NextRequest) {
   try {
     // organization_id is a fixed constant here, so it isolates nothing —
     // the facility filter has to come from the session.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const isActive = searchParams.get('isActive');
@@ -65,6 +71,7 @@ export async function GET(request: NextRequest) {
       data: result.rows,
       count: result.rows.length,
     });
+    });
   } catch (error: any) {
     console.error('Error fetching leave types:', error);
     return NextResponse.json(
@@ -83,10 +90,15 @@ export async function GET(request: NextRequest) {
 // =====================================================
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
 
@@ -181,6 +193,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+    });
   } catch (error: any) {
     console.error('Error creating leave type:', error);
     return NextResponse.json(

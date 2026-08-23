@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -16,10 +17,15 @@ if (!databaseUrl) {
 
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -169,6 +175,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    });
   } catch (error) {
     console.error('Appointments API Error:', error);
     return NextResponse.json(
@@ -195,10 +202,15 @@ export async function POST(request: NextRequest) {
 
     // The facility comes from the session; it used to be a required body
     // field, so a client could book into any hospital's calendar.
-    const workspaceid = getWorkspaceId(request);
+    const workspaceid = await getWorkspaceId(request);
     if (!workspaceid) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     console.log('Creating new appointment:', body);
@@ -335,6 +347,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    });
   } catch (error) {
     console.error('Error creating appointment:', error);
     

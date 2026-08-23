@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +10,15 @@ export async function GET(request: NextRequest) {
   try {
     // workspaceId was a query-string filter and optional, so omitting it
     // returned every facility's records.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -70,6 +76,7 @@ export async function GET(request: NextRequest) {
       stats: statsResult.rows[0],
       count: result.rows.length
     });
+    });
   } catch (error: any) {
     console.error('Get offers error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to fetch offers' }, { status: 500 });
@@ -80,10 +87,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Facility comes from the session, never the request body.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const {
@@ -129,6 +141,7 @@ export async function POST(request: NextRequest) {
       data: result.rows[0],
       message: 'Offer created successfully'
     }, { status: 201 });
+    });
   } catch (error: any) {
     console.error('Create offer error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to create offer' }, { status: 500 });

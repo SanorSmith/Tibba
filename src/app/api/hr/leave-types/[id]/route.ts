@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // =====================================================
@@ -11,10 +12,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { id } = await params;
 
@@ -37,6 +43,7 @@ export async function GET(
       success: true,
       data: result.rows[0],
     });
+    });
   } catch (error: any) {
     console.error('Error fetching leave type:', error);
     return NextResponse.json(
@@ -58,10 +65,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { id } = await params;
     const body = await request.json();
@@ -158,6 +170,7 @@ export async function PUT(
       data: result.rows[0],
       message: 'Leave type updated successfully',
     });
+    });
   } catch (error: any) {
     console.error('Error updating leave type:', error);
     return NextResponse.json(
@@ -179,10 +192,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { id } = await params;
 
@@ -228,6 +246,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: 'Leave type deleted successfully',
+    });
     });
   } catch (error: any) {
     console.error('Error deleting leave type:', error);

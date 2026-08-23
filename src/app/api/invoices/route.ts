@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Updated: Fixed duplicate PUT handlers - 2026-03-07
 // Fixed controlled input warnings - 2026-03-07
@@ -29,10 +30,15 @@ export async function GET(request: NextRequest) {
 
     // Only ever return invoices belonging to the caller's facility. No session
     // means no facility, which must show nothing rather than everything.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
@@ -103,6 +109,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    });
   } catch (error) {
     console.error('Error fetching invoices:', error);
     return NextResponse.json(
@@ -132,10 +139,15 @@ export async function POST(request: NextRequest) {
 
     // Stamp the new invoice with the facility the caller is working in, so it
     // is only ever visible to that facility.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     console.log('Request body:', JSON.stringify(body, null, 2));
@@ -418,6 +430,7 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
+    });
   } catch (error) {
     console.error('Error creating invoice:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
@@ -435,10 +448,15 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Deleting an invoice and its items — must be one of ours.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     if (!pool) {
       return NextResponse.json(
         { 
@@ -508,6 +526,7 @@ export async function DELETE(request: NextRequest) {
       throw error;
     }
 
+    });
   } catch (error) {
     console.error('Error deleting invoice:', error);
     return NextResponse.json(
