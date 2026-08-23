@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import PatientDashboard from "./patient-dashboard";
+import { withTenant } from "@/lib/db/tenant";
 
 interface PageProps {
   params: Promise<{ workspaceid: string; patientid: string }>;
@@ -46,6 +47,9 @@ export default async function PatientPage({ params }: PageProps) {
   if (!patient) {
     redirect(`/d/${workspaceid}/patients`);
   }
+  // Membership is already settled above; what is missing is the facility
+  // on the connection, so row-level security scopes the reads below.
+  return withTenant(workspaceid, async () => {
 
   return (
     <>
@@ -58,4 +62,5 @@ export default async function PatientPage({ params }: PageProps) {
       </div>
     </>
   );
+  });
 }

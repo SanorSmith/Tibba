@@ -10,6 +10,7 @@ import PlasticSurgeonDashboard from "./plastic-surgeon-dashboard";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 
 interface PageProps {
   params: Promise<{ workspaceid: string }>;
@@ -29,6 +30,9 @@ export default async function PlasticSurgeryPage({ params }: PageProps) {
   if (!membership || membership.role !== "plastic_surgeon") {
     redirect(`/d/${workspaceid}`);
   }
+  // Membership is already settled above; what is missing is the facility
+  // on the connection, so row-level security scopes the reads below.
+  return withTenant(workspaceid, async () => {
 
   let staffInfo = null;
   try {
@@ -73,4 +77,5 @@ export default async function PlasticSurgeryPage({ params }: PageProps) {
       />
     </div>
   );
+  });
 }

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db, rootDb } from "@/lib/db";
 import {
   workspaces,
   workspaceusers,
@@ -6,7 +6,7 @@ import {
   WorkspaceUserRole,
   UserWorkspace,
 } from "@/lib/db/tables/workspace";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { cache } from "react";
 
 export async function getWorkspaceById(
@@ -31,27 +31,34 @@ export const getUserWorkspaces = cache(async function (
   role?: WorkspaceUserRole,
 ): Promise<UserWorkspace[]> {
   try {
-    const results = await db
-      .select({
-        workspace: workspaces,
-        role: workspaceusers.role,
-      })
-      .from(workspaceusers)
-      .innerJoin(
-        workspaces,
-        eq(workspaceusers.workspaceid, workspaces.workspaceid),
-      )
-      .where(
-        and(
-          eq(workspaceusers.userid, userId),
-          role ? eq(workspaceusers.role, role) : undefined,
-        ),
-      )
+    // Which facilities a user belongs to has to be answerable before they are
+    // inside one — this is the question that decides which one they enter.
+    // `workspaceusers` is tenant-scoped, so reading it here through the normal
+    // connection returns nothing under the restricted role, and every page
+    // that calls this (124 of them) would redirect to an empty picker.
+    // The SECURITY DEFINER function (migration 0070) answers for one named
+    // user and returns memberships only.
+    const memberships = (await rootDb.execute(
+      sql`SELECT workspaceid, role FROM public.app_user_memberships(${userId}::uuid)`,
+    )) as unknown as Array<{ workspaceid: string; role: WorkspaceUserRole }>;
+
+    const wanted = role
+      ? memberships.filter((m) => m.role === role)
+      : memberships;
+    if (wanted.length === 0) return [];
+
+    // The workspace rows themselves read normally: migration 0068 opens
+    // SELECT on `workspaces` so facilities can see each other by name.
+    const rows = await rootDb
+      .select()
+      .from(workspaces)
+      .where(inArray(workspaces.workspaceid, wanted.map((m) => m.workspaceid)))
       .orderBy(desc(workspaces.createdat));
 
-    return results.map((result) => ({
-      workspace: result.workspace,
-      role: result.role,
+    const roleOf = new Map(wanted.map((m) => [m.workspaceid, m.role]));
+    return rows.map((workspace) => ({
+      workspace,
+      role: roleOf.get(workspace.workspaceid)!,
     }));
   } catch (error) {
     console.error("Error getting user workspaces:", error);

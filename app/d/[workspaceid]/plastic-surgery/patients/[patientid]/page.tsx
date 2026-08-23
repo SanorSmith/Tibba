@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import PlasticSurgeryPatientDashboard from "./plastic-surgery-patient-dashboard";
+import { withTenant } from "@/lib/db/tenant";
 
 interface PageProps {
   params: Promise<{ workspaceid: string; patientid: string }>;
@@ -37,6 +38,9 @@ export default async function PlasticSurgeryPatientPage({ params }: PageProps) {
   if (!patientRecords[0]) {
     redirect(`/d/${workspaceid}/plastic-surgery`);
   }
+  // Membership is already settled above; what is missing is the facility
+  // on the connection, so row-level security scopes the reads below.
+  return withTenant(workspaceid, async () => {
 
   const patient = patientRecords[0];
 
@@ -49,4 +53,5 @@ export default async function PlasticSurgeryPatientPage({ params }: PageProps) {
       />
     </div>
   );
+  });
 }
