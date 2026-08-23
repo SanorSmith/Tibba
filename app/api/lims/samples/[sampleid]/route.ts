@@ -3,6 +3,9 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { accessionSamples, testResults, validationStates, patients, limsOrderTests, labTestCatalog, testReferenceRanges } from "@/lib/db/schema";
 import { eq, and, or, ilike, sql, inArray } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 /**
  * GET /api/lims/samples/[sampleid]
@@ -19,6 +22,19 @@ export async function GET(
     }
 
     const { sampleid } = await params;
+
+    // Only the record id is known here, so the owning facility is looked
+    // up first — the one question that can be answered before a tenant is
+    // established — and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("accession_sample", sampleid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Sample not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Fetch sample from accession_samples table
     const sample = await db
@@ -260,6 +276,7 @@ export async function GET(
       results: finalResults,
       validationState,
       hasPreviousResults,
+    });
     });
   } catch (error) {
     console.error("[API] Error fetching sample:", error);
