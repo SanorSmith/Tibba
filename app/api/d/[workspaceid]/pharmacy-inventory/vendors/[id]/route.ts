@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -8,6 +11,20 @@ export async function GET(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const result = await pool.query('SELECT * FROM vendors WHERE id = $1', [params.id]);
     
     if (result.rows.length === 0) {
@@ -15,6 +32,7 @@ export async function GET(
     }
 
     return NextResponse.json(result.rows[0]);
+    });
   } catch (error: any) {
     console.error("Error fetching vendor:", error);
     return NextResponse.json({ error: "Failed to fetch vendor" }, { status: 500 });
@@ -26,6 +44,20 @@ export async function PUT(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const {
       name,
@@ -108,6 +140,7 @@ export async function PUT(
     }
 
     return NextResponse.json(result.rows[0]);
+    });
   } catch (error: any) {
     console.error("Error updating vendor:", error);
     return NextResponse.json({ error: "Failed to update vendor" }, { status: 500 });
@@ -119,6 +152,20 @@ export async function DELETE(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const result = await pool.query(
       'UPDATE vendors SET isactive = false, updatedat = NOW() WHERE id = $1 RETURNING *',
       [params.id]
@@ -129,6 +176,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: "Vendor deleted successfully" });
+    });
   } catch (error: any) {
     console.error("Error deleting vendor:", error);
     return NextResponse.json({ error: "Failed to delete vendor" }, { status: 500 });

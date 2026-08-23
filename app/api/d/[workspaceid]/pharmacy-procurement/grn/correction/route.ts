@@ -7,12 +7,28 @@ import {
   stockTransactions,
 } from "@/lib/db/schema";
 import { eq, sql, desc, and, or, ilike } from "drizzle-orm";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ workspaceid: string }> }
 ) {
   const { workspaceid } = await params;
+
+  // This route had no authentication at all: the facility's data was
+  // served to anyone who could type the URL. Who you are, whether you
+  // belong here, and only then the data.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
   const q = (req.nextUrl.searchParams.get("q") ?? "").toLowerCase();
   const dateFrom = req.nextUrl.searchParams.get("dateFrom") ?? "";
   const dateTo = req.nextUrl.searchParams.get("dateTo") ?? "";
@@ -63,6 +79,7 @@ export async function GET(
     console.error("GET correction search error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }
 
 export async function POST(
@@ -70,6 +87,19 @@ export async function POST(
   { params }: { params: Promise<{ workspaceid: string }> }
 ) {
   const { workspaceid } = await params;
+
+  // This route had no authentication at all: the facility's data was
+  // served to anyone who could type the URL. Who you are, whether you
+  // belong here, and only then the data.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
 
   try {
     const body = await req.json();
@@ -242,4 +272,5 @@ export async function POST(
     console.error("POST correction error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }

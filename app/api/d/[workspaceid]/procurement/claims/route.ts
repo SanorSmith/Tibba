@@ -4,6 +4,9 @@ import { supplierClaims, grnItems, vendors } from '@/lib/db/schema';
 import { eq, and, desc, like, or, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import type { CreateSupplierClaimRequest, UpdateSupplierClaimRequest } from '@/lib/types/procurement';
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // GET /api/d/[workspaceid]/procurement/claims - List claims with filters
 export async function GET(
@@ -12,6 +15,19 @@ export async function GET(
 ) {
   try {
     const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const searchParams = req.nextUrl.searchParams;
 
     const status = searchParams.get('status') as any;
@@ -77,6 +93,7 @@ export async function GET(
       .orderBy(desc(supplierClaims.claimdate));
 
     return NextResponse.json(claims);
+    });
   } catch (error) {
     console.error('Error fetching supplier claims:', error);
     return NextResponse.json({ error: 'Failed to fetch supplier claims' }, { status: 500 });
@@ -100,6 +117,19 @@ export async function POST(
 ) {
   try {
     const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const validated = createClaimSchema.parse(body);
 
@@ -128,6 +158,7 @@ export async function POST(
       ...newClaim,
       amountclaimed: parseFloat(newClaim.amountclaimed || '0'),
     }, { status: 201 });
+    });
   } catch (error) {
     console.error('Error creating supplier claim:', error);
     if (error instanceof z.ZodError) {

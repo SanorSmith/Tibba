@@ -10,12 +10,28 @@ import { requireFinancePermission } from "@/lib/finance/permissions";
 import { SeedCOASchema } from "@/lib/finance/validation";
 import { handleFinanceApiError } from "@/lib/finance/errors";
 import { seedCOA } from "@/lib/finance/services/coa-service";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 type RouteParams = { params: Promise<{ workspaceid: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:write"
@@ -35,6 +51,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     return handleFinanceApiError(error, "POST /finance/accounts/seed");
   }

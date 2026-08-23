@@ -6,10 +6,30 @@ import { eq } from "drizzle-orm";
 // PDF generation libraries
 import jsPDF from "jspdf";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ workspaceid: string }> }
+) {
   try {
+    const { workspaceid } = await params;
     const { orderId, patientId } = await request.json();
+
+    // This route had no authentication at all, and it prints a patient's
+    // medication guide. Who you are, whether you belong to this pharmacy,
+    // and only then the document.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     if (!orderId) {
       return NextResponse.json(
@@ -64,6 +84,8 @@ export async function POST(request: NextRequest) {
       filename: `medication-guide-${orderId.slice(0, 8)}.pdf`
     });
 
+
+    });
   } catch (error) {
     console.error("[Medication Guide PDF]", error);
     return NextResponse.json(

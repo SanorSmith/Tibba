@@ -13,6 +13,9 @@ import {
   reopenPeriod,
 } from "@/lib/finance/services/period-service";
 import { z } from "zod";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 type RouteParams = {
   params: Promise<{ workspaceid: string; periodid: string }>;
@@ -25,6 +28,19 @@ const UpdatePeriodSchema = z.object({
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid, periodid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(workspaceid, "finance:periods:read");
     if (auth instanceof NextResponse) return auth;
 
@@ -34,6 +50,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ period });
+    });
   } catch (error) {
     return handleFinanceApiError(error, "GET /finance/periods/[id]");
   }
@@ -42,6 +59,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid, periodid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(workspaceid, "finance:periods:close");
     if (auth instanceof NextResponse) return auth;
 
@@ -56,6 +86,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ period });
+    });
   } catch (error) {
     return handleFinanceApiError(error, "PUT /finance/periods/[id]");
   }
