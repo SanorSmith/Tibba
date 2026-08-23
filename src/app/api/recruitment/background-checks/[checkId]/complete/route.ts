@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +15,15 @@ export async function POST(
     
     // The record must belong to the caller’s facility; every statement
     // below is keyed off this id.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const owns = await query(
       'SELECT 1 FROM background_checks WHERE check_id = $1 AND workspaceid = $2',
       [checkId, workspaceId]
@@ -56,6 +62,7 @@ export async function POST(
       success: true,
       data: updateResult.rows[0],
       message: `Background check completed: ${checkResult}`
+    });
     });
   } catch (error: any) {
     console.error('Complete background check error:', error);

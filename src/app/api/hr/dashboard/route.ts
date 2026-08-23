@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,13 @@ export async function GET(request: NextRequest) {
 
   // Every tile below is a cross-table count, so each query is restricted to
   // the caller's facility rather than summing the whole platform.
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   const emp = await safe(async () => {
     const r = await pool.query(`
@@ -114,5 +120,6 @@ export async function GET(request: NextRequest) {
     payroll,
     pendingReviews,
     recognitions,
+  });
   });
 }

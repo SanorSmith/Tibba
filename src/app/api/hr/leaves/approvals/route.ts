@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import approvalWorkflow from '@/lib/services/leave-approval-workflow';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 export async function GET(request: NextRequest) {
@@ -12,10 +13,15 @@ export async function GET(request: NextRequest) {
 
     // The workflow service is keyed by these ids alone, so the facility check
     // has to happen here rather than inside it.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     if (leaveRequestId) {
       const owns = await pool.query(
         'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
@@ -60,6 +66,7 @@ export async function GET(request: NextRequest) {
       error: 'Missing required parameter: approver_id or leave_request_id',
     }, { status: 400 });
     
+    });
   } catch (error: any) {
     console.error('Error fetching approvals:', error);
     return NextResponse.json({
@@ -81,10 +88,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
     const owns = await pool.query(
       'SELECT 1 FROM leave_requests WHERE id = $1 AND workspaceid = $2',
       [leave_request_id, workspaceId]
@@ -146,6 +158,7 @@ export async function POST(request: NextRequest) {
       error: 'Invalid action. Supported actions: approve, reject',
     }, { status: 400 });
     
+    });
   } catch (error: any) {
     console.error('Error processing approval action:', error);
     return NextResponse.json({

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,13 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(req: NextRequest, { params }: Params) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     // Resolve the AP number for this invoice
@@ -66,4 +72,5 @@ export async function GET(req: NextRequest, { params }: Params) {
     console.error('[ap-invoices/journals GET]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }

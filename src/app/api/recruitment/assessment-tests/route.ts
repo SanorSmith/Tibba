@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +10,15 @@ export async function GET(request: NextRequest) {
   try {
     // Was supplied by the caller, so one facility could read or write
     // another's by passing its id.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const testType = searchParams.get('testType');
@@ -27,6 +33,7 @@ export async function GET(request: NextRequest) {
     const result = await query(sql, params);
 
     return NextResponse.json({ success: true, data: result.rows, count: result.rows.length });
+    });
   } catch (error: any) {
     console.error('Get assessment tests error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to fetch tests' }, { status: 500 });
@@ -38,10 +45,15 @@ export async function POST(request: NextRequest) {
   try {
     // Was supplied by the caller, so one facility could read or write
     // another's by passing its id.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const {
@@ -75,6 +87,7 @@ export async function POST(request: NextRequest) {
       data: result.rows[0],
       message: 'Assessment test created'
     }, { status: 201 });
+    });
   } catch (error: any) {
     console.error('Create assessment test error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to create test' }, { status: 500 });

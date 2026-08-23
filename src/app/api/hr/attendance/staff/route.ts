@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // =====================================================
@@ -9,10 +10,15 @@ import { pool } from '@/lib/db/pool';
 export async function GET(request: NextRequest) {
   try {
     // Attendance and the staff list behind it are facility-private.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staff_id');
@@ -141,6 +147,7 @@ export async function GET(request: NextRequest) {
       data: result.rows,
       count: result.rows.length,
     });
+    });
   } catch (error: any) {
     console.error('Error fetching staff attendance:', error);
     return NextResponse.json(
@@ -156,10 +163,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Punches may only be filed against this facility's own staff.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const {
@@ -348,6 +360,7 @@ export async function POST(request: NextRequest) {
         daily_summary: attendanceResult.rows[0],
       },
     });
+    });
   } catch (error: any) {
     console.error('Error recording attendance:', error);
     return NextResponse.json(
@@ -362,10 +375,15 @@ export async function POST(request: NextRequest) {
 // =====================================================
 export async function PUT(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('staff_id');
@@ -423,6 +441,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       data: result.rows,
       count: result.rows.length,
+    });
     });
   } catch (error: any) {
     console.error('Error fetching attendance transactions:', error);

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +18,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   // Approving or denying a pre-approval authorises spend, so it is limited to
   // the caller's own facility.
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const b = await req.json();
     const action = b.action;
@@ -52,4 +58,5 @@ export async function PUT(req: NextRequest, { params }: Params) {
     console.error('[pre-approvals PUT]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }

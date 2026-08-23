@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, transaction } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +10,15 @@ export async function GET(request: NextRequest) {
   try {
     // workspaceId was a query-string filter and optional, so omitting it
     // returned every facility's records.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId');
@@ -62,6 +68,7 @@ export async function GET(request: NextRequest) {
       data: result.rows,
       count: result.rows.length
     });
+    });
   } catch (error: any) {
     console.error('Get interviews error:', error);
     return NextResponse.json(
@@ -75,10 +82,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Facility comes from the session, never the request body.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const {
@@ -153,6 +165,7 @@ export async function POST(request: NextRequest) {
       data: result,
       message: 'Interview scheduled successfully'
     }, { status: 201 });
+    });
   } catch (error: any) {
     console.error('Schedule interview error:', error);
     return NextResponse.json(

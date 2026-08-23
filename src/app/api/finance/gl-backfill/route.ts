@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { postInvoicePayment } from '@/lib/gl-posting';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,13 @@ export async function POST(request: NextRequest) {
 
   // Backfill only the caller's facility. This used to sweep every invoice in
   // the database into one ledger regardless of which hospital issued it.
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   // Find PAID/PARTIAL invoices that have no matching POSTED journal entry
   const invoices = await pool.query(`
@@ -74,5 +80,6 @@ export async function POST(request: NextRequest) {
     skipped,
     errors,
     message: `Posted ${posted} journal entries. ${errors.length} errors.`,
+  });
   });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +16,13 @@ export async function GET(
 ) {
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const { id } = await params;
-  const workspaceId = getWorkspaceId(request);
+  const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
 
   try {
     const jeResult = await pool.query(
@@ -66,6 +72,7 @@ export async function GET(
       { status: 500 }
     );
   }
+  });
 }
 
 /**
@@ -81,8 +88,13 @@ export async function PUT(
 
   try {
     // Posting an entry commits it to a facility's ledger.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { action, posted_by } = body;
@@ -102,6 +114,7 @@ export async function PUT(
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+    });
   } catch (error) {
     console.error('[finance/journals/[id] PUT] error:', error);
     return NextResponse.json(

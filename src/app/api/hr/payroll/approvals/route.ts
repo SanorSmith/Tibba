@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
 
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'PENDING';
@@ -44,6 +50,7 @@ export async function GET(request: NextRequest) {
       data: result.rows,
     });
 
+    });
   } catch (error: any) {
     console.error('Approvals GET error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -52,10 +59,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { period_id } = body;
@@ -115,6 +127,7 @@ export async function POST(request: NextRequest) {
       approval_ids: insertedIds,
     });
 
+    });
   } catch (error: any) {
     console.error('Approvals POST error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -123,10 +136,15 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { approval_id, action, comments, approver_name } = body;
@@ -208,6 +226,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 
+    });
   } catch (error: any) {
     console.error('Approvals PUT error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

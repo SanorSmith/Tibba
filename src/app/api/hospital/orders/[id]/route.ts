@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Another facility's order must read as "not found".
-  const WS = getWorkspaceId(_req);
+  const WS = await getWorkspaceId(_req);
   if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(WS, async () => {
   try {
     const order = await pool.query(`SELECT * FROM hospital_orders WHERE id=$1 AND workspace_id=$2`, [id, WS]);
     if (order.rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -15,13 +21,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Refuse to mutate an order owned by a different facility.
-  const WS = getWorkspaceId(req);
+  const WS = await getWorkspaceId(req);
   if (!WS) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(WS, async () => {
   try {
     const owns = await pool.query(
       `SELECT 1 FROM hospital_orders WHERE id=$1 AND workspace_id=$2`,
@@ -95,4 +107,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     console.error("PATCH /api/hospital/orders/[id] error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }

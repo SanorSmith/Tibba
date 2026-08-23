@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -14,10 +15,15 @@ if (!databaseUrl) {
 
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     console.log('GET /api/invoice-returns - Request received');
     
@@ -153,6 +159,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    });
   } catch (error) {
     console.error('Error fetching invoice returns:', error);
     return NextResponse.json(
@@ -167,10 +174,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     console.log('POST /api/invoice-returns - Request received');
     
@@ -259,6 +271,7 @@ export async function POST(request: NextRequest) {
       data: newReturn
     }, { status: 201 });
 
+    });
   } catch (error) {
     // Rollback on error
     if (pool) {

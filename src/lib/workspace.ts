@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { verifySession } from './auth/session-token';
 
 /**
  * Facility (workspace) scoping for API routes.
@@ -23,22 +24,26 @@ export interface SessionInfo {
   role: string | null;
 }
 
-/** Decode the login session cookie. Returns null when absent or malformed. */
-export function readSession(request: NextRequest): SessionInfo | null {
+/**
+ * Verify the login session cookie. Returns null when absent, unsigned, or
+ * tampered with.
+ *
+ * This used to JSON.parse the cookie without checking anything, which meant
+ * the workspace id below — the value 181 routes scope their queries by — was
+ * whatever the caller wrote. Scoping to an attacker's choice of facility is
+ * not scoping.
+ */
+export async function readSession(request: NextRequest): Promise<SessionInfo | null> {
   const raw = request.cookies.get('tibbna_session')?.value;
-  if (!raw) return null;
-  try {
-    const s = JSON.parse(Buffer.from(raw, 'base64').toString('utf-8'));
-    return {
+  const s = await verifySession<Record<string, string | null>>(raw);
+  if (!s) return null;
+  return {
       workspaceId: s.workspaceId ?? null,
       workspaceName: s.workspaceName ?? null,
       userId: s.userId ?? null,
       email: s.email ?? null,
       role: s.role ?? null,
-    };
-  } catch {
-    return null;
-  }
+  };
 }
 
 /**
@@ -48,6 +53,6 @@ export function readSession(request: NextRequest): SessionInfo | null {
  * "show nothing" rather than "show everything", so a missing cookie can never
  * silently widen access to every facility's data.
  */
-export function getWorkspaceId(request: NextRequest): string | null {
-  return readSession(request)?.workspaceId ?? null;
+export async function getWorkspaceId(request: NextRequest): Promise<string | null> {
+  return (await readSession(request))?.workspaceId ?? null;
 }

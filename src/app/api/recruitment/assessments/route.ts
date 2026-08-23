@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
 // GET - List candidate assessments
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId');
@@ -40,6 +46,7 @@ export async function GET(request: NextRequest) {
     const result = await query(sql, params);
 
     return NextResponse.json({ success: true, data: result.rows, count: result.rows.length });
+    });
   } catch (error: any) {
     console.error('Get assessments error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to fetch assessments' }, { status: 500 });
@@ -49,10 +56,15 @@ export async function GET(request: NextRequest) {
 // POST - Assign assessment to candidate
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const body = await request.json();
     const { applicationId, testId, dueDate } = body;
@@ -108,6 +120,7 @@ export async function POST(request: NextRequest) {
       data: result.rows[0],
       message: 'Assessment assigned to candidate'
     }, { status: 201 });
+    });
   } catch (error: any) {
     console.error('Assign assessment error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to assign assessment' }, { status: 500 });

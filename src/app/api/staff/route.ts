@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -80,10 +81,15 @@ export async function GET(request: NextRequest) {
 
     // Staff rosters are facility-private — this route returned every
     // facility's staff to every caller.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const searchTerm = searchParams.get('q') || '';
@@ -252,6 +258,7 @@ export async function GET(request: NextRequest) {
       count: result.rows.length
     });
 
+    });
   } catch (error) {
     console.error('Error fetching staff:', error);
     
@@ -267,10 +274,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const sessionWorkspaceId = getWorkspaceId(request);
+    const sessionWorkspaceId = await getWorkspaceId(request);
     if (!sessionWorkspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(sessionWorkspaceId, async () => {
     if (!pool) {
       return NextResponse.json(
         { 
@@ -575,6 +587,7 @@ export async function POST(request: NextRequest) {
       client.release();
     }
 
+    });
   } catch (error) {
     console.error('Error creating staff member:', error);
     
@@ -613,10 +626,15 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const updateWorkspaceId = getWorkspaceId(request);
+    const updateWorkspaceId = await getWorkspaceId(request);
     if (!updateWorkspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(updateWorkspaceId, async () => {
     if (!pool) {
       return NextResponse.json(
         { 
@@ -870,6 +888,7 @@ export async function PUT(request: NextRequest) {
       client.release();
     }
 
+    });
   } catch (error) {
     console.error('Error updating staff member:', error);
     
@@ -895,10 +914,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const deleteWorkspaceId = getWorkspaceId(request);
+    const deleteWorkspaceId = await getWorkspaceId(request);
     if (!deleteWorkspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(deleteWorkspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const staffId = searchParams.get('staffId');
@@ -943,6 +967,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Staff member deleted successfully'
     });
 
+    });
   } catch (error) {
     console.error('Error deleting staff member:', error);
     

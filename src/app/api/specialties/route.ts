@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -23,10 +24,15 @@ function generateUUID(): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -88,6 +94,7 @@ export async function GET(request: NextRequest) {
       count: result.rows.length
     });
 
+    });
   } catch (error) {
     console.error('Error fetching specialties:', error);
     
@@ -103,10 +110,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -175,6 +187,7 @@ export async function POST(request: NextRequest) {
       data: newSpecialty.rows[0]
     });
 
+    });
   } catch (error) {
     console.error('Error creating specialty:', error);
     

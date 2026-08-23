@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { id } = await params;
   // Scoped to the caller's facility — another hospital's service must read
   // as "not found".
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const r = await pool.query(
       `SELECT id, code, name, name_ar, category, subcategory, description,
@@ -67,6 +73,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     console.error('[services/[id] GET]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
@@ -74,8 +81,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const { id } = await params;
   // Scoped to the caller's facility — another hospital's service must read
   // as "not found".
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     const body = await req.json();
     const {
@@ -125,6 +137,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     console.error('[services/[id] PUT]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
@@ -132,8 +145,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params;
   // Scoped to the caller's facility — another hospital's service must read
   // as "not found".
-  const workspaceId = getWorkspaceId(req);
+  const workspaceId = await getWorkspaceId(req);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(workspaceId, async () => {
   try {
     // Soft-delete: set active = false
     const result = await pool.query(
@@ -152,4 +170,5 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     console.error('[services/[id] DELETE]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
+  });
 }

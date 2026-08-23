@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 // GET - Auto-suggest employees for recognition
@@ -8,10 +9,15 @@ export async function GET(request: NextRequest) {
   try {
     // All four suggestion queries below sweep the staff table, so each one
     // is restricted to the caller's facility.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const suggestions = [];
 
@@ -153,6 +159,7 @@ export async function GET(request: NextRequest) {
       message: `Found ${suggestions.length} recognition suggestions`
     });
 
+    });
   } catch (error: any) {
     console.error('Error generating recognition suggestions:', error);
     return NextResponse.json(

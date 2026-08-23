@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +21,15 @@ export async function GET(request: NextRequest) {
     //   ?from=YYYY-MM-DD → lower bound (combined with `to` gives period activity, for Income Statement)
     // The chart of accounts is per facility, and so are the journal entries
     // its balances are computed from.
-    const workspaceId = getWorkspaceId(request);
+    const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from');
@@ -74,6 +80,7 @@ export async function GET(request: NextRequest) {
       data: result.rows,
       count: result.rows.length,
     });
+    });
   } catch (error) {
     console.error('[finance/accounts GET] error:', error);
     return NextResponse.json(
@@ -108,10 +115,15 @@ export async function POST(request: NextRequest) {
     // The chart of accounts belongs to the caller's facility. This used to
     // accept workspace_id from the request body, letting a client write an
     // account into another hospital's ledger.
-    const workspace_id = getWorkspaceId(request);
+    const workspace_id = await getWorkspaceId(request);
     if (!workspace_id) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
+
+    // Carries this facility on the connection, so row-level security
+    // scopes every query below in the database rather than relying on
+    // each one remembering its WHERE clause.
+    return withTenant(workspace_id, async () => {
 
     if (!account_code || !account_name || !account_type) {
       return NextResponse.json(
@@ -152,6 +164,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ success: true, data: result.rows[0] }, { status: 201 });
+    });
   } catch (error) {
     console.error('[finance/accounts POST] error:', error);
     return NextResponse.json(

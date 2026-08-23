@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { postPayroll } from '@/lib/gl-posting';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,13 @@ export async function POST(request: NextRequest) {
   if (!pool) return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
 
   // Backfill only the caller’s facility payroll, not every hospital’s.
-  const ws = getWorkspaceId(request);
+  const ws = await getWorkspaceId(request);
   if (!ws) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  // Carries this facility on the connection, so row-level security
+  // scopes every query below in the database rather than relying on
+  // each one remembering its WHERE clause.
+  return withTenant(ws, async () => {
 
   // Periods that have payroll transactions
   const periods = await pool.query(`
@@ -74,5 +80,6 @@ export async function POST(request: NextRequest) {
     posted,
     errors,
     message: `Posted payroll GL entries for ${posted} period(s). ${errors.length} errors.`,
+  });
   });
 }
