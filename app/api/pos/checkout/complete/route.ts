@@ -20,6 +20,8 @@ import { PHARMACY_ITEM_STATUS, type PharmacyItemStatus } from "@/lib/db/tables/p
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const saleItemSchema = z.object({
   drugId: z.string().uuid().optional().nullable(),
@@ -85,6 +87,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = checkoutSchema.parse(body);
+
+    // The schema proves the id is a uuid, not that the caller belongs
+    // to it — that is a separate question, and this is where it is asked.
+    if (!(await isWorkspaceMember(user.userid, data.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(data.workspaceId, async () => {
 
     // Run migration to drop FK constraint if it exists (one-time)
     try {
@@ -547,6 +557,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     console.error("[POS Checkout] Error:", error);
     console.error("[POS Checkout] Error details:", JSON.stringify(error, null, 2));

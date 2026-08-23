@@ -11,6 +11,8 @@ import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { eq, and, sql } from "drizzle-orm";
 import { autoFlagResult } from "@/lib/lims/auto-flag";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const bulkResultSchema = z.object({
   sampleid: z.string().uuid(),
@@ -35,6 +37,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = bulkResultSchema.parse(body);
+
+    // The schema proves the id is a uuid, not that the caller belongs
+    // to it — that is a separate question, and this is where it is asked.
+    if (!(await isWorkspaceMember(user.userid, validatedData.workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(validatedData.workspaceid, async () => {
 
     const now = new Date();
 
@@ -120,6 +130,7 @@ export async function POST(request: NextRequest) {
       success: true,
       results: createdResults,
       message: `${createdResults.length} test results created successfully`,
+    });
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
