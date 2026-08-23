@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { OpenEHRResultSubmissionService } from "@/lib/lims/openehr-result-submission";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 /**
  * POST /api/lims/samples/[sampleid]/submit-results
@@ -19,6 +22,18 @@ export async function POST(
     }
 
     const { sampleid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("accession_sample", sampleid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Sample not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
     const { overrideStatus } = body;
 
@@ -49,6 +64,7 @@ export async function POST(
       success: true,
       compositionUid: result.compositionUid,
       message: "Results successfully submitted to OpenEHR",
+    });
     });
   } catch (error) {
     console.error("Error submitting results to OpenEHR:", error);

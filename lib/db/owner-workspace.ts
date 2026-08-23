@@ -19,7 +19,12 @@ export type OwnedRecord =
   | "pos_sale"
   | "pos_shift"
   | "pos_return"
-  | "accession_sample";
+  | "accession_sample"
+  | "worklist"
+  | "sample_storage"
+  | "storage_location"
+  | "pharmacy_order"
+  | "pharmacy";
 
 export async function ownerWorkspaceOf(
   kind: OwnedRecord,

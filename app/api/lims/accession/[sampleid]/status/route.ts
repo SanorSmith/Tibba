@@ -8,6 +8,9 @@ import {
   ACCESSION_AUDIT_ACTIONS,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 // PATCH - Update sample status and location
 export async function PATCH(
@@ -21,6 +24,18 @@ export async function PATCH(
     }
 
     const { sampleid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("accession_sample", sampleid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Sample not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
     const { status, location, reason } = body;
 
@@ -101,6 +116,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       sample: result,
+    });
     });
   } catch (error) {
     console.error("Sample status update error:", error);

@@ -3,6 +3,9 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { worklists, worklistItems, validationStates } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 /**
  * Check if all items in a worklist are released and update status to COMPLETED if so
@@ -18,6 +21,18 @@ export async function POST(
     }
 
     const { worklistid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("worklist", worklistid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Worklist not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Get all worklist items
     const items = await db
@@ -76,6 +91,7 @@ export async function POST(
       success: true,
       message: "Not all items are released yet",
       allReleased: false,
+    });
     });
   } catch (error) {
     console.error("Error checking worklist completion:", error);

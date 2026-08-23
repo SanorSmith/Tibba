@@ -18,6 +18,9 @@ import { drugs } from "@/lib/db/tables/pharmacy-drugs";
 import * as schema from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 type RouteParams = { params: Promise<{ orderId: string }> };
 
@@ -29,6 +32,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { orderId } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("pharmacy_order", orderId);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Get order
     const [order] = await db
@@ -164,6 +179,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       order,
       items: orderItems,
       patient,
+    });
     });
   } catch (error) {
     console.error("[POS Order Details]", error);

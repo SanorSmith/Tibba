@@ -9,6 +9,9 @@ import { posShifts, posSales, posPayments } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 type RouteParams = { params: Promise<{ shiftId: string }> };
 
@@ -25,6 +28,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { shiftId } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("pos_shift", shiftId);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Shift not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
     const data = closeShiftSchema.parse(body);
 
@@ -126,6 +141,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         insuranceSales,
         creditSales,
       },
+    });
     });
   } catch (error) {
     console.error("[POS Close Shift]", error);
