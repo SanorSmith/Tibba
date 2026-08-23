@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function DrugSearch({ onAddToCart }: Props) {
+  const workspaceid = useParams().workspaceid as string;
   const [query, setQuery] = useState("");
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ export function DrugSearch({ onAddToCart }: Props) {
     setSearched(true);
     try {
       const res = await fetch(
-        `/api/pos/search?q=${encodeURIComponent(query)}&type=drug`
+        `/api/pos/search?workspaceid=${workspaceid}&q=${encodeURIComponent(query)}&type=drug`
       );
       if (!res.ok) throw new Error();
       const data = await res.json();

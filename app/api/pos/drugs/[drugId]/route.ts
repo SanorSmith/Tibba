@@ -12,6 +12,8 @@ import { drugs } from "@/lib/db/tables/pharmacy-drugs";
 import { items, itemBatches, inventoryStock } from "@/lib/db/schema";
 import { eq, and, or, sql, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 type RouteParams = { params: Promise<{ drugId: string }> };
 
@@ -23,6 +25,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { drugId } = await params;
+
+    // This route sits outside /d/[workspaceid], so the facility it acts
+    // for has to be named explicitly — and proved, since it is caller input.
+    const workspaceid = request.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Try to find the item — by items.id first, then by items.drug_id
     let [item] = await db
@@ -104,6 +115,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         inStockBatches.length > 0 ? inStockBatches[0].sellingprice : null,
       recommendedBatchId:
         inStockBatches.length > 0 ? inStockBatches[0].batchid : null,
+    });
     });
   } catch (error) {
     console.error("[POS Drug Details]", error);

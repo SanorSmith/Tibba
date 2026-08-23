@@ -13,6 +13,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 type RouteParams = { params: Promise<{ patientId: string }> };
 
@@ -24,6 +26,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { patientId } = await params;
+
+    // This route sits outside /d/[workspaceid], so the facility it acts
+    // for has to be named explicitly — and proved, since it is caller input.
+    const workspaceid = request.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Get patient details
     const [patient] = await db
@@ -66,6 +77,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       dispensedOrders,
       creditAccount: creditAccount || null,
       insurance: insuranceInfo,
+    });
     });
   } catch (error) {
     console.error("[POS Patient Lookup]", error);

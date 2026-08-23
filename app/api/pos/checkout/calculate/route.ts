@@ -11,6 +11,8 @@ import { insuranceCompanies, inventoryStock } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const calculateSchema = z.object({
   items: z.array(
@@ -34,6 +36,15 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // This route sits outside /d/[workspaceid], so the facility it acts
+    // for has to be named explicitly — and proved, since it is caller input.
+    const workspaceid = request.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const data = calculateSchema.parse(body);
@@ -137,6 +148,7 @@ export async function POST(request: NextRequest) {
       total: parseFloat(total.toFixed(2)),
       itemCount: data.items.length,
       stockWarnings: stockWarnings.length > 0 ? stockWarnings : undefined,
+    });
     });
   } catch (error) {
     console.error("[POS Calculate]", error);
