@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 import {
   getOpenEHREHRBySubjectId,
   createOpenEHRComposition,
@@ -478,6 +479,15 @@ export async function POST(
       "template_clinical_encounter_v2",
       compositionData
     );
+
+    // Record the owning facility where it can be enforced. Without this
+    // the only trace of who a composition belongs to is prose inside
+    // the document, which a wording change would silently break.
+    await recordCompositionOwner({
+      compositionUid: compositionId,
+      workspaceId: workspaceid,
+      patientId: patientid,
+    });
 
     console.log(`Created lab order composition: ${compositionId}`);
 

@@ -21,6 +21,7 @@ import { patients } from "@/lib/db/tables/patient";
 import { Pool } from "pg";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 // UUID validation function
 function isValidUUID(uuid: string): boolean {
@@ -566,6 +567,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             "template_medication_dispense_v1", // Template ID
             compositionData
           );
+
+          // Record the owning facility where it can be enforced. Without this
+          // the only trace of who a composition belongs to is prose inside
+          // the document, which a wording change would silently break.
+          await recordCompositionOwner({
+            compositionUid: compositionUid,
+            workspaceId: workspaceid,
+            patientId: null,
+          });
 
           dispenseCompositionUid = compositionUid;
           

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { getOpenEHRTestOrders, TestOrderRecord, createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 interface EnrichedTestOrder extends TestOrderRecord {
   patient_id: string;
@@ -199,6 +200,15 @@ export async function POST(
       'template_clinical_encounter_v2.opt',
       compositionData
     );
+
+    // Record the owning facility where it can be enforced. Without this
+    // the only trace of who a composition belongs to is prose inside
+    // the document, which a wording change would silently break.
+    await recordCompositionOwner({
+      compositionUid: result,
+      workspaceId: workspaceid,
+      patientId: null,
+    });
 
     return NextResponse.json({
       success: true,

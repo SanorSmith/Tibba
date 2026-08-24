@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 import {
   getOpenEHREHRBySubjectId,
   createOpenEHRComposition,
@@ -660,6 +661,15 @@ export async function PUT(
         "template_clinical_encounter_v1",
         compositionData
       );
+
+      // Record the owning facility where it can be enforced. Without this
+      // the only trace of who a composition belongs to is prose inside
+      // the document, which a wording change would silently break.
+      await recordCompositionOwner({
+        compositionUid: newCompositionUid,
+        workspaceId: workspaceid,
+        patientId: patientid,
+      });
 
       // Note: Old composition is preserved for history/version control
       // It will be filtered out from the main diagnosis list by checking for newer versions

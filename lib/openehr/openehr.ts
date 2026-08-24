@@ -443,22 +443,17 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
 ): Promise<Array<TestOrderRecord & { ehr_id: string; subject_id: string }>> {
   console.log(`[getOpenEHRTestOrdersForLabWorkspace] Searching for orders targeted to lab ${labWorkspaceId}`);
 
-  // Ask Postgres first which compositions this lab may see. Under row-level
-  // security that answer is the database's, not this function's — where the
-  // old behaviour was to pull every composition in the instance and drop the
-  // unwanted ones here, which made the separation a property of a regex.
+  // Which compositions Postgres records as this lab's. Ownership is treated
+  // as an *additional* way to qualify, never as the only one: the table was
+  // introduced after these documents existed, so a composition missing from
+  // it is unrecorded, not unowned. Narrowing the query to owned ids would
+  // therefore hide real orders — silently, since a lab cannot tell an empty
+  // list from a filtered one.
   //
-  // Null means nothing is recorded for this lab yet, which is not the same as
-  // "nothing is yours": orders written before ownership was tracked are not
-  // in that table at all. In that case the query stays as it was and the
-  // Description filter below still applies, so existing orders keep showing.
+  // Once every composition has an owner this can become a WHERE clause and
+  // stop pulling the whole instance. Until then, correctness first.
   const ownedUids = await ownedCompositionUids(labWorkspaceId);
-  const uidFilter =
-    ownedUids && ownedUids.length > 0
-      ? `AND c/uid/value MATCHES {${ownedUids
-          .map((u) => `'${u.replace(/'/g, "''")}'`)
-          .join(", ")}}`
-      : "";
+  const owned = new Set(ownedUids ?? []);
 
   const query = `SELECT
     c/uid/value as composition_uid,
@@ -471,7 +466,6 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
     CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.encounter.v1]
   WHERE
     c/archetype_details/template_id/value = 'template_clinical_encounter_v1'
-    ${uidFilter}
   ORDER BY
     c/context/start_time/value DESC`;
 
@@ -496,8 +490,11 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
         const labWorkspaceMatch = description.match(/LabWorkspaceId:\s*([a-f0-9-]+)/i);
         const matchedLabWorkspaceId = labWorkspaceMatch?.[1]?.trim();
 
-        // Only interested in orders explicitly routed to this lab
-        if (!matchedLabWorkspaceId || matchedLabWorkspaceId !== labWorkspaceId) {
+        // Either signal qualifies it: the database says this lab owns it, or
+        // the document still carries the routing the clinician chose.
+        const ownedByThisLab = owned.has(String(row.composition_uid));
+        const routedToThisLab = matchedLabWorkspaceId === labWorkspaceId;
+        if (!ownedByThisLab && !routedToThisLab) {
           continue;
         }
         console.log(`[getOpenEHRTestOrdersForLabWorkspace] Found lab-targeted order composition ${row.composition_uid} for subject ${row.subject_id}`);

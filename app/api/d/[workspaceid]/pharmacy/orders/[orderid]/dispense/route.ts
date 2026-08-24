@@ -9,6 +9,7 @@ import { createMedicationDispenseComposition, MEDICATION_DISPENSE_ACTION_STATES 
 import { createOpenEHRComposition, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 /**
  * POST /api/d/[workspaceid]/pharmacy/orders/[orderid]/dispense
@@ -148,6 +149,15 @@ export async function POST(
         "template_medication_dispense_v1",
         compositionData as Record<string, unknown>
       );
+
+      // Record the owning facility where it can be enforced. Without this
+      // the only trace of who a composition belongs to is prose inside
+      // the document, which a wording change would silently break.
+      await recordCompositionOwner({
+        compositionUid: compositionUid,
+        workspaceId: workspaceid,
+        patientId: null,
+      });
 
       dispenseCompositionUids.push(compositionUid);
 
