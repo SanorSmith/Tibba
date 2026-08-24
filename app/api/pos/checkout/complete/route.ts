@@ -96,16 +96,12 @@ export async function POST(request: NextRequest) {
 
     return withTenant(data.workspaceId, async () => {
 
-    // Run migration to drop FK constraint if it exists (one-time)
-    try {
-      await db.execute(sql`
-        ALTER TABLE pos_sale_items DROP CONSTRAINT IF EXISTS pos_sale_items_batchid_drug_batches_batchid_fk
-      `);
-      console.log("[POS Checkout] Migration: Dropped FK constraint on pos_sale_items.batchid");
-    } catch (error) {
-      // Ignore error if constraint doesn't exist or migration already run
-      console.log("[POS Checkout] Migration skipped:", error instanceof Error ? error.message : String(error));
-    }
+    // A one-time migration used to run here on every checkout: an
+    // ALTER TABLE dropping a foreign key, wrapped in a try/catch. The catch
+    // could not have helped — this is inside withTenant, so a failed
+    // statement aborts the transaction and every query after it fails too.
+    // Under the restricted role that would have broken checkout entirely.
+    // The constraint was dropped long ago; the statement was a no-op.
 
     // Validate: payments total must match sale total
     const paymentsTotal = data.payments.reduce((sum, p) => sum + p.amount, 0);
