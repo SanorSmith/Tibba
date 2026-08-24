@@ -19,5 +19,7 @@ export const pharmacies = pgTable("pharmacies", {
   updatedat: timestamp("updatedat").defaultNow().notNull(),
 });
 
+
+
 export type Pharmacy = typeof pharmacies.$inferSelect;
 export type NewPharmacy = typeof pharmacies.$inferInsert;
