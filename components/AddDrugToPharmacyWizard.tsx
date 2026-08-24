@@ -254,7 +254,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
   useEffect(() => {
     fetch("/api/pharmacy/suppliers").then(r=>r.json()).then(d=>setSuppliers(Array.isArray(d)?d:[]));
     fetch("/api/pharmacy/manufacturers").then(r=>r.json()).then(d=>setManufacturers(Array.isArray(d)?d:[]));
-    fetch("/api/pharmacy/storage").then(r=>r.json()).then(d=>{
+    fetch(`/api/pharmacy/storage?workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>{
       setStorageLocations(Array.isArray(d)?d:[]);
       setExistingShelves(Array.isArray(d)?d.map((s:any)=>s.name):[]);
     });
@@ -313,6 +313,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
             itemId: existingItem.id,
             warehouseId: form.warehouseid,
             adjustmentQty: parseInt(form.initial_quantity)||0,
+            workspaceid,
             reason: "Stock update via Add Medicine",
             createdBy: "Pharmacy",
             unitCost: form.unit_cost ? parseFloat(form.unit_cost) : null,

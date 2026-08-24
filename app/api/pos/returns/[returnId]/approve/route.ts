@@ -148,11 +148,13 @@ export async function POST(
               // Create stock_transaction audit record
               await db.execute(sql`
                 INSERT INTO stock_transactions (
+                  workspace_id,
                   item_id, warehouse_id, batch_id,
                   transaction_type, quantity,
                   reference_type, reference_id,
                   notes, created_by
                 ) VALUES (
+                  ${workspaceid},
                   ${itemId}, ${warehouseId}, ${item.batchid},
                   'RETURN', ${item.quantityreturned},
                   'POS_RETURN', ${returnId},

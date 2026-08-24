@@ -349,6 +349,7 @@ export async function POST(request: NextRequest) {
           // Create stock_transaction audit record
           await tx.execute(sql`
             INSERT INTO stock_transactions (
+              workspace_id,
               item_id,
               warehouse_id,
               batch_id,
@@ -360,6 +361,7 @@ export async function POST(request: NextRequest) {
               created_by
             )
             VALUES (
+              ${data.workspaceId},
               ${resolvedItemId},
               ${warehouseIdForDeduction},
               ${finalBatchId},

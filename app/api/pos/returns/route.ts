@@ -217,11 +217,13 @@ export async function POST(request: NextRequest) {
               // Create stock_transaction audit record
               await db.execute(sql`
                 INSERT INTO stock_transactions (
+                  workspace_id,
                   item_id, warehouse_id, batch_id,
                   transaction_type, quantity,
                   reference_type, reference_id,
                   notes, created_by
                 ) VALUES (
+                  ${data.workspaceId},
                   ${itemId}, ${warehouseId}, ${item.batchId},
                   'RETURN', ${item.quantityReturned},
                   'POS_RETURN', ${returnRecord.returnid},

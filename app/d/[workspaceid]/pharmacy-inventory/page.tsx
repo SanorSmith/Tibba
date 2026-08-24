@@ -212,6 +212,7 @@ function DropdownMenu({ label, isOpen, onToggle, onClose, children }: { label: s
 
 // ── Item Modal ─────────────────────────────────────────────────────────────────
 function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { item?: any; onClose: ()=>void; onSuccess: ()=>void; manufacturers?: any[]; warehouses?: any[] }) {
+  const workspaceid = useParams().workspaceid as string;
   const isEdit = !!item;
   const ITEM_TYPES = ["device","cosmetic","cream","supplement","personal_care","baby_care","herbal","medical_supply","consumable","other"];
   const [form, setForm] = useState({
@@ -242,8 +243,8 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   useEffect(() => {
-    fetch('/api/pharmacy/storage').then(r=>r.json()).then(d=>setStorageLocations(Array.isArray(d)?d:[]));
-  }, []);
+    fetch(`/api/pharmacy/storage?workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>setStorageLocations(Array.isArray(d)?d:[]));
+  }, [workspaceid]);
 
   const handleSave = async () => {
     if (!form.name.trim() || (!isEdit && !form.itemcode.trim())) { setError("Name and item code are required"); return; }
@@ -819,7 +820,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
   }, [mfgSearch]);
 
   const fetchStorage = useCallback(async () => {
-    const res = await fetch("/api/pharmacy/storage");
+    const res = await fetch(`/api/pharmacy/storage?workspaceid=${workspaceid}`);
     const data = await res.json();
     setStorageLocations(Array.isArray(data)?data:[]);
   }, []);
@@ -1899,10 +1900,10 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                   <button onClick={()=>{setStorageModal(null);setStorageRow(null);}} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Cancel</button>
                   <button onClick={async()=>{
                     if (!storageForm.name.trim()) { showToast("Name required"); return; }
-                    const url = storageModal==="edit"?`/api/pharmacy/storage/${storageRow.id}`:"/api/pharmacy/storage";
+                    const url = storageModal==="edit"?`/api/pharmacy/storage/${storageRow.id}`:`/api/pharmacy/storage`;
                     const method = storageModal==="edit"?"PATCH":"POST";
                     setStorageModal(null); setStorageRow(null);
-                    const res = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(storageForm)});
+                    const res = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({...storageForm, workspaceid})});
                     if (res.ok) { fetchStorage(); showToast(storageModal==="edit"?"Updated!":"Added!"); }
                     setStorageForm({name:"",location:"",type:"shelf",temperature:"",notes:""});
                   }} style={s.btn("purple")}>{storageModal==="edit"?"Save Changes":"Add Location"}</button>

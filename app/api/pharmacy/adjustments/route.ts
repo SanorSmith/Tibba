@@ -4,6 +4,8 @@ import crypto from "crypto";
 import { db } from "@/lib/db";
 import { stockTransactions } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -56,10 +58,19 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { itemId, warehouseId, batchId, adjustmentQty, reason, createdBy, unitCost, sellingPrice, batchNumber, expiryDate, itemType, manufacturer } = body;
+  const { itemId, warehouseId, batchId, adjustmentQty, reason, createdBy, unitCost, sellingPrice, batchNumber, expiryDate, itemType, manufacturer, workspaceid } = body;
 
   if (!itemId || !warehouseId || adjustmentQty == null || adjustmentQty === "" || !reason)
     return NextResponse.json({ error: "Item, warehouse, quantity and reason are required" }, { status: 400 });
+
+  // The stock rows written below record which facility they belong to, so the
+  // facility has to be named and proved. Without it these inserts left the
+  // tenant column null, which is why the NOT NULL on those tables is relaxed.
+  if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
 
   // Verify item exists
   const itemCheck = await pool.query(
@@ -95,9 +106,9 @@ export async function POST(req: NextRequest) {
   }
 
   await pool.query(
-    `INSERT INTO stock_adjustments (id, item_id, warehouse_id, batch_id, quantity, reason, created_by, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
-    [adjId, itemId, warehouseId, batchId ?? null, parseInt(adjustmentQty), reason, createdBy ?? "Pharmacy"]
+    `INSERT INTO stock_adjustments (id, workspace_id, item_id, warehouse_id, batch_id, quantity, reason, created_by, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+    [adjId, workspaceid, itemId, warehouseId, batchId ?? null, parseInt(adjustmentQty), reason, createdBy ?? "Pharmacy"]
   );
 
   // Update or insert inventory_stock
@@ -170,10 +181,11 @@ export async function POST(req: NextRequest) {
   // Log transaction (use STOCK_IN for positive, STOCK_OUT for negative)
   const transactionType = parseInt(adjustmentQty) > 0 ? 'STOCK_IN' : 'STOCK_OUT';
   await pool.query(
-    `INSERT INTO stock_transactions (id, item_id, warehouse_id, batch_id, transaction_type, quantity, notes, created_by, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-    [crypto.randomUUID(), itemId, warehouseId, batchId ?? null, transactionType, Math.abs(parseInt(adjustmentQty)), reason, createdBy ?? "Pharmacy"]
+    `INSERT INTO stock_transactions (id, workspace_id, item_id, warehouse_id, batch_id, transaction_type, quantity, notes, created_by, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
+    [crypto.randomUUID(), workspaceid, itemId, warehouseId, batchId ?? null, transactionType, Math.abs(parseInt(adjustmentQty)), reason, createdBy ?? "Pharmacy"]
   );
 
   return NextResponse.json({ success: true, id: adjId });
+  });
 }

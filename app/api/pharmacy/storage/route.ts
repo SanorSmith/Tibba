@@ -2,6 +2,8 @@ import { Pool } from "pg";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
@@ -15,6 +17,16 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Storage sections belong to a facility's warehouse, so the listing has
+    // to say which facility is asking. Without it this returned every
+    // pharmacy's sections to everyone.
+    const workspaceid = req.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     const search = req.nextUrl.searchParams.get("search") ?? "";
     const r = await pool.query(
@@ -30,12 +42,14 @@ export async function GET(req: NextRequest) {
       FROM warehouse_sections ws
       JOIN warehouses w ON w.id = ws.warehouse_id
       WHERE w.warehouse_type = 'pharmacy'
+        AND w.workspaceid = $2
         AND ws.isactive = true
         AND ($1 = '' OR ws.sectionname ILIKE $1 OR ws.bin_location ILIKE $1)
       ORDER BY ws.sectionname`,
-      [`%${search}%`]
+      [`%${search}%`, workspaceid]
     );
     return NextResponse.json(r.rows);
+    });
   } catch (error) {
     console.error("Error fetching storage:", error);
     return NextResponse.json([], { status: 200 });
@@ -52,12 +66,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, location, type, temperature, notes } = await req.json();
+    const { name, location, type, temperature, notes, workspaceid } = await req.json();
     if (!name?.trim()) return NextResponse.json({ error:"Name required" }, { status:400 });
-    
-    // Get pharmacy warehouse ID
+
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
+
+    // This picked the first pharmacy warehouse in the entire system, so a
+    // section could be attached to another facility's warehouse.
     const whResult = await pool.query(
-      `SELECT id FROM warehouses WHERE warehouse_type = 'pharmacy' AND is_active = true LIMIT 1`
+      `SELECT id FROM warehouses
+        WHERE warehouse_type = 'pharmacy' AND is_active = true AND workspaceid = $1
+        LIMIT 1`,
+      [workspaceid]
     );
     
     if (!whResult.rows.length) {
@@ -70,12 +94,13 @@ export async function POST(req: NextRequest) {
     const isTemperatureControlled = temperature && temperature.toLowerCase() !== 'room temp' && temperature !== '—';
     
     const r = await pool.query(
-      `INSERT INTO warehouse_sections (id, warehouse_id, sectionname, bin_location, section_type, temperature_controlled, temperature, description)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7) 
+      `INSERT INTO warehouse_sections (id, workspace_id, warehouse_id, sectionname, bin_location, section_type, temperature_controlled, temperature, description)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING id, sectionname as name, bin_location as location, section_type as type, temperature_controlled, temperature, description as notes`,
-      [warehouseId, name, location||null, type||"shelf", isTemperatureControlled, temperature||null, notes||null]
+      [workspaceid, warehouseId, name, location||null, type||"shelf", isTemperatureControlled, temperature||null, notes||null]
     );
     return NextResponse.json(r.rows[0]);
+    });
   } catch (error) {
     console.error("Error creating storage location:", error);
     return NextResponse.json({ error: "Failed to create storage location" }, { status: 500 });
