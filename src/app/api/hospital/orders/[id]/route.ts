@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Simple status-only update (e.g. from GR workflow or cancel)
     if (status && !edit) {
-      await pool.query(`ALTER TABLE hospital_orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT`).catch(() => {});
+      await ensureSchema(`ALTER TABLE hospital_orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT`).catch(() => {});
       const { reason } = body;
       await pool.query(
         `UPDATE hospital_orders SET status=$1, cancel_reason=COALESCE($2,cancel_reason), updatedat=NOW() WHERE id=$3`,
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Full edit update
     if (edit) {
-      await pool.query(`ALTER TABLE hospital_orders ADD COLUMN IF NOT EXISTS is_edited BOOLEAN DEFAULT FALSE`).catch(() => {});
+      await ensureSchema(`ALTER TABLE hospital_orders ADD COLUMN IF NOT EXISTS is_edited BOOLEAN DEFAULT FALSE`).catch(() => {});
 
       const total = (items || []).reduce((s: number, i: any) => s + (i.orderedQty || 0) * (parseFloat(i.unitCost) || 0), 0);
 

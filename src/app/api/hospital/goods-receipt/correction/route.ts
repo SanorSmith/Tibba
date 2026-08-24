@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 const CENTRAL = '00000000-0000-0000-0000-000000000000';
 
 export async function GET(req: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
   const dateFrom = req.nextUrl.searchParams.get("dateFrom") ?? "";
   const dateTo = req.nextUrl.searchParams.get("dateTo") ?? "";
   try {
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS is_reversal BOOLEAN DEFAULT FALSE`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS is_reversal BOOLEAN DEFAULT FALSE`).catch(()=>{});
     const r = await pool.query(
       `SELECT gr.*,
         (SELECT COUNT(*) FROM hospital_goods_receipt_items gri WHERE gri.receipt_id=gr.id)::int AS item_count
@@ -68,14 +69,14 @@ export async function POST(req: NextRequest) {
     if (!items?.length) return NextResponse.json({ error: "No items provided" }, { status: 400 });
 
     // Ensure correction columns exist
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS is_reversal BOOLEAN DEFAULT FALSE`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS correction_of UUID`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS correction_reason TEXT`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS corrected_by TEXT`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS correction_type VARCHAR(20)`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS dn_reg_num VARCHAR(100)`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS return_claim INTEGER`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS is_reversal BOOLEAN DEFAULT FALSE`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS correction_of UUID`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS correction_reason TEXT`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS corrected_by TEXT`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS correction_type VARCHAR(20)`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS dn_reg_num VARCHAR(100)`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS return_claim INTEGER`).catch(()=>{});
 
     // Fetch the original receipt
     const orig = await pool.query(`SELECT * FROM hospital_goods_receipt WHERE id=$1`, [originalReceiptId]);

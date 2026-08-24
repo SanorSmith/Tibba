@@ -11,12 +11,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export const dynamic = 'force-dynamic';
 
 
 async function ensureTable(p: Pool) {
-  await p.query(`
+  await ensureSchema(`
     CREATE TABLE IF NOT EXISTS shareholders (
       id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       shareholder_id            VARCHAR(50) UNIQUE,
@@ -52,27 +53,17 @@ async function ensureTable(p: Pool) {
     )
   `);
 
-  // Seed sample data once (matches the 7 shareholders in the roadmap).
-  // This count is deliberately left unscoped: the table already holds the
-  // seed rows, so the check stays false and no facility gets a fresh set of
-  // sample shareholders. If it ever did run, the rows would land with a null
-  // workspaceid and be invisible to every facility rather than leak into one.
-  const cnt = await p.query('SELECT COUNT(*)::int AS c FROM shareholders');
-  if (cnt.rows[0].c === 0) {
-    await p.query(`
-      INSERT INTO shareholders
-        (shareholder_id, full_name, shareholder_type, share_percentage, number_of_shares,
-         share_value, investment_amount, status, is_board_member, board_position, nationality, country)
-      VALUES
-        ('SH-001','Dr. Ahmed Hassan Al-Maliki','INDIVIDUAL',35,3500,1000,3500000,'ACTIVE',true,'Chairman','Iraqi','Iraq'),
-        ('SH-002','Baghdad Medical Investment Group','CORPORATE',25,2500,1000,2500000,'ACTIVE',true,'Board Member','Iraqi','Iraq'),
-        ('SH-003','Dr. Fatima Al-Najjar','INDIVIDUAL',15,1500,1000,1500000,'ACTIVE',false,NULL,'Iraqi','Iraq'),
-        ('SH-004','Al-Rafidain Healthcare Fund','INSTITUTIONAL',10,1000,1000,1000000,'ACTIVE',true,'Board Member','Iraqi','Iraq'),
-        ('SH-005','Dr. Omar Al-Saadi','INDIVIDUAL',8,800,1000,800000,'ACTIVE',false,NULL,'Iraqi','Iraq'),
-        ('SH-006','Ms. Layla Al-Hashimi','INDIVIDUAL',5,500,1000,500000,'ACTIVE',false,NULL,'Iraqi','Iraq'),
-        ('SH-007','Dr. Khalid Al-Tamimi','INDIVIDUAL',2,200,1000,200000,'ACTIVE',false,NULL,'Iraqi','Iraq')
-    `);
-  }
+  // The seed block that used to live here has been removed.
+  //
+  // It counted rows and inserted seven sample shareholders when it found
+  // none. My earlier comment claimed the count was "deliberately unscoped"
+  // so the check could never fire — that stopped being true the moment
+  // row-level security began scoping it. Under the restricted role a
+  // facility with no shareholders counts zero, tries to insert demo rows
+  // with no facility of their own, and the request fails.
+  //
+  // The seed rows exist. Creating sample data as a side effect of a GET was
+  // never right, and it is actively wrong now.
 }
 
 export async function GET(request: NextRequest) {

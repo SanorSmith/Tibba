@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 async function ensureTable() {
   if (!pool) return;
-  await pool.query(`
+  await ensureSchema(`
     CREATE TABLE IF NOT EXISTS insurance_company_categories (
       id SERIAL PRIMARY KEY,
       company_id VARCHAR(50) NOT NULL,

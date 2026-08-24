@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -469,7 +470,7 @@ export async function POST(request: NextRequest) {
     const serviceCode = code || `SVC${Date.now().toString().slice(-6)}`;
 
     // Add provider columns if they don't exist
-    await pool.query(`
+    await ensureSchema(`
       ALTER TABLE services 
       ADD COLUMN IF NOT EXISTS provider_id VARCHAR(50),
       ADD COLUMN IF NOT EXISTS provider_name VARCHAR(255),

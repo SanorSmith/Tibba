@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export async function GET(req: NextRequest) {
   // Inventory is facility-private: resolve the caller’s facility per request.
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const deptId = b.departmentId || CENTRAL;
 
-  await pool.query(`ALTER TABLE hospital_dispenses ADD COLUMN IF NOT EXISTS reason TEXT`).catch(()=>{});
+  await ensureSchema(`ALTER TABLE hospital_dispenses ADD COLUMN IF NOT EXISTS reason TEXT`).catch(()=>{});
 
   // Check stock
   const stock = await pool.query(

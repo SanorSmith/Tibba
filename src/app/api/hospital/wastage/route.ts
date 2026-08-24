@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
-const ensureTable = () => pool.query(`
+const ensureTable = () => ensureSchema(`
   CREATE TABLE IF NOT EXISTS hospital_wastage (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id  UUID NOT NULL,

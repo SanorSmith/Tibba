@@ -12,12 +12,13 @@ import { postDividend } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export const dynamic = 'force-dynamic';
 
 
 async function ensureTable(p: Pool) {
-  await p.query(`
+  await ensureSchema(`
     CREATE TABLE IF NOT EXISTS shareholder_distributions (
       id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       declaration_id     UUID NOT NULL,

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,9 @@ function toArr(v: any): string[] | null {
 async function ensureCompanyCol(p: Pool) {
   // company ids are VARCHAR (INS-001); the legacy insuranceid is UUID — add a
   // proper VARCHAR company_id column so we can link to insurance_companies.
-  await p.query(`ALTER TABLE insurance_pre_approvals ADD COLUMN IF NOT EXISTS company_id VARCHAR(50)`).catch(() => {});
+  // The .catch() here never helped: this runs inside a transaction, and a
+  // failed statement aborts it, so every query afterwards fails too.
+  await ensureSchema(`ALTER TABLE insurance_pre_approvals ADD COLUMN IF NOT EXISTS company_id VARCHAR(50)`);
 }
 
 export async function GET(request: NextRequest) {

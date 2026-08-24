@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest) {
     const claim_number = `CLM-${year}-${seq}`;
     const id = `claim-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-    await pool.query(`ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS authorization_number VARCHAR(50)`).catch(() => {});
+    await ensureSchema(`ALTER TABLE insurance_claims ADD COLUMN IF NOT EXISTS authorization_number VARCHAR(50)`).catch(() => {});
 
     const result = await pool.query(`
       INSERT INTO insurance_claims (

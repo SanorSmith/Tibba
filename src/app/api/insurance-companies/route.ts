@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
     // (discount/copay %, payment terms, contract dates, coverage limit) and by
     // the Insurance Pre-Approval report, which reads contract dates as the
     // policy's Effective/Expiration Date.
-    await pool.query(`
+    await ensureSchema(`
       ALTER TABLE insurance_companies
         ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5,2) DEFAULT 0,
         ADD COLUMN IF NOT EXISTS copay_percentage NUMERIC(5,2) DEFAULT 0,
@@ -224,7 +225,7 @@ export async function POST(request: NextRequest) {
     const notes = metadata.notes || null;
 
     // Check if table exists, create if not
-    await pool.query(`
+    await ensureSchema(`
       CREATE TABLE IF NOT EXISTS insurance_companies (
         id VARCHAR(50) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
         updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    await pool.query(`
+    await ensureSchema(`
       ALTER TABLE insurance_companies
         ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5,2) DEFAULT 0,
         ADD COLUMN IF NOT EXISTS copay_percentage NUMERIC(5,2) DEFAULT 0,

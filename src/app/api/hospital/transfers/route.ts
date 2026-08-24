@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export async function GET(req: NextRequest) {
   // Inventory is facility-private: resolve the caller’s facility per request.
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   const { toDepartmentId, sentBy, notes, items, isRequest } = await req.json();
   if (!toDepartmentId || !items?.length) return NextResponse.json({ error: "Department and items required" }, { status: 400 });
 
-  await pool.query(`ALTER TABLE hospital_transfers ADD COLUMN IF NOT EXISTS delivery_key VARCHAR(8)`).catch(()=>{});
+  await ensureSchema(`ALTER TABLE hospital_transfers ADD COLUMN IF NOT EXISTS delivery_key VARCHAR(8)`).catch(()=>{});
 
   const tNum = `TRF-${Date.now().toString().slice(-8)}`;
   const transferStatus = isRequest ? 'REQUESTED' : 'PENDING';

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export async function GET(req: NextRequest) {
   // Inventory is facility-private: resolve the caller’s facility per request.
@@ -18,8 +19,8 @@ export async function GET(req: NextRequest) {
   try {
     // If order_id provided, return full PN + items for that order's latest PN
     if (orderId) {
-      await pool.query(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
-      await pool.query(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS claim_damage INTEGER`).catch(()=>{});
+      await ensureSchema(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
+      await ensureSchema(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS claim_damage INTEGER`).catch(()=>{});
       const pn = await pool.query(
         `SELECT * FROM hospital_purchase_notes WHERE workspace_id=$1 AND order_id=$2 ORDER BY createdat DESC LIMIT 1`,
         [WS, orderId]
@@ -75,8 +76,8 @@ export async function POST(req: NextRequest) {
     );
 
     const noteId = r.rows[0].id;
-    await pool.query(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS claim_damage INTEGER`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS claim_damage INTEGER`).catch(()=>{});
     for (const item of items) {
       await pool.query(
         `INSERT INTO hospital_purchase_note_items

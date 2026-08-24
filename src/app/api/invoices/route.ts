@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 // Updated: Fixed duplicate PUT handlers - 2026-03-07
 // Fixed controlled input warnings - 2026-03-07
@@ -303,10 +304,10 @@ export async function POST(request: NextRequest) {
         console.log(`Inserting ${items.length} invoice items`);
         
         // Each line item can carry the receptionist's chosen provider (stakeholder)
-        await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS stakeholder_id UUID`).catch(() => {});
+        await ensureSchema(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS stakeholder_id UUID`).catch(() => {});
         // Line items pulled from OpenEHR carry provenance so we can detect already-paid orders on re-pull
-        await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS openehr_source_uid VARCHAR(255)`).catch(() => {});
-        await pool.query(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS openehr_order_id VARCHAR(255)`).catch(() => {});
+        await ensureSchema(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS openehr_source_uid VARCHAR(255)`).catch(() => {});
+        await ensureSchema(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS openehr_order_id VARCHAR(255)`).catch(() => {});
 
         for (const item of items) {
           const serviceId = item.service_id || item.item_code || '';

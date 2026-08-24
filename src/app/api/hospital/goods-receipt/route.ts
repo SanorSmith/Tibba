@@ -3,6 +3,7 @@ import { postAPInvoiceReceived } from "@/lib/gl-posting";
 import { getWorkspaceId } from "@/lib/workspace";
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 const CENTRAL = '00000000-0000-0000-0000-000000000000'; // hospital central store
 
 export async function GET(req: NextRequest) {
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     const status      = allComplete ? "COMPLETE" : anyReceived ? "PARTIAL" : "PENDING";
 
     // Ensure delivery_note_number column exists
-    await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS delivery_note_number VARCHAR(100)`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS delivery_note_number VARCHAR(100)`).catch(()=>{});
 
     const rNum = `GR-${Date.now().toString().slice(-8)}`;
     const r = await pool.query(
@@ -73,12 +74,12 @@ export async function POST(req: NextRequest) {
     const receiptId = r.rows[0].id;
 
     // Ensure columns exist
-    await pool.query(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS return_claim INTEGER`).catch(()=>{});
-    await pool.query(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS dn_reg_num VARCHAR(100)`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS return_claim INTEGER`).catch(()=>{});
+    await ensureSchema(`ALTER TABLE hospital_goods_receipt_items ADD COLUMN IF NOT EXISTS dn_reg_num VARCHAR(100)`).catch(()=>{});
 
     // Ensure claim_damage table exists
-    await pool.query(`
+    await ensureSchema(`
       CREATE TABLE IF NOT EXISTS hospital_claim_damage (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         receipt_id UUID NOT NULL,
@@ -181,7 +182,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Ensure ap_invoices exists + add a link column on the receipt
-        await pool.query(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS ap_invoice_id UUID`).catch(()=>{});
+        await ensureSchema(`ALTER TABLE hospital_goods_receipt ADD COLUMN IF NOT EXISTS ap_invoice_id UUID`).catch(()=>{});
 
         const apYear = new Date().getFullYear();
         const apRand = Math.floor(Math.random() * 100000).toString().padStart(5, '0');

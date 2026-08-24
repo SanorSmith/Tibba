@@ -3,6 +3,7 @@ import { postStakeholderPayment } from '@/lib/gl-posting';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Ensure the linking column exists BEFORE the transaction — otherwise the
     // distribution_id UPDATE aborts the tx and the whole payment silently rolls back.
-    await pool.query(`ALTER TABLE invoice_shares ADD COLUMN IF NOT EXISTS distribution_id UUID`).catch(() => {});
+    await ensureSchema(`ALTER TABLE invoice_shares ADD COLUMN IF NOT EXISTS distribution_id UUID`).catch(() => {});
 
     await client.query('BEGIN');
 

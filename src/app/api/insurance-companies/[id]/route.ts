@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import { ensureSchema } from '@/lib/db/ensure-schema';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -65,7 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Self-migrate: same contract/policy columns the list route adds — needed
     // here too since edits can land on a DB that's never hit the GET route.
-    await pool.query(`
+    await ensureSchema(`
       ALTER TABLE insurance_companies
         ADD COLUMN IF NOT EXISTS discount_percentage NUMERIC(5,2) DEFAULT 0,
         ADD COLUMN IF NOT EXISTS copay_percentage NUMERIC(5,2) DEFAULT 0,
