@@ -4,6 +4,9 @@ import { goodsReceiptNotes, grnItems, itemBatches, inventoryStock, stockTransact
 import { eq, and, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import type { PostGoodsReceiptRequest } from '@/lib/types/procurement';
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // PUT /api/d/[workspaceid]/procurement/grn/[id] - Update GRN
 const updateGRNSchema = z.object({
@@ -61,7 +64,20 @@ export async function POST(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
-    const { id } = params;
+    const { workspaceid, id } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const validated = postGRNSchema.parse(body);
 
@@ -157,6 +173,7 @@ export async function POST(
         await tx
           .insert(stockTransactions)
           .values({
+            workspaceid: workspaceid,
             itemid: item.itemid,
             warehouseid: grn[0].warehouseid!,
             batchid: batchId,
@@ -227,6 +244,7 @@ export async function POST(
       .limit(1);
 
     return NextResponse.json(postedGRN);
+    });
   } catch (error) {
     console.error('Error posting goods receipt note:', error);
     if (error instanceof z.ZodError) {

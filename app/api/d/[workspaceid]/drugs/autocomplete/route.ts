@@ -13,6 +13,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { drugs, globalDrugs, items, warehouseSections } from "@/lib/db/schema";
 import { eq, and, or, ilike, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
@@ -25,6 +27,15 @@ export async function GET(
     }
 
     const { workspaceid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q") || "";
 
@@ -101,6 +112,7 @@ export async function GET(
     }));
 
     return NextResponse.json({ drugs: sanitizedResults });
+    });
   } catch (error) {
     console.error("Error in drug autocomplete:", error);
     return NextResponse.json(

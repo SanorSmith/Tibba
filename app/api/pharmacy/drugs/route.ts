@@ -3,6 +3,12 @@
  * GET  — list all drugs with search (no workspace filter)
  * POST — register a new drug (stores creating workspace for reference)
  */
+
+/**
+ * UNREACHABLE DUPLICATE with a hardcoded workspace id in POST. Nothing calls
+ * it. Left unscoped rather than repaired — under row-level security it
+ * writes nothing, and removing a live endpoint belongs in its own change.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { drugs, items, itemBatches, inventoryStock, warehouseSections } from "@/lib/db/schema";
@@ -126,6 +132,7 @@ export async function POST(
         const [newSection] = await db
           .insert(warehouseSections)
           .values({
+            workspaceid: workspaceid,
             warehouseid: warehouseId,
             sectionname: body.storage_location,
             sectiontype: body.storage_type || 'shelf',

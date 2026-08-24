@@ -11,6 +11,8 @@ import { db } from "@/lib/db";
 import { invoices, invoiceItems } from "@/lib/db/tables/invoices";
 import { eq, and } from "drizzle-orm";
 import { createWorkspaceNotification } from "@/lib/notifications";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +32,16 @@ export async function POST(request: NextRequest) {
       notes,
       workspaceid,
     } = body;
+
+    // The id comes from the request body, so belonging has to be proved
+    // before it is used as the tenant identity. The `user.workspaceid`
+    // fallback further down never worked — that property does not exist on
+    // the session — so requiring the body field loses nothing.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Validate required fields
     if ((!invoiceId && !invoiceNumber) || !amountPaid || !paymentMethod) {
@@ -129,6 +141,7 @@ export async function POST(request: NextRequest) {
         : `Payment recorded successfully. Balance due: ${newBalanceDue.toFixed(2)}`,
     });
 
+    });
   } catch (error) {
     console.error("Payment recording error:", error);
     return NextResponse.json(

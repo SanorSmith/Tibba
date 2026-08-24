@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import { items, itemBatches, inventoryStock, stockTransactions, warehouses } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
@@ -25,6 +26,11 @@ export async function GET(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const [item] = await db
       .select()
@@ -71,6 +77,7 @@ export async function GET(
       .where(eq(inventoryStock.itemid, id));
 
     return NextResponse.json({ item, batches, movements, stock });
+    });
   } catch (error) {
     console.error("[lab item GET]", error);
     return NextResponse.json({ error: "Failed to load item" }, { status: 500 });
@@ -90,6 +97,11 @@ export async function PATCH(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const b = await request.json();
     const [updated] = await db
@@ -115,6 +127,7 @@ export async function PATCH(
 
     if (!updated) return NextResponse.json({ error: "Item not found" }, { status: 404 });
     return NextResponse.json({ item: updated });
+    });
   } catch (error) {
     console.error("[lab item PATCH]", error);
     return NextResponse.json({ error: "Failed to update item" }, { status: 500 });

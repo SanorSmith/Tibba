@@ -13,6 +13,7 @@ import { labPayments } from "@/lib/db/tables/lab-pos";
 import { labPurchaseOrders, labVendorReturns, labClaims } from "@/lib/db/tables/lab-procurement";
 import { items, inventoryStock, itemBatches, warehouses, stockTransactions } from "@/lib/db/schema";
 import { eq, and, ne, sql, desc, inArray, gte } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -29,6 +30,10 @@ export async function GET(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const today = new Date().toISOString().slice(0, 10);
     const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -190,6 +195,7 @@ export async function GET(
         returns: returnsCount?.count ?? 0,
       },
       recent,
+    });
     });
   } catch (error) {
     console.error("[lab dashboard]", error);

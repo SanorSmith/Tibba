@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 export async function GET(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const workspaceId = req.nextUrl.searchParams.get("workspaceId") ?? "";
   const source = req.nextUrl.searchParams.get("source") ?? "global"; // 'global', 'inventory', or undefined
@@ -70,7 +81,7 @@ export async function GET(req: NextRequest) {
       i.name,
       i.generic_name       AS "generic_Name",
       i.item_type          AS "itemType",
-      i.inventorycategory  AS "inventoryCategory",
+      i.inventory_category  AS "inventoryCategory",
       i.uom,
       i.min_level          AS "minLevel",
       i.reorder_level      AS "reorderLevel",
@@ -129,7 +140,7 @@ export async function GET(req: NextRequest) {
       ON ws.id = i.storage_location_id
     WHERE i.is_active = true
       ${workspaceFilter}
-      AND (i.inventorycategory = 'pharmacy' OR i.inventory_category = 'pharmacy')
+      AND i.inventory_category = 'pharmacy'
       AND EXISTS (
         SELECT 1 FROM item_batches ib_check
         WHERE ib_check.item_id = i.id
@@ -144,7 +155,7 @@ export async function GET(req: NextRequest) {
       )
     GROUP BY
       i.id, i.itemcode, i.name, i.generic_name, i.itemtype,
-      i.inventorycategory, i.uom, i.min_level, i.reorder_level,
+      i.inventory_category, i.uom, i.min_level, i.reorder_level,
       i.max_level, i.controlled, i.manufacturer, i.packaging_type,
       i.package_size, i.tablets_per_pack, i.is_active,
       i.description, i.barcode, i.created_at, i.storage_location_id,
@@ -161,8 +172,24 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, form, strength, sellingprice, unitcost, workspaceid, initial_quantity, warehouseid, lotnumber, expirydate } = body;
+
+    // The id comes from the request body, so belonging has to be proved
+    // before it is used as the tenant identity.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     console.log('[Pharmacy Items API] Creating item:', name);
 
@@ -243,6 +270,7 @@ export async function POST(req: NextRequest) {
     } finally {
       client.release();
     }
+    });
   } catch (error: any) {
     console.error('[Pharmacy Items API] Error:', error);
     return NextResponse.json(

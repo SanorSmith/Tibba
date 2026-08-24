@@ -1,3 +1,7 @@
+/**
+ * UNREACHABLE DUPLICATE of /api/d/[workspaceid]/patients/[patientid]/procedures,
+ * at a path with no [workspaceid] segment. Nothing calls it.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";

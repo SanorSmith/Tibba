@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import AppointmentsList from "./appointments-list";
+import { withTenant } from "@/lib/db/tenant";
 
 export default async function DoctorAppointmentsPage({
   params,
@@ -25,6 +26,9 @@ export default async function DoctorAppointmentsPage({
   if (!membership || membership.role !== "doctor") {
     redirect(`/d/${workspaceid}`);
   }
+  // Membership is already settled above; what is missing is the facility
+  // on the connection, so row-level security scopes the reads below.
+  return withTenant(workspaceid, async () => {
 
   // Get doctor's staff record
   try {
@@ -57,4 +61,5 @@ export default async function DoctorAppointmentsPage({
       />
     </div>
   );
+  });
 }

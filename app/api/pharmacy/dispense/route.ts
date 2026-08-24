@@ -8,11 +8,20 @@ import {
   stores,
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 // GET /api/pharmacy/dispense?storeid=xxx
 // Returns dispense history for a store
 export async function GET(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const storeid = req.nextUrl.searchParams.get("storeid");
     if (!storeid) return NextResponse.json({ logs: [] });
 
@@ -52,6 +61,14 @@ export async function GET(req: NextRequest) {
 // 4. Inserts controlled_drug_log (for controlled items) or just store_transaction (non-controlled)
 export async function POST(req: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const {
       storeid, itemid, batchid, quantity,

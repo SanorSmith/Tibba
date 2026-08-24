@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { OpenEHRResultSubmissionService } from "@/lib/lims/openehr-result-submission";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 /**
  * GET /api/lims/samples/[sampleid]/hl7-oru
@@ -19,6 +22,18 @@ export async function GET(
     }
 
     const { sampleid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("accession_sample", sampleid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Sample not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const searchParams = request.nextUrl.searchParams;
 
     // Optional parameters for HL7 message
@@ -47,6 +62,7 @@ export async function GET(
       success: true,
       message: result.message,
       messageType: "ORU^R01",
+    });
     });
   } catch (error) {
     console.error("Error generating HL7 ORU message:", error);

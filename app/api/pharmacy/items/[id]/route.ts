@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -7,6 +8,14 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await req.json();
 
@@ -54,6 +63,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
     await pool.query(`UPDATE items SET is_active = false WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });

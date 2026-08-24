@@ -5,6 +5,9 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 import {
   getOpenEHREHRBySubjectId,
   createOpenEHRComposition,
@@ -24,6 +27,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Get pagination parameters from query string
     const { searchParams } = new URL(request.url);
@@ -107,6 +119,7 @@ export async function GET(
       currentOffset: offset,
       currentLimit: limit,
     });
+    });
   } catch (error) {
     console.error("Error fetching diagnoses:", error);
     return NextResponse.json(
@@ -127,6 +140,15 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -355,6 +377,7 @@ export async function POST(
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     console.error("Error creating diagnosis:", error);
     return NextResponse.json(
@@ -377,6 +400,15 @@ export async function PUT(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -585,6 +617,15 @@ export async function PUT(
         compositionData
       );
 
+      // Record the owning facility where it can be enforced. Without this
+      // the only trace of who a composition belongs to is prose inside
+      // the document, which a wording change would silently break.
+      await recordCompositionOwner({
+        compositionUid: newCompositionUid,
+        workspaceId: workspaceid,
+        patientId: patientid,
+      });
+
       // Note: Old composition is preserved for history/version control
       // It will be filtered out from the main diagnosis list by checking for newer versions
       console.log(`Created new version of diagnosis. Old composition ${composition_uid} preserved for history.`);
@@ -615,6 +656,7 @@ export async function PUT(
         { status: 500 }
       );
     }
+    });
   } catch (error) {
     console.error("Error updating diagnosis:", error);
     return NextResponse.json(

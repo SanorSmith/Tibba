@@ -1,3 +1,6 @@
+/**
+ * One-off data migration, deliberately unscoped.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";

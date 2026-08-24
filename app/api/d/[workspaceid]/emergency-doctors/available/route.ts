@@ -13,6 +13,8 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   _req: NextRequest,
@@ -24,6 +26,15 @@ export async function GET(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   const uws = await getUserWorkspaces(user.userid);
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
@@ -68,4 +79,5 @@ export async function GET(
     console.error("[emergency-doctors][available][GET] error:", e);
     return NextResponse.json({ error: "Failed to load available doctors" }, { status: 500 });
   }
+  });
 }

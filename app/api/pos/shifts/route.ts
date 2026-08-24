@@ -10,6 +10,8 @@ import { posShifts } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const openShiftSchema = z.object({
   workspaceId: z.string().uuid(),
@@ -27,6 +29,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = openShiftSchema.parse(body);
+
+    // The schema proves the id is a uuid, not that the caller belongs
+    // to it — that is a separate question, and this is where it is asked.
+    if (!(await isWorkspaceMember(user.userid, data.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(data.workspaceId, async () => {
 
     // Check if cashier already has an open shift
     const [existingShift] = await db
@@ -74,6 +84,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ shift }, { status: 201 });
+    });
   } catch (error) {
     console.error("[POS Open Shift]", error);
     if (error instanceof z.ZodError) {

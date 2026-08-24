@@ -12,6 +12,8 @@ import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import axios from "axios";
 import { getOpenEHROrderStatus } from "@/lib/openehr-order-status";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const username = process.env.EHRBASE_USER?.trim() || "";
 const password = process.env.EHRBASE_PASSWORD?.trim() || "";
@@ -36,6 +38,15 @@ export async function GET(
     }
 
     const { workspaceid, patientid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Fetch patient to get EHR ID
     const [patient] = await db
@@ -110,6 +121,7 @@ export async function GET(
       count: validOrders.length,
     });
 
+    });
   } catch (error) {
     console.error("Error fetching OpenEHR lab orders:", error);
     return NextResponse.json(

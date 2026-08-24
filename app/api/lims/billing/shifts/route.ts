@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { labShifts, labPayments } from "@/lib/db/tables/lab-pos";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -27,6 +28,10 @@ export async function GET(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
 
     const shifts = await db
@@ -57,6 +62,7 @@ export async function GET(request: NextRequest) {
       shifts,
       openShift: shifts.find((s) => s.status === "OPEN") ?? null,
     });
+    });
   } catch (error) {
     console.error("[lab shifts GET]", error);
     return NextResponse.json({ error: "Failed to load shifts" }, { status: 500 });
@@ -75,6 +81,10 @@ export async function POST(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
 
     const [existing] = await db
@@ -100,6 +110,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ shift });
+    });
   } catch (error) {
     console.error("[lab shifts POST]", error);
     return NextResponse.json({ error: "Could not open shift" }, { status: 500 });
@@ -120,6 +131,10 @@ export async function PATCH(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
 
     const result = await db.transaction(async (tx) => {
@@ -159,6 +174,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json(result);
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not close shift";
     console.error("[lab shifts PATCH]", error);

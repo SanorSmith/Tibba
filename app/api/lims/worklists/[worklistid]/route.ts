@@ -10,6 +10,9 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { worklists, worklistItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 export async function DELETE(
   request: NextRequest,
@@ -22,6 +25,18 @@ export async function DELETE(
     }
 
     const { worklistid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("worklist", worklistid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Worklist not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     if (!worklistid) {
       return NextResponse.json({ error: "Worklist ID required" }, { status: 400 });
@@ -48,6 +63,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: "Worklist deleted successfully",
+    });
     });
   } catch (error) {
     console.error("Worklist deletion error:", error);

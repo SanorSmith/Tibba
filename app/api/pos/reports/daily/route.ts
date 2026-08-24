@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import { posSales, posSaleItems, posPayments } from "@/lib/db/schema";
 import { eq, and, sql, between } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +30,13 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceId || !(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
 
     const startOfDay = new Date(`${date}T00:00:00.000Z`);
     const endOfDay = new Date(`${date}T23:59:59.999Z`);
@@ -149,6 +158,7 @@ export async function GET(request: NextRequest) {
         ...h,
         total: parseFloat(h.total),
       })),
+    });
     });
   } catch (error) {
     console.error("[POS Daily Report]", error);

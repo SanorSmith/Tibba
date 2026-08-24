@@ -8,6 +8,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { worklists, worklistItems, accessionSamples, patients, testResults, limsOrders, limsOrderTests, labTestCatalog, testReferenceRanges, validationStates } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +23,13 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const { worklistid } = await params;
 
     if (!workspaceid) {
@@ -453,6 +462,7 @@ export async function GET(
       },
       items: enrichedItems,
       total: enrichedItems.length,
+    });
     });
   } catch (error) {
     console.error("[API] Error fetching worklist detail:", error);

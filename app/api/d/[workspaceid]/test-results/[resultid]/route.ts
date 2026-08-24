@@ -12,6 +12,8 @@ import { getUser } from "@/lib/user";
 import { createWorkspaceNotification, notifyDoctorOnResultRelease, notifyDoctorOnResultApproval } from "@/lib/notifications";
 import { autoFlagResult } from "@/lib/lims/auto-flag";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const testResultUpdateSchema = z.object({
   resultvalue: z.string().optional(),
@@ -37,6 +39,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const result = await db
       .select()
@@ -55,6 +66,7 @@ export async function GET(
       .orderBy(resultValidationHistory.validateddate);
 
     return NextResponse.json({ result: { ...result[0], history } });
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch test result" }, { status: 500 });
   }
@@ -71,6 +83,15 @@ export async function PUT(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const validatedData = testResultUpdateSchema.parse(body);
@@ -87,6 +108,7 @@ export async function PUT(
       .returning();
 
     return NextResponse.json({ result: updatedResult[0] });
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update test result" }, { status: 500 });
   }
@@ -103,6 +125,15 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { status, resultvalue, changeComment } = body;
@@ -286,6 +317,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ error: "Either status or resultvalue with changeComment is required" }, { status: 400 });
+    });
   } catch (error) {
     console.error('PATCH error:', error);
     return NextResponse.json({ error: "Failed to update test result" }, { status: 500 });

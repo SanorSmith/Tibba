@@ -16,6 +16,7 @@ import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { patients } from "@/lib/db/schema";
 import { eq, and, ne, inArray } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -49,6 +50,10 @@ export async function GET(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
 
     // Refs already invoiced by this facility.
@@ -174,6 +179,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ pending: all });
+    });
   } catch (error) {
     console.error("[lab billing pending]", error);
     return NextResponse.json({ error: "Failed to load pending lab orders" }, { status: 500 });

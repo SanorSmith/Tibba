@@ -1,3 +1,6 @@
+/**
+ * Debug route, deliberately unscoped.
+ */
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";

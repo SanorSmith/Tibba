@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { labVendorReturns, labVendorReturnItems } from "@/lib/db/tables/lab-procurement";
 import { items, itemBatches, inventoryStock, stockTransactions } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
@@ -36,6 +37,10 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
+
     const rows = await db
       .select({
         id: labVendorReturns.id,
@@ -53,6 +58,7 @@ export async function GET(
       .orderBy(desc(labVendorReturns.createdat));
 
     return NextResponse.json({ returns: rows });
+    });
   } catch (error) {
     console.error("[lab returns GET]", error);
     return NextResponse.json({ error: "Failed to load returns" }, { status: 500 });
@@ -72,6 +78,10 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { vendorId, vendorName, reason, notes, lines } = body as {
@@ -169,6 +179,7 @@ export async function POST(
         });
 
         await tx.insert(stockTransactions).values({
+          workspaceid: workspaceid,
           itemid: line.itemId,
           warehouseid: labWarehouse.id,
           batchid: line.batchId || null,
@@ -192,6 +203,7 @@ export async function POST(
     });
 
     return NextResponse.json({ return: result });
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to record return";
     console.error("[lab returns POST]", error);

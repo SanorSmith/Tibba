@@ -38,6 +38,8 @@ import {
 } from "@/lib/lims/accession-utils";
 import { generateEnhancedSampleNumber } from "@/lib/lims/enhanced-sample-number-generator";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function POST(request: NextRequest) {
   try {
@@ -361,6 +363,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceId || !(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
     const status = searchParams.get("status");
     const orderId = searchParams.get("orderid");
     const patientId = searchParams.get("patientid");
@@ -597,6 +606,7 @@ export async function GET(request: NextRequest) {
         offset,
         total: samplesWithDerived.length,
       },
+    });
     });
   } catch (error) {
     return NextResponse.json(

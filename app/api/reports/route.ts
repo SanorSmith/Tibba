@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function GET(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const tab        = req.nextUrl.searchParams.get("tab")        ?? "stock";
   const dateFrom   = req.nextUrl.searchParams.get("dateFrom")   ?? "";
   const dateTo     = req.nextUrl.searchParams.get("dateTo")     ?? "";
@@ -97,7 +106,7 @@ export async function GET(req: NextRequest) {
         const whArray = `{${whIds.join(",")}}`;
         queryParams.push(whArray);
         categoryFilter = `AND (
-          i.inventorycategory = 'pharmacy' 
+          i.inventory_category = 'pharmacy' 
           OR i.inventory_category = 'pharmacy'
           OR EXISTS (
             SELECT 1 FROM item_batches ib_check
@@ -107,10 +116,17 @@ export async function GET(req: NextRequest) {
         )`;
         paramIndex++;
       } else {
-        categoryFilter = "AND (i.inventorycategory = 'pharmacy' OR i.inventory_category = 'pharmacy')";
+        categoryFilter = "AND i.inventory_category = 'pharmacy'";
       }
     } else if (category !== "all") {
-      categoryFilter = `AND i.inventorycategory = '${category}'`;
+      // Was interpolated straight from the query string into the SQL text,
+      // so `?category=x' OR '1'='1` rewrote the statement. It is a parameter
+      // now. It also read `inventorycategory`, a stray duplicate column that
+      // is null on every row — the populated one is `inventory_category`,
+      // which is what Drizzle has been mapping to all along.
+      categoryFilter = `AND i.inventory_category = $${paramIndex}`;
+      queryParams.push(category);
+      paramIndex++;
     }
     
     let query = "";
@@ -123,7 +139,7 @@ export async function GET(req: NextRequest) {
         i.generic_name AS "genericName", 
         i.itemcode, 
         i.uom,
-        i.inventorycategory AS category,
+        i.inventory_category AS category,
         i.reorder_level AS "reorderLevel",
         COALESCE(stock_agg.total_stock, 0)::int AS "totalStock",
         COALESCE(stock_agg.total_reserved, 0)::int AS "reservedStock"
@@ -140,7 +156,7 @@ export async function GET(req: NextRequest) {
       WHERE i.is_active = true
         ${workspaceFilter}
         AND (
-          i.inventorycategory = 'pharmacy'
+          i.inventory_category = 'pharmacy'
           OR i.inventory_category = 'pharmacy'
           OR stock_agg.item_id IS NOT NULL
         )
@@ -157,7 +173,7 @@ export async function GET(req: NextRequest) {
         i.generic_name AS "genericName", 
         i.itemcode, 
         i.uom,
-        i.inventorycategory AS category,
+        i.inventory_category AS category,
         i.reorder_level AS "reorderLevel",
         COALESCE(SUM(ist.quantity),0)::int          AS "totalStock",
         COALESCE(SUM(ist.reserved_quantity),0)::int AS "reservedStock"
@@ -166,8 +182,8 @@ export async function GET(req: NextRequest) {
       WHERE i.is_active = true
         ${workspaceFilter}
         ${categoryFilter}
-      GROUP BY i.id, i.name, i.generic_name, i.itemcode, i.uom, i.inventorycategory, i.reorder_level
-      ORDER BY i.inventorycategory, i.name`;
+      GROUP BY i.id, i.name, i.generic_name, i.itemcode, i.uom, i.inventory_category, i.reorder_level
+      ORDER BY i.inventory_category, i.name`;
     }
     
     console.log('[Reports API] Executing query:', query);

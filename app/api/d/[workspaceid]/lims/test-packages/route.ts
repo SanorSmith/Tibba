@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { testPackages, testPackageItems } from "@/lib/db/schema/test-packages";
 import { users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // GET /api/d/[workspaceid]/lims/test-packages - Get all test packages
 export async function GET(
@@ -13,6 +15,15 @@ export async function GET(
   const { workspaceid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   try {
     // Get all packages for the workspace
@@ -56,6 +67,7 @@ export async function GET(
     console.error("Error fetching test packages:", error);
     return NextResponse.json({ error: "Failed to fetch test packages" }, { status: 500 });
   }
+  });
 }
 
 // POST /api/d/[workspaceid]/lims/test-packages - Create new test package
@@ -66,6 +78,15 @@ export async function POST(
   const { workspaceid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   try {
     const body = await req.json();
@@ -107,4 +128,5 @@ export async function POST(
     console.error("Error creating test package:", error);
     return NextResponse.json({ error: "Failed to create test package" }, { status: 500 });
   }
+  });
 }

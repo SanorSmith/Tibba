@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getOpenEHROrderStatus } from "@/lib/openehr-order-status";
+import { ownedCompositionUids } from "./composition-ownership";
 
 const username = process.env.EHRBASE_USER?.trim() || "";
 const password = process.env.EHRBASE_PASSWORD?.trim() || "";
@@ -441,6 +442,19 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
   labWorkspaceId: string
 ): Promise<Array<TestOrderRecord & { ehr_id: string; subject_id: string }>> {
   console.log(`[getOpenEHRTestOrdersForLabWorkspace] Searching for orders targeted to lab ${labWorkspaceId}`);
+
+  // Which compositions Postgres records as this lab's. Ownership is treated
+  // as an *additional* way to qualify, never as the only one: the table was
+  // introduced after these documents existed, so a composition missing from
+  // it is unrecorded, not unowned. Narrowing the query to owned ids would
+  // therefore hide real orders — silently, since a lab cannot tell an empty
+  // list from a filtered one.
+  //
+  // Once every composition has an owner this can become a WHERE clause and
+  // stop pulling the whole instance. Until then, correctness first.
+  const ownedUids = await ownedCompositionUids(labWorkspaceId);
+  const owned = new Set(ownedUids ?? []);
+
   const query = `SELECT
     c/uid/value as composition_uid,
     c/context/start_time/value as recorded_time,
@@ -476,8 +490,11 @@ export async function getOpenEHRTestOrdersForLabWorkspace(
         const labWorkspaceMatch = description.match(/LabWorkspaceId:\s*([a-f0-9-]+)/i);
         const matchedLabWorkspaceId = labWorkspaceMatch?.[1]?.trim();
 
-        // Only interested in orders explicitly routed to this lab
-        if (!matchedLabWorkspaceId || matchedLabWorkspaceId !== labWorkspaceId) {
+        // Either signal qualifies it: the database says this lab owns it, or
+        // the document still carries the routing the clinician chose.
+        const ownedByThisLab = owned.has(String(row.composition_uid));
+        const routedToThisLab = matchedLabWorkspaceId === labWorkspaceId;
+        if (!ownedByThisLab && !routedToThisLab) {
           continue;
         }
         console.log(`[getOpenEHRTestOrdersForLabWorkspace] Found lab-targeted order composition ${row.composition_uid} for subject ${row.subject_id}`);

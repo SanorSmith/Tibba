@@ -11,6 +11,9 @@ import {
   patients,
 } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 // GET - Fetch worklist items with order, patient, and sample details
 export async function GET(
@@ -24,6 +27,18 @@ export async function GET(
     }
 
     const { worklistid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("worklist", worklistid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Worklist not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Join with orders, samples, and patients to get complete information
     const items = await db
@@ -64,6 +79,7 @@ export async function GET(
       .orderBy(desc(worklistItems.addedat));
 
     return NextResponse.json({ items });
+    });
   } catch (error) {
     console.error("Error fetching worklist items:", error);
     return NextResponse.json(
@@ -85,6 +101,18 @@ export async function POST(
     }
 
     const { worklistid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("worklist", worklistid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Worklist not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
     const {
       orderid,
@@ -188,6 +216,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       item: newItem,
+    });
     });
   } catch (error) {
     console.error("Worklist item creation error:", error);

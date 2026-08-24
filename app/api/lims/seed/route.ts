@@ -1,3 +1,6 @@
+/**
+ * Seed route, deliberately unscoped.
+ */
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { seedValidationData } from "@/lib/db/seed-validation-data";

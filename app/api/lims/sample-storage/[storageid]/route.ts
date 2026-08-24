@@ -11,6 +11,9 @@ import { sampleStorage, accessionSamples } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 // Validation schema for updating storage record
 const storageUpdateSchema = z.object({
@@ -34,6 +37,18 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = storageUpdateSchema.parse(body);
     const { storageid } = params;
+
+    // Only the storage record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("sample_storage", storageid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Storage record not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Fetch existing storage record
     const [existingStorage] = await db
@@ -115,6 +130,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

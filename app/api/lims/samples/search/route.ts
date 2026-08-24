@@ -8,6 +8,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { accessionSamples, patients, testResults, limsOrderTests, labTestCatalog, testReferenceRanges } from "@/lib/db/schema";
 import { eq, or, ilike, and, sql } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +28,13 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Search for samples by sample number, patient name, or patient ID
     const samples = await db
@@ -276,6 +285,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       samples: enrichedSamples,
       count: enrichedSamples.length,
+    });
     });
   } catch (error) {
     console.error("Error searching samples:", error);

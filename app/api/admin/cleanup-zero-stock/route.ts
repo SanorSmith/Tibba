@@ -10,6 +10,13 @@ import { items, itemBatches, inventoryStock } from "@/lib/db/schema";
 import { eq, and, notExists, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 
+// Reads across facilities on purpose: admin tooling and the sign-in flow
+// both need to look beyond a single workspace — sign-in has to find the
+// user before it can know which facility they belong to. Marked with
+// withoutTenant so these stay findable, and so it is obvious in review
+// that the absence of a tenant scope here is a decision, not an omission.
+// Requires a connection holding BYPASSRLS (app_admin); under app_user
+// these return nothing, which is the safe direction for a mistake.
 export async function GET(request: NextRequest) {
   try {
     const user = await getUser();
@@ -28,7 +35,7 @@ export async function GET(request: NextRequest) {
         i.created_at,
         i.workspace_id
       FROM items i
-      WHERE (i.inventory_category = 'pharmacy' OR i.inventorycategory = 'pharmacy')
+      WHERE i.inventory_category = 'pharmacy'
         AND i.is_active = true
         AND (
           -- No batches or stock records at all
@@ -76,7 +83,7 @@ export async function DELETE(request: NextRequest) {
       WHERE id IN (
         SELECT i.id
         FROM items i
-        WHERE (i.inventory_category = 'pharmacy' OR i.inventorycategory = 'pharmacy')
+        WHERE i.inventory_category = 'pharmacy'
           AND i.is_active = true
           AND (
             -- No batches or stock records at all

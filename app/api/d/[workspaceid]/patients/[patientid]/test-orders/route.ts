@@ -12,6 +12,9 @@ import {
 } from "@/lib/openehr/openehr";
 import { ensurePatientEHR } from "@/lib/openehr/ensure-ehr";
 import { invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 export async function GET(
   request: NextRequest,
@@ -24,6 +27,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Get pagination parameters from query string
     const url = new URL(request.url);
@@ -69,6 +81,7 @@ export async function GET(
     const paginatedTestOrders = validTestOrders.slice(offset, offset + limit);
 
     return NextResponse.json({ testOrders: paginatedTestOrders, hasMore });
+    });
   } catch (error) {
     console.error("Error fetching test orders:", error);
     return NextResponse.json(
@@ -89,6 +102,15 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -245,6 +267,18 @@ export async function POST(
 
     console.log(`Created test order composition: ${compositionId}`);
 
+    // Record which facility this order belongs to, and which lab it was
+    // routed to, so the receiving lab's view is decided by the database
+    // rather than by matching a substring in a free-text field.
+    await recordCompositionOwner({
+      compositionUid: compositionId,
+      workspaceId: workspaceid,
+      ownerWorkspaceId: target_lab_workspace_id ?? null,
+      ehrId,
+      patientId: patientid,
+      kind: "test_order",
+    });
+
     // Invalidate the target lab's LIMS order list cache so the order appears
     // immediately when the receiving lab opens its dashboard.
     if (target_lab_workspace_id) {
@@ -256,6 +290,7 @@ export async function POST(
       success: true,
       compositionId,
       message: "Test order created successfully",
+    });
     });
   } catch (error) {
     console.error("Error creating test order:", error);

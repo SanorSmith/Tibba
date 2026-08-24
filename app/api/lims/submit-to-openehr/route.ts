@@ -12,6 +12,8 @@ import { db } from "@/lib/db";
 import { accessionSamples, patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createLaboratoryReport, buildLaboratoryReport, LaboratoryReportData, LabTestResult } from "@/lib/openehr/laboratory";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 interface SubmitToOpenEHRRequest {
   sampleId: string;
@@ -42,6 +44,14 @@ export async function POST(request: NextRequest) {
 
     const body: SubmitToOpenEHRRequest = await request.json();
     const { sampleId, workspaceId, results, overallStatus, conclusion, composerName } = body;
+
+    // The id comes from the request body, so belonging has to be proved
+    // before it is used as the tenant identity.
+    if (!(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
 
     // Validate required fields
     if (!sampleId || !workspaceId || !results || results.length === 0) {
@@ -183,6 +193,7 @@ export async function POST(request: NextRequest) {
       sampleNumber: sample.samplenumber,
     });
 
+    });
   } catch (error) {
     console.error("Error submitting to OpenEHR:", error);
     

@@ -10,6 +10,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { accessionSamples, limsOrders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function POST(
   request: NextRequest,
@@ -32,6 +34,14 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // The id comes from the request body, so belonging has to be proved
+    // before it is used as the tenant identity.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Get sample details
     const [sample] = await db
@@ -231,6 +241,7 @@ export async function POST(
       message: "Sample is now being processed and EHR has been notified"
     });
 
+    });
   } catch (error) {
     console.error("Process sample error:", error);
     return NextResponse.json(

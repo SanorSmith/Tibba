@@ -16,6 +16,9 @@ import {
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 export async function GET(
   request: NextRequest,
@@ -28,6 +31,19 @@ export async function GET(
     }
 
     const { returnId } = await params;
+
+    // Only the record id is known here, so the owning facility is looked
+    // up first — the one question that can be answered before a tenant is
+    // established — and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("pos_return", returnId);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Return not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Get return with reason
     const [returnRecord] = await db
@@ -94,6 +110,7 @@ export async function GET(
         refundAmount: parseFloat(r.refund.refundamount),
         cashier: r.cashier?.name || r.cashier?.email || "Unknown",
       })),
+    });
     });
   } catch (error) {
     console.error("[Return Receipt] Error:", error);

@@ -9,6 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireFinancePermission } from "@/lib/finance/permissions";
 import { UpdateAccountSchema } from "@/lib/finance/validation";
 import { handleFinanceApiError } from "@/lib/finance/errors";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 import {
   getAccountById,
   updateAccount,
@@ -22,6 +25,19 @@ type RouteParams = {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid, accountid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:read"
@@ -37,6 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     return NextResponse.json({ account });
+    });
   } catch (error) {
     return handleFinanceApiError(error, "GET /finance/accounts/[id]");
   }
@@ -45,6 +62,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid, accountid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:write"
@@ -61,6 +91,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     );
 
     return NextResponse.json({ account });
+    });
   } catch (error) {
     return handleFinanceApiError(error, "PUT /finance/accounts/[id]");
   }
@@ -69,6 +100,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid, accountid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:write"
@@ -77,6 +121,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await deactivateAccount(workspaceid, accountid, auth.user.userid);
     return NextResponse.json({ success: true });
+    });
   } catch (error) {
     return handleFinanceApiError(error, "DELETE /finance/accounts/[id]");
   }

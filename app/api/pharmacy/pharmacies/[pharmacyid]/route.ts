@@ -7,8 +7,14 @@
  * NOTE: Requires workspaceid as a query parameter.
  * Prefer using /api/d/[workspaceid]/pharmacies/[pharmacyid] instead.
  */
+
+/**
+ * Scoped through `withPharmacySchema` rather than `withTenant`; see the
+ * membership check in each handler.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import {
   pharmacySql,
   withPharmacySchema,
@@ -25,6 +31,12 @@ export async function PATCH(
   const workspaceid = req.nextUrl.searchParams.get("workspaceid");
   if (!workspaceid) {
     return NextResponse.json({ error: "workspaceid query param required" }, { status: 400 });
+  }
+
+  // A query parameter is caller input like any other, so belonging is proved
+  // before it is used as the tenant identity.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await req.json();
@@ -83,6 +95,12 @@ export async function DELETE(
   const workspaceid = req.nextUrl.searchParams.get("workspaceid");
   if (!workspaceid) {
     return NextResponse.json({ error: "workspaceid query param required" }, { status: 400 });
+  }
+
+  // A query parameter is caller input like any other, so belonging is proved
+  // before it is used as the tenant identity.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

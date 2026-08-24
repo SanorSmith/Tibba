@@ -802,15 +802,15 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
   }, []);
 
   const fetchSuppliers = useCallback(async () => {
-    const res = await fetch(`/api/pharmacy/suppliers?search=${encodeURIComponent(supplierSearch)}`);
+    const res = await fetch(`/api/pharmacy/suppliers?workspaceid=${workspaceid}&search=${encodeURIComponent(supplierSearch)}`);
     const data = await res.json();
     setSuppliers(Array.isArray(data)?data:[]);
-  }, [supplierSearch]);
+  }, [supplierSearch, workspaceid]);
 
   // Load all suppliers on mount for cart modal dropdown
   useEffect(()=>{
-    fetch("/api/pharmacy/suppliers?search=").then(r=>r.json()).then(d=>setSuppliers(Array.isArray(d)?d:[]));
-  },[]);
+    fetch(`/api/pharmacy/suppliers?workspaceid=${workspaceid}&search=`).then(r=>r.json()).then(d=>setSuppliers(Array.isArray(d)?d:[]));
+  },[workspaceid]);
 
   const fetchManufacturers = useCallback(async () => {
     const res = await fetch(`/api/pharmacy/manufacturers?search=${encodeURIComponent(mfgSearch)}`);
@@ -989,18 +989,18 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
 
   const saveSupplier = async () => {
     if (!supplierForm.name.trim()) return;
-    const res = await fetch("/api/pharmacy/suppliers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(supplierForm)});
+    const res = await fetch("/api/pharmacy/suppliers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...supplierForm, workspaceid})});
     if (res.ok) { setShowAddSupplier(false); setSupplierForm({name:"",contactPerson:"",email:"",phone:"",address:""}); fetchSuppliers(); showToast("Supplier added!"); }
   };
 
   const updateSupplier = async () => {
     if (!editSupplier) return;
-    await fetch("/api/pharmacy/suppliers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(editSupplier)});
+    await fetch("/api/pharmacy/suppliers",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...editSupplier, workspaceid})});
     setEditSupplier(null); fetchSuppliers(); showToast("Supplier updated!");
   };
 
   const deleteSupplier = async (id: string) => {
-    await fetch("/api/pharmacy/suppliers",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id})});
+    await fetch("/api/pharmacy/suppliers",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id, workspaceid})});
     fetchSuppliers(); showToast("Supplier deactivated");
   };
 

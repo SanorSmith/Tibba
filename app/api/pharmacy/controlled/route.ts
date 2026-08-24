@@ -3,9 +3,18 @@ import { NextResponse } from "next/server";
 import { db as db } from "@/lib/db";
 import { controlledDrugLog, stores, items, itemBatches } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { getUser } from "@/lib/user";
 
 export async function GET() {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const logs = await db
       .select({
         id:              controlledDrugLog.id,
@@ -36,6 +45,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { storeid, itemid, quantity, actiontype, patientref, prescriptionref, dispensedby, witnessedby, notes, batchid } = body;
 

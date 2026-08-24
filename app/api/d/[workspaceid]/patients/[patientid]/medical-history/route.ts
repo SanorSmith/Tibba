@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // In-memory storage for medical history (dummy data)
 // In production, this would be stored in EHRbase or a database
@@ -223,6 +225,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -243,6 +254,7 @@ export async function GET(
     const patientMedicalHistory = medicalHistoryStore[patientid] || [];
 
     return NextResponse.json({ medicalHistory: patientMedicalHistory });
+    });
   } catch (error) {
     console.error("Error fetching medical history:", error);
     return NextResponse.json(
@@ -267,6 +279,15 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -318,6 +339,7 @@ export async function POST(
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     console.error("Error creating medical history:", error);
     return NextResponse.json(

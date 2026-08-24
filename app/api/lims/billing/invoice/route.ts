@@ -12,6 +12,7 @@ import { db } from "@/lib/db";
 import { generalInvoices, generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -43,6 +44,10 @@ export async function POST(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
 
     const [patient] = await db.select().from(patients).where(eq(patients.patientid, patientid)).limit(1);
@@ -78,6 +83,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ invoice });
+    });
   } catch (error) {
     console.error("[lab billing invoice]", error);
     return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });

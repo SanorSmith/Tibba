@@ -7,8 +7,15 @@
  * not nested under /api/d/[workspaceid]. Consider using the primary
  * route at /api/d/[workspaceid]/pharmacies instead.
  */
+
+/**
+ * Scoped through `withPharmacySchema`, which takes the workspace id directly
+ * rather than going through `withTenant`. The membership check above is what
+ * makes that caller-supplied id trustworthy.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import {
   pharmacySql,
   withPharmacySchema,
@@ -24,6 +31,12 @@ export async function GET(req: NextRequest) {
     const workspaceid = req.nextUrl.searchParams.get("workspaceid");
     if (!workspaceid) {
       return NextResponse.json({ error: "workspaceid query param required" }, { status: 400 });
+    }
+
+    // A query parameter is caller input; belonging has to be proved before
+    // the id is used to reach a facility's pharmacies.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const allPharmacies = await withPharmacySchema(

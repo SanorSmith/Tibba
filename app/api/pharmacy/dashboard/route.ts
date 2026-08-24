@@ -2,6 +2,15 @@
  * Pharmacy Dashboard Stats API
  * Returns aggregated stats for the pharmacy dashboard
  */
+
+/**
+ * UNREACHABLE DUPLICATE. This is a copy of
+ * /api/d/[workspaceid]/pharmacy-dashboard placed at a path with no
+ * [workspaceid] segment, so `await params` yields undefined and every query
+ * below filters on undefined. Nothing calls it. Left unscoped rather than
+ * repaired: under row-level security it returns nothing, which is the safe
+ * direction, and deleting a live endpoint belongs in its own change.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";

@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { posReceiptReprints } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const reprintSchema = z.object({
   workspaceId: z.string().uuid(),
@@ -37,6 +39,13 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
+
+    // safeParse proves the id is a uuid; belonging is a separate question.
+    if (!(await isWorkspaceMember(user.userid, data.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(data.workspaceId, async () => {
 
     // Validate that at least one ID is provided based on type
     if (data.receiptType === "SALE" && !data.saleId) {
@@ -79,6 +88,7 @@ export async function POST(request: NextRequest) {
       isReprint: true,
       printFormat: data.printFormat,
       message: "Reprint logged successfully",
+    });
     });
   } catch (error) {
     console.error("[Receipt Reprint] Error:", error);

@@ -8,6 +8,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { limsOrders, limsOrderTests, labTestCatalog } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +22,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Fetch the order
     const orders = await db
@@ -61,6 +72,7 @@ export async function GET(
 
     return NextResponse.json({ 
       order: Object.assign({}, order, { tests: orderTests || [] })
+    });
     });
   } catch (error) {
     console.error("Error fetching order:", error);

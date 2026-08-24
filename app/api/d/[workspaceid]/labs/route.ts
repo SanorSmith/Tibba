@@ -8,6 +8,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { labs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 /**
  * GET /api/d/[workspaceid]/labs
@@ -55,6 +57,15 @@ export async function GET(
     }
 
     const { workspaceid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const allLabs = await db
       .select()
@@ -62,6 +73,7 @@ export async function GET(
       .where(eq(labs.workspaceid, workspaceid));
 
     return NextResponse.json({ labs: allLabs });
+    });
   } catch (error) {
     console.error("Error fetching labs:", error);
     return NextResponse.json(
@@ -125,6 +137,15 @@ export async function POST(
     }
 
     const { workspaceid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
 
     const { name, phone, email, address } = body;
@@ -148,6 +169,7 @@ export async function POST(
       .returning();
 
     return NextResponse.json({ lab: newLab }, { status: 201 });
+    });
   } catch (error) {
     console.error("Error creating lab:", error);
     return NextResponse.json(

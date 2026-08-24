@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
+import { getUser } from "@/lib/user";
 
 export async function GET() {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Test endpoint to debug EHRbase connection
   const config = {
     url: process.env.EHRBASE_URL,

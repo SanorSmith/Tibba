@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -12,6 +15,20 @@ export async function GET(
   const active = searchParams.get("active") ?? "all";
 
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     let query = `SELECT * FROM vendors WHERE 1=1`;
     const params: any[] = [];
 
@@ -30,6 +47,7 @@ export async function GET(
 
     const result = await pool.query(query, params);
     return NextResponse.json(result.rows);
+    });
   } catch (error: any) {
     console.error("Error fetching vendors:", error);
     return NextResponse.json({ error: "Failed to fetch vendors" }, { status: 500 });
@@ -41,6 +59,20 @@ export async function POST(
   { params }: { params: { workspaceid: string } }
 ) {
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const {
       name,
@@ -110,6 +142,7 @@ export async function POST(
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
+    });
   } catch (error: any) {
     console.error("Error creating vendor:", error);
     return NextResponse.json({ error: "Failed to create vendor", details: error.message }, { status: 500 });

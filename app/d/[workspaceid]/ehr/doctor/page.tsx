@@ -10,6 +10,7 @@ import DoctorDashboard from "./doctor-dashboard";
 import { db } from "@/lib/db";
 import { staff } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 
 interface PageProps {
   params: Promise<{ workspaceid: string }>;
@@ -30,6 +31,9 @@ export default async function DoctorPage({ params }: PageProps) {
   if (!membership || membership.role !== "doctor") {
     redirect(`/d/${workspaceid}`);
   }
+  // Membership is already settled above; what is missing is the facility
+  // on the connection, so row-level security scopes the reads below.
+  return withTenant(workspaceid, async () => {
 
   // Fetch doctor's staff information if available
   let staffInfo = null;
@@ -80,4 +84,5 @@ export default async function DoctorPage({ params }: PageProps) {
       </div>
     </>
   );
+  });
 }

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -8,6 +11,20 @@ export async function GET(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const result = await pool.query(
       `SELECT vi.*, i.name as item_name, i.itemcode as item_code, i.uom
        FROM vendor_items vi
@@ -17,6 +34,7 @@ export async function GET(
       [params.id]
     );
     return NextResponse.json(result.rows);
+    });
   } catch (error: any) {
     console.error("Error fetching vendor items:", error);
     return NextResponse.json({ error: "Failed to fetch vendor items" }, { status: 500 });
@@ -28,6 +46,20 @@ export async function POST(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
+    const { workspaceid } = params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const { itemId, isPrimarySupplier, leadTimeDays, minOrderQty, unitPrice } = body;
 
@@ -46,6 +78,7 @@ export async function POST(
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
+    });
   } catch (error: any) {
     console.error("Error adding vendor item:", error);
     return NextResponse.json({ error: "Failed to add vendor item" }, { status: 500 });

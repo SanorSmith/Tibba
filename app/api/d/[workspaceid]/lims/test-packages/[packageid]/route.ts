@@ -3,6 +3,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { testPackages, testPackageItems } from "@/lib/db/schema/test-packages";
 import { eq, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // PUT /api/d/[workspaceid]/lims/test-packages/[packageid] - Update test package
 export async function PUT(
@@ -12,6 +14,15 @@ export async function PUT(
   const { workspaceid, packageid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   try {
     const body = await req.json();
@@ -63,6 +74,7 @@ export async function PUT(
     console.error("Error updating test package:", error);
     return NextResponse.json({ error: "Failed to update test package" }, { status: 500 });
   }
+  });
 }
 
 // DELETE /api/d/[workspaceid]/lims/test-packages/[packageid] - Delete test package
@@ -73,6 +85,15 @@ export async function DELETE(
   const { workspaceid, packageid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Signed in is not the same as belonging here: without this, one
+  // facility's data is reachable by changing the id in the request.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Runs with this facility's identity on the connection, so row-level
+  // security scopes every query below in the database itself.
+  return withTenant(workspaceid, async () => {
 
   try {
     // Delete package (cascade will delete items)
@@ -90,4 +111,5 @@ export async function DELETE(
     console.error("Error deleting test package:", error);
     return NextResponse.json({ error: "Failed to delete test package" }, { status: 500 });
   }
+  });
 }

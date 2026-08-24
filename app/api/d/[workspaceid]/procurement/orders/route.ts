@@ -4,6 +4,9 @@ import { purchaseOrders, purchaseOrderItems, items, vendors } from '@/lib/db/sch
 import { eq, and, desc, like, or, gte, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import type { PurchaseOrder, CreatePurchaseOrderRequest, UpdatePurchaseOrderRequest, POFilters } from '@/lib/types/procurement';
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // GET /api/d/[workspaceid]/procurement/orders - List POs with filters
 export async function GET(
@@ -12,6 +15,19 @@ export async function GET(
 ) {
   try {
     const { workspaceid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const searchParams = req.nextUrl.searchParams;
 
     const status = searchParams.get('status') as any;
@@ -112,6 +128,7 @@ export async function GET(
     );
 
     return NextResponse.json(ordersWithItems);
+    });
   } catch (error) {
     console.error('Error fetching purchase orders:', error);
     return NextResponse.json({ error: 'Failed to fetch purchase orders' }, { status: 500 });
@@ -143,6 +160,19 @@ export async function POST(
 ) {
   try {
     const { workspaceid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const validated = createPOSchema.parse(body);
 
@@ -180,6 +210,7 @@ export async function POST(
         const [newItem] = await db
           .insert(purchaseOrderItems)
           .values({
+            workspaceid: workspaceid,
             poid: newPO.id,
             itemid: item.itemid,
             orderedqty: item.orderedqty,
@@ -198,6 +229,7 @@ export async function POST(
       totalamount: newPO.totalamount ? parseFloat(newPO.totalamount) : 0,
       items: poItems,
     }, { status: 201 });
+    });
   } catch (error) {
     console.error('Error creating purchase order:', error);
     if (error instanceof z.ZodError) {
@@ -214,6 +246,19 @@ export async function PATCH(
 ) {
   try {
     const { workspaceid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await req.json();
     const { id, status } = body;
     
@@ -234,6 +279,7 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       order: updatedPO,
+    });
     });
   } catch (error) {
     console.error('Error updating PO:', error);

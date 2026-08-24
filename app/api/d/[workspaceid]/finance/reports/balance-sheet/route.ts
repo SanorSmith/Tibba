@@ -7,12 +7,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireFinancePermission } from "@/lib/finance/permissions";
 import { handleFinanceApiError } from "@/lib/finance/errors";
 import { getBalanceSheet } from "@/lib/finance/services/reports-service";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 type RouteParams = { params: Promise<{ workspaceid: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { workspaceid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(workspaceid, "finance:reports:read");
     if (auth instanceof NextResponse) return auth;
 
@@ -28,6 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const report = await getBalanceSheet(workspaceid, periodid);
     return NextResponse.json(report);
+    });
   } catch (error) {
     return handleFinanceApiError(error, "GET /finance/reports/balance-sheet");
   }

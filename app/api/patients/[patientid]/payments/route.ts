@@ -10,6 +10,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { invoices, invoiceItems } from "@/lib/db/tables/invoices";
 import { eq, desc, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
@@ -22,6 +24,15 @@ export async function GET(
     }
 
     const { patientid } = await params;
+
+    // This route sits outside /d/[workspaceid], so the facility it acts
+    // for has to be named explicitly — and proved, since it is caller input.
+    const workspaceid = request.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     if (!patientid) {
       return NextResponse.json(
@@ -92,6 +103,7 @@ export async function GET(
       recentPayments: paidInvoices.slice(0, 5), // Last 5 paid invoices
     });
 
+    });
   } catch (error) {
     console.error("Patient payment status error:", error);
     return NextResponse.json(

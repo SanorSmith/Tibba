@@ -6,12 +6,28 @@ import {
   items,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ workspaceid: string; id: string }> }
 ) {
-  const { id } = await params;
+  const { workspaceid, id } = await params;
+
+  // This route had no authentication at all: the facility's data was
+  // served to anyone who could type the URL. Who you are, whether you
+  // belong here, and only then the data.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
   try {
     const [order] = await db
       .select()
@@ -29,13 +45,27 @@ export async function GET(
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ workspaceid: string; id: string }> }
 ) {
-  const { id } = await params;
+  const { workspaceid, id } = await params;
+
+  // This route had no authentication at all: the facility's data was
+  // served to anyone who could type the URL. Who you are, whether you
+  // belong here, and only then the data.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
   try {
     const body = await req.json();
     const {
@@ -123,4 +153,5 @@ export async function PATCH(
     console.error("PATCH /pharmacy-procurement/orders/[id] error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }

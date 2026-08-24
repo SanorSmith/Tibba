@@ -11,6 +11,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import { items, inventoryStock, stockTransactions, warehouses, itemBatches } from "@/lib/db/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
@@ -32,6 +33,11 @@ export async function GET(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const rows = await db
       .select({
@@ -57,6 +63,7 @@ export async function GET(
       .limit(100);
 
     return NextResponse.json({ adjustments: rows, reasons: REASONS });
+    });
   } catch (error) {
     console.error("[lab adjust GET]", error);
     return NextResponse.json({ error: "Failed to load adjustments" }, { status: 500 });
@@ -76,6 +83,11 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Everything below runs with this facility's identity on the connection,
+    // so row-level security scopes it in the database rather than relying on
+    // each query carrying the right filter.
+    return withTenant(workspaceid, async () => {
 
     const { itemId, batchId, newQuantity, reason, notes } = await request.json();
     if (!itemId || newQuantity == null) {
@@ -137,6 +149,7 @@ export async function POST(
       }
 
       await tx.insert(stockTransactions).values({
+        workspaceid: workspaceid,
         itemid: itemId,
         warehouseid: labWarehouse.id,
         batchid: batchId ?? null,
@@ -152,6 +165,7 @@ export async function POST(
     });
 
     return NextResponse.json(result);
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Adjustment failed";
     console.error("[lab adjust POST]", error);

@@ -12,6 +12,8 @@ import { pharmacyOrders, patients } from "@/lib/db/schema";
 import { drugs } from "@/lib/db/tables/pharmacy-drugs";
 import { eq, or, and, ilike, sql, desc } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,6 +25,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");
     const searchType = searchParams.get("type") || "all"; // patient | order | drug | all
+
+    // This route sits outside /d/[workspaceid], so the facility it acts
+    // for has to be named explicitly — and proved, since it is caller input.
+    const workspaceid = searchParams.get("workspaceid");
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     if (!query || query.length < 2) {
       return NextResponse.json(
@@ -206,6 +217,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ results, query, type: searchType });
+    });
   } catch (error) {
     console.error("[POS Search] Error:", error);
     console.error("[POS Search] Error details:", JSON.stringify(error, null, 2));

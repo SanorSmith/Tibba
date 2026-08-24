@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { items, itemBatches, inventoryStock, drugs } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +12,19 @@ export async function GET(
 ) {
   try {
     const { workspaceid, orderid } = await params;
+
+    // This route had no authentication at all: the facility's data was
+    // served to anyone who could type the URL. Who you are, whether you
+    // belong here, and only then the data.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const { searchParams } = new URL(request.url);
     const drugid = searchParams.get("drugid");
 
@@ -104,6 +120,7 @@ export async function GET(
 
     return NextResponse.json({
       items: Array.from(itemMap.values()),
+    });
     });
   } catch (error) {
     console.error("[Inventory Items] Error:", error);

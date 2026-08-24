@@ -1,5 +1,12 @@
+/**
+ * Patient records, which are shared by design — any facility may read a
+ * patient's general information (migration 0068 opens SELECT on `patients`
+ * for exactly this). Writes set `workspaceid` from the request and are
+ * governed by the write policy on that table.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getUser } from "@/lib/user";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -55,6 +62,14 @@ function normalizePhoneNumber(phone: string): string {
 
 export async function GET(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -375,6 +390,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -608,6 +631,14 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 
@@ -837,6 +868,14 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!pool) {
       return NextResponse.json(
         { 

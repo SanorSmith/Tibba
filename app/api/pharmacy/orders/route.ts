@@ -15,6 +15,8 @@ import {
 import { eq, and, desc, ilike } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // ── GET: list orders ──────────────────────────────────────────────────
 export async function GET(
@@ -25,6 +27,15 @@ export async function GET(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -55,6 +66,7 @@ export async function GET(
       .limit(200);
 
     return NextResponse.json({ orders });
+    });
   } catch (error) {
     console.error("[Pharmacy Orders GET]", error);
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
@@ -89,6 +101,15 @@ export async function POST(
     const { workspaceid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const data = orderSchema.parse(body);
@@ -139,6 +160,7 @@ export async function POST(
       .returning();
 
     return NextResponse.json({ order, items }, { status: 201 });
+    });
   } catch (error) {
     console.error("[Pharmacy Orders POST]", error);
     if (error instanceof z.ZodError) {

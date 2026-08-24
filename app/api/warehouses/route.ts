@@ -2,9 +2,20 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { warehouses, warehouseSections, inventoryStock } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET() {
   try {
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const all = await db.select().from(warehouses).where(eq(warehouses.isactive, true)).orderBy(warehouses.name);
 
     const enriched = await Promise.all(all.map(async (w) => {
@@ -29,15 +40,34 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, location, manager, description, warehousetype } = await req.json();
+    // This route answered anyone who could reach it. There is no facility
+    // in scope to check membership against, so this closes what can be
+    // closed here: it now requires a signed-in user.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { name, location, manager, description, warehousetype, workspaceid } = await req.json();
     if (!name?.trim()) return NextResponse.json({ error: "Warehouse name is required" }, { status: 400 });
+    // A warehouse without an owner is how Pharma's stock ended up inside
+    // Alis's warehouse — every warehouse belongs to exactly one facility.
+    if (!workspaceid) return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+
+    // The id arrives in the body, so belonging is proved before it is used.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     const [created] = await db.insert(warehouses).values({
-      name, location, manager, description,
+      name, location, manager, description, workspaceid,
       warehousetype: warehousetype ?? "hospital",
     }).returning();
 
     return NextResponse.json(created, { status: 201 });
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create warehouse" }, { status: 500 });
   }

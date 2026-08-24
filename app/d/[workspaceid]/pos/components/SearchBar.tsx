@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ type PatientWithOrders = {
 };
 
 export function SearchBar({ onPatientSelect, onOrderSelect, onDrugAdd }: Props) {
+  const workspaceid = useParams().workspaceid as string;
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState("all");
   const [loading, setLoading] = useState(false);
@@ -81,7 +83,7 @@ export function SearchBar({ onPatientSelect, onOrderSelect, onDrugAdd }: Props) 
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/pos/search?q=${encodeURIComponent(query)}&type=${searchType}`
+        `/api/pos/search?workspaceid=${workspaceid}&q=${encodeURIComponent(query)}&type=${searchType}`
       );
       if (!res.ok) throw new Error();
       const data = await res.json();

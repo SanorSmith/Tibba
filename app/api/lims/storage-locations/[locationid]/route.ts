@@ -3,6 +3,9 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { storageLocations } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 // PUT - Update storage location
 export async function PUT(
@@ -16,6 +19,18 @@ export async function PUT(
     }
 
     const { locationid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("storage_location", locationid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Location not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
     const {
       name,
@@ -89,6 +104,7 @@ export async function PUT(
       success: true,
       location: updatedLocation,
     });
+    });
   } catch (error) {
     console.error("Storage location update error:", error);
     return NextResponse.json(
@@ -110,6 +126,18 @@ export async function DELETE(
     }
 
     const { locationid } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("storage_location", locationid);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Location not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Check if location exists
     const existingLocation = await db
@@ -133,6 +161,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: "Storage location deleted successfully",
+    });
     });
   } catch (error) {
     console.error("Storage location deletion error:", error);

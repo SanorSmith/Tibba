@@ -16,6 +16,9 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 const approvalSchema = z.object({
   approved: z.boolean(),
@@ -33,6 +36,18 @@ export async function POST(
     }
 
     const { returnId } = await params;
+
+    // Only the record id is known here, so the owning facility is
+    // resolved first and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("pos_return", returnId);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Return not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const body = await request.json();
     const parsed = approvalSchema.safeParse(body);
 
@@ -181,6 +196,7 @@ export async function POST(
         rejectionReason,
       });
     }
+    });
   } catch (error) {
     console.error("[Return Approve] Error:", error);
     return NextResponse.json(

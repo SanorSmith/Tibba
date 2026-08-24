@@ -3,12 +3,21 @@ import { Pool } from "pg";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { stockTransactions } from "@/lib/db/schema";
+import { getUser } from "@/lib/user";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 export async function GET(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const whRes = await pool.query(`SELECT id FROM warehouses WHERE warehouse_type = 'pharmacy' AND is_active = true`);
   if (!whRes.rows.length) return NextResponse.json([]);
   const whArray = `{${whRes.rows.map((r: any) => r.id).join(",")}}`;
@@ -38,6 +47,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // This route answered anyone who could reach it. There is no facility
+  // in scope to check membership against, so this closes what can be
+  // closed here: it now requires a signed-in user.
+  const user = await getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json();
   const { itemId, warehouseId, batchId, adjustmentQty, reason, createdBy, unitCost, sellingPrice, batchNumber, expiryDate, itemType, manufacturer } = body;
 

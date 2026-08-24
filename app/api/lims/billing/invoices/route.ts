@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import { generalInvoices, generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { labPayments } from "@/lib/db/tables/lab-pos";
 import { eq, sql, desc, inArray } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
 
@@ -28,6 +29,10 @@ export async function GET(request: NextRequest) {
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
 
     // Invoice ids this lab raised.
@@ -90,6 +95,7 @@ export async function GET(request: NextRequest) {
         balance: Number(r.balance ?? 0),
         payments: byInvoice.get(r.id) ?? [],
       })),
+    });
     });
   } catch (error) {
     console.error("[lab invoices]", error);

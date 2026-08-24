@@ -7,6 +7,9 @@ import { eq, and, isNotNull } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
 import { createMedicationDispenseComposition, MEDICATION_DISPENSE_ACTION_STATES } from "@/lib/openehr/medication-dispense";
 import { createOpenEHRComposition, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 /**
  * POST /api/d/[workspaceid]/pharmacy/orders/[orderid]/dispense
@@ -23,6 +26,15 @@ export async function POST(
     }
 
     const { workspaceid, orderid } = await params;
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -138,6 +150,15 @@ export async function POST(
         compositionData as Record<string, unknown>
       );
 
+      // Record the owning facility where it can be enforced. Without this
+      // the only trace of who a composition belongs to is prose inside
+      // the document, which a wording change would silently break.
+      await recordCompositionOwner({
+        compositionUid: compositionUid,
+        workspaceId: workspaceid,
+        patientId: null,
+      });
+
       dispenseCompositionUids.push(compositionUid);
 
       // Update order item status
@@ -191,6 +212,7 @@ export async function POST(
               await db
                 .insert(stockTransactions)
                 .values({
+                  workspaceid: workspaceid,
                   itemid: item.drugid,
                   warehouseid: pharmacyWarehouse[0].id,
                   batchid: dispenseData.batchid || item.batchid,
@@ -226,6 +248,7 @@ export async function POST(
       message: "Order dispensed successfully and recorded in OpenEHR",
     });
 
+    });
   } catch (error) {
     console.error("Error dispensing order:", error);
     return NextResponse.json(

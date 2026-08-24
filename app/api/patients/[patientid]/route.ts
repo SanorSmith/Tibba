@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import { patients, workspaces } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenantIfOwned } from "@/lib/db/tenant";
 
 export async function GET(
   req: NextRequest,
@@ -83,6 +85,17 @@ export async function PUT(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
+    // General information is readable from anywhere, but only the facility
+    // that registered a patient may change their record. A global patient
+    // (no owning facility) stays editable by any signed-in user, which is
+    // what "global" has always meant here.
+    const owner = existingPatient.workspaceid;
+    if (owner && !(await isWorkspaceMember(user.userid, owner))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenantIfOwned(owner, async () => {
+
     // Check National ID uniqueness if being changed
     if (body.nationalid && body.nationalid !== existingPatient.nationalid) {
       const [conflict] = await db
@@ -127,6 +140,7 @@ export async function PUT(
       message: "Patient updated successfully",
       patient: updatedPatient 
     });
+    });
   } catch (e) {
     console.error("[global-patient][PUT] error:", e);
     return NextResponse.json({ error: "Failed to update patient" }, { status: 500 });
@@ -155,7 +169,22 @@ export async function DELETE(
 
     const { patientid } = await params;
 
-    // Delete patient (from any workspace)
+    const [target] = await db
+      .select({ workspaceid: patients.workspaceid })
+      .from(patients)
+      .where(eq(patients.patientid, patientid))
+      .limit(1);
+
+    if (!target) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+    }
+
+    if (target.workspaceid && !(await isWorkspaceMember(user.userid, target.workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenantIfOwned(target.workspaceid, async () => {
+
     const [deletedPatient] = await db
       .delete(patients)
       .where(eq(patients.patientid, patientid))
@@ -167,6 +196,7 @@ export async function DELETE(
 
     return NextResponse.json({ 
       message: "Patient deleted successfully" 
+    });
     });
   } catch (e) {
     console.error("[global-patient][DELETE] error:", e);

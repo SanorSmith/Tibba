@@ -1,6 +1,11 @@
 /**
  * Single Drug API — GET, PATCH, DELETE (global catalog)
  */
+
+/**
+ * UNREACHABLE DUPLICATE: the params type names a workspaceid that this path
+ * has no segment for, and no handler reads it. Nothing calls it.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { drugs } from "@/lib/db/schema";

@@ -18,6 +18,8 @@ import {
 import { eq, and, or, gte, lte, like, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const searchSchema = z.object({
   workspaceId: z.string().uuid(),
@@ -47,6 +49,13 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
+
+    // safeParse proves the id is a uuid; belonging is a separate question.
+    if (!(await isWorkspaceMember(user.userid, data.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(data.workspaceId, async () => {
     const results: any = { sales: [], returns: [], shifts: [] };
 
     // Date conditions
@@ -194,6 +203,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(results);
+    });
   } catch (error) {
     console.error("[Receipt Search] Error:", error);
     return NextResponse.json({ error: "Failed to search receipts" }, { status: 500 });

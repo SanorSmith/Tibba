@@ -11,6 +11,8 @@ import { db } from "@/lib/db";
 import { shopOrders, shopOrderItems } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Validation schema for shop order updates
 const shopOrderUpdateSchema = z.object({
@@ -40,6 +42,15 @@ export async function GET(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const order = await db
       .select()
@@ -64,6 +75,7 @@ export async function GET(
       .orderBy(shopOrderItems.sortorder);
 
     return NextResponse.json({ order: { ...order[0], items } });
+    });
   } catch (error) {
     console.error("Error fetching shop order:", error);
     return NextResponse.json(
@@ -87,6 +99,15 @@ export async function PUT(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const validatedData = shopOrderUpdateSchema.parse(body);
@@ -138,6 +159,7 @@ export async function PUT(
       .orderBy(shopOrderItems.sortorder);
 
     return NextResponse.json({ order: { ...updatedOrder[0], items } });
+    });
   } catch (error) {
     console.error("Error updating shop order:", error);
     if (error instanceof z.ZodError) {
@@ -167,6 +189,15 @@ export async function DELETE(
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     // Check if order exists
     const existingOrder = await db
@@ -195,6 +226,7 @@ export async function DELETE(
       );
 
     return NextResponse.json({ message: "Order deleted successfully" });
+    });
   } catch (error) {
     console.error("Error deleting shop order:", error);
     return NextResponse.json(

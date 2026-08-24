@@ -6,15 +6,26 @@ import { db } from "@/lib/db";
 import { drugs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceid: string; drugid: string }> }
 ) {
   try {
-    const { drugid } = await params;
+    const { workspaceid, drugid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const [drug] = await db
       .select()
@@ -24,6 +35,7 @@ export async function GET(
 
     if (!drug) return NextResponse.json({ error: "Drug not found" }, { status: 404 });
     return NextResponse.json({ drug });
+    });
   } catch (error) {
     console.error("[Drug GET]", error);
     return NextResponse.json({ error: "Failed to fetch drug" }, { status: 500 });
@@ -35,9 +47,18 @@ export async function PATCH(
   { params }: { params: Promise<{ workspaceid: string; drugid: string }> }
 ) {
   try {
-    const { drugid } = await params;
+    const { workspaceid, drugid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const body = await request.json();
 
@@ -73,6 +94,7 @@ export async function PATCH(
 
     if (!updated) return NextResponse.json({ error: "Drug not found" }, { status: 404 });
     return NextResponse.json({ drug: updated });
+    });
   } catch (error) {
     console.error("[Drug PATCH]", error);
     return NextResponse.json({ error: "Failed to update drug" }, { status: 500 });
@@ -84,9 +106,18 @@ export async function DELETE(
   { params }: { params: Promise<{ workspaceid: string; drugid: string }> }
 ) {
   try {
-    const { drugid } = await params;
+    const { workspaceid, drugid } = await params;
     const user = await getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Signed in is not the same as belonging here: without this, one
+    // facility's data is reachable by changing the id in the request.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const [deleted] = await db
       .delete(drugs)
@@ -95,6 +126,7 @@ export async function DELETE(
 
     if (!deleted) return NextResponse.json({ error: "Drug not found" }, { status: 404 });
     return NextResponse.json({ message: "Drug deleted" });
+    });
   } catch (error) {
     console.error("[Drug DELETE]", error);
     return NextResponse.json({ error: "Failed to delete drug" }, { status: 500 });

@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { labGoodsReceipt, labGoodsReceiptItems } from "@/lib/db/tables/lab-procurement";
 import { inventoryStock, stockTransactions, itemBatches } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { ensureLabWarehouse } from "@/lib/lims/lab-warehouse";
 import { getUser } from "@/lib/user";
@@ -32,6 +33,10 @@ export async function POST(
     if (!(await isWorkspaceMember(user.userid, workspaceid))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Runs with this facility's identity on the connection, so row-level
+    // security scopes every query below in the database itself.
+    return withTenant(workspaceid, async () => {
 
     const { receiptId, reason } = await request.json();
     if (!receiptId) return NextResponse.json({ error: "receiptId is required" }, { status: 400 });
@@ -147,6 +152,7 @@ export async function POST(
         }
 
         await tx.insert(stockTransactions).values({
+          workspaceid: workspaceid,
           itemid: line.itemid,
           warehouseid: labWarehouse.id,
           batchid: batch?.id ?? null,
@@ -165,6 +171,7 @@ export async function POST(
     });
 
     return NextResponse.json(result);
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not reverse the delivery";
     console.error("[lab grn correction]", error);

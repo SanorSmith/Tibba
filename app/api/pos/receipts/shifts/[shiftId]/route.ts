@@ -14,6 +14,9 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { ownerWorkspaceOf } from "@/lib/db/owner-workspace";
 
 export async function GET(
   request: NextRequest,
@@ -26,6 +29,19 @@ export async function GET(
     }
 
     const { shiftId } = await params;
+
+    // Only the record id is known here, so the owning facility is looked
+    // up first — the one question that can be answered before a tenant is
+    // established — and membership decides whether to go on.
+    const workspaceid = await ownerWorkspaceOf("pos_shift", shiftId);
+    if (!workspaceid) {
+      return NextResponse.json({ error: "Shift not found" }, { status: 404 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Get shift with cashier
     const [shift] = await db
@@ -91,6 +107,7 @@ export async function GET(
       })),
       transactionCount: transactionCount?.count || 0,
       totalRevenue: parseFloat(transactionCount?.totalRevenue || "0"),
+    });
     });
   } catch (error) {
     console.error("[Shift Receipt] Error:", error);
