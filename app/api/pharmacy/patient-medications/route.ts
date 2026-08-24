@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { patientMedications, patientAllergies } from "@/lib/db/tables/drug-interaction-logs";
 import { desc, eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Get patient medications and allergies
 export async function GET(request: NextRequest) {
@@ -22,6 +24,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const patientid = searchParams.get("patientid");
     const includeAllergies = searchParams.get("includeAllergies") === "true";
 
@@ -65,6 +74,7 @@ export async function GET(request: NextRequest) {
       allergies,
       medicationCount: medications.length,
       allergyCount: allergies.length,
+    });
     });
   } catch (error) {
     console.error("Error fetching patient medications:", error);

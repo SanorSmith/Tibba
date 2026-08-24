@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { warehouses, warehouseSections, inventoryStock } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET() {
   try {
@@ -52,12 +54,20 @@ export async function POST(req: Request) {
     // Alis's warehouse — every warehouse belongs to exactly one facility.
     if (!workspaceid) return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
 
+    // The id arrives in the body, so belonging is proved before it is used.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
+
     const [created] = await db.insert(warehouses).values({
       name, location, manager, description, workspaceid,
       warehousetype: warehousetype ?? "hospital",
     }).returning();
 
     return NextResponse.json(created, { status: 201 });
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to create warehouse" }, { status: 500 });
   }

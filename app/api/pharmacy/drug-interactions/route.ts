@@ -4,6 +4,12 @@
  * Endpoint: POST /api/pharmacy/drug-interactions
  */
 
+/**
+ * No tenant of its own: this checks drug interactions and forwards the
+ * workspaceId it was given to /api/pharmacy/patient-medications, which does
+ * the scoped read. The scoping happens there, not here.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { checkDrugWarnings } from "@/lib/clinical-data/drug-warnings";
 import { findAlternatives } from "@/lib/clinical-data/drug-alternatives";

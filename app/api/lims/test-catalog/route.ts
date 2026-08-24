@@ -10,6 +10,8 @@ import { db } from "@/lib/db";
 import { labTestCatalog } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,6 +29,13 @@ export async function GET(request: NextRequest) {
     if (!workspaceId) {
       return NextResponse.json({ error: "Workspace ID required" }, { status: 400 });
     }
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceId || !(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceId, async () => {
 
     // Fetch active tests for workspace
     const tests = await db
@@ -43,6 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       tests,
       total: tests.length,
+    });
     });
   } catch (error) {
     console.error("Error fetching test catalog:", error);

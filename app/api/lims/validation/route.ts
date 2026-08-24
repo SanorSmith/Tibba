@@ -4,6 +4,8 @@ import { validationStates } from "@/lib/db/schema";
 import { createWorkspaceNotification } from "@/lib/notifications";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function POST(
   request: NextRequest,
@@ -19,6 +21,16 @@ export async function POST(
     }
 
     const { workspaceid } = await params;
+
+    // This route declares a workspaceid param but its path has no such
+    // segment, so `params` never supplies one. Taking it from the query
+    // string is what the caller can actually provide.
+    const ws = workspaceid ?? new URL(request.url).searchParams.get("workspaceid");
+    if (!ws || !(await isWorkspaceMember(user.userid, ws))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(ws, async () => {
     const body = await request.json();
     const { sampleid, state } = body;
 
@@ -105,6 +117,7 @@ export async function POST(
       success: true,
       validationState: result[0],
       message: `Sample ${state.toLowerCase().replace('_', ' ')} successfully`,
+    });
     });
   } catch (error) {
     return NextResponse.json(

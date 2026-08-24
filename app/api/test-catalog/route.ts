@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { labTestCatalog } from "@/lib/db/tables/lims-order";
 import { eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -24,6 +26,13 @@ export async function GET(request: NextRequest) {
     if (!workspaceid) {
       return NextResponse.json({ error: "Missing workspaceid" }, { status: 400 });
     }
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
 
     // Fetch all active tests from the admin-managed catalog
     const tests = await db
@@ -127,6 +136,7 @@ export async function GET(request: NextRequest) {
       laboratories,
       testsByLabType,
       totalTests: tests.length,
+    });
     });
   } catch (error) {
     console.error("Error fetching test catalog:", error);

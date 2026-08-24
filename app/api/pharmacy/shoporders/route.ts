@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 
 export async function GET(req: NextRequest) {
   // This route answered anyone who could reach it. There is no facility
@@ -13,6 +14,17 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // The facility must come from the caller and be proved, not assumed. This
+  // route pinned every row to one hardcoded workspace id, so stores and
+  // orders created anywhere landed in Hospital 1.
+  const workspaceid = req.nextUrl?.searchParams?.get("workspaceid")
+    ?? new URL(req.url).searchParams.get("workspaceid");
+  if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
 
   const status = req.nextUrl.searchParams.get("status") ?? "";
   const r = await pool.query(
@@ -26,9 +38,10 @@ export async function GET(req: NextRequest) {
      WHERE o.workspaceid = $1
        AND ($2 = '' OR $2 = 'ALL' OR o.status = $2)
      ORDER BY o.createdat DESC`,
-    [WS, status]
+    [workspaceid, status]
   );
   return NextResponse.json(r.rows);
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -39,6 +52,17 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // The facility must come from the caller and be proved, not assumed. This
+  // route pinned every row to one hardcoded workspace id, so stores and
+  // orders created anywhere landed in Hospital 1.
+  const workspaceid = req.nextUrl?.searchParams?.get("workspaceid")
+    ?? new URL(req.url).searchParams.get("workspaceid");
+  if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
 
   const { supplier, createdBy, items, totalAmount } = await req.json();
   if (!items?.length) return NextResponse.json({ error: "No items" }, { status: 400 });
@@ -63,7 +87,7 @@ export async function POST(req: NextRequest) {
   const r = await pool.query(
     `INSERT INTO shop_orders (orderid, workspaceid, ordernumber, clientname, orderedby, createdby, totalcost, status, createdat)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, $4, $5, 'PENDING', NOW()) RETURNING *`,
-    [WS, orderNum, supplier || null, userId, totalAmount||0]
+    [workspaceid, orderNum, supplier || null, userId, totalAmount||0]
   );
   const orderId = r.rows[0].orderid;
   
@@ -75,4 +99,5 @@ export async function POST(req: NextRequest) {
     );
   }
   return NextResponse.json(r.rows[0]);
+  });
 }

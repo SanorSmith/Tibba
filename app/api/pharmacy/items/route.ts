@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -181,6 +183,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, form, strength, sellingprice, unitcost, workspaceid, initial_quantity, warehouseid, lotnumber, expirydate } = body;
 
+    // The id comes from the request body, so belonging has to be proved
+    // before it is used as the tenant identity.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
+
     console.log('[Pharmacy Items API] Creating item:', name);
 
     // Check for existing item with same name, form, and strength
@@ -260,6 +270,7 @@ export async function POST(req: NextRequest) {
     } finally {
       client.release();
     }
+    });
   } catch (error: any) {
     console.error('[Pharmacy Items API] Error:', error);
     return NextResponse.json(

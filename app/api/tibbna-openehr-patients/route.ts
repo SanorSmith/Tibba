@@ -1,3 +1,9 @@
+/**
+ * Patient records, which are shared by design — any facility may read a
+ * patient's general information (migration 0068 opens SELECT on `patients`
+ * for exactly this). Writes set `workspaceid` from the request and are
+ * governed by the write policy on that table.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { getUser } from "@/lib/user";

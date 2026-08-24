@@ -8,6 +8,8 @@ import { db } from "@/lib/db";
 import { drugInteractionLogs } from "@/lib/db/tables/drug-interaction-logs";
 import { desc, eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Log an interaction check
 export async function POST(request: NextRequest) {
@@ -97,6 +99,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workspaceid = searchParams.get("workspaceid");
+    // The id arrives from the caller, so belonging has to be checked
+    // before it is trusted as the tenant.
+    if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return withTenant(workspaceid, async () => {
     const patientid = searchParams.get("patientid");
     const orderid = searchParams.get("orderid");
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -150,6 +159,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       logs,
       count: logs.length,
+    });
     });
   } catch (error) {
     console.error("Error fetching interaction logs:", error);
