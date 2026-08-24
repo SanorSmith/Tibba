@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
 export async function GET() {
@@ -31,24 +33,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { prid, warehouseid, vendorid, notes } = await req.json();
+  const { prid, warehouseid, vendorid, notes, workspaceid } = await req.json();
+
+  // These rows carry a facility, so one has to be named and proved. This is
+  // the legacy top-level procurement API — the workspace-scoped one lives at
+  // /api/d/[workspaceid]/procurement — and nothing in the app links here, but
+  // it still writes, and its writes were leaving the tenant column null.
+  if (!workspaceid || !(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return withTenant(workspaceid, async () => {
+
   const poNum = `PO-${Date.now().toString().slice(-8)}`;
   const r = await pool.query(
-    `INSERT INTO purchase_orders (id, ponumber, vendorid, prid, warehouseid, status, orderdate, notes, createdat, updatedat)
-     VALUES (gen_random_uuid(), $1, $2, $3, $4, 'DRAFT', NOW(), $5, NOW(), NOW())
+    `INSERT INTO purchase_orders (id, workspaceid, ponumber, vendorid, prid, warehouseid, status, orderdate, notes, createdat, updatedat)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'DRAFT', NOW(), $6, NOW(), NOW())
      RETURNING *`,
-    [poNum, vendorid, prid, warehouseid, notes ?? null]
+    [workspaceid, poNum, vendorid, prid, warehouseid, notes ?? null]
   );
   if (prid) {
     await pool.query(
-      `INSERT INTO purchase_order_items (id, poid, itemid, orderedqty, receivedqty, unitprice, totalamount, createdat)
-       SELECT gen_random_uuid(), $1, pri.itemid, pri.requestedqty, 0,
+      `INSERT INTO purchase_order_items (id, workspace_id, poid, itemid, orderedqty, receivedqty, unitprice, totalamount, createdat)
+       SELECT gen_random_uuid(), $3, $1, pri.itemid, pri.requestedqty, 0,
               COALESCE(pri.estimatedprice,0),
               pri.requestedqty * COALESCE(pri.estimatedprice,0), NOW()
        FROM purchase_requisition_items pri WHERE pri.prid = $2`,
-      [r.rows[0].id, prid]
+      [r.rows[0].id, prid, workspaceid]
     );
     await pool.query(`UPDATE purchase_requisitions SET status='ORDERED', updatedat=NOW() WHERE id=$1`, [prid]);
   }
   return NextResponse.json(r.rows[0]);
+  });
 }
