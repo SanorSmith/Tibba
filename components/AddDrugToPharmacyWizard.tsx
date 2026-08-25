@@ -247,6 +247,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
     max_level:    "100",
     warehouseid:  warehouses[0]?.id ?? "",
     initial_quantity: "0",
+    isprescribed: false,
   });
 
   const set = (k:string, v:any) => setForm(f=>({...f,[k]:v}));
@@ -338,6 +339,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
           atccode: form.atccode || undefined,
           storage_location: form.storage_location || undefined,
           storage_type: form.storage_type || undefined,
+          isprescribed: entryType === "medicine" ? form.isprescribed : false,
           minlevel: form.min_level ? parseInt(form.min_level) : undefined,
           maxlevel: form.max_level ? parseInt(form.max_level) : undefined,
           // Add stock if warehouse and quantity provided
@@ -494,6 +496,21 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
               </div>
               <div style={s.fgroup}><label style={s.label}>Barcode</label><input style={s.input} value={form.barcode} onChange={e=>set("barcode",e.target.value)}/></div>
               <div style={s.fgroup}><label style={s.label}>Expiry Date</label><input type="date" style={s.input} value={form.expiry_date} onChange={e=>set("expiry_date",e.target.value)}/></div>
+              <div style={{gridColumn:"1/-1",...s.fgroup}}>
+                <label style={{...s.label,marginBottom:8}}>Prescription Status</label>
+                <div style={{display:"flex",gap:16}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:500,color:form.isprescribed?"#6b7280":"#16a34a"}}>
+                    <input type="radio" name="isprescribed" checked={!form.isprescribed} onChange={()=>set("isprescribed",false)}
+                      style={{width:16,height:16,accentColor:"#16a34a",cursor:"pointer"}}/>
+                    OTC (Unprescribed)
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:500,color:form.isprescribed?"#dc2626":"#6b7280"}}>
+                    <input type="radio" name="isprescribed" checked={form.isprescribed} onChange={()=>set("isprescribed",true)}
+                      style={{width:16,height:16,accentColor:"#dc2626",cursor:"pointer"}}/>
+                    Rx (Prescribed)
+                  </label>
+                </div>
+              </div>
             </>}
 
             {!isUpdate && entryType === "item" && <>
