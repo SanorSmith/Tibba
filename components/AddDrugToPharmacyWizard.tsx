@@ -222,6 +222,8 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
   const [checkingExisting, setCheckingExisting] = useState(false);
   const [existingShelves, setExistingShelves] = useState<string[]>([]);
   const [isUpdate, setIsUpdate]       = useState(prefill?._isUpdate ?? false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile]       = useState<File | null>(null);
 
   const [form, setForm] = useState({
     name:         prefill?.name         ?? "",
@@ -247,6 +249,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
     max_level:    "100",
     warehouseid:  warehouses[0]?.id ?? "",
     initial_quantity: "0",
+    isprescribed: false,
   });
 
   const set = (k:string, v:any) => setForm(f=>({...f,[k]:v}));
@@ -338,6 +341,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
           atccode: form.atccode || undefined,
           storage_location: form.storage_location || undefined,
           storage_type: form.storage_type || undefined,
+          isprescribed: entryType === "medicine" ? form.isprescribed : false,
           minlevel: form.min_level ? parseInt(form.min_level) : undefined,
           maxlevel: form.max_level ? parseInt(form.max_level) : undefined,
           // Add stock if warehouse and quantity provided
@@ -472,6 +476,54 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
           {/* Only show form after entry type is selected */}
           {(entryType || isUpdate) && (
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {/* Image upload placeholder */}
+              <div style={{gridColumn:"1/-1",marginBottom:8}}>
+                <label style={s.label}>Product Image</label>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
+                  <div
+                    onClick={()=>document.getElementById("drug-image-input")?.click()}
+                    style={{width:80,height:80,borderRadius:10,border:"2px dashed #d1d5db",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",background:imagePreview?"#fff":"#f9fafb",transition:"border-color 0.2s"}}
+                    onMouseEnter={e=>(e.currentTarget.style.borderColor="#6366f1")}
+                    onMouseLeave={e=>(e.currentTarget.style.borderColor="#d1d5db")}
+                  >
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    ) : (
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:22,color:"#9ca3af"}}>📷</div>
+                        <div style={{fontSize:9,color:"#9ca3af",marginTop:2}}>Add image</div>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    id="drug-image-input"
+                    type="file"
+                    accept="image/*"
+                    style={{display:"none"}}
+                    onChange={(e)=>{
+                      const file = e.target.files?.[0];
+                      if(file){
+                        setImageFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <div style={{fontSize:11,color:"#6b7280"}}>
+                    <div>Click to upload an image</div>
+                    <div style={{marginTop:2}}>JPG, PNG or WebP (max 2MB)</div>
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={(e)=>{e.stopPropagation();setImagePreview(null);setImageFile(null);}}
+                        style={{marginTop:4,fontSize:11,color:"#dc2626",cursor:"pointer",background:"none",border:"none",padding:0,textDecoration:"underline"}}
+                      >Remove image</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Item/Medicine name */}
               <div style={{gridColumn:"1/-1",...s.fgroup}}>
                 <label style={s.label}>{entryType === "item" ? "Item Name" : "Medicine Name"} *</label>
@@ -494,6 +546,21 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
               </div>
               <div style={s.fgroup}><label style={s.label}>Barcode</label><input style={s.input} value={form.barcode} onChange={e=>set("barcode",e.target.value)}/></div>
               <div style={s.fgroup}><label style={s.label}>Expiry Date</label><input type="date" style={s.input} value={form.expiry_date} onChange={e=>set("expiry_date",e.target.value)}/></div>
+              <div style={{gridColumn:"1/-1",...s.fgroup}}>
+                <label style={{...s.label,marginBottom:8}}>Prescription Status</label>
+                <div style={{display:"flex",gap:16}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:500,color:form.isprescribed?"#6b7280":"#16a34a"}}>
+                    <input type="radio" name="isprescribed" checked={!form.isprescribed} onChange={()=>set("isprescribed",false)}
+                      style={{width:16,height:16,accentColor:"#16a34a",cursor:"pointer"}}/>
+                    OTC (Unprescribed)
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,fontWeight:500,color:form.isprescribed?"#dc2626":"#6b7280"}}>
+                    <input type="radio" name="isprescribed" checked={form.isprescribed} onChange={()=>set("isprescribed",true)}
+                      style={{width:16,height:16,accentColor:"#dc2626",cursor:"pointer"}}/>
+                    Rx (Prescribed)
+                  </label>
+                </div>
+              </div>
             </>}
 
             {!isUpdate && entryType === "item" && <>

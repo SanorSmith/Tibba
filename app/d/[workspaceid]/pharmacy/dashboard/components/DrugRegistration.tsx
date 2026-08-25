@@ -359,18 +359,31 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
           <Textarea className="text-sm overflow-y-auto resize-none h-[72px]" value={formData.notes} onChange={(e) => updateField("notes", e.target.value)} rows={3} placeholder="Enter additional notes" />
         </div>
       </div>
-      {/* Insurance + actions */}
+      {/* Insurance + Prescription + actions */}
       <div className="flex items-center justify-between pt-4 border-t">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-blue-600">Insurance approved?</span>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <Checkbox checked={formData.insuranceapproved === true} onCheckedChange={() => updateField("insuranceapproved", true)} />
-            <span className="text-sm">Yes</span>
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <Checkbox checked={formData.insuranceapproved === false} onCheckedChange={() => updateField("insuranceapproved", false)} />
-            <span className="text-sm">No</span>
-          </label>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-600">Insurance approved?</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Checkbox checked={formData.insuranceapproved === true} onCheckedChange={() => updateField("insuranceapproved", true)} />
+              <span className="text-sm">Yes</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Checkbox checked={formData.insuranceapproved === false} onCheckedChange={() => updateField("insuranceapproved", false)} />
+              <span className="text-sm">No</span>
+            </label>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-orange-600">Requires prescription?</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Checkbox checked={formData.requiresprescription === true} onCheckedChange={() => updateField("requiresprescription", true)} />
+              <span className="text-sm text-red-600 font-medium">Rx (Prescribed)</span>
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <Checkbox checked={formData.requiresprescription === false} onCheckedChange={() => updateField("requiresprescription", false)} />
+              <span className="text-sm text-green-600 font-medium">OTC (Unprescribed)</span>
+            </label>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={onCancel} disabled={saveMutation.isPending}>Cancel</Button>
@@ -472,6 +485,7 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
                       <TableHead className="text-[10px] font-semibold w-16 py-1.5 px-2">Form</TableHead>
                       <TableHead className="text-[10px] font-semibold w-20 py-1.5 px-2">Strength</TableHead>
                       <TableHead className="text-[10px] font-semibold w-14 py-1.5 px-2 text-center">Ins.</TableHead>
+                      <TableHead className="text-[10px] font-semibold w-14 py-1.5 px-2 text-center">Rx</TableHead>
                       <TableHead className="text-[10px] font-semibold text-center w-14 py-1.5 px-2">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -522,6 +536,13 @@ export default function DrugRegistration({ workspaceid }: { workspaceid: string 
                             <Badge className="text-[9px] px-1 py-0 bg-green-500">Y</Badge>
                           ) : (
                             <Badge variant="outline" className="text-[9px] px-1 py-0">N</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-1.5 px-2 text-center">
+                          {drug.requiresprescription ? (
+                            <Badge className="text-[9px] px-1 py-0 bg-red-500">Rx</Badge>
+                          ) : (
+                            <Badge className="text-[9px] px-1 py-0 bg-green-100 text-green-700">OTC</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-center py-1.5 px-1">
