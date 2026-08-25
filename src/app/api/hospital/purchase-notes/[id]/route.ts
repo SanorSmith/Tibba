@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     await ensureSchema(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS delivered_total INTEGER`).catch(()=>{});
     await ensureSchema(`ALTER TABLE hospital_purchase_note_items ADD COLUMN IF NOT EXISTS claim_damage INTEGER`).catch(()=>{});
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { status } = await req.json();
   const r = await pool.query(
     `UPDATE hospital_purchase_notes SET status=$1, updatedat=NOW() WHERE id=$2 AND workspace_id=$3`,

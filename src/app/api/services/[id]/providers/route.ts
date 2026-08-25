@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
 
   // The service must be ours before its provider list is read or changed.
   const ownsService = await pool.query(
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
 
   // The service must be ours before its provider list is read or changed.
   const ownsService = await pool.query(
@@ -162,7 +162,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
 
   // The service must be ours before its provider list is read or changed.
   const ownsService = await pool.query(

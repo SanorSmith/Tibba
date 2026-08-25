@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(ws, async () => {
+  return await withTenant(ws, async () => {
 
   const sh = await pool.query(
     `SELECT id, shareholder_id, full_name, COALESCE(investment_amount,0) AS amount

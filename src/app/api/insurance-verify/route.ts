@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patient_id');

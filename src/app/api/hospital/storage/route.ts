@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const r = await pool.query(
     `SELECT s.*, d.name AS department_name FROM hospital_storage_locations s
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { name, department_id, location, type, temperature, notes } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
   const r = await pool.query(
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { id, name, department_id, location, type, temperature, notes } = await req.json();
   await pool.query(
     `UPDATE hospital_storage_locations SET name=$1,department_id=$2,location=$3,type=$4,temperature=$5,notes=$6,updatedat=NOW() WHERE id=$7`,
@@ -74,7 +74,7 @@ export async function DELETE(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { id } = await req.json();
   await pool.query(`UPDATE hospital_storage_locations SET isactive=false WHERE id=$1`, [id]);
   return NextResponse.json({ success: true });

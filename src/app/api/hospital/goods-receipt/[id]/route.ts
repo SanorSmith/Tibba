@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     const receipt = await pool.query(
       `SELECT * FROM hospital_goods_receipt WHERE id=$1 AND workspace_id=$2`,

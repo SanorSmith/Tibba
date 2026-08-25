@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const deptId = req.nextUrl.searchParams.get("department_id") ?? "";
   try {
     await ensureTable();
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     const { itemId, itemName, departmentId, quantity, reason, type, recordedBy, notes, batchNumber } = await req.json();
     if (!itemId || !quantity || !type) return NextResponse.json({ error: "Item, quantity and type required" }, { status: 400 });

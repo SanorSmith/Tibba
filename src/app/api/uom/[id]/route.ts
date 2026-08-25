@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { item_id, from_uom, to_uom, factor } = await req.json();
   const r = await pool.query(
     `UPDATE unit_conversions SET item_id=$1, from_uom=$2, to_uom=$3, factor=$4 WHERE id=$5 AND workspaceid=$6 RETURNING *`,
@@ -29,7 +29,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   await pool.query(`DELETE FROM unit_conversions WHERE id=$1 AND workspaceid=$2`, [id, WS]);
   return NextResponse.json({ success: true });
   });

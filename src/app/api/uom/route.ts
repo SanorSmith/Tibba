@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const r = await pool.query(
     `SELECT uc.*, i.name AS "itemName"
      FROM unit_conversions uc
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { item_id, from_uom, to_uom, factor } = await req.json();
   if (!from_uom||!to_uom||!factor) return NextResponse.json({ error: "from_uom, to_uom and factor required" }, { status:400 });
   const r = await pool.query(

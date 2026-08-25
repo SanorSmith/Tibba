@@ -50,7 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     // Get invoice
     const result = await pool.query(`
@@ -171,7 +171,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const ownedPut = await pool.query(
       'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
       [id, workspaceId]
@@ -542,7 +542,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const owned = await pool.query(
       'SELECT 1 FROM invoices WHERE id = $1 AND workspaceid = $2',
       [id, workspaceId]

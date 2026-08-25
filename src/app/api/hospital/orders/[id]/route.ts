@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     const order = await pool.query(`SELECT * FROM hospital_orders WHERE id=$1 AND workspace_id=$2`, [id, WS]);
     if (order.rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     const owns = await pool.query(
       `SELECT 1 FROM hospital_orders WHERE id=$1 AND workspace_id=$2`,

@@ -20,7 +20,7 @@ export async function POST(
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
 
   const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
 

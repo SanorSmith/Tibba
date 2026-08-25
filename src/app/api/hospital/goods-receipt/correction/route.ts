@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const q = (req.nextUrl.searchParams.get("q") ?? "").toLowerCase();
   const dateFrom = req.nextUrl.searchParams.get("dateFrom") ?? "";
   const dateTo = req.nextUrl.searchParams.get("dateTo") ?? "";
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     const b = await req.json();
     const { originalReceiptId, correctedBy, reason, items } = b;

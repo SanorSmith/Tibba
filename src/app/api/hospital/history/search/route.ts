@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const type = req.nextUrl.searchParams.get("type") ?? "item_name"; // item_name | item_number | order_number
   const q    = req.nextUrl.searchParams.get("q")    ?? "";
 

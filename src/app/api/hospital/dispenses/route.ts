@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const deptId = req.nextUrl.searchParams.get("department_id") ?? "";
   const r = await pool.query(
     `SELECT d.*, i.name AS item_name, i.uom, dep.name AS department_name
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const b = await req.json();
   if (!b.itemId || !b.quantity) return NextResponse.json({ error: "Item and quantity required" }, { status: 400 });
   if (!b.reason?.trim()) return NextResponse.json({ error: "Reason is required" }, { status: 400 });

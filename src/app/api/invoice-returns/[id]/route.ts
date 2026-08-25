@@ -26,7 +26,7 @@ export async function GET(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     console.log('GET /api/invoice-returns/[id] - Request received');
     
@@ -127,7 +127,7 @@ export async function PUT(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     console.log('PUT /api/invoice-returns/[id] - Request received');
     
@@ -298,7 +298,7 @@ export async function DELETE(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     console.log('DELETE /api/invoice-returns/[id] - Request received');
     

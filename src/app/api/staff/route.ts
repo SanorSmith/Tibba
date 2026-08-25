@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const searchTerm = searchParams.get('q') || '';
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(sessionWorkspaceId, async () => {
+    return await withTenant(sessionWorkspaceId, async () => {
     if (!pool) {
       return NextResponse.json(
         { 
@@ -634,7 +634,7 @@ export async function PUT(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(updateWorkspaceId, async () => {
+    return await withTenant(updateWorkspaceId, async () => {
     if (!pool) {
       return NextResponse.json(
         { 
@@ -922,7 +922,7 @@ export async function DELETE(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(deleteWorkspaceId, async () => {
+    return await withTenant(deleteWorkspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const staffId = searchParams.get('staffId');

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
   try {
     const r = await pool.query('SELECT * FROM shareholders WHERE id = $1 AND workspaceid = $2', [id, workspaceId]);
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
   try {
     const b = await req.json();
     // Allowed columns for partial update
@@ -86,7 +86,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
   try {
     const r = await pool.query('DELETE FROM shareholders WHERE id = $1 AND workspaceid = $2 RETURNING id', [id, workspaceId]);
     if (r.rows.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });

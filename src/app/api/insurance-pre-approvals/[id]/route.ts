@@ -24,7 +24,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
   try {
     const b = await req.json();
     const action = b.action;

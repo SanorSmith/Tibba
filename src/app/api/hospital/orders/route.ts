@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const status = req.nextUrl.searchParams.get("status") ?? "";
   try {
     const r = await pool.query(
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   try {
     const b = await req.json();
     const { orderedBy, orderDate, expectedDate, supplierId, supplierName,

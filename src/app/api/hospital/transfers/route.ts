@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const deptId = req.nextUrl.searchParams.get("department_id") ?? "";
   const status = req.nextUrl.searchParams.get("status") ?? "";
   const r = await pool.query(
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const { toDepartmentId, sentBy, notes, items, isRequest } = await req.json();
   if (!toDepartmentId || !items?.length) return NextResponse.json({ error: "Department and items required" }, { status: 400 });
 

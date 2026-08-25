@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const owns = await pool.query(
       'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
       [employee_id, workspaceId]

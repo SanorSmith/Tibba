@@ -20,7 +20,7 @@ export async function GET(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const result = await query('SELECT * FROM suppliers WHERE supplierid = $1 AND workspaceid = $2', [supplierId, workspaceId]);
 
     if (result.rows.length === 0) {
@@ -59,7 +59,7 @@ export async function PUT(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const body = await request.json();
     const {
       code,
@@ -159,7 +159,7 @@ export async function DELETE(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     const result = await query('DELETE FROM suppliers WHERE supplierid = $1 AND workspaceid = $2 RETURNING *', [supplierId, workspaceId]);
 

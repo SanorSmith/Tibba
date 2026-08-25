@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
   try {
     const body = await request.json();
     const sets: string[] = [];
@@ -77,7 +77,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(workspaceId, async () => {
+  return await withTenant(workspaceId, async () => {
   try {
     const r = await pool.query(`DELETE FROM appointments WHERE appointmentid = $1 AND workspaceid = $2 RETURNING appointmentid`, [id, workspaceId]);
     if (r.rows.length === 0) {

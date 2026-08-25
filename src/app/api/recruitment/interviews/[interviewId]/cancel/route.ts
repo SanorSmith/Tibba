@@ -23,7 +23,7 @@ export async function POST(
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const owns = await query(
       'SELECT 1 FROM interviews WHERE interview_id = $1 AND workspace_id = $2',
       [interviewId, workspaceId]

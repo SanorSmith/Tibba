@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ item
   // Carries this facility on the connection, so row-level security
   // scopes every query below in the database rather than relying on
   // each one remembering its WHERE clause.
-  return withTenant(WS, async () => {
+  return await withTenant(WS, async () => {
   const r = await pool.query(
     `SELECT b.*, d.name AS department_name
      FROM hospital_batches b

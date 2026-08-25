@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     const body = await request.json();
     console.log('Request body:', JSON.stringify(body, null, 2));
@@ -457,7 +457,7 @@ export async function DELETE(request: NextRequest) {
     // Carries this facility on the connection, so row-level security
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     if (!pool) {
       return NextResponse.json(
         { 
