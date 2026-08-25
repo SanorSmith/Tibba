@@ -162,6 +162,11 @@ export default function DashboardContent({
     async function fetchStats() {
       try {
         // Fetch all data in parallel
+        // A year either side: wide enough for today's appointments and any
+        // scheduled ones, without pulling the whole history.
+        const apptFrom = new Date(Date.now() - 365 * 864e5).toISOString();
+        const apptTo = new Date(Date.now() + 365 * 864e5).toISOString();
+
         const [
           patientsRes,
           staffRes,
@@ -174,7 +179,15 @@ export default function DashboardContent({
         ] = await Promise.all([
           fetch(`/api/d/${workspaceid}/patients`),
           fetch(`/api/d/${workspaceid}/staff`),
-          fetch(`/api/d/${workspaceid}/appointments`),
+          // This route has required a date range since it was written, and
+          // this call has never supplied one — so it has always answered 400
+          // and both appointment tiles have always read zero. It also scopes
+          // to the caller's own appointments unless an administrator asks for
+          // all, which a facility-wide dashboard wants.
+          //
+          // The counts below filter client-side for "today" and "scheduled",
+          // so the window only has to be wide enough to contain them.
+          fetch(`/api/d/${workspaceid}/appointments?from=${apptFrom}&to=${apptTo}&doctorid=all`),
           fetch(`/api/d/${workspaceid}/departments`),
           fetch(`/api/d/${workspaceid}/labs`),
           fetch(`/api/d/${workspaceid}/pharmacies`),
