@@ -87,14 +87,15 @@ export async function getCurrentUser(request?: NextRequest): Promise<SessionUser
   // user does not hold.
   let membership;
   try {
+    // Through the SECURITY DEFINER function, not the table. This check runs
+    // before any tenant is established — it is what establishes it — and
+    // `workspaceusers` is tenant-scoped, so a direct read returns nothing
+    // under the restricted role and every request becomes a 401.
     const result = await query(
-      `SELECT wu.role AS ws_role
-         FROM workspaceusers wu
-        WHERE wu.userid = $1 AND wu.workspaceid = $2
-        LIMIT 1`,
+      `SELECT public.app_user_role_in($1, $2) AS ws_role`,
       [userId, session.workspaceId]
     );
-    membership = result.rows[0];
+    membership = result.rows[0]?.ws_role ? result.rows[0] : undefined;
   } catch (err) {
     console.error('getCurrentUser: membership check failed', err);
     // Fail closed. An unavailable database must not become a way in.

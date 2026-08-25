@@ -95,11 +95,20 @@ export async function resolveFacility(
 ): Promise<FacilityResolution> {
   let allMemberships: Membership[];
   try {
+    // Which facilities a user belongs to has to be answerable *before* they
+    // are inside one — this query is what decides which one they enter.
+    // `workspaceusers` is tenant-scoped, so reading it directly returns
+    // nothing under the restricted role, and every sign-in is met with
+    // "your account is not assigned to any facility".
+    //
+    // `app_user_memberships` is a SECURITY DEFINER function that answers for
+    // one named user and returns memberships only. The workspace rows are
+    // then joined normally, since SELECT on `workspaces` is open by design.
     const m = await pool.query(
-      `SELECT wu.workspaceid, w.name AS workspace_name, w.type AS ws_type, wu.role AS ws_role
-         FROM workspaceusers wu
-         JOIN workspaces w ON w.workspaceid = wu.workspaceid
-        WHERE wu.userid = $1 AND w.isactive IS NOT FALSE
+      `SELECT mem.workspaceid, w.name AS workspace_name, w.type AS ws_type, mem.role AS ws_role
+         FROM public.app_user_memberships($1) AS mem
+         JOIN workspaces w ON w.workspaceid = mem.workspaceid
+        WHERE w.isactive IS NOT FALSE
         ORDER BY (w.type = 'hospital') DESC, w.createdat ASC`,
       [userid]
     );
