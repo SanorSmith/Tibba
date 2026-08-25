@@ -222,6 +222,8 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
   const [checkingExisting, setCheckingExisting] = useState(false);
   const [existingShelves, setExistingShelves] = useState<string[]>([]);
   const [isUpdate, setIsUpdate]       = useState(prefill?._isUpdate ?? false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile]       = useState<File | null>(null);
 
   const [form, setForm] = useState({
     name:         prefill?.name         ?? "",
@@ -474,6 +476,54 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
           {/* Only show form after entry type is selected */}
           {(entryType || isUpdate) && (
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {/* Image upload placeholder */}
+              <div style={{gridColumn:"1/-1",marginBottom:8}}>
+                <label style={s.label}>Product Image</label>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
+                  <div
+                    onClick={()=>document.getElementById("drug-image-input")?.click()}
+                    style={{width:80,height:80,borderRadius:10,border:"2px dashed #d1d5db",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",background:imagePreview?"#fff":"#f9fafb",transition:"border-color 0.2s"}}
+                    onMouseEnter={e=>(e.currentTarget.style.borderColor="#6366f1")}
+                    onMouseLeave={e=>(e.currentTarget.style.borderColor="#d1d5db")}
+                  >
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    ) : (
+                      <div style={{textAlign:"center"}}>
+                        <div style={{fontSize:22,color:"#9ca3af"}}>📷</div>
+                        <div style={{fontSize:9,color:"#9ca3af",marginTop:2}}>Add image</div>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    id="drug-image-input"
+                    type="file"
+                    accept="image/*"
+                    style={{display:"none"}}
+                    onChange={(e)=>{
+                      const file = e.target.files?.[0];
+                      if(file){
+                        setImageFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <div style={{fontSize:11,color:"#6b7280"}}>
+                    <div>Click to upload an image</div>
+                    <div style={{marginTop:2}}>JPG, PNG or WebP (max 2MB)</div>
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={(e)=>{e.stopPropagation();setImagePreview(null);setImageFile(null);}}
+                        style={{marginTop:4,fontSize:11,color:"#dc2626",cursor:"pointer",background:"none",border:"none",padding:0,textDecoration:"underline"}}
+                      >Remove image</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Item/Medicine name */}
               <div style={{gridColumn:"1/-1",...s.fgroup}}>
                 <label style={s.label}>{entryType === "item" ? "Item Name" : "Medicine Name"} *</label>
