@@ -6,7 +6,7 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { workspaces } from "./workspace";
 
-export const labs = pgTable("labs", {
+export const labs = pgTable("facility_labs", {
   labid: uuid("labid").primaryKey().defaultRandom(),
   workspaceid: uuid("workspaceid")
     .notNull()
