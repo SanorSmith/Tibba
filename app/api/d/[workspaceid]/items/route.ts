@@ -56,6 +56,7 @@ export async function POST(
       unitcost,
       sellingprice,
       expirydate,
+      isprescribed = false,
     } = body;
 
     if (!name || !uom) {
@@ -313,6 +314,7 @@ export async function POST(
         minlevel,
         maxlevel,
         controlled,
+        isprescribed,
         drugid: finalDrugId,
         storagelocationid: storageLocationId,
         isactive: true,

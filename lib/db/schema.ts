@@ -319,6 +319,7 @@ export const items = pgTable("items", {
   // lab specific
   analyzercompat:    text("analyzer_compat"),
   criticalreagent:   boolean("critical_reagent").default(false),
+  isprescribed:      boolean("is_prescribed").default(false),
   isactive:          boolean("is_active").default(true),
   metadata:          jsonb("metadata").default({}),
   createdat:         timestamp("created_at", { withTimezone: true }).defaultNow(),
