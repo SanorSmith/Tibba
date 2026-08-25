@@ -13,6 +13,7 @@ import { User, users } from "@/lib/db/tables/user";
 import { withAdminCheck } from "./shared";
 import { pharmacySql, provisionPharmacySchema } from "@/lib/db/pharmacy-db";
 import { dropPharmacySchema } from "@/lib/db/pharmacy-tenant";
+import { withTenant } from "@/lib/db/tenant";
 
 export const deleteWorkspace = withAdminCheck(
   async (workspaceId: string): Promise<boolean> => {
@@ -24,15 +25,19 @@ export const deleteWorkspace = withAdminCheck(
         console.error("Error dropping pharmacy schema:", dropErr);
       }
 
-      // Delete workspace users
-      await db
-        .delete(workspaceusers)
-        .where(eq(workspaceusers.workspaceid, workspaceId));
+      // These rows belong to the workspace being deleted, so the work adopts
+      // that workspace's identity. Row-level security then permits exactly
+      // these rows and nothing else — an admin acting on one facility does
+      // not get a connection that can see every facility.
+      await withTenant(workspaceId, async () => {
+        await db
+          .delete(workspaceusers)
+          .where(eq(workspaceusers.workspaceid, workspaceId));
 
-      // Delete workspace
-      await db
-        .delete(workspaces)
-        .where(eq(workspaces.workspaceid, workspaceId));
+        await db
+          .delete(workspaces)
+          .where(eq(workspaces.workspaceid, workspaceId));
+      });
       return true;
     } catch (error) {
       console.error("Error deleting workspace:", error);
@@ -80,7 +85,8 @@ export const createWorkspace = withAdminCheck(
 export const getWorkspaceUsers = withAdminCheck(
   async (workspaceId: string): Promise<(WorkspaceUser & { user: User })[]> => {
     try {
-      const results = await db
+      // Scoped to the workspace being administered — see deleteWorkspace.
+      const results = await withTenant(workspaceId, async () => await db
         .select()
         .from(workspaceusers)
         .innerJoin(users, eq(workspaceusers.userid, users.userid))
@@ -94,7 +100,7 @@ export const getWorkspaceUsers = withAdminCheck(
             ),
           ),
         )
-        .orderBy(workspaceusers.createdat);
+        .orderBy(workspaceusers.createdat));
 
       return results.map((result) => ({
         ...result.workspaceusers,
@@ -134,14 +140,14 @@ export const addUserToWorkspace = withAdminCheck(
         throw new Error("Cannot add admin users to workspaces");
       }
 
-      const [workspaceUser] = await db
+      const [workspaceUser] = await withTenant(workspaceId, async () => await db
         .insert(workspaceusers)
         .values({
           workspaceid: workspaceId,
           userid: userId,
           role,
         })
-        .returning();
+        .returning());
 
       return workspaceUser;
     } catch (error) {
@@ -154,14 +160,14 @@ export const addUserToWorkspace = withAdminCheck(
 export const removeUserFromWorkspace = withAdminCheck(
   async (workspaceId: string, userId: string): Promise<boolean> => {
     try {
-      await db
+      await withTenant(workspaceId, async () => await db
         .delete(workspaceusers)
         .where(
           and(
             eq(workspaceusers.workspaceid, workspaceId),
             eq(workspaceusers.userid, userId),
           ),
-        );
+        ));
 
       return true;
     } catch (error) {
@@ -178,7 +184,7 @@ export const updateUserWorkspaceRole = withAdminCheck(
     role: WorkspaceUserRole,
   ): Promise<boolean> => {
     try {
-      await db
+      await withTenant(workspaceId, async () => await db
         .update(workspaceusers)
         .set({ role })
         .where(
@@ -186,7 +192,7 @@ export const updateUserWorkspaceRole = withAdminCheck(
             eq(workspaceusers.workspaceid, workspaceId),
             eq(workspaceusers.userid, userId),
           ),
-        );
+        ));
 
       return true;
     } catch (error) {
