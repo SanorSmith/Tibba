@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(data.workspaceId, async () => {
+    return await withTenant(data.workspaceId, async () => {
 
     // Check if cashier already has an open shift
     const [existingShift] = await db

@@ -26,7 +26,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";

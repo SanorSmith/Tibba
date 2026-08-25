@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
     const status = searchParams.get("status");
     const orderId = searchParams.get("orderid");
     const patientId = searchParams.get("patientid");

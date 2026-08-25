@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
 
     const shifts = await db
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
 
     const [existing] = await db
@@ -134,7 +134,7 @@ export async function PATCH(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
 
     const result = await db.transaction(async (tx) => {

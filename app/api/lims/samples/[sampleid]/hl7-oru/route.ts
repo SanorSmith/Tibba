@@ -33,7 +33,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const searchParams = request.nextUrl.searchParams;
 
     // Optional parameters for HL7 message

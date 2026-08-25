@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     console.log('[Pharmacy Items API] Creating item:', name);
 

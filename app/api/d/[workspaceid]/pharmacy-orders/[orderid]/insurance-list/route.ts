@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     // Return a list of available insurance companies
     const insuranceCompanies = [

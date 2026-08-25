@@ -34,7 +34,7 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const validated = updateReturnSchema.parse(body);
 
@@ -89,7 +89,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const validated = postReturnSchema.parse(body);
 
@@ -214,7 +214,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const [deletedReturn] = await db
       .delete(supplierReturns)

@@ -30,7 +30,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(ws, async () => {
+    return await withTenant(ws, async () => {
     const body = await request.json();
     const { sampleid, state } = body;
 

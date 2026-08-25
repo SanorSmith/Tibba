@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get("itemId");
     const batchId = searchParams.get("batchId");

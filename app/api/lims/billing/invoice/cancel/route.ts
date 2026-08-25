@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     if (!reason?.trim()) {
       // A void with no stated reason is indistinguishable from a mistake.

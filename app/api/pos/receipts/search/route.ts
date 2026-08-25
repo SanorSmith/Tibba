@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(data.workspaceId, async () => {
+    return await withTenant(data.workspaceId, async () => {
     const results: any = { sales: [], returns: [], shifts: [] };
 
     // Date conditions

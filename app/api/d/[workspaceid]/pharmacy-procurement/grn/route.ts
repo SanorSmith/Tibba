@@ -32,7 +32,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
   const status = req.nextUrl.searchParams.get("status") ?? "";
 
   try {
@@ -88,7 +88,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   try {
     const body = await req.json();

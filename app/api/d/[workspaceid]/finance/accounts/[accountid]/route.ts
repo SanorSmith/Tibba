@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:read"
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:write"
@@ -112,7 +112,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(
       workspaceid,
       "finance:accounts:write"

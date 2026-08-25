@@ -47,7 +47,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const result = await db
       .select()
@@ -91,7 +91,7 @@ export async function PUT(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const validatedData = testResultUpdateSchema.parse(body);
@@ -133,7 +133,7 @@ export async function PATCH(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { status, resultvalue, changeComment } = body;

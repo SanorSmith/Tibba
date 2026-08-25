@@ -30,7 +30,7 @@ export async function GET(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const [item] = await db
       .select()
@@ -101,7 +101,7 @@ export async function PATCH(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const b = await request.json();
     const [updated] = await db

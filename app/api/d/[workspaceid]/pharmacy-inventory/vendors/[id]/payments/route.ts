@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const result = await pool.query(
       `SELECT * FROM vendor_payments
        WHERE vendor_id = $1
@@ -57,7 +57,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const { paymentReference, amount, paymentDate, paymentMethod, notes } = body;
 

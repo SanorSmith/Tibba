@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const result = await pool.query('SELECT * FROM vendors WHERE id = $1', [params.id]);
     
     if (result.rows.length === 0) {
@@ -57,7 +57,7 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const {
       name,
@@ -165,7 +165,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const result = await pool.query(
       'UPDATE vendors SET isactive = false, updatedat = NOW() WHERE id = $1 RETURNING *',
       [params.id]

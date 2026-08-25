@@ -36,7 +36,7 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const { receiptId, reason } = await request.json();
     if (!receiptId) return NextResponse.json({ error: "receiptId is required" }, { status: 400 });

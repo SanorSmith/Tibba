@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(d.workspaceId, async () => {
+    return await withTenant(d.workspaceId, async () => {
 
     const results: { payments: any[]; refunds: any[]; shifts: any[] } = {
       payments: [], refunds: [], shifts: [],

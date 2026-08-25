@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const [created] = await db.insert(warehouses).values({
       name, location, manager, description, workspaceid,

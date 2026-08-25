@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
 
     const [patient] = await db.select().from(patients).where(eq(patients.patientid, patientid)).limit(1);

@@ -111,7 +111,7 @@ export async function PATCH(req: NextRequest) {
 
   if (!id) return NextResponse.json({ error: "ID is required" }, { status: 400 });
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
     const rows = (await db.execute(sql`
       UPDATE suppliers SET
         name          = COALESCE(${name ?? null}, name),
@@ -137,7 +137,7 @@ export async function DELETE(req: NextRequest) {
   const auth = await authorize(workspaceid);
   if (auth.error) return auth.error;
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
     await db.execute(sql`UPDATE suppliers SET isactive = false WHERE supplierid = ${id}`);
     return NextResponse.json({ success: true });
   });

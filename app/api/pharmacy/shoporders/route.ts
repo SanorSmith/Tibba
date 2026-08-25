@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   const status = req.nextUrl.searchParams.get("status") ?? "";
   const r = await pool.query(
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   const { supplier, createdBy, items, totalAmount } = await req.json();
   if (!items?.length) return NextResponse.json({ error: "No items" }, { status: 400 });

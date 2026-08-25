@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(validatedData.workspaceid, async () => {
+    return await withTenant(validatedData.workspaceid, async () => {
 
     const now = new Date();
 

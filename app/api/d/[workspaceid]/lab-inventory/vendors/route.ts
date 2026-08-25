@@ -28,7 +28,7 @@ export async function GET(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const activeOnly = request.nextUrl.searchParams.get("active") === "active";
     const result = activeOnly
@@ -66,7 +66,7 @@ export async function POST(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const b = await request.json();
     if (!b.name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -104,7 +104,7 @@ export async function PATCH(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const b = await request.json();
     if (!b.id) return NextResponse.json({ error: "id is required" }, { status: 400 });

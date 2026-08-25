@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     if (!(Number(amount) > 0)) {
       return NextResponse.json({ error: "Amount must be above zero" }, { status: 400 });

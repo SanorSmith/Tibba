@@ -40,7 +40,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     // Date calculations — all aligned to Baghdad local time (UTC+3)
     const BAGHDAD_OFFSET_MS = 3 * 60 * 60 * 1000;

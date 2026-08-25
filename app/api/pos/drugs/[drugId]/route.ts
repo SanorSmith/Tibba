@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     // Try to find the item — by items.id first, then by items.drug_id
     let [item] = await db

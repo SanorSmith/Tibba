@@ -77,7 +77,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const validated = postGRNSchema.parse(body);
 

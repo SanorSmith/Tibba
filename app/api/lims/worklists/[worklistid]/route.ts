@@ -36,7 +36,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     if (!worklistid) {
       return NextResponse.json({ error: "Worklist ID required" }, { status: 400 });

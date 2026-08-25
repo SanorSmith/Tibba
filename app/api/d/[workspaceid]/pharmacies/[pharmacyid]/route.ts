@@ -28,7 +28,7 @@ export async function PATCH(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   const body = await req.json();
 
@@ -92,7 +92,7 @@ export async function DELETE(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   try {
     const res = await withPharmacySchema(

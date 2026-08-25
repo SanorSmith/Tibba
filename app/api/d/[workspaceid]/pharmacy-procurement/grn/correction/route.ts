@@ -28,7 +28,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
   const q = (req.nextUrl.searchParams.get("q") ?? "").toLowerCase();
   const dateFrom = req.nextUrl.searchParams.get("dateFrom") ?? "";
   const dateTo = req.nextUrl.searchParams.get("dateTo") ?? "";
@@ -99,7 +99,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   try {
     const body = await req.json();

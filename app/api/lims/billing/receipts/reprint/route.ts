@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(d.workspaceId, async () => {
+    return await withTenant(d.workspaceId, async () => {
 
 
     if (d.receiptType === "SHIFT" && !d.shiftId) {

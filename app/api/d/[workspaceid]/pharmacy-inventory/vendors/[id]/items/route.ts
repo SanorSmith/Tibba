@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const result = await pool.query(
       `SELECT vi.*, i.name as item_name, i.itemcode as item_code, i.uom
        FROM vendor_items vi
@@ -59,7 +59,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const { itemId, isPrimarySupplier, leadTimeDays, minOrderQty, unitPrice } = body;
 

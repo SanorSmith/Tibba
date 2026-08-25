@@ -34,7 +34,7 @@ export async function GET(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
   try {
     // Get search parameter from URL
     const { searchParams } = new URL(req.url);
@@ -90,7 +90,7 @@ export async function POST(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   // Verify the user is administrator or doctor in this workspace OR has global admin permission
   const userWorkspaces = await getUserWorkspaces(user.userid);

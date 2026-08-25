@@ -72,7 +72,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const testcode = searchParams.get("testcode");
@@ -163,7 +163,7 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const validatedData = testReferenceRangeSchema.parse(body);
@@ -244,7 +244,7 @@ export async function PUT(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { rangeid, updateReason, ...updateData } = body;
@@ -355,7 +355,7 @@ export async function DELETE(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const rangeid = searchParams.get("rangeid");

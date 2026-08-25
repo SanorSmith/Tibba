@@ -33,7 +33,7 @@ export default async function DoctorPage({ params }: PageProps) {
   }
   // Membership is already settled above; what is missing is the facility
   // on the connection, so row-level security scopes the reads below.
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   // Fetch doctor's staff information if available
   let staffInfo = null;

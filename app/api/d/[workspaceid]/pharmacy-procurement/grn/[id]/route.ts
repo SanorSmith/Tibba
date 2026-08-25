@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
   try {
     const [receipt] = await db
       .select()

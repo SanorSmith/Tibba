@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const status = searchParams.get("status") || "stored";
     const locationid = searchParams.get("locationid");
     const expiringSoon = searchParams.get("expiringSoon") === "true";

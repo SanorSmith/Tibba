@@ -30,7 +30,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const { searchParams } = new URL(req.url);
     const searchTerm = searchParams.get("search");
     const includeGlobal = searchParams.get("includeGlobal") === "true";
@@ -129,7 +129,7 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const body = await req.json();
     const { 
       firstname, 

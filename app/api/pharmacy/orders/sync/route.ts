@@ -32,7 +32,7 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     // 1. Get all patients across all workspaces (prescriptions in openEHR are global)
     const workspacePatients = await db

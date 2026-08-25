@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { barcode } = scanSchema.parse(body);

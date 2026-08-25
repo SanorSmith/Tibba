@@ -63,5 +63,5 @@ export async function withTenantIfOwned<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   if (!workspaceId) return fn();
-  return withTenant(workspaceId, () => fn());
+  return await withTenant(workspaceId, () => fn());
 }

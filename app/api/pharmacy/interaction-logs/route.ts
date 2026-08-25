@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const patientid = searchParams.get("patientid");
     const orderid = searchParams.get("orderid");
     const limit = parseInt(searchParams.get("limit") || "50");

@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     if (!(Number(price) >= 0)) {
       return NextResponse.json({ error: "Price must be zero or above" }, { status: 400 });

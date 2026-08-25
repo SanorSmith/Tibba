@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceId, async () => {
+    return await withTenant(workspaceId, async () => {
 
     // Validate required fields
     if (!sampleId || !workspaceId || !results || results.length === 0) {

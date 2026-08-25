@@ -48,7 +48,7 @@ export async function GET(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
@@ -233,7 +233,7 @@ export async function POST(
     // Everything below runs with this facility's identity on the connection,
     // so row-level security scopes it in the database rather than relying on
     // each query carrying the right filter.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { name, itemcode, itemtype, uom, manufacturer, barcode, reorderlevel, minlevel, maxlevel, criticalreagent, analyzercompat } = body;

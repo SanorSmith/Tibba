@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return withTenant(workspaceid, async () => {
+  return await withTenant(workspaceid, async () => {
 
   const poNum = `PO-${Date.now().toString().slice(-8)}`;
   const r = await pool.query(

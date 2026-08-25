@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -218,7 +218,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const { status, notes, prescriberName, patientid, priority, items: newItems } = body;
@@ -410,7 +410,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     const [order] = await db
       .select()

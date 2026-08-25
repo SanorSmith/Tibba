@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(workspaceid, "finance:journal:read");
     if (auth instanceof NextResponse) return auth;
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
     const auth = await requireFinancePermission(workspaceid, "finance:journal:create");
     if (auth instanceof NextResponse) return auth;
 

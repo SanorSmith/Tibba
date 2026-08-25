@@ -39,7 +39,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(workspaceid, async () => {
+    return await withTenant(workspaceid, async () => {
 
     // Get user's role in this workspace
     const workspaceUser = await db.query.workspaceusers.findFirst({

@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return withTenant(data.workspaceId, async () => {
+    return await withTenant(data.workspaceId, async () => {
 
     // A one-time migration used to run here on every checkout: an
     // ALTER TABLE dropping a foreign key, wrapped in a try/catch. The catch
