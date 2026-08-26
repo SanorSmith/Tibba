@@ -33,10 +33,12 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    // This ran the whole sync in one transaction, including an EHRbase call
+    // per patient. The connection was held for the entire walk. It now reads
+    // what it needs, walks EHRbase with nothing open, and writes at the end.
 
-
-    // 1. Get patients in this workspace AND global patients (workspaceid IS NULL)
+    // 1. Get patients in this workspace AND global patients (workspaceid IS NULL).
+    //    `patients` is shared-read (0068), so no tenant is needed for it.
     const workspacePatients = await db
       .select()
       .from(patients)
@@ -50,11 +52,13 @@ export async function POST(
     // Filter to only patients with EHR IDs to avoid unnecessary API calls
     const patientsWithEHR = workspacePatients.filter(p => p.ehrid || p.nationalid);
 
-    // 2. Get existing openEHR order IDs so we can skip duplicates
-    const existingOrders = await db
-      .select({ openehrorderid: pharmacyOrders.openehrorderid })
-      .from(pharmacyOrders)
-      .where(eq(pharmacyOrders.workspaceid, workspaceid));
+    // 2. Existing openEHR order ids, so duplicates are skipped. Facility-scoped,
+    //    so this one short read takes a tenant.
+    const existingOrders = await withTenant(workspaceid, async () =>
+      db
+        .select({ openehrorderid: pharmacyOrders.openehrorderid })
+        .from(pharmacyOrders)
+        .where(eq(pharmacyOrders.workspaceid, workspaceid)));
 
     const existingIds = new Set(
       existingOrders
@@ -62,9 +66,16 @@ export async function POST(
         .filter(Boolean)
     );
 
-    let synced = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const pending: Array<{
+      patientid: string;
+      prescriberid: string | null;
+      rx: Record<string, any>;
+      priority: "urgent" | "routine";
+      dosage: string | null;
+      drugName: string;
+    }> = [];
 
     // 3. For each patient with EHR ID, fetch prescriptions from openEHR
     for (const patient of patientsWithEHR) {
@@ -111,31 +122,6 @@ export async function POST(
             }
           }
 
-          // Create pharmacy order
-          const [order] = await db
-            .insert(pharmacyOrders)
-            .values({
-              workspaceid,
-              patientid: patient.patientid,
-              prescriberid,
-              status: "PENDING",
-              source: "openehr",
-              openehrorderid: rx.composition_uid,
-              priority,
-              notes: [
-                rx.clinical_indication && `Indication: ${rx.clinical_indication}`,
-                rx.comment,
-                rx.prescribed_by && `Prescribed by: ${rx.prescribed_by}`,
-              ].filter(Boolean).join(" | ") || null,
-              metadata: {
-                composition_uid: rx.composition_uid,
-                recorded_time: rx.recorded_time,
-                prescribed_by: rx.prescribed_by,
-                issued_from: rx.issued_from,
-              },
-            })
-            .returning();
-
           // Build dosage string
           const dosageParts: string[] = [];
           if (rx.dose_amount) dosageParts.push(`${rx.dose_amount}${rx.dose_unit ? ` ${rx.dose_unit}` : ""}`);
@@ -143,36 +129,21 @@ export async function POST(
           if (rx.timing_directions) dosageParts.push(rx.timing_directions);
           const dosage = dosageParts.join(", ") || null;
 
-          // Fetch selling price from inventory for this medication
           const drugName = rx.medication_item || rx.product_name || "Unknown medication";
-          const priceResult = await pool.query(`
-            SELECT ib.selling_price
-            FROM items i
-            INNER JOIN item_batches ib ON ib.item_id = i.id
-            INNER JOIN inventory_stock ist ON ist.batch_id = ib.id
-            WHERE i.name ILIKE $1
-              AND i.is_active = true
-              AND ist.quantity > 0
-              AND (ib.expiry_date IS NULL OR ib.expiry_date > CURRENT_DATE)
-            ORDER BY ib.expiry_date ASC NULLS LAST
-            LIMIT 1
-          `, [drugName]);
-          
-          const sellingPrice = priceResult.rows[0]?.selling_price || null;
 
-          // Create order item
-          await db.insert(pharmacyOrderItems).values({
-            orderid: order.orderid,
-            drugid: null,
-            drugname: drugName,
+          // Collected, not written. The price lookup below reads items,
+          // item_batches and inventory_stock — all facility-scoped — so it
+          // moves into the write phase where a tenant exists.
+          pending.push({
+            patientid: patient.patientid,
+            prescriberid,
+            rx,
+            priority,
             dosage,
-            quantity: 1,
-            unitprice: sellingPrice,
-            status: "PENDING",
+            drugName,
           });
 
           existingIds.add(rx.composition_uid);
-          synced++;
         }
       } catch (err) {
         const msg = `Patient ${patient.firstname} ${patient.lastname}: ${err instanceof Error ? err.message : String(err)}`;
@@ -181,12 +152,71 @@ export async function POST(
       }
     }
 
+    // 4. One transaction, after EHRbase is done with. The price lookup lives
+    //    here because it reads facility-scoped inventory, and each order is
+    //    still written with its item so neither can exist alone.
+    let synced = 0;
+    if (pending.length > 0) {
+      await withTenant(workspaceid, async () => {
+        for (const p of pending) {
+          const priceResult = await pool.query(
+            `SELECT ib.selling_price
+               FROM items i
+               INNER JOIN item_batches ib ON ib.item_id = i.id
+               INNER JOIN inventory_stock ist ON ist.batch_id = ib.id
+              WHERE i.name ILIKE $1
+                AND i.is_active = true
+                AND ist.quantity > 0
+                AND (ib.expiry_date IS NULL OR ib.expiry_date > CURRENT_DATE)
+              ORDER BY ib.expiry_date ASC NULLS LAST
+              LIMIT 1`,
+            [p.drugName],
+          );
+          const sellingPrice = priceResult.rows[0]?.selling_price ?? null;
+
+          const [order] = await db
+            .insert(pharmacyOrders)
+            .values({
+              workspaceid,
+              patientid: p.patientid,
+              prescriberid: p.prescriberid,
+              status: "PENDING",
+              source: "openehr",
+              openehrorderid: p.rx.composition_uid,
+              priority: p.priority,
+              notes: [
+                p.rx.clinical_indication && `Indication: ${p.rx.clinical_indication}`,
+                p.rx.comment,
+                p.rx.prescribed_by && `Prescribed by: ${p.rx.prescribed_by}`,
+              ].filter(Boolean).join(" | ") || null,
+              metadata: {
+                composition_uid: p.rx.composition_uid,
+                recorded_time: p.rx.recorded_time,
+                prescribed_by: p.rx.prescribed_by,
+                issued_from: p.rx.issued_from,
+              },
+            })
+            .returning();
+
+          await db.insert(pharmacyOrderItems).values({
+            orderid: order.orderid,
+            drugid: null,
+            drugname: p.drugName,
+            dosage: p.dosage,
+            quantity: 1,
+            unitprice: sellingPrice,
+            status: "PENDING",
+          });
+          synced++;
+        }
+      });
+    }
+
     return NextResponse.json({
       message: `Synced ${synced} new orders, skipped ${skipped} existing`,
       synced,
       skipped,
       errors: errors.length > 0 ? errors : undefined,
-    });
     });
   } catch (error) {
     console.error("[Pharmacy Sync POST]", error);
