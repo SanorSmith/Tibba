@@ -74,6 +74,18 @@ is not: none of its values match a workspace id.
 | Own column, backfilled from the patient (migration 0078) | 14 |
 | **Open, by the decisions above** | **23** |
 
+Applied 26 Aug. 242 tables now carry policies, up from 165. Verified as
+`app_user`: every row in all 175 non-empty protected tables is still visible to
+at least one facility — a policy that hides rows from everybody is data loss
+reporting success, not isolation.
+
+Money, lab and stock data is genuinely partitioned. The patient-owned tables
+are not yet: only 33 of 138 rows could be attributed, because 114 of 169
+patients have no recorded activity at all. Those rows stay readable by every
+facility rather than disappearing. Migration 0080 stamps new rows with the
+facility they are written in, so the share shrinks from here without anyone
+having to remember a column.
+
 Isolation is only as good as the connection: all of this is bypassed while the
 application connects as `neondb_owner`, which holds `BYPASSRLS`. See
 `docs/tenant-isolation-cutover.md`.

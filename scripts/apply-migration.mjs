@@ -12,9 +12,16 @@
  * safe to re-apply (IF NOT EXISTS, DROP POLICY IF EXISTS).
  */
 import 'dotenv/config';
+import { config } from 'dotenv';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import postgres from 'postgres';
+
+// The connection lives in .env.local, which `dotenv/config` does not read.
+// Without this, postgres.js falls back to its defaults and tries to connect
+// as the OS user — which fails with an authentication error that looks like
+// a credentials problem rather than a missing variable.
+config({ path: '.env.local' });
 
 const DIR = 'lib/db/migrations';
 const args = process.argv.slice(2);
@@ -40,7 +47,9 @@ const files = wanted.map((n) => {
   return match[0];
 });
 
-const sql = postgres(process.env.DATABASE_URL, { max: 1 });
+// `DROP POLICY IF EXISTS` emits a NOTICE per statement; hundreds of them bury
+// anything that actually matters.
+const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 
 let failed = false;
 for (const file of files) {
