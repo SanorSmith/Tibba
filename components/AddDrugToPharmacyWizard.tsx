@@ -18,8 +18,8 @@ const icons = {
 };
 
 const s: Record<string, any> = {
-  overlay: { position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 },
-  modal:   { background:"#fff", borderRadius:14, width:720, maxHeight:"92vh", overflowY:"auto" as const, boxShadow:"0 25px 50px rgba(0,0,0,0.2)" },
+  overlay: { position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100, padding:"16px" },
+  modal:   { background:"#fff", borderRadius:14, width:"94vw", maxWidth:960, maxHeight:"92vh", overflowY:"auto" as const, boxShadow:"0 25px 50px rgba(0,0,0,0.2)" },
   input:   { width:"100%", padding:"8px 10px", borderRadius:8, border:"1px solid #d1d5db", fontSize:13, color:"#111827", boxSizing:"border-box" as const },
   inputHL: { width:"100%", padding:"8px 10px", borderRadius:8, border:"2px solid #6366f1", fontSize:13, color:"#111827", boxSizing:"border-box" as const, background:"#eef2ff" },
   label:   { fontSize:12, fontWeight:600, color:"#374151", display:"block", marginBottom:4 },
@@ -404,7 +404,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
         )}
         
         {/* Header */}
-        <div style={{padding:"20px 24px",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{padding:"16px 20px",borderBottom:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap" as const,gap:8}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{width:32,height:32,background:"#ede9fe",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon d={icons.pill} size={16} color="#6366f1"/></div>
             <div>
@@ -415,7 +415,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
           <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer"}}><Icon d={icons.x} size={18} color="#6b7280"/></button>
         </div>
 
-        <div style={{padding:"20px 24px"}}>
+        <div style={{padding:"16px 20px"}}>
           {error && <div style={{background:"#fee2e2",color:"#991b1b",borderRadius:8,padding:"8px 12px",fontSize:13,marginBottom:14}}>{error}</div>}
 
           {/* Existing drug warning */}
@@ -475,7 +475,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
 
           {/* Only show form after entry type is selected */}
           {(entryType || isUpdate) && (
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:12}}>
               {/* Image upload placeholder */}
               <div style={{gridColumn:"1/-1",marginBottom:8}}>
                 <label style={s.label}>Product Image</label>
@@ -611,7 +611,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
             {/* Pricing */}
             <div style={{gridColumn:"1/-1",borderTop:"1px solid #f3f4f6",paddingTop:12,marginTop:4}}>
               <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:10}}>💰 Pricing</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:12}}>
                 {entryType==="medicine" && (
                   <div style={{gridColumn:"1/-1",...s.fgroup}}>
                     <label style={s.label}>Price Type</label>
@@ -659,7 +659,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
             {/* Inventory */}
             <div style={{gridColumn:"1/-1",borderTop:"1px solid #f3f4f6",paddingTop:12,marginTop:4}}>
               <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:10}}>📦 Inventory</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",gap:12}}>
                 <div style={s.fgroup}><label style={{...s.label,color:"#dc2626"}}>Warehouse * {!form.warehouseid&&<span style={{fontSize:10}}>⚡ Required</span>}</label>
                   <select style={s.input} value={form.warehouseid} onChange={e=>set("warehouseid",e.target.value)}>
                     <option value="">Select warehouse</option>
@@ -693,7 +693,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
         </div>
 
         {/* Footer */}
-        <div style={{padding:"16px 24px",borderTop:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{padding:"12px 20px",borderTop:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap" as const,gap:8}}>
           <button onClick={onClose} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Cancel</button>
           <button onClick={handleSubmit} disabled={loading || (!entryType && !isUpdate)} style={{...s.btn(isUpdate?"green":"purple"),display:"flex",alignItems:"center",gap:6,opacity:(!entryType && !isUpdate)?0.5:1,cursor:(!entryType && !isUpdate)?"not-allowed":"pointer"}}>
             {loading?"Saving...":isUpdate?<><Icon d={icons.check} size={13} color="#fff"/> Update Stock</>:<><Icon d={icons.check} size={13} color="#fff"/> Add {entryType === "item" ? "Item" : "Medicine"}</>}
