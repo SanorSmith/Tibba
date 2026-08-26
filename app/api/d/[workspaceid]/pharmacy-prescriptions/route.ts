@@ -36,23 +36,23 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
-
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query");
     const patientid = searchParams.get("patientid");
 
     // If patientid is provided, fetch full patient detail with prescriptions + insurance
     if (patientid) {
+      // Facility-scoped reads under a tenant, released before EHRbase is
+      // called — a transaction must not stay open across an HTTP request to
+      // another service.
+      const pre = await withTenant(workspaceid, async () => {
       const [patient] = await db
         .select()
         .from(patients)
         .where(and(eq(patients.patientid, patientid), eq(patients.workspaceid, workspaceid)))
         .limit(1);
 
-      if (!patient) {
-        return NextResponse.json({ error: "Patient not found" }, { status: 404 });
-      }
+      if (!patient) return null;
 
       // Fetch insurance info
       const insuranceData = await db
@@ -79,7 +79,15 @@ export async function GET(
           )
         );
 
-      // Fetch prescriptions from OpenEHR
+        return { patient, insuranceData };
+      });
+
+      if (!pre) {
+        return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      }
+      const { patient, insuranceData } = pre;
+
+      // Fetch prescriptions from OpenEHR — no transaction open here
       let prescriptions: unknown[] = [];
       try {
         let ehrId: string | null = null;
@@ -96,7 +104,9 @@ export async function GET(
         console.error("Error fetching OpenEHR prescriptions:", err);
       }
 
-      // Fetch pharmacy orders for this patient
+      // Orders and items are facility-scoped again, in their own short
+      // transaction now that EHRbase is done with.
+      const ordersWithItems = await withTenant(workspaceid, async () => {
       const orders = await db
         .select({
           orderid: pharmacyOrders.orderid,
@@ -118,7 +128,7 @@ export async function GET(
         .limit(50);
 
       // Fetch order items for each order
-      const ordersWithItems = await Promise.all(
+      return await Promise.all(
         orders.map(async (order) => {
           const items = await db
             .select({
@@ -134,6 +144,7 @@ export async function GET(
           return { ...order, items };
         })
       );
+      });
 
       // Calculate patient age
       let age: number | null = null;
@@ -203,7 +214,6 @@ export async function GET(
       .limit(10);
 
     return NextResponse.json({ patients: matchedPatients });
-    });
   } catch (error) {
     console.error("[Pharmacy Prescriptions]", error);
     return NextResponse.json({ error: "Failed to fetch data" }, { status: 500 });
