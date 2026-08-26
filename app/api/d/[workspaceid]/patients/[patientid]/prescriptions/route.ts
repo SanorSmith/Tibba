@@ -34,7 +34,10 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    // No tenant: this reads `patients` (shared-read since 0068) and then
+    // calls EHRbase. Holding a transaction across those HTTP calls buys no
+    // isolation and keeps a connection checked out. The POST below writes a
+    // facility-scoped row and keeps its tenant.
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -79,7 +82,6 @@ export async function GET(
   
 
     return NextResponse.json({ prescriptions }, { status: 200 });
-    });
   } catch (error) {
     console.error("Error fetching prescriptions:", error);
     return NextResponse.json(

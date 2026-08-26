@@ -53,7 +53,12 @@ export async function GET(request: NextRequest) {
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    // The tenant covers this lab's own tables and stops there. The EHR pull
+    // below calls *this application's* own /api/lims/orders over HTTP, and
+    // doing that inside a transaction is worse than slow: the inner request
+    // needs a connection from the same pool the outer request is still
+    // holding, so under load they can wait on each other.
+    const { pending, billedRefs, priceByCode } = await withTenant(workspaceid, async () => {
 
 
     // Refs already invoiced by this facility.
@@ -131,6 +136,11 @@ export async function GET(request: NextRequest) {
       status: r.teststatus ?? null,
     }));
 
+      // billedRefs and priceByCode are read here but used by the EHR section
+      // below, which runs outside the transaction.
+      return { pending, billedRefs, priceByCode };
+    });
+
     // ── Doctor referrals from the EHR ────────────────────────────────────
     //
     // Read the same combined list the Orders tab shows, rather than the
@@ -179,7 +189,6 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ pending: all });
-    });
   } catch (error) {
     console.error("[lab billing pending]", error);
     return NextResponse.json({ error: "Failed to load pending lab orders" }, { status: 500 });

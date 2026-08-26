@@ -41,7 +41,12 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return await withTenant(workspaceid, async () => {
+    // The tenant covers reading and updating this lab's own rows. The EHR
+    // notification below is an HTTP call to another service, and a database
+    // transaction must not stay open across it — the connection is held for
+    // however long EHRbase takes, which is what makes routes of this shape
+    // time out under load.
+    const outcome = await withTenant(workspaceid, async () => {
 
     // Get sample details
     const [sample] = await db
@@ -109,7 +114,18 @@ export async function POST(
       return updatedSample;
     });
 
-    // Send status update to OpenEHR if sample has OpenEHR ID
+      return { sample, result };
+    });
+
+    // The transaction also answers "not found" and "wrong status", so those
+    // come back as a response rather than a pair.
+    if (outcome instanceof NextResponse) return outcome;
+    const { sample, result } = outcome;
+
+    // Send status update to OpenEHR if sample has OpenEHR ID.
+    // Deliberately after the transaction commits: the sample is processed
+    // whether or not EHRbase can be reached, which the catch below already
+    // assumed.
     if (sample.ehrid) {
       try {
         // Create status update composition for OpenEHR
@@ -239,8 +255,6 @@ export async function POST(
       samplenumber: result.samplenumber,
       status: 'IN_PROCESS',
       message: "Sample is now being processed and EHR has been notified"
-    });
-
     });
   } catch (error) {
     console.error("Process sample error:", error);

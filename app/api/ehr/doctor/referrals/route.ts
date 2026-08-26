@@ -42,7 +42,6 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
     console.log("[Doctor Referrals] User:", user.email);
 
     // Check workspace access
@@ -59,20 +58,25 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden - Doctor access only" }, { status: 403 });
     }
 
-    // Get doctor's name from staff record
-    let doctorRecord = await db
-      .select()
-      .from(staff)
-      .where(eq(staff.email, user.email))
-      .limit(1);
+    // `staff` is the only facility-scoped table this handler reads, so it is
+    // the only part that needs a tenant. Everything below reads `patients`
+    // (shared-read since 0068) and then calls EHRbase once per patient —
+    // holding a transaction across those HTTP calls is what makes routes of
+    // this shape time out.
+    const doctorRecord = await withTenant(workspaceid, async () => {
+      const byEmail = await db
+        .select()
+        .from(staff)
+        .where(eq(staff.email, user.email))
+        .limit(1);
+      if (byEmail.length > 0) return byEmail;
 
-    if (doctorRecord.length === 0) {
-      doctorRecord = await db
+      return await db
         .select()
         .from(staff)
         .where(and(eq(staff.workspaceid, workspaceid), eq(staff.role, "doctor")))
         .limit(1);
-    }
+    });
 
     const doctorFullName = doctorRecord.length > 0
       ? `${doctorRecord[0].firstname} ${doctorRecord[0].lastname}`
@@ -205,7 +209,6 @@ export async function GET(
         totalPatients
       }
     }, { status: 200 });
-    });
   } catch (error) {
     console.error("[Doctor Referrals] Error:", error);
     return NextResponse.json({ 
