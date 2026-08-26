@@ -57,8 +57,10 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
-
+    // No tenant for most of this: it reads `patients` (shared-read since
+    // 0068) and then queries EHRbase per visit. Holding a transaction across
+    // those HTTP calls is what makes routes of this shape time out. The one
+    // facility-scoped read, further down, takes its own.
     const workspaces = await getUserWorkspaces(user.userid);
     const membership = workspaces.find(
       (w) => w.workspace.workspaceid === workspaceid
@@ -185,7 +187,10 @@ export async function GET(
 
     if (records.length > 0) {
       const visitIds = records.map((r) => r.visitId);
-      const assignments = await db
+      // The only facility-scoped read in this handler, so the only part that
+      // needs a tenant — and EHRbase is finished with by now.
+      const assignments = await withTenant(workspaceid, async () =>
+        db
         .select({
           visitid: emergencyDoctorAssignments.visitid,
           name: users.name,
@@ -197,7 +202,7 @@ export async function GET(
             eq(emergencyDoctorAssignments.workspaceid, workspaceid),
             inArray(emergencyDoctorAssignments.visitid, visitIds)
           )
-        );
+        ));
 
       const assignmentMap = new Map<string, string>();
       for (const a of assignments) {
@@ -270,7 +275,6 @@ export async function GET(
     }
 
     return NextResponse.json({ records: result });
-    });
   } catch (error) {
     console.error("[triage][GET] error:", error);
     return NextResponse.json(

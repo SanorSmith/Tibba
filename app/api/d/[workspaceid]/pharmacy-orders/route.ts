@@ -316,7 +316,7 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    const { order, allItems, compositionUids, data } = await withTenant(workspaceid, async () => {
 
     const body = await request.json();
     const data = orderSchema.parse(body);
@@ -469,6 +469,14 @@ export async function POST(
       }
     }
 
+      // The order, its items and the stock movement are committed here. What
+      // follows is EHRbase, and a transaction must not stay open across an
+      // HTTP call to another service — this is the point where the tenant is
+      // released. The existing catch below already treats EHRbase as optional:
+      // the order exists locally whether or not the composition is created.
+      return { order, allItems, compositionUids, data };
+    });
+
     // Create OpenEHR composition for the single order if patient exists
     let compositionUid: string | null = null;
     if (data.patientid) {
@@ -550,10 +558,11 @@ export async function POST(
               compositionUids.push(compositionUid);
               
               // Update order with OpenEHR composition UID
-              await db
+              await withTenant(workspaceid, async () =>
+                db
                 .update(pharmacyOrders)
                 .set({ openehrorderid: compositionUid })
-                .where(eq(pharmacyOrders.orderid, order.orderid));
+                .where(eq(pharmacyOrders.orderid, order.orderid)));
             }
           }
         }
@@ -570,7 +579,6 @@ export async function POST(
       openehrCompositionUids: compositionUids,
       message: `Successfully created order with ${allItems.length} medication(s)`
     }, { status: 201 });
-    });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errStack = error instanceof Error ? error.stack : undefined;
