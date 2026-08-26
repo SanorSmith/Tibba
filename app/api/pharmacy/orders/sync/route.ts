@@ -32,18 +32,26 @@ export async function POST(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    // This used to run the whole sync inside one transaction, including a
+    // call to EHRbase per patient. A connection stays checked out for as long
+    // as EHRbase takes to answer every one of them, which is what makes routes
+    // of this shape time out. It now reads what it needs, walks EHRbase with
+    // no transaction open, and writes the result in one at the end — so the
+    // insert is still all-or-nothing, but the transaction lasts milliseconds.
 
-    // 1. Get all patients across all workspaces (prescriptions in openEHR are global)
+    // 1. Existing openEHR order ids, so duplicates are skipped. The only
+    //    facility-scoped read here.
+    const existingOrders = await withTenant(workspaceid, async () =>
+      db
+        .select({ openehrorderid: pharmacyOrders.openehrorderid })
+        .from(pharmacyOrders)
+        .where(eq(pharmacyOrders.workspaceid, workspaceid)));
+
+    // 2. Prescriptions in openEHR are global, and `patients` is shared-read
+    //    (0068), so this needs no tenant.
     const workspacePatients = await db
       .select()
       .from(patients);
-
-    // 2. Get existing openEHR order IDs so we can skip duplicates
-    const existingOrders = await db
-      .select({ openehrorderid: pharmacyOrders.openehrorderid })
-      .from(pharmacyOrders)
-      .where(eq(pharmacyOrders.workspaceid, workspaceid));
 
     const existingIds = new Set(
       existingOrders
@@ -51,9 +59,9 @@ export async function POST(
         .filter(Boolean)
     );
 
-    let synced = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const pending: Array<{ order: Record<string, unknown>; item: Record<string, unknown> }> = [];
 
     console.log(`[Pharmacy Sync] ${workspacePatients.length} patients in workspace, ${existingIds.size} existing orders`);
 
@@ -91,14 +99,12 @@ export async function POST(
             ? "urgent" as const
             : "routine" as const;
 
-          // Create pharmacy order
-          const [order] = await db
-            .insert(pharmacyOrders)
-            .values({
+          // Collected, not written: the write happens after EHRbase is done.
+          const order = {
               workspaceid,
               patientid: patient.patientid,
               prescriberid: null,
-              status: "PENDING",
+              status: "PENDING" as const,
               source: "openehr",
               openehrorderid: rx.composition_uid,
               priority,
@@ -113,8 +119,7 @@ export async function POST(
                 prescribed_by: rx.prescribed_by,
                 issued_from: rx.issued_from,
               },
-            })
-            .returning();
+          };
 
           // Build dosage string
           const dosageParts: string[] = [];
@@ -123,19 +128,19 @@ export async function POST(
           if (rx.timing_directions) dosageParts.push(rx.timing_directions);
           const dosage = dosageParts.join(", ") || null;
 
-          // Create order item
-          await db.insert(pharmacyOrderItems).values({
-            orderid: order.orderid,
-            drugid: null,
-            drugname: rx.medication_item || rx.product_name || "Unknown medication",
-            dosage,
-            quantity: 1,
-            unitprice: null,
-            status: "PENDING",
+          pending.push({
+            order,
+            item: {
+              drugid: null,
+              drugname: rx.medication_item || rx.product_name || "Unknown medication",
+              dosage,
+              quantity: 1,
+              unitprice: null,
+              status: "PENDING" as const,
+            },
           });
 
           existingIds.add(rx.composition_uid);
-          synced++;
         }
       } catch (err) {
         const msg = `Patient ${patient.firstname} ${patient.lastname}: ${err instanceof Error ? err.message : String(err)}`;
@@ -144,12 +149,31 @@ export async function POST(
       }
     }
 
+    // 4. One transaction, after EHRbase is finished with. An order and its
+    //    item are still written together — a half-created order would show in
+    //    the queue with nothing to dispense.
+    let synced = 0;
+    if (pending.length > 0) {
+      await withTenant(workspaceid, async () => {
+        for (const p of pending) {
+          const [created] = await db
+            .insert(pharmacyOrders)
+            .values(p.order as never)
+            .returning();
+          await db.insert(pharmacyOrderItems).values({
+            ...(p.item as object),
+            orderid: created.orderid,
+          } as never);
+          synced++;
+        }
+      });
+    }
+
     return NextResponse.json({
       message: `Synced ${synced} new orders, skipped ${skipped} existing`,
       synced,
       skipped,
       errors: errors.length > 0 ? errors : undefined,
-    });
     });
   } catch (error) {
     console.error("[Pharmacy Sync POST]", error);
