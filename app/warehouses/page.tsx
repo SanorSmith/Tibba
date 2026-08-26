@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const Icon = ({ d, size = 16, color = "currentColor" }: { d: string; size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -42,6 +43,10 @@ const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
 };
 
 function WarehouseModal({ wh, onClose, onSuccess }: { wh?: any; onClose: () => void; onSuccess: () => void }) {
+  // Its own component, so it reads the facility rather than borrowing the
+  // page's. POST wants it in the body: /api/warehouses refuses a warehouse
+  // with no owner, which is how one facility's stock ended up in another's.
+  const workspaceid = useSearchParams().get("workspaceid") ?? "";
   const isEdit = !!wh;
   const [form, setForm] = useState({
     name:           wh?.name           ?? "",
@@ -60,7 +65,7 @@ function WarehouseModal({ wh, onClose, onSuccess }: { wh?: any; onClose: () => v
     try {
       const url    = isEdit ? `/api/warehouses/${wh.id}` : "/api/warehouses";
       const method = isEdit ? "PATCH" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, workspaceid }) });
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed");
       onSuccess(); onClose();
     } catch (e: any) { setError(e.message); } finally { setLoading(false); }
@@ -119,6 +124,9 @@ function ConfirmModal({ name, onClose, onConfirm }: { name: string; onClose: () 
 }
 
 export default function WarehousesPage() {
+  // Outside /d/[workspaceid], so the facility travels in the query string;
+  // the links into this page supply it.
+  const workspaceid = useSearchParams().get("workspaceid") ?? "";
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState("");
@@ -132,7 +140,7 @@ export default function WarehousesPage() {
 
   const fetchWarehouses = useCallback(async () => {
     setLoading(true);
-    const res  = await fetch("/api/warehouses");
+    const res  = await fetch(`/api/warehouses?workspaceid=${workspaceid}`);
     const data = await res.json();
     const all  = Array.isArray(data) ? data : (data.warehouses ?? []);
     setWarehouses(all);

@@ -1,21 +1,23 @@
+/**
+ * One inventory item: edit, retire.
+ *
+ * Both handlers took an id and wrote to it with no facility in scope, so any
+ * signed-in user could rename or retire another hospital's item. The item now
+ * decides the facility and membership is proved before the write.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { getUser } from "@/lib/user";
 import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { authorizeRecord } from "@/lib/db/authorize-record";
 
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
+    const auth = await authorizeRecord("item", id);
+    if (auth.error) return auth.error;
     const body = await req.json();
 
     const {
@@ -24,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       unit_cost, selling_price, storage_location_id, supplier_id,
     } = body;
 
+    return await withTenant(auth.workspaceid, async () => {
     await pool.query(
       `UPDATE items SET
         name              = COALESCE($1,  name),
@@ -54,6 +57,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     );
 
     return NextResponse.json({ success: true });
+    });
   } catch (error) {
     console.error("Error updating item:", error);
     return NextResponse.json({ error: "Failed to update item" }, { status: 500 });
@@ -62,17 +66,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
-    await pool.query(`UPDATE items SET is_active = false WHERE id = $1`, [id]);
-    return NextResponse.json({ success: true });
+    const auth = await authorizeRecord("item", id);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
+      await pool.query(`UPDATE items SET is_active = false WHERE id = $1`, [id]);
+      return NextResponse.json({ success: true });
+    });
   } catch (error) {
     console.error("Error deactivating item:", error);
     return NextResponse.json({ error: "Failed to deactivate item" }, { status: 500 });

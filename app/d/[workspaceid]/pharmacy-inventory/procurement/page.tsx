@@ -937,7 +937,7 @@ export default function PharmacyProcurementPage() {
 
   // Fetch warehouse ID (pharmacy warehouse)
   useEffect(() => {
-    fetch('/api/warehouses').then(r => r.json()).then(data => {
+    fetch(`/api/warehouses?workspaceid=${workspaceid}`).then(r => r.json()).then(data => {
       if (Array.isArray(data) && data.length > 0) {
         // Find first pharmacy warehouse
         const pharmacyWarehouse = data.find(w => w.warehousetype === 'pharmacy');

@@ -4,9 +4,14 @@ import { getUser } from "@/lib/user";
 // (docs/tenant-isolation-open-tables.md), so this needs no tenant --
 // only the shared connection instead of one of its own.
 import { pool as globalPool } from "@/lib/db/pool";
+import { withoutTenant } from "@/lib/db/tenant";
 
 export async function GET(req: NextRequest) {
   try {
+    // No tenant: global_drugs is national reference data belonging to no
+    // facility (docs/tenant-isolation-open-tables.md). Marked rather than
+    // merely absent, so a future audit can tell this apart from an oversight.
+    return await withoutTenant("global_drugs is shared reference data", async () => {
     // This route answered anyone who could reach it. There is no facility
     // in scope to check membership against, so this closes what can be
     // closed here: it now requires a signed-in user.
@@ -61,6 +66,7 @@ export async function GET(req: NextRequest) {
 
     console.log("[Global Drugs API] Found", result.rows.length, "results");
     return NextResponse.json(result.rows);
+    });
   } catch (err: any) {
     console.error("[Global Drugs API] Error:", err.message);
     console.error("[Global Drugs API] Full error:", err);

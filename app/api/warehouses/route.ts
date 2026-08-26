@@ -1,21 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { warehouses, warehouseSections, inventoryStock } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Authenticated but untenanted, this listed every hospital's warehouses —
+    // and once row-level security is enforcing it would have listed none,
+    // silently, because a query with no facility set matches nothing.
+    const auth = await requireWorkspace(req);
+    if (auth.error) return auth.error;
 
+    return await withTenant(auth.workspaceid, async () => {
     const all = await db.select().from(warehouses).where(eq(warehouses.isactive, true)).orderBy(warehouses.name);
 
     const enriched = await Promise.all(all.map(async (w) => {
@@ -33,6 +33,7 @@ export async function GET() {
     }));
 
     return NextResponse.json(enriched);
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch warehouses" }, { status: 500 });
   }

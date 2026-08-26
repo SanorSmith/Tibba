@@ -764,7 +764,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
         fetch("/api/pharmacy/dispense"),
         fetch("/api/pharmacy/controlled"),
         fetch("/api/stores"),
-        fetch("/api/warehouses")
+        fetch(`/api/warehouses?workspaceid=${workspaceid}`)
       ]);
       const [iData,dData,cData,sData,wData] = await Promise.all([iRes.json(),dRes.json(),cRes.json(),sRes.json(),wRes.json()]);
       console.log('[PharmacyInventoryPage] Raw API response:', { hasItems: !!iData?.items, isArray: Array.isArray(iData), itemsLength: iData?.items?.length, iData });

@@ -5,7 +5,6 @@ import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
 import { pool } from "@/lib/db/pool";
 
-const WS = "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
 
 export async function GET(req: NextRequest) {
   try {

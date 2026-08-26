@@ -15,6 +15,8 @@ export const dynamic = 'force-dynamic';
 // DATABASE_URL is missing -- but the null checks downstream are harmless and
 // left alone rather than touched in a change about connections.
 import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 
 // Generate patient number function
 function generatePatientNumber(): string {
@@ -54,13 +56,11 @@ function normalizePhoneNumber(phone: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const bodyWorkspace: string | undefined = undefined;
+    const auth = await requireWorkspace(request, bodyWorkspace);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -368,6 +368,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(patients);
 
+    });
   } catch (error) {
     console.error('Error fetching patients:', error);
     return NextResponse.json(
@@ -382,13 +383,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const raw = await request.clone().json().catch(() => ({}) as Record<string, string>);
+    const bodyWorkspace: string | undefined = raw.workspaceid ?? raw.workspaceId;
+    const auth = await requireWorkspace(request, bodyWorkspace);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -609,6 +609,7 @@ export async function POST(request: NextRequest) {
       client.release();
     }
 
+    });
   } catch (error) {
     console.error('Error creating patient:', error);
     return NextResponse.json(
@@ -623,13 +624,12 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const raw = await request.clone().json().catch(() => ({}) as Record<string, string>);
+    const bodyWorkspace: string | undefined = raw.workspaceid ?? raw.workspaceId;
+    const auth = await requireWorkspace(request, bodyWorkspace);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -846,6 +846,7 @@ export async function PUT(request: NextRequest) {
       message: 'Patient updated successfully'
     });
 
+    });
   } catch (error) {
     console.error('Error updating patient:', error);
     return NextResponse.json(
@@ -860,13 +861,11 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const bodyWorkspace: string | undefined = undefined;
+    const auth = await requireWorkspace(request, bodyWorkspace);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
 
     if (!pool) {
       return NextResponse.json(
@@ -907,6 +906,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Patient deleted successfully'
     });
 
+    });
   } catch (error) {
     console.error('Error deleting patient:', error);
     return NextResponse.json(

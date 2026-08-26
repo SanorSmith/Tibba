@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { drugs, items, itemBatches, inventoryStock, warehouseSections } from "@/lib/db/schema";
 import { or, ilike, desc, eq, and } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
 
 export async function GET(
   request: NextRequest
@@ -74,7 +75,17 @@ export async function POST(
       );
     }
 
-    const workspaceid = body.workspaceid || "cec4d702-6dae-4ea5-9a30-ef17842c00fd";
+    // This defaulted to one particular facility's id, so a request that named
+    // no facility silently filed the drug under Hospital 1 — and under the
+    // write policy it would now be refused instead, which is no better an
+    // outcome to leave to chance. The caller has to say, and prove it.
+    const workspaceid = body.workspaceid ?? body.workspaceId;
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     
     let insertedDrug = null;
     

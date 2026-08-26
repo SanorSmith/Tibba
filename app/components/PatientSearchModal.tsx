@@ -204,7 +204,7 @@ export default function PatientSearchModal({ isOpen, onClose, onPatientSelect, w
       const res = await fetch('/api/tibbna-openehr-patients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patientData),
+        body: JSON.stringify({ ...patientData, workspaceid: workspaceId }),
       });
 
       if (res.ok) {

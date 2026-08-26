@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { pool } from "@/lib/db/pool";
+import { withoutTenant } from "@/lib/db/tenant";
 
 
 export async function GET(req: NextRequest) {
   try {
+    // No tenant: global_drugs is national reference data belonging to no
+    // facility (docs/tenant-isolation-open-tables.md). Marked rather than
+    // merely absent, so a future audit can tell this apart from an oversight.
+    return await withoutTenant("global_drugs is shared reference data", async () => {
     // This route answered anyone who could reach it. There is no facility
     // in scope to check membership against, so this closes what can be
     // closed here: it now requires a signed-in user.
@@ -44,6 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ 
       duplicates: result.rows,
       ndlDuplicates: ndlResult.rows
+    });
     });
   } catch (error) {
     console.error('[Global Drugs Duplicates] Error:', error);

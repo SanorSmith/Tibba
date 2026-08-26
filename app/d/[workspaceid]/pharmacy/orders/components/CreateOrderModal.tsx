@@ -471,7 +471,7 @@ export default function CreateOrderModal({
       const res = await fetch('/api/tibbna-openehr-patients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patientData),
+        body: JSON.stringify({ ...patientData, workspaceid }),
       });
 
       if (res.ok) {

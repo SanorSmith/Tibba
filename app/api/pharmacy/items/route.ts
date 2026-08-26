@@ -2,18 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 import { pool } from "@/lib/db/pool";
 
 
 export async function GET(req: NextRequest) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireWorkspace(req);
+  if (auth.error) return auth.error;
 
+  // The `global` branch below reads global_drugs, which belongs to no
+  // facility, but the inventory branch does not — and running the whole
+  // handler in one tenant costs nothing.
+  return await withTenant(auth.workspaceid, async () => {
   const search = req.nextUrl.searchParams.get("search") ?? "";
   const workspaceId = req.nextUrl.searchParams.get("workspaceId") ?? "";
   const source = req.nextUrl.searchParams.get("source") ?? "global"; // 'global', 'inventory', or undefined
@@ -165,6 +165,7 @@ export async function GET(req: NextRequest) {
   console.log('[Pharmacy Items API] Returning', result.rows.length, 'items for workspace', workspaceId);
 
   return NextResponse.json({ items: result.rows });
+  });
 }
 
 export async function POST(req: NextRequest) {

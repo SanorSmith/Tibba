@@ -1,18 +1,22 @@
+/**
+ * Stock movement history for a facility's pharmacy warehouses.
+ *
+ * The warehouse lookup that opens this route had no facility filter, so it
+ * collected every hospital's pharmacy warehouses and then listed their
+ * transactions. Establishing the tenant fixes both queries at once: the
+ * warehouses come back scoped, and so does everything joined to them.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { getUser } from "@/lib/user";
 import { pool } from "@/lib/db/pool";
-
+import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 
 export async function GET(req: NextRequest) {
-  try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const auth = await requireWorkspace(req);
+  if (auth.error) return auth.error;
 
+  try {
+    return await withTenant(auth.workspaceid, async () => {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "15");
@@ -82,6 +86,7 @@ export async function GET(req: NextRequest) {
       total: parseInt(countResult.rows[0].total),
       page,
       limit,
+    });
     });
   } catch (error) {
     console.error("[Pharmacy History GET]", error);

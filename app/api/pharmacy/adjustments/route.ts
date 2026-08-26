@@ -5,18 +5,17 @@ import { stockTransactions } from "@/lib/db/schema";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 import { pool } from "@/lib/db/pool";
 
 
 export async function GET(req: NextRequest) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireWorkspace(req);
+  if (auth.error) return auth.error;
 
+  return await withTenant(auth.workspaceid, async () => {
+  // Unfiltered, this collected every hospital's pharmacy warehouses and then
+  // listed their adjustments as one history.
   const whRes = await pool.query(`SELECT id FROM warehouses WHERE warehouse_type = 'pharmacy' AND is_active = true`);
   if (!whRes.rows.length) return NextResponse.json([]);
   const whArray = `{${whRes.rows.map((r: any) => r.id).join(",")}}`;
@@ -43,6 +42,7 @@ export async function GET(req: NextRequest) {
     [whArray]
   );
   return NextResponse.json(result.rows);
+  });
 }
 
 export async function POST(req: NextRequest) {
