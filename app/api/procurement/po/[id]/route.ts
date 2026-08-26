@@ -1,19 +1,29 @@
+/**
+ * Status changes on one purchase order.
+ *
+ * This route opened its own connection from a second environment variable and
+ * would move any facility's order to any status for anyone signed in. The
+ * order in the path now decides the facility, and membership is proved before
+ * the write.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
-import { getUser } from "@/lib/user";
-const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { authorizeRecord } from "@/lib/db/authorize-record";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
+  const auth = await authorizeRecord("purchase_order", id);
+  if (auth.error) return auth.error;
+
   const { status } = await req.json();
-  await pool.query(`UPDATE purchase_orders SET status=$1, updatedat=NOW() WHERE id=$2`, [status, id]);
-  return NextResponse.json({ success: true });
+
+  return await withTenant(auth.workspaceid, async () => {
+    const r = await pool.query(
+      `UPDATE purchase_orders SET status=$1, updatedat=NOW() WHERE id=$2`,
+      [status, id],
+    );
+    if (!r.rowCount) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ success: true });
+  });
 }

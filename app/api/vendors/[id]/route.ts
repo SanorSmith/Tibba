@@ -1,38 +1,56 @@
+/**
+ * One vendor: edit, retire.
+ *
+ * This route opened its own connection from a second environment variable, so
+ * it was invisible to the tenant wrapper and to `DATABASE_URL` alike. Both
+ * handlers now prove the caller belongs to the facility owning the vendor
+ * before writing, and run through the shared connection so row-level security
+ * applies.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
-import { getUser } from "@/lib/user";
-const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { authorizeRecord } from "@/lib/db/authorize-record";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
-  const { name, code, contactname, phone, email, address, country, paymentterms, currency, notes } = await req.json();
-  const r = await pool.query(
-    `UPDATE vendors SET name=$1, code=$2, contactname=$3, phone=$4, email=$5, address=$6,
-     country=$7, paymentterms=$8, currency=$9, notes=$10, updatedat=NOW()
-     WHERE id=$11 RETURNING *`,
-    [name, code||null, contactname||null, phone||null, email||null, address||null, country||null, paymentterms||null, currency||"USD", notes||null, id]
-  );
-  return NextResponse.json(r.rows[0]);
+  const auth = await authorizeRecord("vendor", id);
+  if (auth.error) return auth.error;
+
+  const { name, code, contactname, phone, email, address, country, paymentterms, currency, notes } =
+    await req.json();
+
+  return await withTenant(auth.workspaceid, async () => {
+    const r = await pool.query(
+      `UPDATE vendors SET name=$1, code=$2, contactname=$3, phone=$4, email=$5, address=$6,
+       country=$7, paymentterms=$8, currency=$9, notes=$10, updatedat=NOW()
+       WHERE id=$11 RETURNING *`,
+      [
+        name,
+        code || null,
+        contactname || null,
+        phone || null,
+        email || null,
+        address || null,
+        country || null,
+        paymentterms || null,
+        currency || "USD",
+        notes || null,
+        id,
+      ],
+    );
+    if (!r.rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(r.rows[0]);
+  });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await pool.query(`UPDATE vendors SET isactive=false, updatedat=NOW() WHERE id=$1`, [id]);
-  return NextResponse.json({ success: true });
+  const auth = await authorizeRecord("vendor", id);
+  if (auth.error) return auth.error;
+
+  return await withTenant(auth.workspaceid, async () => {
+    await pool.query(`UPDATE vendors SET isactive=false, updatedat=NOW() WHERE id=$1`, [id]);
+    return NextResponse.json({ success: true });
+  });
 }

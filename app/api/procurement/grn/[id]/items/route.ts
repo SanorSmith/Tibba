@@ -1,24 +1,28 @@
+/**
+ * Lines on one goods receipt note.
+ *
+ * This route opened its own connection from a second environment variable and
+ * would return any facility's lines to anyone signed in. The receipt in the
+ * path now decides the facility, and membership is proved before reading.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
-import { getUser } from "@/lib/user";
-const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { authorizeRecord } from "@/lib/db/authorize-record";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await pool.query(
-    `SELECT gi.*, i.name AS "itemName", i.uom
-     FROM grn_items gi
-     LEFT JOIN items i ON i.id = gi.itemid
-     WHERE gi.grnid = $1 ORDER BY gi.createdat`,
-    [id]
-  );
-  return NextResponse.json(r.rows);
+  const auth = await authorizeRecord("goods_receipt_note", id);
+  if (auth.error) return auth.error;
+
+  return await withTenant(auth.workspaceid, async () => {
+    const r = await pool.query(
+      `SELECT gi.*, i.name AS "itemName", i.uom
+       FROM grn_items gi
+       LEFT JOIN items i ON i.id = gi.itemid
+       WHERE gi.grnid = $1 ORDER BY gi.createdat`,
+      [id],
+    );
+    return NextResponse.json(r.rows);
+  });
 }

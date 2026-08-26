@@ -1,27 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
-const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { pool } from "@/lib/db/pool";
 
-export async function GET() {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
+export async function GET(req: NextRequest) {
   const user = await getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const r = await pool.query(
-    `SELECT po.*, v.name AS "vendorName", w.name AS "warehouseName"
-     FROM purchase_orders po
-     LEFT JOIN vendors v ON v.id::text = po.vendorid::text
-     LEFT JOIN warehouses w ON w.id = po.warehouseid
-     ORDER BY po.createdat DESC`
-  );
-  return NextResponse.json(r.rows);
+  // The facility has to be named. Falling back to "none" would return an
+  // empty list once row-level security is enforcing, which reads as "no
+  // orders" rather than as a mistake.
+  const workspaceid = req.nextUrl.searchParams.get("workspaceid");
+  if (!workspaceid) {
+    return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+  }
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return await withTenant(workspaceid, async () => {
+    const r = await pool.query(
+      `SELECT po.*, v.name AS "vendorName", w.name AS "warehouseName"
+       FROM purchase_orders po
+       LEFT JOIN vendors v ON v.id::text = po.vendorid::text
+       LEFT JOIN warehouses w ON w.id = po.warehouseid
+       ORDER BY po.createdat DESC`,
+    );
+    return NextResponse.json(r.rows);
+  });
 }
 
 export async function POST(req: NextRequest) {

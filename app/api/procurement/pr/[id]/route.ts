@@ -1,33 +1,62 @@
+/**
+ * Purchase requisitions — the legacy top-level procurement API.
+ *
+ * NOTE: `purchase_requisitions` and `purchase_requisition_items` do not exist
+ * in this database. These handlers have therefore been failing on every call,
+ * independently of anything to do with tenancy. They are scoped here for
+ * consistency rather than repaired: the tables need to be created, or these
+ * routes and the page at /procurement deleted. Whichever it is, that is a
+ * decision about the feature, not about isolation.
+ *
+ * They previously opened their own connection from a second environment
+ * variable, which is the part this fixes.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
-const pool = new Pool({ connectionString: process.env.NEON_DATABASE_URL, ssl: { rejectUnauthorized: false } });
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
+
+/** The requisition tables carry no facility we can look up, so it is named. */
+async function scope(req: NextRequest) {
+  const user = await getUser();
+  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+
+  const workspaceid = req.nextUrl.searchParams.get("workspaceid");
+  if (!workspaceid) {
+    return { error: NextResponse.json({ error: "workspaceid is required" }, { status: 400 }) };
+  }
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+  return { workspaceid };
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const s = await scope(req);
+  if (s.error) return s.error;
 
   const { id } = await params;
   const { status } = await req.json();
-  await pool.query(`UPDATE purchase_requisitions SET status=$1, updatedat=NOW() WHERE id=$2`, [status, id]);
-  return NextResponse.json({ success: true });
+
+  return await withTenant(s.workspaceid!, async () => {
+    const r = await pool.query(
+      `UPDATE purchase_requisitions SET status=$1, updatedat=NOW() WHERE id=$2`,
+      [status, id],
+    );
+    if (!r.rowCount) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ success: true });
+  });
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const s = await scope(req);
+  if (s.error) return s.error;
 
   const { id } = await params;
-  const r = await pool.query(`SELECT * FROM purchase_requisitions WHERE id=$1`, [id]);
-  return NextResponse.json(r.rows[0] ?? null);
+
+  return await withTenant(s.workspaceid!, async () => {
+    const r = await pool.query(`SELECT * FROM purchase_requisitions WHERE id=$1`, [id]);
+    return NextResponse.json(r.rows[0] ?? null);
+  });
 }

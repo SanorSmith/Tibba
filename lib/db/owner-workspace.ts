@@ -25,7 +25,10 @@ export type OwnedRecord =
   | "storage_location"
   | "pharmacy_order"
   | "pharmacy"
-  | "goods_receipt_note";
+  | "goods_receipt_note"
+  | "warehouse"
+  | "vendor"
+  | "purchase_order";
 
 export async function ownerWorkspaceOf(
   kind: OwnedRecord,

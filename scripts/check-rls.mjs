@@ -44,10 +44,42 @@ try {
   const [{ policies }] = await sql`
     SELECT count(*)::int AS policies FROM pg_policies WHERE schemaname = 'public'`;
 
+  // Tables with no policy at all. This check used to count only the tables
+  // that HAD row-level security, which is why 100 without it went unnoticed
+  // for weeks: a table is invisible to a survey that only looks at the
+  // protected ones. The allow-list below is the documented set — anything
+  // else appearing here is a gap, not a decision.
+  const documented = new Set([
+    'global_drugs', 'openehr_medications', 'medications_catalog',
+    'drug_interaction_groups', 'drug_interactions', 'drug_group_mappings',
+    'chronic_disease_content', 'currency_exchange_rates', 'social_security_rules',
+    'notification_templates', 'insurance_companies_basic', 'workspace_roles',
+    'daily_insights', 'news_cache', 'users', 'usersessions', 'labs', 'labtests',
+    'medication_inventory', 'department_staffing_rules', 'shift_rotations',
+    'notification_preferences', 'support_requests',
+  ]);
+
+  const open = await sql`
+    SELECT c.relname AS t FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity
+     ORDER BY 1`;
+  const undocumented = open.map((r) => r.t).filter((t) => !documented.has(t));
+
   console.log(`connected as       : ${role}`);
   console.log(`tables with RLS on : ${tables}`);
   console.log(`policies           : ${policies}`);
   console.log(`role bypasses RLS  : ${bypass}`);
+  console.log(`tables with no RLS : ${open.length} (${documented.size} documented as deliberate)`);
+
+  if (undocumented.length) {
+    console.log(
+      `
+UNDOCUMENTED OPEN TABLES (${undocumented.length}) — each is readable by every facility:`,
+    );
+    for (const t of undocumented) console.log(`  ${t}`);
+    console.log('Protect them, or add them to docs/tenant-isolation-open-tables.md with a reason.');
+  }
 
   // The part that actually settles it. Set one facility's identity, then ask
   // for rows belonging to everyone. A role that is being governed can only
