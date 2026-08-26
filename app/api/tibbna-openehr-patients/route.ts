@@ -5,24 +5,16 @@
  * governed by the write policy on that table.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getUser } from "@/lib/user";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-// Use the non-medical database (Neon DB)
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  console.error('DATABASE_URL is not configured in environment variables');
-}
-
-// Neon database connection for non-medical patient data
-const pool = databaseUrl ? new Pool({
-  connectionString: databaseUrl,
-  ssl: { rejectUnauthorized: false },
-}) : null;
+// The shared connection, so these queries run on the tenant's transaction
+// when there is one. It is never null -- lib/db throws at import if
+// DATABASE_URL is missing -- but the null checks downstream are harmless and
+// left alone rather than touched in a change about connections.
+import { pool } from "@/lib/db/pool";
 
 // Generate patient number function
 function generatePatientNumber(): string {

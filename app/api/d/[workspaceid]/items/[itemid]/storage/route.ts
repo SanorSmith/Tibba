@@ -3,10 +3,10 @@
  * GET - fetch storage location and batch information for a specific item
  */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
 
 export async function GET(
   request: NextRequest,
@@ -30,7 +30,6 @@ export async function GET(
 
     console.log('[Item Storage API] Fetching storage for:', { itemid, workspaceid });
 
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     try {
       // First, check if this is an order item ID (from pharmacy_order_items)

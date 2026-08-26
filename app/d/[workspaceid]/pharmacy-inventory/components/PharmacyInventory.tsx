@@ -33,7 +33,7 @@ export default function PharmacyInventory({ workspaceid }: PharmacyInventoryProp
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <Link href="/warehouses">
+          <Link href={`/warehouses?workspaceid=${workspaceid}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Warehouses
@@ -53,7 +53,7 @@ export default function PharmacyInventory({ workspaceid }: PharmacyInventoryProp
         </Card>
 
         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-          <Link href="/vendors">
+          <Link href={`/vendors?workspaceid=${workspaceid}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Vendors
@@ -180,13 +180,13 @@ export default function PharmacyInventory({ workspaceid }: PharmacyInventoryProp
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-            <Link href="/warehouses">
+            <Link href={`/warehouses?workspaceid=${workspaceid}`}>
               <Button variant="outline" className="w-full justify-start">
                 <Warehouse className="mr-2 h-4 w-4" />
                 Add Warehouse
               </Button>
             </Link>
-            <Link href="/vendors">
+            <Link href={`/vendors?workspaceid=${workspaceid}`}>
               <Button variant="outline" className="w-full justify-start">
                 <Users className="mr-2 h-4 w-4" />
                 Add Vendor

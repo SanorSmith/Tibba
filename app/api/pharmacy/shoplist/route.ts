@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
+import { pool } from "@/lib/db/pool";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
 
 // GET - fetch low stock items for shop list
 export async function GET(req: NextRequest) {

@@ -20,9 +20,9 @@ import { stockLevels } from "@/lib/db/tables/pharmacy-stock";
 import { drugBatches } from "@/lib/db/tables/pharmacy-drugs";
 import { asc, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
-import { Pool } from "pg";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
 
 type RouteParams = { params: Promise<{ workspaceid: string; orderid: string }> };
 
@@ -41,7 +41,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // security scopes every query below in the database itself.
     return await withTenant(workspaceid, async () => {
 
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     // Fetch order with prescriber and dispenser names
     const [orderData] = await db

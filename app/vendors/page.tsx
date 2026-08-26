@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const Icon = ({ d, size = 16, color = "currentColor" }: { d: string; size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
@@ -34,6 +35,10 @@ const s: Record<string,any> = {
 const EMPTY = { name:"", code:"", contactname:"", phone:"", email:"", address:"", country:"", paymentterms:"", currency:"USD", notes:"" };
 
 export default function VendorsPage() {
+  // This page sits outside /d/[workspaceid], so the facility travels in the
+  // query string. The links that reach it pass it along; without one the API
+  // answers 400 rather than silently listing nothing.
+  const workspaceid = useSearchParams().get("workspaceid") ?? "";
   const [vendors, setVendors]   = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
@@ -49,7 +54,7 @@ export default function VendorsPage() {
 
   const fetchVendors = useCallback(async () => {
     setLoading(true);
-    const res  = await fetch(`/api/vendors?search=${encodeURIComponent(search)}`);
+    const res  = await fetch(`/api/vendors?search=${encodeURIComponent(search)}&workspaceid=${workspaceid}`);
     const data = await res.json();
     setVendors(Array.isArray(data) ? data : (data.vendors ?? []));
     setLoading(false);
@@ -69,7 +74,7 @@ export default function VendorsPage() {
   const handleSave = async () => {
     if (!form.name.trim()) { showToast("Vendor name is required"); return; }
     const isEdit = modalMode === "edit";
-    const url    = isEdit ? `/api/vendors/${activeRow.id}` : "/api/vendors";
+    const url    = isEdit ? `/api/vendors/${activeRow.id}?workspaceid=${workspaceid}` : `/api/vendors?workspaceid=${workspaceid}`;
     const method = isEdit ? "PATCH" : "POST";
     closeModal();
     const res = await fetch(url, { method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
@@ -79,7 +84,7 @@ export default function VendorsPage() {
   const handleDelete = async () => {
     const id = deleteRow?.id;
     setDeleteRow(null);
-    await fetch(`/api/vendors/${id}`, { method:"DELETE" });
+    await fetch(`/api/vendors/${id}?workspaceid=${workspaceid}`, { method:"DELETE" });
     fetchVendors();
     showToast("Vendor deactivated");
   };

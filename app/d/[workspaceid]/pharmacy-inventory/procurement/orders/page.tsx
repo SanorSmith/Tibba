@@ -41,7 +41,7 @@ export default function PurchaseOrdersPage() {
 
   const fetchVendors = async () => {
     try {
-      const response = await fetch('/api/vendors');
+      const response = await fetch(`/api/vendors?workspaceid=${params.workspaceid}`);
       if (response.ok) {
         const data = await response.json();
         setVendors(data);

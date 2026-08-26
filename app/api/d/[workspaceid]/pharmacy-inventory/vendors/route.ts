@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function GET(
   req: NextRequest,

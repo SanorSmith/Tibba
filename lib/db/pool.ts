@@ -23,9 +23,9 @@
  * tenant's transaction, so these queries now obey row-level security like
  * every other one.
  *
- * Not a general `pg` Pool — it implements `query` and nothing else. That is
- * all these call sites use, and anything reaching for `connect()` or the
- * event emitter should be using drizzle instead.
+ * Not a general `pg` Pool. It covers `query`, `end` and `connect` because
+ * that is what these call sites use; anything reaching past those — the event
+ * emitter, listen/notify, a cursor — should be using drizzle instead.
  */
 import { sql, type SQL, type SQLChunk } from "drizzle-orm";
 import { db } from "./index";
@@ -58,11 +58,28 @@ export interface QueryResult<T> {
   rowCount: number;
 }
 
+/** `BEGIN`, `COMMIT`, `ROLLBACK` — with optional whitespace or semicolon. */
+const TRANSACTION_CONTROL = /^\s*(begin|commit|rollback|start\s+transaction)\s*;?\s*$/i;
+
 export const pool = {
-  async query<T = Record<string, unknown>>(
+  /**
+   * Rows default to `any`, matching what `pg` returned.
+   *
+   * Not an improvement worth making here: the call sites this replaces read
+   * columns straight off the row and pass them to `parseInt`, and tightening
+   * the type would turn a connection change into a hundred unrelated edits.
+   * Callers that want a shape can still supply one.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async query<T = any>(
     text: string,
     params: readonly unknown[] = [],
   ): Promise<QueryResult<T>> {
+    // See `connect` below: the enclosing `withTenant` owns the transaction,
+    // so a hand-written BEGIN/COMMIT here would fight it.
+    if (TRANSACTION_CONTROL.test(text)) {
+      return { rows: [], rowCount: 0 };
+    }
     const result = await db.execute(toFragment(text, params));
     // postgres-js hands back an array of rows that also carries `count`, which
     // is the affected-row count for statements without RETURNING.
@@ -70,4 +87,39 @@ export const pool = {
     const affected = (result as unknown as { count?: number }).count;
     return { rows, rowCount: affected ?? rows.length };
   },
+
+  /**
+   * Deliberately does nothing.
+   *
+   * Several routes built a pool per request and closed it in a `finally`.
+   * There is no longer a pool of their own to close, and closing the shared
+   * connection would take down every other request in the process. Keeping
+   * the method means those `finally` blocks need no edit — and an edit that
+   * has to be made in 27 places is an edit that gets missed in one.
+   */
+  async end(): Promise<void> {},
+
+  /**
+   * A checked-out client, for the routes that manage a transaction by hand.
+   *
+   * Those routes bracket their work with `BEGIN` / `COMMIT`, and `ROLLBACK`
+   * in a catch that rethrows. Running that inside `withTenant` would be
+   * actively wrong — the `COMMIT` would commit the *outer* transaction, the
+   * one carrying the facility, while the request was still going.
+   *
+   * So the transaction-control statements are dropped and the surrounding
+   * `withTenant` provides the atomicity instead: it is already a transaction,
+   * and drizzle rolls it back when the callback throws. Both call sites
+   * rethrow after their `ROLLBACK`, so an error still aborts everything. That
+   * rethrow is what makes this safe — a catch that swallowed the error would
+   * let a half-finished write commit, so check for it before adding a third
+   * caller.
+   */
+  async connect() {
+    return {
+      query: pool.query,
+      release() {},
+    };
+  },
 };
+

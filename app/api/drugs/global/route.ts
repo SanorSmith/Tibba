@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
-
-// Use main database connection for global_drugs table
-const globalPool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+// global_drugs is shared reference data with no facility of its own
+// (docs/tenant-isolation-open-tables.md), so this needs no tenant --
+// only the shared connection instead of one of its own.
+import { pool as globalPool } from "@/lib/db/pool";
 
 export async function GET(req: NextRequest) {
   try {

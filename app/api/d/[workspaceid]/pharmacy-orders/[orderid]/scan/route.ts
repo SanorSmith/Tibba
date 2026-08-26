@@ -19,9 +19,9 @@ import {
 import { eq, and, or, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { z } from "zod";
-import { Pool } from "pg";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
 
 const scanSchema = z.object({
   barcode: z.string().min(1),
@@ -61,7 +61,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     // Real barcode scanning - match against inventory items
     try {

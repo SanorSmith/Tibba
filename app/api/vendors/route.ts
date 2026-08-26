@@ -1,43 +1,63 @@
+/**
+ * Vendors, listed and created for one facility.
+ *
+ * This route opened its own connection and named no facility at all: the list
+ * returned every hospital's suppliers, and a new vendor was inserted with no
+ * owner. That second half would stop working outright once row-level security
+ * is enforcing — the write policy requires the row to belong to the facility
+ * doing the writing — so setting it is a fix, not a formality.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
-import { getUser } from "@/lib/user";
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 
 export async function GET(req: NextRequest) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireWorkspace(req);
+  if (auth.error) return auth.error;
 
   const search = req.nextUrl.searchParams.get("search") ?? "";
-  const r = await pool.query(
-    `SELECT * FROM vendors
-     WHERE isactive = true
-       AND ($1 = '' OR name ILIKE $1 OR contactname ILIKE $1 OR email ILIKE $1 OR code ILIKE $1)
-     ORDER BY name`,
-    [`%${search}%`]
-  );
-  return NextResponse.json(r.rows);
+
+  return await withTenant(auth.workspaceid, async () => {
+    const r = await pool.query(
+      `SELECT * FROM vendors
+       WHERE isactive = true
+         AND ($1 = '' OR name ILIKE $1 OR contactname ILIKE $1 OR email ILIKE $1 OR code ILIKE $1)
+       ORDER BY name`,
+      [`%${search}%`],
+    );
+    return NextResponse.json(r.rows);
+  });
 }
 
 export async function POST(req: NextRequest) {
-  // This route answered anyone who could reach it. There is no facility
-  // in scope to check membership against, so this closes what can be
-  // closed here: it now requires a signed-in user.
-  const user = await getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const body = await req.json();
+  const auth = await requireWorkspace(req, body.workspaceid ?? body.workspaceId);
+  if (auth.error) return auth.error;
 
-  const { name, code, contactPerson, phone, email, address, country, paymentTerms, currency, notes } = await req.json();
-  if (!name?.trim()) return NextResponse.json({ error:"Name required" }, { status:400 });
-  const r = await pool.query(
-    `INSERT INTO vendors (id, name, code, contactname, phone, email, address, country, paymentterms, currency, notes, isactive, createdat, updatedat)
-     VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,NOW(),NOW()) RETURNING *`,
-    [name, code||null, contactPerson||null, phone||null, email||null, address||null, country||null, paymentTerms||null, currency||"USD", notes||null]
-  );
-  return NextResponse.json(r.rows[0]);
+  const { name, code, contactPerson, phone, email, address, country, paymentTerms, currency, notes } =
+    body;
+  if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
+
+  return await withTenant(auth.workspaceid, async () => {
+    const r = await pool.query(
+      `INSERT INTO vendors (id, workspaceid, name, code, contactname, phone, email, address,
+                            country, paymentterms, currency, notes, isactive, createdat, updatedat)
+       VALUES (gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true,NOW(),NOW()) RETURNING *`,
+      [
+        auth.workspaceid,
+        name,
+        code || null,
+        contactPerson || null,
+        phone || null,
+        email || null,
+        address || null,
+        country || null,
+        paymentTerms || null,
+        currency || "USD",
+        notes || null,
+      ],
+    );
+    return NextResponse.json(r.rows[0]);
+  });
 }

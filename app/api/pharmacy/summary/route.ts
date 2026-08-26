@@ -1,26 +1,22 @@
+/**
+ * Pharmacy stock totals for the dashboard.
+ *
+ * The facility was already required here, but only as a query filter — it was
+ * never proved against membership, and the statements ran outside any tenant.
+ * Both are now handled before the first query.
+ */
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
-import { getUser } from "@/lib/user";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+import { pool } from "@/lib/db/pool";
+import { withTenant } from "@/lib/db/tenant";
+import { requireWorkspace } from "@/lib/db/require-workspace";
 
 export async function GET(req: NextRequest) {
-  try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
-    const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const auth = await requireWorkspace(req);
+  if (auth.error) return auth.error;
+  const workspaceId = auth.workspaceid;
 
-    const workspaceId = req.nextUrl.searchParams.get("workspaceId");
-    
-    console.log('[Pharmacy Summary API] Received workspace ID:', workspaceId);
-    
-    if (!workspaceId) {
-      return NextResponse.json({ error: "Workspace ID required" }, { status: 400 });
-    }
+  try {
+    return await withTenant(workspaceId, async () => {
 
     // Get pharmacy warehouses first
     const whRes = await pool.query(`
@@ -107,7 +103,7 @@ export async function GET(req: NextRequest) {
     console.log('[Pharmacy Summary API] Returning:', response);
 
     return NextResponse.json(response);
-
+    });
   } catch (error) {
     console.error("[Pharmacy Summary API]", error);
     return NextResponse.json({ error: "Failed to fetch pharmacy summary" }, { status: 500 });

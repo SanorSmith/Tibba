@@ -832,7 +832,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
 
 
   const fetchUom = useCallback(async () => {
-    const res = await fetch("/api/uom");
+    const res = await fetch(`/api/uom?workspaceid=${workspaceid}`);
     const data = await res.json();
     setUomConversions(Array.isArray(data)?data:[]);
   }, []);

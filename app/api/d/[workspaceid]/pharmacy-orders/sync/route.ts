@@ -13,9 +13,9 @@ import { patients, pharmacyOrders, pharmacyOrderItems, users } from "@/lib/db/sc
 import { eq, ilike, or, isNull } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getOpenEHREHRBySubjectId, getOpenEHRPrescriptions } from "@/lib/openehr/openehr";
-import { Pool } from "pg";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +35,6 @@ export async function POST(
     // security scopes every query below in the database itself.
     return await withTenant(workspaceid, async () => {
 
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     // 1. Get patients in this workspace AND global patients (workspaceid IS NULL)
     const workspacePatients = await db

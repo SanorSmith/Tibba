@@ -18,10 +18,10 @@ import { eq, sql } from "drizzle-orm";
 import { createMedicationDispenseComposition, MEDICATION_DISPENSE_ACTION_STATES } from "@/lib/openehr/medication-dispense";
 import { createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { patients } from "@/lib/db/tables/patient";
-import { Pool } from "pg";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
 import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
+import { pool } from "@/lib/db/pool";
 
 // UUID validation function
 function isValidUUID(uuid: string): boolean {
@@ -174,7 +174,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let dispensedCount = 0;
     let backorderedCount = 0;
     const backorderedItems: string[] = [];
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     for (const item of itemsToDispense) {
       try {

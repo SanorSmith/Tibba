@@ -4,10 +4,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { pool } from "@/lib/db/pool";
 
 export async function GET(
   request: NextRequest,
@@ -32,7 +32,6 @@ export async function GET(
     console.log('[Drug Storage API] Fetching storage for:', { drugid, workspaceid });
 
     // Use raw pg pool for complex queries
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     try {
       // First, get the drug name

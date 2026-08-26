@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 import { getUser } from "@/lib/user";
+import { pool } from "@/lib/db/pool";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export async function PATCH(req: NextRequest, { params }: { params: { orderid: string } }) {
   // This route answered anyone who could reach it. There is no facility
