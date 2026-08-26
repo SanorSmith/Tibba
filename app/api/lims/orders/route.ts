@@ -275,16 +275,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return await withTenant(workspaceId, async () => {
     const status = searchParams.get("status");
     const subjectIdentifier = searchParams.get("subjectIdentifier");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    if (!workspaceId) {
-      return NextResponse.json({ error: "Workspace ID required" }, { status: 400 });
-    }
-
+    // Only the facility's own tables need the tenant. Everything after this
+    // block talks to EHRbase, and a transaction must not be held open across
+    // an HTTP call to another service: the connection stays checked out for
+    // however long that service takes, and under load the pool runs dry. This
+    // route already 503s on a cold call for exactly that reason.
+    //
+    // The openEHR section reads `patients`, which migration 0068 made
+    // shared-read on purpose, so it needs no tenant of its own.
+    const localOrders = await withTenant(workspaceId, async () => {
     // Build query conditions for local orders
     const conditions = [eq(limsOrders.workspaceid, workspaceId)];
     if (status) {
@@ -447,6 +451,9 @@ export async function GET(request: NextRequest) {
       })
     );
 
+      return localOrders;
+    });
+
     // Try to fetch openEHR orders, but don't fail if OpenEHR is unavailable
     // Asking EHRbase once per patient is by far the slowest part of this
     // request, so the list is cached briefly and shared with anything else
@@ -606,7 +613,6 @@ export async function GET(request: NextRequest) {
         localCount: localOrders.length,
         openEHRCount: openEHROrders.length,
       },
-    });
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
