@@ -6,7 +6,7 @@ import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getOpenEHREHRBySubjectId, getOpenEHRCompositions, getOpenEHRComposition } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
-import { withTenant } from "@/lib/db/tenant";
+import { withTenant, withoutTenant } from "@/lib/db/tenant";
 
 export async function GET(
   req: NextRequest,
@@ -27,7 +27,7 @@ export async function GET(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return await withTenant(workspaceid, async () => {
+  return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
 
   // Verify user has access to this workspace
   const userWorkspaces = await getUserWorkspaces(user.userid);

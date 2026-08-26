@@ -11,7 +11,7 @@ import {
 } from "@/lib/openehr/openehr";
 import { TEST_PACKAGES, INDIVIDUAL_TESTS, LABORATORIES } from "@/lib/test-catalog";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
-import { withTenant } from "@/lib/db/tenant";
+import { withTenant, withoutTenant } from "@/lib/db/tenant";
 
 /**
  * GET - Fetch full order details from OpenEHR with reverse-matched catalog IDs
@@ -35,7 +35,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
 
     const workspaces = await getUserWorkspaces(user.userid);
     const membership = workspaces.find(
@@ -200,7 +200,7 @@ export async function PATCH(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
@@ -316,7 +316,7 @@ export async function DELETE(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);

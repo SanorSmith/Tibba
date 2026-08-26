@@ -12,7 +12,7 @@ import { patients } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getOpenEHRTestOrders, TestOrderRecord } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
-import { withTenant } from "@/lib/db/tenant";
+import { withTenant, withoutTenant } from "@/lib/db/tenant";
 
 /**
  * GET /api/lims/orders/openehr
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return await withTenant(workspaceId, async () => {
+    return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
     const patientId = searchParams.get("patientid");
 
     if (!workspaceId) {

@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
 import { queryOpenEHR, getOpenEHRPrescriptions, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
-import { withTenant } from "@/lib/db/tenant";
+import { withTenant, withoutTenant } from "@/lib/db/tenant";
 
 interface MedicationEvent {
   time: string;
@@ -49,7 +49,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
 
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);

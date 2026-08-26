@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { getOpenEHROrderStatus } from "@/lib/openehr-order-status";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
-import { withTenant } from "@/lib/db/tenant";
+import { withTenant, withoutTenant } from "@/lib/db/tenant";
 
 export async function GET(
   request: NextRequest,
@@ -30,7 +30,7 @@ export async function GET(
 
     // Runs with this facility's identity on the connection, so row-level
     // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
+    return await withoutTenant("reads openEHR and shared patient data only — no facility-scoped table, so no transaction is held across the HTTP call", async () => {
 
     // Get the computed status for this OpenEHR order
     const status = await getOpenEHROrderStatus(requestid);
