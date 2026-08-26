@@ -32,10 +32,6 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Runs with this facility's identity on the connection, so row-level
-    // security scopes every query below in the database itself.
-    return await withTenant(workspaceid, async () => {
-
     // Check workspace access
     const workspaces = await getUserWorkspaces(user.userid);
     const membership = workspaces.find(
@@ -55,8 +51,20 @@ export async function POST(
     const body = await request.json();
     const { items } = body; // Array of { itemid, batchid, quantity, substituted }
 
+    // Dispensing used to run as one transaction wrapped around the whole
+    // handler, including a composition created in EHRbase for every item. A
+    // connection was held for the length of all of them.
+    //
+    // It now reads under a tenant, releases it, does every EHRbase call with
+    // nothing open, and performs all the local writes in one transaction at
+    // the end. The failure behaviour is deliberate and unchanged where it
+    // matters: if EHRbase fails, no local change happens at all, exactly as
+    // before. If a local write fails afterwards, compositions can exist in
+    // EHRbase with no dispense recorded against them — visible, recoverable,
+    // and the rarer of the two.
+
     // Fetch the pharmacy order
-    const [order] = await db
+    const [order] = await withTenant(workspaceid, async () => db
       .select()
       .from(pharmacyOrders)
       .where(
@@ -65,7 +73,7 @@ export async function POST(
           eq(pharmacyOrders.workspaceid, workspaceid)
         )
       )
-      .limit(1);
+      .limit(1));
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -98,36 +106,35 @@ export async function POST(
       return NextResponse.json({ error: "Patient has no national ID" }, { status: 400 });
     }
 
-    // Get patient's EHR ID
-    const ehrId = await getOpenEHREHRBySubjectId(patient.nationalid);
-    if (!ehrId) {
-      return NextResponse.json({ error: "Patient EHR not found" }, { status: 404 });
-    }
-
-    // Fetch order items with batch information
-    const orderItems = await db
+    // Read the items before touching EHRbase — they do not depend on the EHR
+    // id, and this keeps every scoped read on one side of the HTTP calls.
+    const orderItems = await withTenant(workspaceid, async () => db
       .select({
         item: pharmacyOrderItems,
         batch: drugBatches,
       })
       .from(pharmacyOrderItems)
       .leftJoin(drugBatches, eq(pharmacyOrderItems.batchid, drugBatches.batchid))
-      .where(eq(pharmacyOrderItems.orderid, orderid));
+      .where(eq(pharmacyOrderItems.orderid, orderid)));
 
     if (orderItems.length === 0) {
       return NextResponse.json({ error: "No items in order" }, { status: 400 });
     }
 
-    // Create OpenEHR dispense composition for each item
-    const dispenseCompositionUids: string[] = [];
+    // Get patient's EHR ID
+    const ehrId = await getOpenEHREHRBySubjectId(patient.nationalid);
+    if (!ehrId) {
+      return NextResponse.json({ error: "Patient EHR not found" }, { status: 404 });
+    }
+
+    // Every composition is created first, with no transaction open. If any of
+    // this fails the request stops here and nothing has been written locally.
+    const compositionByItem = new Map<string, string>();
 
     for (const { item, batch } of orderItems) {
-      // Find matching dispense data from request
       const dispenseData = items?.find((i: { itemid: string }) => i.itemid === item.itemid);
-      
       if (!dispenseData) continue; // Skip items not being dispensed
 
-      // Create dispense composition
       const compositionData = createMedicationDispenseComposition({
         medicationItem: item.drugname,
         quantityDispensed: dispenseData.quantity || item.quantity,
@@ -143,23 +150,36 @@ export async function POST(
         composerName: user.name || "Pharmacist",
       });
 
-      // Create composition in OpenEHR
-      const compositionUid = await createOpenEHRComposition(
-        ehrId,
-        "template_medication_dispense_v1",
-        compositionData as Record<string, unknown>
+      compositionByItem.set(
+        item.itemid,
+        await createOpenEHRComposition(
+          ehrId,
+          "template_medication_dispense_v1",
+          compositionData as Record<string, unknown>
+        ),
       );
+    }
+
+    const dispenseCompositionUids = [...compositionByItem.values()];
+
+    // Now the local writes, all of them, in one transaction.
+    await withTenant(workspaceid, async () => {
+    for (const { item } of orderItems) {
+      const dispenseData = items?.find((i: { itemid: string }) => i.itemid === item.itemid);
+      if (!dispenseData) continue;
+      const compositionUid = compositionByItem.get(item.itemid);
+      if (!compositionUid) continue;
 
       // Record the owning facility where it can be enforced. Without this
       // the only trace of who a composition belongs to is prose inside
       // the document, which a wording change would silently break.
+      // Writes a facility-scoped row, so it belongs here rather than in the
+      // pre-pass above.
       await recordCompositionOwner({
         compositionUid: compositionUid,
         workspaceId: workspaceid,
         patientId: null,
       });
-
-      dispenseCompositionUids.push(compositionUid);
 
       // Update order item status
       await db
@@ -229,7 +249,8 @@ export async function POST(
       }
     }
 
-    // Update pharmacy order
+    // Update pharmacy order — still inside the write transaction, so the
+    // order is only marked dispensed if every item's write succeeded.
     await db
       .update(pharmacyOrders)
       .set({
@@ -240,14 +261,13 @@ export async function POST(
         updatedat: new Date(),
       })
       .where(eq(pharmacyOrders.orderid, orderid));
+    });
 
     return NextResponse.json({
       success: true,
       orderid,
       dispenseCompositionUids,
       message: "Order dispensed successfully and recorded in OpenEHR",
-    });
-
     });
   } catch (error) {
     console.error("Error dispensing order:", error);
