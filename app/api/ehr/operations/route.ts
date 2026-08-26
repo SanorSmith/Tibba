@@ -54,8 +54,10 @@ export async function GET(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return await withTenant(workspaceid, async () => {
-
+  // No tenant: this handler reads `patients` (shared-read since 0068) and
+  // then talks to EHRbase. Wrapping it held a transaction open across those
+  // HTTP calls for no isolation gain. The POST below does write a
+  // facility-scoped row and keeps its tenant.
   const uws = await getUserWorkspaces(user.userid);
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
   const role = membership?.role;
@@ -172,7 +174,6 @@ export async function GET(
     console.error("[operations][GET] error:", e);
     return NextResponse.json({ error: "Failed to load operations" }, { status: 500 });
   }
-  });
 }
 
 export async function POST(

@@ -54,8 +54,6 @@ export async function GET(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return await withTenant(workspaceid, async () => {
-
   const uws = await getUserWorkspaces(user.userid);
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
   const role = membership?.role;
@@ -131,11 +129,13 @@ export async function GET(
     const allProcedureResults = await Promise.all(procedurePromises);
     const openEHROperations = allProcedureResults.flat();
 
-    // Fetch all operation_prices for this workspace and index by compositionuid
-    const priceRows = await db
-      .select()
-      .from(operationPrices)
-      .where(eq(operationPrices.workspaceid, workspaceid));
+    // The only facility-scoped read in this handler, so it is the only part
+    // that needs a tenant. Everything above talks to EHRbase, and holding a
+    // transaction open across those calls is what made routes of this shape
+    // time out — the connection stays checked out for as long as the other
+    // service takes. `patients` is shared-read (0068), so it needs no tenant.
+    const priceRows = await withTenant(workspaceid, async () =>
+      db.select().from(operationPrices).where(eq(operationPrices.workspaceid, workspaceid)));
     const priceByCompositionUid = new Map(
       priceRows
         .filter((r) => r.compositionuid)
@@ -177,7 +177,6 @@ export async function GET(
     console.error("[operations][GET] error:", e);
     return NextResponse.json({ error: "Failed to load operations" }, { status: 500 });
   }
-  });
 }
 
 export async function POST(
