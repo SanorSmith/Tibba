@@ -191,8 +191,9 @@ export async function POST(
 
   // Runs with this facility's identity on the connection, so row-level
   // security scopes every query below in the database itself.
-  return await withTenant(workspaceid, async () => {
-
+  // No tenant around the whole handler: the patient lookup reads `patients`
+  // (shared-read since 0068) and the rest is EHRbase. Only the price row
+  // below is facility-scoped, and it takes its own short transaction.
   const uws = await getUserWorkspaces(user.userid);
   const membership = uws.find((w) => w.workspace.workspaceid === workspaceid);
   const role = membership?.role;
@@ -262,7 +263,8 @@ export async function POST(
     );
 
     if (body.price && !isNaN(parseFloat(body.price))) {
-      await db.insert(operationPrices).values({
+      await withTenant(workspaceid, async () =>
+        db.insert(operationPrices).values({
         patientid,
         workspaceid,
         compositionuid: compositionUid ?? null,
@@ -270,7 +272,7 @@ export async function POST(
         price: parseFloat(body.price).toFixed(2),
         currency: body.currency ?? "USD",
         notes: body.comment ?? null,
-      });
+        }));
     }
 
     return NextResponse.json(
@@ -285,5 +287,4 @@ export async function POST(
     console.error("[operations][POST] error:", e);
     return NextResponse.json({ error: "Failed to create operation" }, { status: 500 });
   }
-  });
 }
