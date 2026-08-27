@@ -88,6 +88,10 @@ export const finJournalLines = pgTable(
   "fin_journal_lines",
   {
     lineid: uuid("lineid").primaryKey().defaultRandom(),
+    // The database grew this column in migration 0079/0081, with a strict
+    // policy on it. It was never added here, so the ORM could not set it:
+    // every insert left it null and row-level security refused the row.
+    workspaceid: uuid("workspaceid"),
     journalid: uuid("journalid")
       .notNull()
       .references(() => finJournalEntries.journalid, { onDelete: "cascade" }),

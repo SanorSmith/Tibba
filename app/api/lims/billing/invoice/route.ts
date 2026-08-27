@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
     const [invoice] = await db
       .insert(generalInvoices)
       .values({
+        workspaceid,
         invoice_number: invoiceNumber,
         invoice_date: new Date().toISOString().slice(0, 10),
         patient_id: patientid,

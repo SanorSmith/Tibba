@@ -153,6 +153,7 @@ export async function postFinancialEvent(
       for (const line of req.lines) {
         const account = accountMap.get(line.accountcode)!;
         await tx.insert(finJournalLines).values({
+          workspaceid: req.workspaceid,
           journalid: journal.journalid,
           accountid: account.accountid,
           debit: line.debit.toFixed(2),
@@ -420,6 +421,7 @@ export async function reverseJournal(
       const credit = parseFloat(orig.debit);
 
       await tx.insert(finJournalLines).values({
+        workspaceid,
         journalid: reversal.journalid,
         accountid: orig.accountid,
         debit: debit.toFixed(2),

@@ -194,6 +194,7 @@ export async function POST(
     const [newGRN] = await db
       .insert(goodsReceiptNotes)
       .values({
+        workspaceid,
         grnnumber,
         poid: validated.poid,
         vendorid: validated.vendorid,

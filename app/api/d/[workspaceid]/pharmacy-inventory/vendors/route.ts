@@ -102,6 +102,7 @@ export async function POST(
 
     const result = await pool.query(
       `INSERT INTO vendors (
+        workspaceid,
         name, code, contactname, phone, email, address, country,
         paymentterms, currency, taxnumber,
         bankname, bankaccountnumber, bankroutingnumber, bankiban, bankswiftcode,
@@ -109,6 +110,7 @@ export async function POST(
         ratingquality, ratingdelivery, ratingpricing,
         notes, isactive, createdat, updatedat
       ) VALUES (
+        $21,
         $1, $2, $3, $4, $5, $6, $7,
         $8, $9, $10,
         $11, $12, $13, $14, $15,
@@ -136,7 +138,8 @@ export async function POST(
         ratingQuality || 0,
         ratingDelivery || 0,
         ratingPricing || 0,
-        notes || null
+        notes || null,
+        workspaceid,   // $21 — the owning facility
       ]
     );
 

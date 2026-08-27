@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
 
   return await withTenant(auth.workspaceid, async () => {
     const r = await pool.query(
-      `INSERT INTO unit_conversions (id, item_id, from_uom, to_uom, factor, created_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW()) RETURNING *`,
-      [item_id || null, from_uom, to_uom, factor],
+      `INSERT INTO unit_conversions (id, item_id, from_uom, to_uom, factor, created_at, workspaceid)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), $5) RETURNING *`,
+      [item_id || null, from_uom, to_uom, factor, auth.workspaceid],
     );
     return NextResponse.json(r.rows[0]);
   });

@@ -189,6 +189,7 @@ export async function POST(
     const [newPO] = await db
       .insert(purchaseOrders)
       .values({
+        workspaceid,
         ponumber,
         vendorid: validated.vendorid,
         warehouseid: validated.warehouseid,

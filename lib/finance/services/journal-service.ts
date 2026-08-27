@@ -127,6 +127,7 @@ export async function getJournalWithLines(
     .select({
       lineid: finJournalLines.lineid,
       journalid: finJournalLines.journalid,
+      workspaceid: finJournalLines.workspaceid,
       accountid: finJournalLines.accountid,
       debit: finJournalLines.debit,
       credit: finJournalLines.credit,

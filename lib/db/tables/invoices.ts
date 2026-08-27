@@ -13,6 +13,10 @@ export const generalInvoices = pgTable(
   "invoices",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    // The database grew this column in migration 0079/0081, with a strict
+    // policy on it. It was never added here, so the ORM could not set it:
+    // every insert left it null and row-level security refused the row.
+    workspaceid: uuid("workspaceid"),
     invoice_number: varchar("invoice_number", { length: 50 }).notNull().unique(),
     invoice_date: date("invoice_date").notNull(),
     

@@ -655,6 +655,10 @@ export const purchaseRequisitionItems = pgTable("purchase_requisition_items", {
 
 export const purchaseOrders = pgTable("purchase_orders", {
   id:              uuid("id").primaryKey().defaultRandom(),
+  // The database grew this column in migration 0079/0081, with a strict
+  // policy on it. It was never added here, so the ORM could not set it:
+  // every insert left it null and row-level security refused the row.
+  workspaceid: uuid("workspaceid"),
   ponumber:        text("ponumber").notNull(),
   vendorid:        uuid("vendorid").references(() => vendors.id),
   prid:            uuid("prid").references(() => purchaseRequisitions.id),
@@ -693,6 +697,10 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
 
 export const goodsReceiptNotes = pgTable("goods_receipt_notes", {
   id:            uuid("id").primaryKey().defaultRandom(),
+  // The database grew this column in migration 0079/0081, with a strict
+  // policy on it. It was never added here, so the ORM could not set it:
+  // every insert left it null and row-level security refused the row.
+  workspaceid: uuid("workspaceid"),
   grnnumber:     text("grnnumber").notNull(),
   poid:          uuid("poid").references(() => purchaseOrders.id),
   vendorid:      uuid("vendorid").references(() => vendors.id),
