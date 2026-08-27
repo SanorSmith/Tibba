@@ -14,6 +14,7 @@ import { getUser } from "@/lib/user";
 import { z } from "zod";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { authorizeRecord } from "@/lib/db/authorize-record";
 
 // Validation schema for creating storage record
 const storageCreateSchema = z.object({
@@ -260,6 +261,14 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const validatedData = storagePatchSchema.parse(body);
 
+    // Only a storage id arrives, so the facility comes from the record itself
+    // — `sample_storage` is a known kind on app_owner_workspace (0067). The
+    // read below matches nothing without a tenant, so the handler would answer
+    // "Storage record not found" for a record that exists.
+    const auth = await authorizeRecord("sample_storage", validatedData.storageid);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
     // Check storage record exists and is currently stored
     const existing = await db
       .select()
@@ -335,6 +344,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
