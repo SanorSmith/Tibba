@@ -11,6 +11,8 @@ import { staff, type StaffRole } from "@/lib/db/schema";
 import { asc, eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Reads across facilities on purpose: admin tooling and the sign-in flow
 // both need to look beyond a single workspace — sign-in has to find the
@@ -26,13 +28,20 @@ export async function GET(
   const { workspaceid } = await params;
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Naming the facility in the WHERE is not the same as adopting it: under
+  // row-level security this returned nobody at all.
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   try {
+    return await withTenant(workspaceid, async () => {
     const rows = await db
       .select()
       .from(staff)
       .where(eq(staff.workspaceid, workspaceid))
       .orderBy(asc(staff.createdat));
     return NextResponse.json({ staff: rows });
+    });
   } catch (e) {
     console.error("[staff][GET] error:", e);
     return NextResponse.json({ error: "Failed to load staff" }, { status: 500 });
@@ -103,8 +112,12 @@ export async function POST(
       email,
     } as const;
 
-    const [row] = await db.insert(staff).values(values).returning();
-    return NextResponse.json({ staff: row }, { status: 201 });
+    // Membership is already proved above; the tenant is what lets the insert
+    // past the write policy — without one the row is refused, not misfiled.
+    return await withTenant(workspaceid, async () => {
+      const [row] = await db.insert(staff).values(values).returning();
+      return NextResponse.json({ staff: row }, { status: 201 });
+    });
   } catch (e) {
     console.error("[staff][POST] error:", e);
     return NextResponse.json({ error: "Failed to create staff" }, { status: 500 });

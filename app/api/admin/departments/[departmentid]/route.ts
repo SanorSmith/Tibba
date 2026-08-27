@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import { departments } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // Reads across facilities on purpose: admin tooling and the sign-in flow
 // both need to look beyond a single workspace — sign-in has to find the
@@ -37,7 +39,14 @@ export async function PATCH(
     return NextResponse.json({ error: "No updatable fields" }, { status: 400 });
   }
 
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
+    // With no tenant this matched no rows and answered 404 for departments
+    // that exist.
+    return await withTenant(workspaceid, async () => {
     const res = await db
       .update(departments)
       .set(payload)
@@ -49,6 +58,7 @@ export async function PATCH(
     }
     
     return NextResponse.json({ department: res[0] });
+    });
   } catch (e) {
     console.error("[departments][PATCH] error:", e);
     return NextResponse.json({ error: "Failed to update department" }, { status: 500 });
@@ -63,7 +73,12 @@ export async function DELETE(
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
+    return await withTenant(workspaceid, async () => {
     const res = await db
       .delete(departments)
       .where(and(eq(departments.workspaceid, workspaceid), eq(departments.departmentid, departmentid)))
@@ -74,6 +89,7 @@ export async function DELETE(
     }
     
     return NextResponse.json({ success: true, deleted: res[0] });
+    });
   } catch (e) {
     console.error("[departments][DELETE] error:", e);
     return NextResponse.json({ error: "Failed to delete department" }, { status: 500 });

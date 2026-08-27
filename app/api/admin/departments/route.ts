@@ -8,6 +8,8 @@ import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { departments } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 /**
  * GET /api/d/[workspaceid]/departments
@@ -63,12 +65,20 @@ export async function GET(
 
     const { workspaceid } = await params;
 
-    const allDepartments = await db
-      .select()
-      .from(departments)
-      .where(eq(departments.workspaceid, workspaceid));
+    // Naming the facility in the WHERE is not the same as adopting it: with no
+    // tenant this listed nothing at all.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    return NextResponse.json({ departments: allDepartments });
+    return await withTenant(workspaceid, async () => {
+      const allDepartments = await db
+        .select()
+        .from(departments)
+        .where(eq(departments.workspaceid, workspaceid));
+
+      return NextResponse.json({ departments: allDepartments });
+    });
   } catch (error) {
     console.error("Error fetching departments:", error);
     return NextResponse.json(
@@ -143,18 +153,24 @@ export async function POST(
       );
     }
 
-    const [newDepartment] = await db
-      .insert(departments)
-      .values({
-        workspaceid,
-        name: name.trim(),
-        phone: phone || null,
-        email: email || null,
-        address: address || null,
-      })
-      .returning();
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-    return NextResponse.json({ department: newDepartment }, { status: 201 });
+    return await withTenant(workspaceid, async () => {
+      const [newDepartment] = await db
+        .insert(departments)
+        .values({
+          workspaceid,
+          name: name.trim(),
+          phone: phone || null,
+          email: email || null,
+          address: address || null,
+        })
+        .returning();
+
+      return NextResponse.json({ department: newDepartment }, { status: 201 });
+    });
   } catch (error) {
     console.error("Error creating department:", error);
     return NextResponse.json(

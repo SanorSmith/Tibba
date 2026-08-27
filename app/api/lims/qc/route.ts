@@ -77,6 +77,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = qcRunCreateSchema.parse(body);
 
+    // The facility comes from the request, so belonging is proved before it is
+    // used — and the tenant is what lets the insert past the write policy at
+    // all: without one the row is refused rather than misfiled.
+    if (!(await isWorkspaceMember(user.userid, data.workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(data.workspaceid, async () => {
     const [created] = await db
       .insert(qcRuns)
       .values({
@@ -109,6 +117,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ success: true, run: created }, { status: 201 });
+    });
   } catch (error) {
     console.error("Error creating QC run:", error);
     if (error instanceof z.ZodError) {
