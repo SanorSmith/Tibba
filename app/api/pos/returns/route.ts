@@ -67,6 +67,14 @@ export async function POST(request: NextRequest) {
 
     const data = parsed.data;
 
+    // The facility comes from the request body, so belonging is proved before
+    // it is used. Establishing the tenant is also what lets the stock movement
+    // and the return rows past their policies — without one they are refused.
+    if (!(await isWorkspaceMember(user.userid, data.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(data.workspaceId, async () => {
     // Get original sale
     const [originalSale] = await db
       .select()
@@ -258,6 +266,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+    });
   } catch (error) {
     console.error("[Returns Create] Error:", error);
     return NextResponse.json(

@@ -133,6 +133,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = storageCreateSchema.parse(body);
 
+    // The facility comes from the request, so belonging is proved before
+    // it is used, and the tenant is what lets these statements past the
+    // policies at all — without one, reads match nothing and writes are
+    // refused.
+    if (!(await isWorkspaceMember(user.userid, validatedData.workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(validatedData.workspaceid, async () => {
+
     // Check if sample exists and is in a valid state for storage
     const sample = await db
       .select()
@@ -214,6 +224,7 @@ export async function POST(request: NextRequest) {
       success: true,
       storage: newStorage,
       message: "Sample moved to storage successfully",
+    });
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
