@@ -1784,7 +1784,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                     const url = mfgModal==="edit" ? `/api/pharmacy/manufacturers/${mfgRow.id}` : "/api/pharmacy/manufacturers";
                     const method = mfgModal==="edit" ? "PATCH" : "POST";
                     setMfgModal(null); setMfgRow(null);
-                    const res = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify(mfgForm)});
+                    const res = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({...mfgForm, workspaceid})});
                     if (res.ok) { fetchManufacturers(); showToast(mfgModal==="edit"?"Manufacturer updated!":"Manufacturer added!"); }
                     setMfgForm({name:"",code:"",country:"",contactname:"",phone:"",email:"",address:"",website:"",license_number:"",product_types:"",notes:""});
                   }} style={s.btn("purple")}>{mfgModal==="edit"?"Save Changes":"Add Manufacturer"}</button>
