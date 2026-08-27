@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import { workspaceusers } from "@/lib/db/schema";
 import { users } from "@/lib/db/tables/user";
 import { eq } from "drizzle-orm";
@@ -62,8 +63,10 @@ export async function GET(
 
     const { workspaceid } = await params;
 
-    // Fetch all users in the workspace with their roles
-    const workspaceUsers = await db
+    // `workspaceusers` is facility-scoped, and this read named the facility
+    // in its WHERE without ever adopting it — so under row-level security it
+    // returned nobody. The workspace is right there in the path.
+    const workspaceUsers = await withTenant(workspaceid, async () => db
       .select({
         userid: users.userid,
         email: users.email,
@@ -74,7 +77,7 @@ export async function GET(
       })
       .from(workspaceusers)
       .innerJoin(users, eq(workspaceusers.userid, users.userid))
-      .where(eq(workspaceusers.workspaceid, workspaceid));
+      .where(eq(workspaceusers.workspaceid, workspaceid)));
 
     return NextResponse.json({ users: workspaceUsers });
   } catch (error) {

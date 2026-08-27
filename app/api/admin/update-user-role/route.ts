@@ -4,9 +4,10 @@
  * - Requires admin permissions
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, rootDb } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import { users, workspaceusers, workspaceRoles } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 
@@ -79,6 +80,11 @@ export async function POST(req: NextRequest) {
 
     // If workspaceid provided, update workspace user role
     if (workspaceid) {
+      // These reads and writes are facility-scoped. Naming the workspace in a
+      // WHERE is not the same as adopting it: without a tenant the SELECT
+      // found nothing, so every update looked like a missing membership and
+      // inserted a duplicate instead.
+      return await withTenant(workspaceid, async () => {
       // Check if workspace user exists
       const existingWorkspaceUser = await db
         .select()
@@ -114,12 +120,29 @@ export async function POST(req: NextRequest) {
         role: role,
         workspaceid: workspaceid
       });
+      });
     } else {
-      // Update all workspace roles for this user (admin function)
-      await db
-        .update(workspaceusers)
-        .set({ role: role })
-        .where(eq(workspaceusers.userid, targetUser[0].userid));
+      // Every facility the person belongs to, which is deliberately more than
+      // one tenant can reach: a single UPDATE with no tenant matches nothing
+      // under row-level security, so this silently changed no roles at all.
+      // The memberships come from the SECURITY DEFINER function, and each row
+      // is then updated inside its own facility.
+      const memberships = (await rootDb.execute(
+        sql`SELECT workspaceid FROM public.app_user_memberships(${targetUser[0].userid}::uuid)`,
+      )) as unknown as Array<{ workspaceid: string }>;
+
+      for (const m of memberships) {
+        await withTenant(m.workspaceid, async () =>
+          db
+            .update(workspaceusers)
+            .set({ role: role })
+            .where(
+              and(
+                eq(workspaceusers.userid, targetUser[0].userid),
+                eq(workspaceusers.workspaceid, m.workspaceid),
+              ),
+            ));
+      }
 
       return NextResponse.json({
         success: true,

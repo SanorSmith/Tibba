@@ -5,10 +5,10 @@
  * Uses existing WorkspaceUserRole type + new finance roles.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { rootDb } from "@/lib/db";
 import { workspaceusers } from "@/lib/db/tables/workspace";
 import { getUser } from "@/lib/user";
-import { eq, and } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { WorkspaceUserRole } from "@/lib/db/tables/workspace";
 
 // ── Finance Permission Keys ──────────────────────────────────────
@@ -104,16 +104,17 @@ export async function requireFinancePermission(
     );
   }
 
-  const [membership] = await db
-    .select()
-    .from(workspaceusers)
-    .where(
-      and(
-        eq(workspaceusers.workspaceid, workspaceid),
-        eq(workspaceusers.userid, user.userid)
-      )
-    )
-    .limit(1);
+  // A permission gate cannot read `workspaceusers` directly. That table is
+  // facility-scoped, and this check runs *before* any tenant is established —
+  // so under row-level security it found no membership and refused everyone.
+  //
+  // `app_user_role_in` is the SECURITY DEFINER function that exists for this
+  // exact question, and the one sign-in already uses. Asking whether someone
+  // may enter cannot itself require having entered.
+  const rows = (await rootDb.execute(
+    sql`SELECT public.app_user_role_in(${user.userid}::uuid, ${workspaceid}::uuid) AS role`,
+  )) as unknown as Array<{ role: WorkspaceUserRole | null }>;
+  const membership = rows[0]?.role ? { role: rows[0].role } : null;
 
   if (!membership) {
     return NextResponse.json(

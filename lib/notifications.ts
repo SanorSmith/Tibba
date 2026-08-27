@@ -5,6 +5,7 @@
  */
 
 import { db } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 import { notifications, workspaceusers } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { NotificationTypeType } from "@/lib/db/tables/notifications";
@@ -36,11 +37,13 @@ export async function createWorkspaceNotification({
 }: CreateNotificationParams) {
   try {
     
-    // Get all users in the workspace
-    const workspaceUsers = await db
+    // Facility-scoped, so the workspace has to be adopted and not merely
+    // named in the WHERE — otherwise this found nobody and every
+    // notification was silently created for no one.
+    const workspaceUsers = await withTenant(workspaceid, async () => db
       .select({ userid: workspaceusers.userid })
       .from(workspaceusers)
-      .where(eq(workspaceusers.workspaceid, workspaceid));
+      .where(eq(workspaceusers.workspaceid, workspaceid)));
 
 
     if (workspaceUsers.length === 0) {
@@ -129,7 +132,7 @@ export async function createRoleNotification({
   try {
     // Get all users in the workspace with the specified role
     // Use sql cast because workspaceid may be text from lims_orders but uuid in workspaceusers
-    const roleUsers = await db
+    const roleUsers = await withTenant(workspaceid, async () => db
       .select({ userid: workspaceusers.userid })
       .from(workspaceusers)
       .where(
@@ -137,7 +140,7 @@ export async function createRoleNotification({
           sql`${workspaceusers.workspaceid}::text = ${workspaceid}`,
           eq(workspaceusers.role, role)
         )
-      );
+      ));
 
     if (roleUsers.length === 0) {
       return { success: true, count: 0 };

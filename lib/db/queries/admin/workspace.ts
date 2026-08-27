@@ -1,10 +1,10 @@
-import { db } from "@/lib/db";
+import { db, rootDb } from "@/lib/db";
 import {
   workspaces,
   WorkspaceUserRole,
   workspaceusers,
 } from "@/lib/db/tables/workspace";
-import { eq, and, ilike, or, desc, not, sql } from "drizzle-orm";
+import { eq, and, ilike, or, desc, not, sql, inArray } from "drizzle-orm";
 import { WorkspaceType } from "@/lib/db/tables/workspace";
 import { WorkspaceSettings } from "@/lib/db/tables/workspace";
 import { Workspace } from "@/lib/db/tables/workspace";
@@ -290,20 +290,49 @@ export const getUserWorkspaces = withAdminCheck(
     userId: string,
   ): Promise<(WorkspaceUser & { workspace: Workspace })[]> => {
     try {
-      const results = await db
-        .select()
-        .from(workspaceusers)
-        .innerJoin(
-          workspaces,
-          eq(workspaceusers.workspaceid, workspaces.workspaceid),
-        )
-        .where(eq(workspaceusers.userid, userId))
-        .orderBy(workspaceusers.createdat);
+      // An admin looking at one person needs every facility they belong to,
+      // which is the one question a tenant-scoped read cannot answer: there is
+      // no single facility to scope to, and reading `workspaceusers` directly
+      // returns nothing at all under row-level security. That is what made the
+      // panel report "User is not in any workspaces" for people who were in
+      // several.
+      //
+      // `app_user_memberships` is the SECURITY DEFINER function that exists for
+      // exactly this — the same one sign-in uses to decide which facilities a
+      // person may enter. It answers about membership without going through a
+      // membership table that cannot be read yet.
+      const rows = (await rootDb.execute(sql`
+        SELECT mem.workspaceid, mem.role, wu.createdat, wu.userid
+          FROM public.app_user_memberships(${userId}) AS mem
+          LEFT JOIN workspaceusers wu
+            ON wu.userid = ${userId} AND wu.workspaceid = mem.workspaceid
+      `)) as unknown as Array<{
+        workspaceid: string;
+        role: WorkspaceUserRole;
+        createdat: Date | null;
+        userid: string | null;
+      }>;
 
-      return results.map((result) => ({
-        ...result.workspaceusers,
-        workspace: result.workspaces,
-      }));
+      if (rows.length === 0) return [];
+
+      // `workspaces` is shared-read (migration 0068), so this join needs no
+      // tenant of its own.
+      const ids = rows.map((r) => r.workspaceid);
+      const spaces = await db
+        .select()
+        .from(workspaces)
+        .where(inArray(workspaces.workspaceid, ids));
+      const byId = new Map(spaces.map((w) => [w.workspaceid, w]));
+
+      return rows
+        .filter((r) => byId.has(r.workspaceid))
+        .map((r) => ({
+          userid: userId,
+          workspaceid: r.workspaceid,
+          role: r.role,
+          createdat: r.createdat,
+          workspace: byId.get(r.workspaceid)!,
+        })) as (WorkspaceUser & { workspace: Workspace })[];
     } catch (error) {
       console.error("Error getting user workspaces:", error);
       return [];
