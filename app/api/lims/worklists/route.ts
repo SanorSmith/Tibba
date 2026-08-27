@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { authorizeRecord } from "@/lib/db/authorize-record";
 import { withTenant } from "@/lib/db/tenant";
 
 // GET - Fetch worklists
@@ -111,6 +112,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The facility arrives in the body, so belonging has to be proved before
+    // it is trusted — otherwise the caller picks which facility to write into.
+    // Establishing the tenant is also what lets the insert land: without one
+    // the write policy refuses the row.
+    if (!(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceId, async () => {
+
     // Create worklist
     const worklistData: NewWorklist = {
       worklistname,
@@ -132,6 +143,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       worklist: newWorklist,
+    });
     });
   } catch (error) {
     console.error("Worklist creation error:", error);
@@ -165,6 +177,12 @@ export async function PATCH(request: NextRequest) {
     if (!worklistid) {
       return NextResponse.json({ error: "Worklist ID required" }, { status: 400 });
     }
+
+    // Only a worklist id arrives, so the facility comes from the record and
+    // membership is proved against it. Without a tenant this update matched
+    // nothing and still reported success.
+    const auth = await authorizeRecord("worklist", worklistid);
+    if (auth.error) return auth.error;
 
     const updateData: any = {
       updatedat: new Date(),
@@ -202,6 +220,7 @@ export async function PATCH(request: NextRequest) {
       updateData.assignedtoname = assignedtoname;
     }
 
+    return await withTenant(auth.workspaceid, async () => {
     const [updatedWorklist] = await db
       .update(worklists)
       .set(updateData)
@@ -211,6 +230,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       worklist: updatedWorklist,
+    });
     });
   } catch (error) {
     console.error("Worklist update error:", error);
@@ -241,6 +261,10 @@ export async function DELETE(request: NextRequest) {
       .delete(worklistItems)
       .where(eq(worklistItems.worklistid, worklistid));
 
+    const auth = await authorizeRecord("worklist", worklistid);
+    if (auth.error) return auth.error;
+
+    return await withTenant(auth.workspaceid, async () => {
     // Delete the worklist
     await db
       .delete(worklists)
@@ -249,6 +273,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Worklist deleted successfully",
+    });
     });
   } catch (error) {
     console.error("Worklist deletion error:", error);

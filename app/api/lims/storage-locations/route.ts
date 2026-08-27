@@ -97,6 +97,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Required fields missing" }, { status: 400 });
     }
 
+    // The facility comes from the body, so membership is proved before it is
+    // trusted; the tenant is then what lets the insert past the write policy.
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceid, async () => {
+
     // Check if code already exists
     const existingLocation = await db
       .select()
@@ -147,6 +155,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       location: createdLocation,
+    });
     });
   } catch (error) {
     console.error("Storage location creation error:", error);
