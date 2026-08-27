@@ -123,6 +123,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The facility comes from the request, so belonging is proved before it is
+    // used — otherwise the caller decides which lab an order is raised in. The
+    // tenant is also what lets the inserts past the write policies.
+    if (!orderData.workspaceId) {
+      return NextResponse.json({ error: "workspaceId is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, orderData.workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const orderWorkspaceId = orderData.workspaceId;
+
+    return await withTenant(orderWorkspaceId, async () => {
     // Fetch patient's EHR ID if subject is a patient
     let patientEhrId: string | null = null;
     if (orderData.subjectType === 'patient') {
@@ -207,13 +219,18 @@ export async function POST(request: NextRequest) {
         .then((openEHRResult) => {
           if (openEHRResult) {
             // Update order with OpenEHR composition details
-            db.update(limsOrders)
-              .set({
-                compositionuid: openEHRResult.compositionUid,
-                timecommitted: openEHRResult.timeCommitted,
-              })
-              .where(eq(limsOrders.orderid, result.order.orderid))
-              .execute()
+            // This runs after the response has been sent, so it is outside
+            // the wrapper above and needs its own tenant — otherwise the
+            // update matches no row and the composition ids are silently
+            // never recorded.
+            withTenant(orderWorkspaceId, async () =>
+              db.update(limsOrders)
+                .set({
+                  compositionuid: openEHRResult.compositionUid,
+                  timecommitted: openEHRResult.timeCommitted,
+                })
+                .where(eq(limsOrders.orderid, result.order.orderid))
+                .execute())
               .catch((err: any) =>
                 console.error("Failed to update order openEHR ids:", err)
               );
@@ -243,6 +260,7 @@ export async function POST(request: NextRequest) {
         testName: t.testname,
       })),
       createdAt: result.order.createdat,
+    });
     });
   } catch (error) {
     console.error("Order creation error:", error);

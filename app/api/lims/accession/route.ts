@@ -88,6 +88,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The facility arrives in the body, so belonging is proved before it is
+    // used — otherwise the caller chooses which lab a sample is accessioned
+    // into. The tenant is also what lets these inserts past the write
+    // policies: without one they are refused rather than misfiled.
+    if (!workspaceId) {
+      return NextResponse.json({ error: "workspaceId is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceId, async () => {
     // Generate sample identifiers with enhanced format
     const testCodes = Array.isArray(tests) ? tests : [];
     const sampleNumber = await generateEnhancedSampleNumber(testCodes, workspaceId);
@@ -340,6 +352,7 @@ export async function POST(request: NextRequest) {
         status: result.currentstatus,
         accessionedAt: result.accessionedat,
       },
+    });
     });
   } catch (error) {
     console.error("[Accession POST] Error:", error);
