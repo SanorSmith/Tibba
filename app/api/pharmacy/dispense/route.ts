@@ -9,6 +9,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
+import { isWorkspaceMember } from "@/lib/lims/require-membership";
+import { withTenant } from "@/lib/db/tenant";
 
 // GET /api/pharmacy/dispense?storeid=xxx
 // Returns dispense history for a store
@@ -24,6 +26,18 @@ export async function GET(req: NextRequest) {
 
     const storeid = req.nextUrl.searchParams.get("storeid");
     if (!storeid) return NextResponse.json({ logs: [] });
+
+    // Dispensing history is facility data. Without a tenant this came back
+    // empty, which reads as "nothing dispensed" rather than as a fault.
+    const workspaceid = req.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceid, async () => {
 
     const logs = await db
       .select({
@@ -47,6 +61,7 @@ export async function GET(req: NextRequest) {
       .limit(200);
 
     return NextResponse.json({ logs });
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
@@ -84,6 +99,19 @@ export async function POST(req: NextRequest) {
     if (quantity <= 0) {
       return NextResponse.json({ error: "Quantity must be > 0" }, { status: 400 });
     }
+
+    // Dispensing moves stock and writes a controlled-drug entry, both
+    // facility-scoped. The facility is proved before use, and the tenant is
+    // what lets those writes happen rather than being refused.
+    const workspaceid = body.workspaceid ?? body.workspaceId;
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceid, async () => {
 
     // 1. Check current store stock
     const stockWhere = batchid
@@ -160,6 +188,7 @@ export async function POST(req: NextRequest) {
       transaction: txn,
       controlledLog: controlledEntry || null,
       newQty: stock.quantity - quantity,
+    });
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

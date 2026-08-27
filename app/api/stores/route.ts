@@ -92,9 +92,6 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    // This route answered anyone who could reach it. There is no facility
-    // in scope to check membership against, so this closes what can be
-    // closed here: it now requires a signed-in user.
     const user = await getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -103,8 +100,29 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-    await db.update(stores).set({ isactive: false, updatedat: new Date() }).where(eq(stores.id, id));
-    return NextResponse.json({ success: true });
+
+    // Retiring a store is facility-scoped: the id alone let any signed-in user
+    // retire another facility's store, and without a tenant the update matches
+    // nothing and reports success either way.
+    const workspaceid = searchParams.get("workspaceid");
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceid, async () => {
+      const updated = await db
+        .update(stores)
+        .set({ isactive: false, updatedat: new Date() })
+        .where(and(eq(stores.id, id), eq(stores.workspaceid, workspaceid)))
+        .returning({ id: stores.id });
+      if (!updated.length) {
+        return NextResponse.json({ error: "Store not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    });
   } catch (error) {
     console.error("Stores DELETE error:", error);
     return NextResponse.json({ error: "Failed to delete store" }, { status: 500 });

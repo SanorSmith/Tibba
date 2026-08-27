@@ -67,7 +67,7 @@ export default function ShiftsClientPage({
   const fetchShift = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/pos/shifts");
+      const res = await fetch(`/api/pos/shifts?workspaceid=${workspaceid}`);
       const data = await res.json();
       setCurrentShift(data.shift || null);
     } catch {

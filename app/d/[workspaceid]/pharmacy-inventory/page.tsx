@@ -445,18 +445,18 @@ function StatusConfirmModal({ order, newStatus, onClose, onSuccess }: { order: a
 }
 
 // ── Dispense Modal ─────────────────────────────────────────────────────────────
-function DispenseModal({ stores, onClose, onSuccess }: { stores: any[]; onClose: ()=>void; onSuccess: ()=>void }) {
+function DispenseModal({ stores, workspaceid, onClose, onSuccess }: { stores: any[]; workspaceid: string; onClose: ()=>void; onSuccess: ()=>void }) {
   const [form, setForm] = useState({ storeid:"", itemid:"", quantity:"", patientref:"", prescriptionref:"", dispensedby:"", witnessedby:"", notes:"" });
   const [storeItems, setStoreItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
-  useEffect(() => { if (!form.storeid) return; fetch(`/api/stores/${form.storeid}`).then(r=>r.json()).then(d=>setStoreItems(d.stock??[])); }, [form.storeid]);
+  useEffect(() => { if (!form.storeid) return; fetch(`/api/stores/${form.storeid}?workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>setStoreItems(d.stock??[])); }, [form.storeid]);
   const handleSave = async () => {
     if (!form.storeid||!form.itemid||!form.quantity) { setError("Store, item and quantity are required"); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/pharmacy/dispense",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,quantity:parseInt(form.quantity),actiontype:"DISPENSE"})});
+      const res = await fetch("/api/pharmacy/dispense",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,quantity:parseInt(form.quantity),actiontype:"DISPENSE",workspaceid})});
       if (!res.ok) throw new Error((await res.json()).error);
       onSuccess(); onClose();
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
@@ -761,9 +761,9 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
     try {
       const [iRes,dRes,cRes,sRes,wRes] = await Promise.all([
         fetch(`/api/pharmacy/items?search=${encodeURIComponent(search)}&workspaceId=${workspaceid}&source=inventory`),
-        fetch("/api/pharmacy/dispense"),
-        fetch("/api/pharmacy/controlled"),
-        fetch("/api/stores"),
+        fetch(`/api/pharmacy/dispense?workspaceid=${workspaceid}`),
+        fetch(`/api/pharmacy/controlled?workspaceid=${workspaceid}`),
+        fetch(`/api/stores?workspaceid=${workspaceid}`),
         fetch(`/api/warehouses?workspaceid=${workspaceid}`)
       ]);
       const [iData,dData,cData,sData,wData] = await Promise.all([iRes.json(),dRes.json(),cRes.json(),sRes.json(),wRes.json()]);

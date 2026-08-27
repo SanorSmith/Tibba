@@ -103,7 +103,7 @@ export default function POSClientPage({
   const fetchCurrentShift = async () => {
     try {
       setShiftLoading(true);
-      const res = await fetch("/api/pos/shifts");
+      const res = await fetch(`/api/pos/shifts?workspaceid=${workspaceid}`);
       const data = await res.json();
       setCurrentShift(data.shift || null);
     } catch {

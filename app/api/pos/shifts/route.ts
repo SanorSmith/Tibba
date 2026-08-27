@@ -108,6 +108,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // A cashier can hold an open shift at more than one facility, so which
+    // one is being asked about has to be said. It was not filtered before,
+    // and under row-level security the query returns nothing without a
+    // tenant — the till would report no open shift.
+    const workspaceid = request.nextUrl.searchParams.get("workspaceid");
+    if (!workspaceid) {
+      return NextResponse.json({ error: "workspaceid is required" }, { status: 400 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return await withTenant(workspaceid, async () => {
     const [shift] = await db
       .select()
       .from(posShifts)
@@ -120,6 +133,7 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     return NextResponse.json({ shift: shift || null });
+    });
   } catch (error) {
     console.error("[POS Get Shift]", error);
     return NextResponse.json(
