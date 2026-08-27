@@ -255,7 +255,7 @@ export function AddDrugToPharmacyWizard({ warehouses, workspaceid, prefill, onCl
   const set = (k:string, v:any) => setForm(f=>({...f,[k]:v}));
 
   useEffect(() => {
-    fetch("/api/pharmacy/suppliers").then(r=>r.json()).then(d=>setSuppliers(Array.isArray(d)?d:[]));
+    fetch(`/api/pharmacy/suppliers?workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>setSuppliers(Array.isArray(d)?d:[]));
     fetch(`/api/pharmacy/manufacturers?workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>setManufacturers(Array.isArray(d)?d:[]));
     fetch(`/api/pharmacy/storage?workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>{
       setStorageLocations(Array.isArray(d)?d:[]);

@@ -266,6 +266,7 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
         expirydate: form.expirydate,
         warehouseid: form.warehouseid,
         initial_quantity: parseInt(form.initial_quantity)||0,
+        workspaceid,
       };
       const res = await fetch(isEdit ? `/api/pharmacy/items/${item.id}` : "/api/pharmacy/items", {
         method: isEdit?"PATCH":"POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload)
@@ -280,7 +281,7 @@ function ItemModal({ item, onClose, onSuccess, manufacturers, warehouses }: { it
     if (e.key === "Enter" && form.barcode.trim()) {
       // Barcode scanner pressed Enter — search for item by barcode
       setScanning(true);
-      fetch(`/api/pharmacy/items?search=${encodeURIComponent(form.barcode)}&source=inventory`)
+      fetch(`/api/pharmacy/items?search=${encodeURIComponent(form.barcode)}&workspaceId=${workspaceid}&source=inventory`)
         .then(r => r.json())
         .then(data => {
           const match = Array.isArray(data) ? data.find((i:any) => i.barcode === form.barcode) : null;
@@ -778,13 +779,13 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
       setPharmaWh(allWh.filter((w:any)=>w.warehousetype==="pharmacy"||w.warehouse_type==="pharmacy"));
     } finally { setLoading(false); }
     if (tab==="history") {
-      fetch(`/api/pharmacy/history?page=${historyPage}&limit=${HISTORY_SIZE}`).then(r=>r.json()).then(d=>{setHistory(d.rows??[]);setHistoryTotal(d.total??0);});
+      fetch(`/api/pharmacy/history?page=${historyPage}&limit=${HISTORY_SIZE}&workspaceid=${workspaceid}`).then(r=>r.json()).then(d=>{setHistory(d.rows??[]);setHistoryTotal(d.total??0);});
     }
   }, [search, tab, historyPage, workspaceid]);
 
   const fetchShopList = useCallback(async () => {
     setShopLoading(true);
-    const res = await fetch("/api/pharmacy/shoplist");
+    const res = await fetch(`/api/pharmacy/shoplist?workspaceid=${workspaceid}`);
     const data = await res.json();
     const list = Array.isArray(data)?data:[];
     setShopList(list);
@@ -982,7 +983,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
     const allItems = [...shopList,...manualShopItems];
     const items = allItems.filter(i=>(shopQtys[i.id]??0)>0).map(i=>({itemId:i.id,quantity:shopQtys[i.id],unitCost:i.lastUnitCost}));
     if (!items.length) { showToast("No items to save"); setShopSaving(false); return; }
-    const res = await fetch("/api/pharmacy/shoplist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items})});
+    const res = await fetch("/api/pharmacy/shoplist",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({items,workspaceid})});
     const data = await res.json();
     if (data.prNumber) { showToast(`Order saved: ${data.prNumber}`); setManualShopItems([]); }
     setShopSaving(false);
@@ -2051,7 +2052,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                     const url = isEdit?`/api/uom/${uomRow.id}`:"/api/uom";
                     const method = isEdit?"PATCH":"POST";
                     setUomModal(null); setUomRow(null);
-                    const res = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({...uomForm,factor:parseFloat(uomForm.factor)})});
+                    const res = await fetch(url,{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({...uomForm,factor:parseFloat(uomForm.factor),workspaceid})});
                     if (res.ok) { fetchUom(); showToast(isEdit?"Updated!":"Added!"); }
                     setUomForm({item_id:"",from_uom:"",to_uom:"",factor:""});
                   }} style={s.btn("purple")}>Save</button>
