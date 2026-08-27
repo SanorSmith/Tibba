@@ -22,29 +22,44 @@ export async function PUT(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
-    const { id } = params;
-    const body = await req.json();
-    const validated = updateGRNSchema.parse(body);
+    const { workspaceid, id } = params;
 
-    const updateData: any = {};
-    if (validated.status !== undefined) updateData.status = validated.status;
-    if (validated.invoicenumber !== undefined) updateData.invoicenumber = validated.invoicenumber;
-    if (validated.invoicedate !== undefined) updateData.invoicedate = new Date(validated.invoicedate);
-    if (validated.receivedby !== undefined) updateData.receivedby = validated.receivedby;
-    if (validated.notes !== undefined) updateData.notes = validated.notes;
-    updateData.updatedat = new Date();
-
-    const [updatedGRN] = await db
-      .update(goodsReceiptNotes)
-      .set(updateData)
-      .where(eq(goodsReceiptNotes.id, id))
-      .returning();
-
-    if (!updatedGRN) {
-      return NextResponse.json({ error: 'Goods receipt note not found' }, { status: 404 });
+    // The facility sits in the path and was destructured away: no sign-in
+    // check, no membership check, and the update matched on id alone, so
+    // any caller could reach another facility's goods receipt. Establishing
+    // the tenant is also what lets the write happen under the policies.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(updatedGRN);
+    return await withTenant(workspaceid, async () => {
+      const body = await req.json();
+      const validated = updateGRNSchema.parse(body);
+
+      const updateData: any = {};
+      if (validated.status !== undefined) updateData.status = validated.status;
+      if (validated.invoicenumber !== undefined) updateData.invoicenumber = validated.invoicenumber;
+      if (validated.invoicedate !== undefined) updateData.invoicedate = new Date(validated.invoicedate);
+      if (validated.receivedby !== undefined) updateData.receivedby = validated.receivedby;
+      if (validated.notes !== undefined) updateData.notes = validated.notes;
+      updateData.updatedat = new Date();
+
+      const [updatedGRN] = await db
+        .update(goodsReceiptNotes)
+        .set(updateData)
+        .where(eq(goodsReceiptNotes.id, id))
+        .returning();
+
+      if (!updatedGRN) {
+        return NextResponse.json({ error: 'Goods receipt note not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(updatedGRN);
+    });
   } catch (error) {
     console.error('Error updating goods receipt note:', error);
     if (error instanceof z.ZodError) {
@@ -260,22 +275,37 @@ export async function DELETE(
   { params }: { params: { workspaceid: string; id: string } }
 ) {
   try {
-    const { id } = params;
+    const { workspaceid, id } = params;
 
-    const [deletedGRN] = await db
-      .update(goodsReceiptNotes)
-      .set({ 
-        status: 'cancelled',
-        updatedat: new Date(),
-      })
-      .where(eq(goodsReceiptNotes.id, id))
-      .returning();
-
-    if (!deletedGRN) {
-      return NextResponse.json({ error: 'Goods receipt note not found' }, { status: 404 });
+    // The facility sits in the path and was destructured away: no sign-in
+    // check, no membership check, and the cancellation matched on id alone, so
+    // any caller could reach another facility's goods receipt. Establishing
+    // the tenant is also what lets the write happen under the policies.
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await isWorkspaceMember(user.userid, workspaceid))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(deletedGRN);
+    return await withTenant(workspaceid, async () => {
+
+      const [deletedGRN] = await db
+        .update(goodsReceiptNotes)
+        .set({ 
+          status: 'cancelled',
+          updatedat: new Date(),
+        })
+        .where(eq(goodsReceiptNotes.id, id))
+        .returning();
+
+      if (!deletedGRN) {
+        return NextResponse.json({ error: 'Goods receipt note not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(deletedGRN);
+    });
   } catch (error) {
     console.error('Error cancelling goods receipt note:', error);
     return NextResponse.json({ error: 'Failed to cancel goods receipt note' }, { status: 500 });
