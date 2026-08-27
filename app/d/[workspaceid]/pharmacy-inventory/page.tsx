@@ -639,6 +639,15 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
   const [controlled, setControlled] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [pharmaWh, setPharmaWh] = useState<any[]>([]);
+
+  // Adding a medicine requires a pharmacy warehouse to put the stock in, and
+  // until now nothing in the app could create one — the only screen that
+  // posts to /api/warehouses is an orphaned page nothing links to. Seven of
+  // ten facilities were therefore stuck on "Warehouse is required" with an
+  // empty dropdown: six own no warehouse at all, and Lab one's is type `lab`,
+  // which the pharmacy filter above excludes.
+  const [whModal, setWhModal] = useState(false);
+  const [whForm, setWhForm] = useState({ name: "", location: "" });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -1100,6 +1109,18 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
         <button onClick={fetchAll} style={{padding:"8px 16px",fontSize:13,fontWeight:600,border:"1px solid #e5e7eb",background:"#ffffff",cursor:"pointer",color:"#374151",borderRadius:6,margin:"4px 2px"}}>Refresh</button>
         <button onClick={()=>{setDrugPrefill(null);setShowAddDrug(true);}} style={{padding:"8px 16px",fontSize:13,fontWeight:600,border:"none",background:"#2563eb",cursor:"pointer",color:"#ffffff",borderRadius:6,margin:"4px 2px"}}>Add Medicine</button>
       </div>
+
+      {/* Say why "Add Medicine" cannot succeed, at the moment it cannot, and
+          offer the missing step rather than a dead "Warehouse is required". */}
+      {!loading && pharmaWh.length === 0 && (
+        <div style={{margin:"8px 16px",padding:"12px 14px",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <span style={{fontSize:13,color:"#92400e",flex:1,minWidth:260}}>
+            This facility has no pharmacy warehouse, so medicines have nowhere to be stocked.
+            Create one to start adding stock.
+          </span>
+          <button onClick={()=>{setWhForm({name:"Main Pharmacy",location:""});setWhModal(true);}} style={{...s.btn("purple"),whiteSpace:"nowrap"}}>Create pharmacy warehouse</button>
+        </div>
+      )}
 
       <div style={{...s.content, marginTop:8}}>
         {/* Summary cards */}
@@ -2159,6 +2180,32 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
       {editItem&&<ItemModal item={editItem} warehouses={pharmaWh} manufacturers={manufacturers} onClose={()=>setEditItem(null)} onSuccess={()=>{fetchAll();showToast("Item updated!");}}/>}
       {deleteItem&&<ConfirmModal item={deleteItem} onClose={()=>setDeleteItem(null)} onSuccess={()=>{fetchAll();showToast("Item deactivated");}}/>}
       {batchItem&&<BatchModal item={batchItem} onClose={()=>setBatchItem(null)}/>}
+      {whModal && (
+        <div style={s.overlay}><div style={{...s.modal,width:460}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <h3 style={{fontSize:16,fontWeight:600,margin:0}}>Create pharmacy warehouse</h3>
+            <button onClick={()=>setWhModal(false)} style={{background:"none",border:"none",cursor:"pointer"}}><Icon d={icons.x} size={18} color="#6b7280"/></button>
+          </div>
+          <div style={s.fgroup}><label style={s.label}>Name *</label>
+            <input style={s.input} value={whForm.name} onChange={e=>setWhForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Main Pharmacy"/></div>
+          <div style={s.fgroup}><label style={s.label}>Location</label>
+            <input style={s.input} value={whForm.location} onChange={e=>setWhForm(f=>({...f,location:e.target.value}))} placeholder="e.g. Ground floor"/></div>
+          <p style={{fontSize:12,color:"#6b7280",marginTop:4}}>
+            It belongs to this facility only, and is created as a pharmacy warehouse so medicines can be stocked in it.
+          </p>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+            <button onClick={()=>setWhModal(false)} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Cancel</button>
+            <button onClick={async()=>{
+              if (!whForm.name.trim()) { showToast("Name required"); return; }
+              const res = await fetch("/api/warehouses",{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({...whForm, warehousetype:"pharmacy", workspaceid})});
+              if (res.ok) { setWhModal(false); await fetchAll(); showToast("Warehouse created!"); }
+              else { showToast((await res.json().catch(()=>({}))).error ?? "Could not create warehouse"); }
+            }} style={s.btn("purple")}>Create</button>
+          </div>
+        </div></div>
+      )}
+
       {showAddDrug&&<AddDrugToPharmacyWizard warehouses={pharmaWh} workspaceid={workspaceid} prefill={drugPrefill} onClose={()=>{setShowAddDrug(false);setDrugPrefill(null);}} onSuccess={()=>{fetchAll();showToast("Medicine added!");setShowAddDrug(false);setDrugPrefill(null);}}/>}
       {statusConfirm&&<StatusConfirmModal order={statusConfirm.order} newStatus={statusConfirm.status} onClose={()=>setStatusConfirm(null)} onSuccess={()=>{fetchOrders();showToast(`Marked as ${statusConfirm.status}`);}}/>}
       {toast&&<div style={{position:"fixed",bottom:24,right:24,background:"#16a34a",color:"#fff",padding:"11px 18px",borderRadius:10,fontSize:13,fontWeight:600,zIndex:2000}}>✓ {toast}</div>}
