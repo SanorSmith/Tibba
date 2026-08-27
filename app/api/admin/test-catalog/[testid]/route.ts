@@ -10,6 +10,7 @@ import { labTestCatalog } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
+import { withTenant } from "@/lib/db/tenant";
 
 function normalizePerms(perms: unknown): string[] {
   try {
@@ -73,6 +74,10 @@ export async function PUT(
       { status: 403 },
     );
 
+  // requireAdmin proved membership above, but the tenant has to be
+  // established too: without it this read matches nothing, so the handler
+  // answers "Test not found" for a test that exists.
+  return await withTenant(workspaceid, async () => {
   const [existing] = await db
     .select()
     .from(labTestCatalog)
@@ -146,6 +151,7 @@ export async function PUT(
       { status: 500 },
     );
   }
+  });
 }
 
 export async function DELETE(
@@ -173,6 +179,10 @@ export async function DELETE(
       { status: 403 },
     );
 
+  // requireAdmin proved membership above, but the tenant has to be
+  // established too: without it this read matches nothing, so the handler
+  // answers "Test not found" for a test that exists.
+  return await withTenant(workspaceid, async () => {
   const [existing] = await db
     .select()
     .from(labTestCatalog)
@@ -202,4 +212,5 @@ export async function DELETE(
       { status: 500 },
     );
   }
+  });
 }

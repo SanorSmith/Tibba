@@ -10,6 +10,7 @@ import { labTestCatalog } from "@/lib/db/schema";
 import { eq, and, or, ilike } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
+import { withTenant } from "@/lib/db/tenant";
 
 function normalizePerms(perms: unknown): string[] {
   try {
@@ -69,6 +70,9 @@ export async function GET(request: NextRequest) {
     );
 
   try {
+    // requireAdmin already proved membership; this establishes the facility on
+    // the connection, without which the query matches no rows at all.
+    return await withTenant(workspaceid, async () => {
     const search = searchParams.get("search") || "";
     const activeFilter = searchParams.get("active");
 
@@ -105,6 +109,7 @@ export async function GET(request: NextRequest) {
 
     console.log("[admin/test-catalog] query returned", tests.length, "tests");
     return NextResponse.json({ tests, total: tests.length });
+    });
   } catch (e) {
     console.error("[admin/test-catalog][GET]", e);
     return NextResponse.json(
@@ -146,6 +151,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // requireAdmin proved membership above; the tenant is what lets the insert
+    // past the write policy — without it the row is refused, not misfiled.
+    return await withTenant(workspaceid, async () => {
     const [test] = await db
       .insert(labTestCatalog)
       .values({
@@ -169,6 +177,7 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ test }, { status: 201 });
+    });
   } catch (e: any) {
     if (e?.code === "23505") {
       return NextResponse.json(
