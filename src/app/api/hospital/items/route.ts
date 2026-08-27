@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db/pool";
 import { requireAuth } from "@/lib/auth/getCurrentUser";
+import { withTenant } from "@/lib/db/tenant";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   const WS = auth.workspaceId;
+
+  // The facility is named in the WHERE below, but under row-level security
+  // naming it is not adopting it: the connection has to carry it or the
+  // query matches nothing and the screen renders empty with no error.
+  return await withTenant(WS, async () => {
+
   const search = req.nextUrl.searchParams.get("search") ?? "";
   try {
     const r = await pool.query(
@@ -27,12 +34,18 @@ export async function GET(req: NextRequest) {
     console.error("GET /api/hospital/items error:", e.message);
     return NextResponse.json([]);
   }
+  });
 }
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   const WS = auth.workspaceId;
+
+  // Same reason as GET: without the tenant on the connection the insert is
+  // refused by the policy rather than silently misfiled.
+  return await withTenant(WS, async () => {
+
   try {
     const b = await req.json();
     if (!b.name?.trim()) {
@@ -105,4 +118,5 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/hospital/items error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+  });
 }

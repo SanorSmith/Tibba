@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db/pool';
 import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,14 +10,17 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     // Was a query param, so any facility's pipeline could be requested.
-    // Left unwrapped: the "not signed in" guard sits after other work here,
-    // so a wrapper would have to run before the facility is known to exist.
     const workspaceId = await getWorkspaceId(request);
     const vacancyId = searchParams.get('vacancyId');
 
     if (!workspaceId) {
       return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
     }
+
+    // The queries below name the facility, but row-level security also has to
+    // see it on the connection or every count comes back zero. Putting the
+    // guard first is what the note removed above could not see how to do.
+    return await withTenant(workspaceId, async () => {
 
     // Get all active stages for workspace
     const stagesResult = await query(`
@@ -95,6 +99,7 @@ export async function GET(request: NextRequest) {
       pipeline,
       statusSummary: statusResult.rows,
       metrics: metricsResult.rows[0]
+    });
     });
   } catch (error: any) {
     console.error('Get pipeline summary error:', error);

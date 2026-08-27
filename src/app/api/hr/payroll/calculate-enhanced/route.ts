@@ -2,9 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { PayrollCalculator } from '@/services/payroll-calculator';
 import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 
 export async function POST(request: NextRequest) {
+  // The ownership check below reads `staff`, which row-level security covers.
+  // Run unscoped it matched nothing, so this answered "Employee not found" for
+  // every request. PayrollCalculator shares this same pool, so the whole body
+  // runs inside the tenant — the try/finally stays intact within the closure,
+  // which is what the earlier note here was worried about.
+  const workspaceId = await getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
+  }
+
+  return await withTenant(workspaceId, async () => {
+
   let calculator: PayrollCalculator | null = null;
   
   try {
@@ -13,13 +26,6 @@ export async function POST(request: NextRequest) {
 
     // employee_id comes from the client and is handed to a calculator that
     // reads that employee's attendance and payroll history keyed by id alone.
-    // Left unwrapped: this handler releases a calculator in a finally block,
-    // and wrapping the try body moves that cleanup outside the scope the
-    // compiler can follow.
-    const workspaceId = await getWorkspaceId(request);
-    if (!workspaceId) {
-      return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
-    }
     const owns = await pool.query(
       'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
       [employee_id, workspaceId]
@@ -64,6 +70,7 @@ export async function POST(request: NextRequest) {
       await calculator.close();
     }
   }
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -76,6 +83,11 @@ export async function GET(request: NextRequest) {
   if (!workspaceId) {
     return NextResponse.json({ success: false, error: 'Not signed in' }, { status: 401 });
   }
+
+  // Same as POST: unscoped, the `staff` lookup matched nothing and this
+  // answered "Employee not found" every time.
+  return await withTenant(workspaceId, async () => {
+
   const owns = await pool.query(
     'SELECT 1 FROM staff WHERE staffid = $1 AND workspaceid = $2',
     [employee_id, workspaceId]
@@ -120,4 +132,5 @@ export async function GET(request: NextRequest) {
       await calculator.close();
     }
   }
+  });
 }

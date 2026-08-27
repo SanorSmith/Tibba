@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db/pool";
 import { requireAuth } from "@/lib/auth/getCurrentUser";
+import { withTenant } from "@/lib/db/tenant";
 
 const CENTRAL = '00000000-0000-0000-0000-000000000000';
 
@@ -8,6 +9,12 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   const WS = auth.workspaceId;
+
+  // The facility is named in the WHERE below, but under row-level security
+  // naming it is not adopting it: the connection has to carry it or the
+  // query matches nothing and the screen renders empty with no error.
+  return await withTenant(WS, async () => {
+
   const deptId = req.nextUrl.searchParams.get("department_id") ?? "";
   const r = await pool.query(
     `SELECT i.*, s.id AS stock_id, s.department_id,
@@ -27,12 +34,18 @@ export async function GET(req: NextRequest) {
     [WS, deptId]
   );
   return NextResponse.json(r.rows);
+  });
 }
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   const WS = auth.workspaceId;
+
+  // Three writes below land in tables the policies cover. Without the tenant
+  // on the connection they are refused outright, not misfiled.
+  return await withTenant(WS, async () => {
+
   const { itemId, departmentId, quantity, batchNumber, lotNumber, serialNumber, unitCost, sellingPrice, expiryDate, manufactureDate, receivedBy, notes } = await req.json();
   if (!itemId || !quantity) return NextResponse.json({ error: "Item and quantity required" }, { status: 400 });
   // Use logged-in user's name if receivedBy not explicitly provided
@@ -66,4 +79,5 @@ export async function POST(req: NextRequest) {
   );
 
   return NextResponse.json({ success: true });
+  });
 }

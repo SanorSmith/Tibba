@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { pool } from '@/lib/db/pool';
+import { getWorkspaceId } from '@/lib/workspace';
+import { withTenant } from '@/lib/db/tenant';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -50,6 +52,17 @@ function normalizePhoneNumber(phone: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  // No facility and no sign-in check at all: reads returned every
+  // hospital's patients and writes filed new ones under none, which is
+  // where the unattributed patient rows come from. The facility comes
+  // from the session, so no caller has to change.
+  const workspaceId = await getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  return await withTenant(workspaceId, async () => {
+
   try {
     if (!pool) {
       return NextResponse.json(
@@ -378,9 +391,21 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 export async function POST(request: NextRequest) {
+  // No facility and no sign-in check at all: reads returned every
+  // hospital's patients and writes filed new ones under none, which is
+  // where the unattributed patient rows come from. The facility comes
+  // from the session, so no caller has to change.
+  const workspaceId = await getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  return await withTenant(workspaceId, async () => {
+
   try {
     if (!pool) {
       return NextResponse.json(
@@ -610,9 +635,21 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 export async function PUT(request: NextRequest) {
+  // No facility and no sign-in check at all: reads returned every
+  // hospital's patients and writes filed new ones under none, which is
+  // where the unattributed patient rows come from. The facility comes
+  // from the session, so no caller has to change.
+  const workspaceId = await getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  return await withTenant(workspaceId, async () => {
+
   try {
     if (!pool) {
       return NextResponse.json(
@@ -856,9 +893,21 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 export async function DELETE(request: NextRequest) {
+  // No facility and no sign-in check at all: reads returned every
+  // hospital's patients and writes filed new ones under none, which is
+  // where the unattributed patient rows come from. The facility comes
+  // from the session, so no caller has to change.
+  const workspaceId = await getWorkspaceId(request);
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
+
+  return await withTenant(workspaceId, async () => {
+
   try {
     if (!pool) {
       return NextResponse.json(
@@ -918,4 +967,5 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
