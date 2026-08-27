@@ -6,36 +6,10 @@ import { Hospital, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
-const ROLES = [
-  {
-    username: 'superadmin',
-    password: 'super123',
-    label: 'Super Admin',
-    desc: 'All modules',
-    route: '/dashboard',
-  },
-  {
-    username: 'finance',
-    password: 'finance123',
-    label: 'Finance Admin',
-    desc: 'Finance only',
-    route: '/finance',
-  },
-  {
-    username: 'hr',
-    password: 'hr123',
-    label: 'HR Admin',
-    desc: 'HR only',
-    route: '/hr',
-  },
-  {
-    username: 'reception',
-    password: 'reception123',
-    label: 'Reception Admin',
-    desc: 'Reception only',
-    route: '/reception',
-  },
-];
+// The demo accounts that used to live here — four usernames with their
+// passwords, plus one-click buttons that signed anyone in as Super Admin —
+// were rendered on the production login page, readable by anyone who opened
+// it. They are gone, along with the placeholder that named them.
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -183,13 +157,6 @@ function LoginForm() {
     doLogin(username.trim(), password.trim());
   };
 
-  const quickLogin = (role: typeof ROLES[number]) => {
-    setUsername(role.username);
-    setPassword(role.password);
-    setError('');
-    doLogin(role.username, role.password);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -199,8 +166,10 @@ function LoginForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-lg mb-4">
             <Hospital className="w-9 h-9 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Tibbna Hospital System</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to access your module</p>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Sign in with your Google account, or your username and password
+          </p>
           {returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') && (
             <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-1.5 rounded-full">
               <Shield className="w-3 h-3" /> Redirecting to <span className="font-mono font-bold">{returnTo}</span> after login
@@ -258,24 +227,6 @@ function LoginForm() {
           ) : (
           <>
 
-          {/* Quick Login Cards */}
-          <div className="p-6 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Login</p>
-            <div className="grid grid-cols-3 gap-2">
-              {ROLES.map(role => (
-                <button
-                  key={role.username}
-                  onClick={() => quickLogin(role)}
-                  disabled={isLoading}
-                  className="flex flex-col items-center gap-1 p-3 rounded-xl border border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="text-xs font-semibold text-gray-800 text-center leading-tight">{role.label}</span>
-                  <span className="text-[10px] text-gray-400">{role.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Google sign-in — the primary route for real staff accounts, which
               are provisioned in the Tibbna platform and have no password here. */}
           <div className="px-6 pt-6">
@@ -293,14 +244,12 @@ function LoginForm() {
             </a>
             <div className="relative my-5 text-center text-xs">
               <span className="absolute inset-0 top-1/2 border-t border-gray-200" aria-hidden="true" />
-              <span className="relative bg-white px-2 text-gray-400">or</span>
+              <span className="relative bg-white px-2 text-gray-400">Or continue with</span>
             </div>
           </div>
 
           {/* Manual Form */}
           <div className="px-6 pb-6">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Sign in with a password</p>
-
             {error && (
               <div className="mb-4 flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 <span className="text-red-500">⚠</span> {error}
@@ -314,7 +263,7 @@ function LoginForm() {
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  placeholder="e.g. finance, hr, superadmin"
+                  placeholder="Your username"
                   disabled={isLoading}
                   autoComplete="username"
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:opacity-60"
@@ -351,19 +300,6 @@ function LoginForm() {
                   : 'Sign In'}
               </button>
             </form>
-
-            {/* Credentials hint */}
-            <div className="mt-5 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-xs font-semibold text-gray-500 mb-2">Demo Credentials</p>
-              <div className="space-y-1">
-                {ROLES.map(r => (
-                  <div key={r.username} className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="font-medium">{r.label}</span>
-                    <span className="font-mono text-gray-400">{r.username} / {r.password}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
           </>
           )}
