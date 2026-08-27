@@ -1885,7 +1885,12 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                 setReceivingLoading(true);
                 const whId = pharmaWh[0]?.id;
                 if (!whId) { showToast("No pharmacy warehouse found"); setReceivingLoading(false); return; }
-                const res = await fetch("/api/stock/receive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...receiveForm,warehouseId:whId,quantity:parseInt(receiveForm.quantity),unitCost:parseFloat(receiveForm.unitCost)||null,sellingPrice:parseFloat(receiveForm.sellingPrice)||null})});
+                // /api/stock/receive has no route file on any branch, so this button has
+                // been posting into a 404. /api/pharmacy/adjustments already writes the
+                // stock, the batch and the history entry inside the tenant, and takes
+                // nearly this payload - it wants adjustmentQty rather than quantity, and
+                // a reason.
+                const res = await fetch("/api/pharmacy/adjustments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...receiveForm,workspaceid,warehouseId:whId,adjustmentQty:parseInt(receiveForm.quantity),reason:"Stock received",createdBy:"Pharmacy",unitCost:parseFloat(receiveForm.unitCost)||null,sellingPrice:parseFloat(receiveForm.sellingPrice)||null})});
                 const data = await res.json();
                 if (res.ok) { setShowReceiveModal(false); fetchAll(); showToast("Stock received!"); }
                 else showToast(data.error??"Failed to receive stock");
@@ -2020,7 +2025,12 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
                 setReceivingLoading(true);
                 const whId = pharmaWh[0]?.id;
                 if (!whId) { showToast("No pharmacy warehouse found"); setReceivingLoading(false); return; }
-                const res = await fetch("/api/stock/receive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...receiveForm,warehouseId:whId,quantity:parseInt(receiveForm.quantity),unitCost:parseFloat(receiveForm.unitCost)||null,sellingPrice:parseFloat(receiveForm.sellingPrice)||null})});
+                // /api/stock/receive has no route file on any branch, so this button has
+                // been posting into a 404. /api/pharmacy/adjustments already writes the
+                // stock, the batch and the history entry inside the tenant, and takes
+                // nearly this payload - it wants adjustmentQty rather than quantity, and
+                // a reason.
+                const res = await fetch("/api/pharmacy/adjustments",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...receiveForm,workspaceid,warehouseId:whId,adjustmentQty:parseInt(receiveForm.quantity),reason:"Stock received",createdBy:"Pharmacy",unitCost:parseFloat(receiveForm.unitCost)||null,sellingPrice:parseFloat(receiveForm.sellingPrice)||null})});
                 const data = await res.json();
                 if (res.ok) { setShowReceiveModal(false); fetchAll(); showToast("Stock received!"); }
                 else showToast(data.error??"Failed to receive stock");
