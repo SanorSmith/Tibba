@@ -814,7 +814,7 @@ export default function PharmacyPage({ initialStockFilter }: { initialStockFilte
   },[workspaceid]);
 
   const fetchManufacturers = useCallback(async () => {
-    const res = await fetch(`/api/pharmacy/manufacturers?search=${encodeURIComponent(mfgSearch)}`);
+    const res = await fetch(`/api/pharmacy/manufacturers?search=${encodeURIComponent(mfgSearch)}&workspaceid=${workspaceid}`);
     const data = await res.json();
     setManufacturers(Array.isArray(data)?data:[]);
   }, [mfgSearch]);
