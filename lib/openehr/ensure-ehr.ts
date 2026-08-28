@@ -7,7 +7,8 @@
 import { db } from "@/lib/db";
 import { patients } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { getOpenEHREHRBySubjectId, createOpenEHREHR, checkEHRExists } from "./openehr";
+import { getOpenEHREHRBySubjectId, createOpenEHREHR, checkEHRExists } from "./openehr";
+import { withTenant } from "@/lib/db/tenant";
 
 export interface EnsureEHROptions {
   /**
@@ -27,6 +28,45 @@ export interface EnsureEHROptions {
  * @param options - Optional configuration
  * @returns The valid EHR ID
  */
+/**
+ * Write the EHR id back onto the patient.
+ *
+ * This must run inside the patient's own facility. Callers reach here from
+ * handlers wrapped in withoutTenant - they make EHRbase HTTP calls and must
+ * not hold a database transaction across them - and the patients UPDATE policy
+ * is `workspaceid = current_setting(...) OR workspaceid IS NULL`. With no
+ * tenant set neither holds, so the update matched zero rows and threw nothing.
+ *
+ * The effect was invisible and expensive: a new EHR was created, the
+ * composition written into it, and the patient went on pointing at the old one.
+ * The order list walks patients by their stored ehrid, so a referred test order
+ * could never be found - it lived under an EHR nobody was looking at.
+ *
+ * A zero-row update is logged loudly rather than passed over, because that
+ * silence is what hid this.
+ */
+async function saveEhrId(
+  patientId: string,
+  workspaceId: string | null,
+  ehrId: string,
+): Promise<void> {
+  const write = async () => {
+    const rows = await db
+      .update(patients)
+      .set({ ehrid: ehrId })
+      .where(eq(patients.patientid, patientId))
+      .returning({ id: patients.patientid });
+    if (rows.length === 0) {
+      console.error(
+        `[EnsureEHR] patient ${patientId} was NOT updated to ehrid ${ehrId} - the ` +
+        `row-level security policy matched nothing, so orders written to this ` +
+        `EHR will not be findable under this patient.`,
+      );
+    }
+  };
+  return workspaceId ? withTenant(workspaceId, write) : write();
+}
+
 export async function ensurePatientEHR(
   patientId: string,
   options: EnsureEHROptions = {}
@@ -81,10 +121,7 @@ export async function ensurePatientEHR(
     console.log(`[EnsureEHR] ✅ Created new EHR: ${ehrId}`);
     
     // Update patient record with new EHR ID
-    await db
-      .update(patients)
-      .set({ ehrid: ehrId })
-      .where(eq(patients.patientid, patientId));
+    await saveEhrId(patientId, patient.workspaceid, ehrId);
     
     console.log(`[EnsureEHR] ✅ Updated patient.ehrid to: ${ehrId}`);
     return ehrId;
@@ -102,10 +139,7 @@ export async function ensurePatientEHR(
           console.log(`[EnsureEHR] ✅ Found existing EHR: ${existingEhrId}`);
           
           // Update patient record with the existing EHR ID
-          await db
-            .update(patients)
-            .set({ ehrid: existingEhrId })
-            .where(eq(patients.patientid, patientId));
+          await saveEhrId(patientId, patient.workspaceid, existingEhrId);
           
           console.log(`[EnsureEHR] ✅ Updated patient.ehrid to existing EHR: ${existingEhrId}`);
           return existingEhrId;
