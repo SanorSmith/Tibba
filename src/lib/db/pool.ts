@@ -46,6 +46,35 @@ export const pool = new Proxy(realPool, {
       const source = client ?? target;
       return source.query.bind(source);
     }
+
+    // `connect` had to be forwarded too. Intercepting only `query` meant a
+    // route that checked out its own client — 26 files do, and the exported
+    // `query`/`transaction` helpers below do as well — got a *different*
+    // connection from the pool, one withTenant had never set the facility on.
+    // Its inserts then arrived with no tenant, so the stamping trigger wrote
+    // null and the NOT NULL constraint rejected the row: "null value in
+    // column workspaceid of relation patients". Reads were worse, because
+    // they simply came back empty and said nothing.
+    //
+    // Inside withTenant the checked-out client IS the tenant's connection.
+    // `release` is a no-op because withTenant owns it and releases it itself,
+    // and BEGIN/COMMIT/ROLLBACK are dropped because withTenant is already a
+    // transaction — a COMMIT here would end the one carrying the facility
+    // while the request was still running. Callers that ROLLBACK still
+    // rethrow, so an error aborts the outer transaction and nothing partial
+    // commits.
+    if (prop === 'connect') {
+      const client = tenantClient.getStore();
+      if (!client) return target.connect.bind(target);
+      return async () => ({
+        query: (text: unknown, params?: unknown) =>
+          typeof text === 'string' && /^\s*(BEGIN|COMMIT|ROLLBACK)\s*;?\s*$/i.test(text)
+            ? Promise.resolve({ rows: [], rowCount: 0 })
+            : (client.query as (t: unknown, p?: unknown) => Promise<unknown>)(text, params),
+        release() {},
+      });
+    }
+
     const value = Reflect.get(target, prop, receiver);
     return typeof value === 'function' ? value.bind(target) : value;
   },
