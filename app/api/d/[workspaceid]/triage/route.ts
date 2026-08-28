@@ -81,10 +81,7 @@ export async function GET(
       })
       .from(patients)
       .where(
-        or(
-          eq(patients.workspaceid, workspaceid),
-          isNull(patients.workspaceid)
-        )
+        undefined   // Shared-read since 0068; the global NULL pool is gone. RLS decides.
       );
 
     const patientMap = new Map<string, (typeof patientRows)[0]>();

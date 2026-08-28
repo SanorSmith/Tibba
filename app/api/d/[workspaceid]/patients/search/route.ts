@@ -55,12 +55,11 @@ export async function GET(
       ilike(patients.lastnameAr, searchPattern)
     )!;
 
-    const baseCondition = or(
-      eq(patients.workspaceid, workspaceid),
-      isNull(patients.workspaceid)
-    )!;
-
-    const finalCondition = and(baseCondition, searchCondition);
+    // // Patients are shared-read (migration 0068). The old clause added
+    // `OR workspaceid IS NULL` for a pool of global patients that no longer
+    // exists, which made a referred patient invisible to the receiving
+    // facility. Row-level security decides now.
+    const finalCondition = searchCondition;
 
     // Fetch patient with all enhanced fields
     const rows = await db

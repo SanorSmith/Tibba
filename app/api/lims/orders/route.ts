@@ -492,8 +492,10 @@ export async function GET(request: NextRequest) {
       // per order below rather than by which patient it is attached to.
       const patientsQuery = await db
         .select()
-        .from(patients)
-        .where(or(eq(patients.workspaceid, workspaceId), isNull(patients.workspaceid)));
+        .from(patients);   // // Patients are shared-read (migration 0068). The old clause added
+        // `OR workspaceid IS NULL` for a pool of global patients that no longer
+        // exists, which made a referred patient invisible to the receiving
+        // facility. Row-level security decides now.
       
       const patientsWithEhr = patientsQuery.filter(p => p.ehrid);
 

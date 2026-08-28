@@ -42,12 +42,7 @@ export async function POST(
     const workspacePatients = await db
       .select()
       .from(patients)
-      .where(
-        or(
-          eq(patients.workspaceid, workspaceid),
-          isNull(patients.workspaceid)
-        )
-      );
+      ;   // Shared-read since 0068; the global NULL pool is gone. RLS decides.
 
     // Filter to only patients with EHR IDs to avoid unnecessary API calls
     const patientsWithEHR = workspacePatients.filter(p => p.ehrid || p.nationalid);

@@ -69,9 +69,11 @@ export async function GET(
     const surgeonid = searchParams.get("surgeonid");
 
     // Fetch from OpenEHR for all patients in this workspace (including global patients with null workspaceid)
-    const workspacePatients = await db.select().from(patients).where(
-      or(eq(patients.workspaceid, workspaceid), isNull(patients.workspaceid))
-    );
+    // // Patients are shared-read (migration 0068). The old clause added
+    // `OR workspaceid IS NULL` for a pool of global patients that no longer
+    // exists, which made a referred patient invisible to the receiving
+    // facility. Row-level security decides now.
+    const workspacePatients = await db.select().from(patients);
 
     // Fetch procedures for all patients in parallel for better performance
     const procedurePromises = workspacePatients.map(async (patient) => {

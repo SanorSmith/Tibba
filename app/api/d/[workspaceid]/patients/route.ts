@@ -41,17 +41,27 @@ export async function GET(
     const searchTerm = searchParams.get("search");
 
     // Build query conditions
-    // Default: always include both workspace-specific AND global patients (workspaceid IS NULL)
-    // Pass ?workspaceOnly=true to restrict to workspace patients only
+    //
+    // The default used to be "this facility's patients, plus global ones",
+    // where global meant workspaceid IS NULL. That NULL pool was the shared
+    // patient index across the ERP, Tibbna and the patient app - 160 rows
+    // every facility could see. Attributing and clearing those rows emptied
+    // it, and a lab receiving a referred order could no longer find the
+    // patient the order was for: Hospital 1 sends a test order for Salam ALI
+    // to Lab one, the order arrives, and the patient is invisible.
+    //
+    // Patients are shared-read by design - migration 0068 gives this table
+    // `FOR SELECT USING (true)` on the principle that identity is shared while
+    // clinical and financial records are not. So the facility filter is
+    // dropped and row-level security decides instead. Sharing identity is not
+    // sharing records: invoices, diagnoses and results stay scoped.
+    //
+    // ?workspaceOnly=true still narrows to this facility's own patients, for
+    // callers that want a registration list rather than a search.
     const workspaceOnly = searchParams.get("workspaceOnly") === "true";
     const conditions = workspaceOnly
       ? [eq(patients.workspaceid, workspaceid)]
-      : [
-          or(
-            eq(patients.workspaceid, workspaceid),
-            isNull(patients.workspaceid)
-          )!
-        ];
+      : [];
     
     // Add search filter if provided
     if (searchTerm && searchTerm.trim().length > 0) {
@@ -62,18 +72,8 @@ export async function GET(
         ilike(patients.nationalid, searchPattern)
       )!;
       
-      // Apply search to the base conditions
-      if (!workspaceOnly) {
-        conditions[0] = and(
-          or(
-            eq(patients.workspaceid, workspaceid),
-            isNull(patients.workspaceid)
-          )!,
-          searchCondition
-        )!;
-      } else {
-        conditions.push(searchCondition);
-      }
+      // Search across whatever the policy allows; no facility clause here.
+      conditions.push(searchCondition);
     }
 
     // Fetch patients with workspace info

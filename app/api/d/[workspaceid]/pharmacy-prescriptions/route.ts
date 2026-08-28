@@ -198,11 +198,7 @@ export async function GET(
       .from(patients)
       .where(
         and(
-          // Include both workspace-specific AND global patients
-          or(
-            eq(patients.workspaceid, workspaceid),
-            isNull(patients.workspaceid)
-          )!,
+            // Shared-read since 0068; the global NULL pool is gone. RLS decides.
           or(
             ilike(patients.firstname, searchPattern),
             ilike(patients.lastname, searchPattern),

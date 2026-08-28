@@ -45,10 +45,11 @@ export async function GET(
       .select()
       .from(patients)
       .where(
-        and(
-          eq(patients.patientid, patientid),
-          or(eq(patients.workspaceid, workspaceid), isNull(patients.workspaceid))
-        )
+        // // Patients are shared-read (migration 0068). The old clause added
+        // `OR workspaceid IS NULL` for a pool of global patients that no longer
+        // exists, which made a referred patient invisible to the receiving
+        // facility. Row-level security decides now.
+        eq(patients.patientid, patientid)
       )
       .limit(1);
 
