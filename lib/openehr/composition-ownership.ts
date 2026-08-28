@@ -14,7 +14,8 @@
  * way, and dropping it would strand them.
  */
 import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, tenantStorage } from "@/lib/db";
+import { withTenant } from "@/lib/db/tenant";
 
 export interface CompositionOwner {
   compositionUid: string;
@@ -34,7 +35,19 @@ export interface CompositionOwner {
  */
 export async function recordCompositionOwner(o: CompositionOwner): Promise<void> {
   if (!o.compositionUid || !o.workspaceId) return;
-  await db.execute(sql`
+
+  // composition_ownership is under row-level security, so this upsert needs a
+  // facility on the connection or the policy refuses it. Most callers run
+  // inside withoutTenant - they make EHRbase calls and must not hold a
+  // transaction across them - so fourteen call sites were writing untenanted
+  // and getting a 500 on creating a test order, diagnosis, prescription,
+  // vital signs or dispense.
+  //
+  // The facility is already a parameter, so the tenant is opened here rather
+  // than at each call site. When one is already open this reuses it instead of
+  // nesting a second transaction.
+  const run = async () => {
+    await db.execute(sql`
     INSERT INTO composition_ownership
       (composition_uid, workspaceid, ownerworkspaceid, ehrid, patientid, kind)
     VALUES (
@@ -45,8 +58,12 @@ export async function recordCompositionOwner(o: CompositionOwner): Promise<void>
     ON CONFLICT (composition_uid) DO UPDATE
       SET ownerworkspaceid = EXCLUDED.ownerworkspaceid,
           ehrid = COALESCE(EXCLUDED.ehrid, composition_ownership.ehrid),
-          patientid = COALESCE(EXCLUDED.patientid, composition_ownership.patientid)
-  `);
+            patientid = COALESCE(EXCLUDED.patientid, composition_ownership.patientid)
+    `);
+  };
+
+  if (tenantStorage.getStore()) return run();
+  return withTenant(o.workspaceId, run);
 }
 
 /**
