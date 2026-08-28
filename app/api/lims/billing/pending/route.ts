@@ -15,7 +15,7 @@ import { limsOrders, limsOrderTests } from "@/lib/db/tables/lims-order";
 import { testReferenceRanges } from "@/lib/db/schema/test-reference-ranges";
 import { generalInvoiceItems } from "@/lib/db/tables/invoices";
 import { patients } from "@/lib/db/schema";
-import { eq, and, ne, inArray } from "drizzle-orm";
+import { eq, and, ne, inArray, sql } from "drizzle-orm";
 import { withTenant } from "@/lib/db/tenant";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { getUser } from "@/lib/user";
@@ -68,8 +68,19 @@ export async function GET(request: NextRequest) {
       .where(eq(generalInvoiceItems.workspaceid, workspaceid));
     const billedRefs = new Set(billed.map((b) => b.ref).filter(Boolean) as string[]);
 
-    // ── Orders raised in this lab ────────────────────────────────────────
-    const where = [eq(limsOrders.workspaceid, workspaceid), ne(limsOrders.status, "CANCELLED")];
+    // ── Orders this lab is to perform ───────────────────────────────────
+    //
+    // Not "orders raised here": a doctor at another facility can send one in,
+    // and the lab that runs the test is the one that bills it. The order row
+    // carries the ordering facility in workspaceid and the performing lab in
+    // performingworkspaceid; both may read it, only the performer bills it.
+    //
+    // COALESCE covers orders raised and performed in the same place, where the
+    // performing column is null.
+    const where = [
+      eq(sql`COALESCE(${limsOrders.performingworkspaceid}, ${limsOrders.workspaceid})`, workspaceid),
+      ne(limsOrders.status, "CANCELLED"),
+    ];
     if (patientid) where.push(eq(limsOrders.subjectidentifier, patientid));
 
     const rows = await db

@@ -105,6 +105,13 @@ export const limsOrders = pgTable(
     
     // Workspace for multi-tenancy
     workspaceid: text("workspaceid").notNull(),
+
+    // The facility that runs and bills the test, when it is not the one that
+    // ordered it. A doctor at one hospital can send an order to another
+    // facility's lab: both need to see it, but only the performing lab may
+    // invoice it. The SELECT policy admits either facility; billing filters on
+    // this column so the work is billed by whoever did it.
+    performingworkspaceid: text("performingworkspaceid"),
     
     // Timestamps
     createdat: timestamp("createdat", { withTimezone: true }).notNull().defaultNow(),

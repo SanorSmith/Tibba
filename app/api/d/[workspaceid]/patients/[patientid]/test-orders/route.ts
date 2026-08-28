@@ -15,6 +15,7 @@ import { invalidate, ehrOrdersKey } from "@/lib/lims/ehr-order-cache";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant, withoutTenant } from "@/lib/db/tenant";
 import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
+import { limsOrders, limsOrderTests } from "@/lib/db/tables/lims-order";
 
 export async function GET(
   request: NextRequest,
@@ -278,6 +279,50 @@ export async function POST(
       patientId: patientid,
       kind: "test_order",
     });
+
+    // Record the order relationally as well as in openEHR.
+    //
+    // Without this the order exists only as a composition, so the bench can see
+    // it (the order list merges openEHR with the relational tables) but nothing
+    // can bill it: /api/lims/billing/pending reads lims_orders. An order sent by
+    // a doctor could be worked on and never invoiced.
+    //
+    // workspaceid is the facility that ordered it, performingworkspaceid the lab
+    // that runs and bills it - the same split composition_ownership already uses
+    // for routing. Both facilities read the row; only the performer bills it.
+    //
+    // A failure here must not lose the order: the composition is already written
+    // and is the clinical source of truth, so this is logged, not thrown.
+    try {
+      await withTenant(workspaceid, async () => {
+        const [order] = await db
+          .insert(limsOrders)
+          .values({
+            subjecttype: "PATIENT",
+            subjectidentifier: patientid,
+            priority: (urgency ?? "ROUTINE").toUpperCase(),
+            status: "REQUESTED",
+            orderingproviderid: user.userid,
+            orderingprovidername: requesting_provider ?? null,
+            sourcesystem: "EHR",
+            clinicalindication: clinical_indication ?? null,
+            clinicalnotes: narrative ?? null,
+            ehrid: ehrId,
+            compositionuid: compositionId,
+            workspaceid,
+            performingworkspaceid: target_lab_workspace_id ?? workspaceid,
+          })
+          .returning();
+
+        await db.insert(limsOrderTests).values({
+          orderid: order.orderid,
+          testname: service_name ?? description ?? "Test",
+          teststatus: "REQUESTED",
+        });
+      });
+    } catch (e) {
+      console.error("[Test Orders POST] composition written, billing rows failed:", e);
+    }
 
     // Invalidate the target lab's LIMS order list cache so the order appears
     // immediately when the receiving lab opens its dashboard.
