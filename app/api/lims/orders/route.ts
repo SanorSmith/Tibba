@@ -481,21 +481,16 @@ export async function GET(request: NextRequest) {
     try {
       openEHROrders = await cachedByKey<any[]>(ehrOrdersKey(workspaceId), async () => {
       const collected: any[] = [];
-      // This facility's patients, plus global ones. A NULL workspaceid means
-      // "global patient" — a deliberate state with an admin route that sets it
-      // (/api/admin/patients/make-global), and the same rule the patient list
-      // itself applies. Scoping to the workspace alone hid 109 of the 116
-      // patients that have EHR ids, which is why labs stopped being able to
-      // read patient information at all.
-      //
-      // Whether an order belongs to *this* lab is a separate question, settled
-      // per order below rather than by which patient it is attached to.
-      const patientsQuery = await db
-        .select()
-        .from(patients);   // // Patients are shared-read (migration 0068). The old clause added
-        // `OR workspaceid IS NULL` for a pool of global patients that no longer
-        // exists, which made a referred patient invisible to the receiving
-        // facility. Row-level security decides now.
+        // Every patient with an EHR id. Patients are shared-read (migration
+        // 0068), so this is what the policy already allows; the old clause
+        // added `OR workspaceid IS NULL` for a pool of global patients that no
+        // longer exists, which hid referred patients from the receiving lab.
+        //
+        // Whether an order belongs to *this* lab is a separate question,
+        // settled per order below rather than by which patient it is attached to.
+        const patientsQuery = await db
+          .select()
+          .from(patients);
       
       const patientsWithEhr = patientsQuery.filter(p => p.ehrid);
 
