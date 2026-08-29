@@ -54,6 +54,16 @@ export const pharmacyOrders = pgTable(
     workspaceid: uuid("workspaceid")
       .notNull()
       .references(() => workspaces.workspaceid, { onDelete: "cascade" }),
+    // The pharmacy that dispenses and can read this order, when it is not the
+    // facility that prescribed it. Without it a prescription was stamped with
+    // the prescriber's own facility and stayed there: the strict policy meant
+    // exactly one facility could ever see it, so a doctor could not send a
+    // prescription to a pharmacy at all. The SELECT policy admits either
+    // facility; only the prescriber's facility may write the row.
+    // Null means "dispensed where it was written", which is every order
+    // created before this existed.
+    dispensingworkspaceid: uuid("dispensingworkspaceid")
+      .references(() => workspaces.workspaceid, { onDelete: "set null" }),
     patientid: uuid("patientid")
       .references(() => patients.patientid, { onDelete: "set null" }),
     prescriberid: uuid("prescriberid"), // doctor who prescribed

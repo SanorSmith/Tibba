@@ -138,6 +138,14 @@ export async function POST(
     
     // Support both single prescription and multiple prescriptions
     const prescriptions = body.prescriptions || (body.prescription ? [body.prescription] : []);
+
+    // Where the prescription is to be dispensed. Until now a prescription was
+    // stamped with the prescriber's own facility and stayed there, so a doctor
+    // could not send one to a pharmacy at all - the reader could only ever be
+    // the facility that wrote it. Falling back to the prescriber's facility
+    // keeps the old behaviour when the caller sends no destination.
+    const dispensingWorkspaceId: string | null =
+      body.target_pharmacy_workspace_id ?? null;
     
     if (prescriptions.length === 0) {
       return NextResponse.json(
@@ -421,6 +429,7 @@ export async function POST(
             .insert(pharmacyOrders)
             .values({
               workspaceid: workspaceid,
+              dispensingworkspaceid: dispensingWorkspaceId ?? workspaceid,
               patientid: patientid,
               prescriberid: user.userid,
               status: "PENDING",

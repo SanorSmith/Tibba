@@ -83,6 +83,21 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
   const [selectedPrescription, setSelectedPrescription] =
     useState<PrescriptionRecord | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Where the prescription should be dispensed. Until now a prescription was
+  // stamped with the prescriber's own facility and stayed there, so only that
+  // facility could ever read it and a doctor could not send one to a pharmacy.
+  const [pharmacies, setPharmacies] = useState<
+    { workspaceid: string; name: string; type: string }[]
+  >([]);
+  const [dispensingPharmacyId, setDispensingPharmacyId] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/workspaces/pharmacies")
+      .then((r) => r.json())
+      .then((d) => setPharmacies(Array.isArray(d.pharmacies) ? d.pharmacies : []))
+      .catch(() => setPharmacies([]));
+  }, []);
   const [medicationSummaryData, setMedicationSummaryData] = useState<any>(null);
   const [showMedicationSummary, setShowMedicationSummary] = useState(false);
   const [medicationsList, setMedicationsList] = useState<typeof prescriptionForm[]>([]);
@@ -494,6 +509,8 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prescriptions: medicationsList,
+            // Empty means dispense here, which is the previous behaviour.
+            target_pharmacy_workspace_id: dispensingPharmacyId || null,
           }),
         }
       );
@@ -1199,6 +1216,24 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
               >
                 Cancel
               </Button>
+              <div className="flex items-center gap-2 mr-auto">
+                <label htmlFor="dispensing-pharmacy" className="text-sm text-muted-foreground">
+                  Send to
+                </label>
+                <select
+                  id="dispensing-pharmacy"
+                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={dispensingPharmacyId}
+                  onChange={(e) => setDispensingPharmacyId(e.target.value)}
+                >
+                  <option value="">This facility</option>
+                  {pharmacies.map((p) => (
+                    <option key={p.workspaceid} value={p.workspaceid}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={handleSubmitPrescriptions}
