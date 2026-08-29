@@ -1,11 +1,23 @@
 /**
  * GET /api/d/[workspaceid]/drugs/autocomplete
- * Search drugs by name for autocomplete with full drug details
- * 
- * Pharmacy Order Model:
- * - Searches only pharmacy inventory items (items table)
- * - Only shows drugs that are actually in stock
- * - Returns item details with storage location
+ *
+ * What a prescriber may search for.
+ *
+ * This used to search only the facility's own pharmacy inventory, and only
+ * items with stock on hand. That left a doctor at Hospital 1 with 15
+ * medicines to choose from, and doctors at three facilities with none at all,
+ * while the national catalogue sat unread with 4,274 entries.
+ *
+ * It also stopped making sense once a prescription could be routed: a doctor
+ * can now send one to a pharmacy that stocks 1,096 items, so limiting the
+ * search to what is on their own shelf hides most of what can be dispensed.
+ * Clinically the two are different questions anyway - a doctor prescribes a
+ * medicine, and whether a given branch holds it is a dispensing concern.
+ *
+ * So the search is the national catalogue, and local stock is reported
+ * alongside each result rather than used to filter it. `inStock` and
+ * `stockQuantity` let the form show what is available here without
+ * preventing anything else from being prescribed.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -43,49 +55,60 @@ export async function GET(
       return NextResponse.json({ drugs: [] });
     }
 
-    // Search only pharmacy inventory items with stock
-    // Return drug_id if available, otherwise use item_id
-    // Extract strength from name if not in drug tables (e.g., "Paracetamol 500mg" -> "500mg")
+    // The national catalogue is the search space. Local inventory is joined
+    // only to report availability, so a medicine this facility does not stock
+    // still appears and can still be prescribed.
     const results = await db.execute(sql`
-      SELECT DISTINCT ON (i.id)
-        d.drugid as drugid,
-        i.id as itemid,
-        i.name,
-        i.generic_name as genericname,
-        COALESCE(gd.form, d.form, i.item_type::text, '') as form,
-        COALESCE(
-          NULLIF(gd.strength, ''), 
-          NULLIF(d.strength, '')
-        ) as strength,
-        COALESCE(gd.unit, d.unit, i.uom) as unit,
-        COALESCE(gd.route, d.route, '') as route,
-        COALESCE(gd.atccode, d.atccode, '') as atccode,
-        COALESCE(gd.category, d.category, '') as category,
-        COALESCE(gd.interaction, d.interaction, '') as interaction,
-        COALESCE(gd.warning, d.warning, '') as warning,
-        COALESCE(gd.nationalcode, d.nationalcode, '') as nationalcode,
-        i.barcode,
-        i.manufacturer,
-        false as insuranceapproved,
-        i.storage_location_id as "storageLocationId",
-        ws.sectionname as "storageLocationName",
-        ws.bin_location as "storageLocation",
-        ws.section_type as "storageType",
-        ws.shelf
-      FROM items i
-      INNER JOIN drugs d ON d.drugid = i.drug_id AND d.workspaceid = ${workspaceid}
-      LEFT JOIN global_drugs gd ON gd.drugid = i.drug_id
+      SELECT
+        gd.drugid                                   AS drugid,
+        i.id                                        AS itemid,
+        gd.name                                     AS name,
+        gd.genericname                              AS genericname,
+        COALESCE(gd.form, '')                       AS form,
+        NULLIF(gd.strength, '')                     AS strength,
+        COALESCE(gd.unit, '')                       AS unit,
+        COALESCE(gd.route, '')                      AS route,
+        COALESCE(gd.atccode, '')                    AS atccode,
+        COALESCE(gd.category, '')                   AS category,
+        COALESCE(gd.interaction, '')                AS interaction,
+        COALESCE(gd.warning, '')                    AS warning,
+        COALESCE(gd.nationalcode, '')               AS nationalcode,
+        i.barcode                                   AS barcode,
+        i.manufacturer                              AS manufacturer,
+        false                                       AS insuranceapproved,
+        i.storage_location_id                       AS "storageLocationId",
+        ws.sectionname                              AS "storageLocationName",
+        ws.bin_location                             AS "storageLocation",
+        ws.section_type                             AS "storageType",
+        ws.shelf                                    AS shelf,
+        COALESCE(st.qty, 0) > 0                     AS "inStock",
+        COALESCE(st.qty, 0)::int                    AS "stockQuantity"
+      FROM global_drugs gd
+      -- items.drug_id points at the per-facility drugs table, never at the
+      -- catalogue: 4,320 of 4,810 match a local drug row and 0 match a
+      -- global_drugs id. (The join this replaced compared gd.drugid to
+      -- i.drug_id and so matched nothing, which is why every COALESCE onto
+      -- catalogue data was silently falling through to the local row.)
+      -- Name is the only link between the two, so stock is reported through
+      -- it. Imperfect - 3,244 of 7,184 local drugs match a catalogue name -
+      -- but it only decorates the result, never filters it.
+      LEFT JOIN drugs ld
+        ON lower(ld.name) = lower(gd.name)
+       AND ld.workspaceid = ${workspaceid}
+      LEFT JOIN items i
+        ON i.drug_id = ld.drugid
+       AND i.workspace_id = ${workspaceid}
+       AND i.is_active = true
+       AND i.inventory_category = 'pharmacy'
       LEFT JOIN warehouse_sections ws ON ws.id = i.storage_location_id
-      WHERE i.workspace_id = ${workspaceid}
-        AND i.is_active = true
-        AND i.inventory_category = 'pharmacy'
-        AND (i.name ILIKE ${'%' + query + '%'} OR i.generic_name ILIKE ${'%' + query + '%'})
-        AND EXISTS (
-          SELECT 1 FROM inventory_stock ist
-          WHERE ist.item_id = i.id AND ist.quantity > 0
-        )
-      ORDER BY i.id, i.name
-      LIMIT 10
+      LEFT JOIN LATERAL (
+        SELECT SUM(ist.quantity) AS qty FROM inventory_stock ist WHERE ist.item_id = i.id
+      ) st ON true
+      WHERE gd.isactive = true
+        AND (gd.name ILIKE ${'%' + query + '%'} OR gd.genericname ILIKE ${'%' + query + '%'})
+      -- what is on the shelf here first, then alphabetically
+      ORDER BY (COALESCE(st.qty, 0) > 0) DESC, gd.name
+      LIMIT 15
     `);
 
     // Ensure all fields are properly serialized
@@ -109,6 +132,8 @@ export async function GET(
       storageLocation: drug.storageLocation || null,
       storageType: drug.storageType || null,
       shelf: drug.shelf || null,
+      inStock: drug.inStock ?? false,
+      stockQuantity: drug.stockQuantity ?? 0,
     }));
 
     return NextResponse.json({ drugs: sanitizedResults });
