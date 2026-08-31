@@ -208,10 +208,20 @@ export function CheckoutDialog({
         // shown, so every failure read "Checkout failed" and said nothing
         // about why - a foreign key violation and a missing shift looked
         // identical to the cashier.
+        // `details` is a string for a server error and an array of Zod issues
+        // for a validation failure. Joining blindly rendered the latter as
+        // "[object Object]", which says less than nothing.
+        const detail = Array.isArray(data?.details)
+          ? data.details
+              .map((i: any) =>
+                [Array.isArray(i?.path) ? i.path.join(".") : i?.path, i?.message]
+                  .filter(Boolean)
+                  .join(" ")
+              )
+              .join("; ")
+          : data?.details;
         throw new Error(
-          [data?.error || "Checkout failed", data?.details]
-            .filter(Boolean)
-            .join(": ")
+          [data?.error || "Checkout failed", detail].filter(Boolean).join(": ")
         );
       }
 

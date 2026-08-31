@@ -24,7 +24,22 @@ import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
 
 const saleItemSchema = z.object({
-  drugId: z.string().uuid().optional().nullable(),
+  // "No drug id" is an ordinary state here, not a malformed request: 313 of
+  // the 406 prescription lines on record carry none, and an item created by a
+  // goods receipt has no drugs row behind it either. A browser expresses that
+  // as an empty string, which `.uuid()` rejected - so a cart line the POS was
+  // right to build was refused by validation before it could be sold. Empty
+  // and malformed both mean "unknown", exactly as batchId already treats them,
+  // and the route resolves the drug from the order line or by name.
+  drugId: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => {
+      if (!val || val.trim() === "") return null;
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+      return uuidRegex.test(val) ? val : null;
+    }),
   drugName: z.string(),
   batchId: z.string().optional().nullable().transform(val => {
     // Handle empty strings as null
