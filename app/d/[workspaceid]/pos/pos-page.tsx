@@ -260,9 +260,27 @@ export default function POSClientPage({
   // Cart operations
   const addToCart = useCallback((item: Omit<CartItem, "cartItemId">) => {
     setCart((prev) => {
-      // Check if same drug+batch already in cart
-      const existing = prev.find(
-        (c) => c.drugId === item.drugId && c.batchId === item.batchId
+      // What counts as "the same line already in the cart".
+      //
+      // This used to be `c.drugId === item.drugId && c.batchId === item.batchId`,
+      // which treated absence as identity. A prescription line often carries no
+      // drug id - 313 of 406 on record - and those reach here as drugId "" with
+      // no batch, so every one of them matched every other. Adding Amoxicillin
+      // 250 to a cart holding Carisoprodol 32 produced a single line reading
+      // 282, priced and dispensed as Carisoprodol, and the Amoxicillin row kept
+      // its + because nothing in the cart carried its order-item id. Two
+      // different medicines silently became one.
+      //
+      // A prescription line is identified by itself: adding the same line twice
+      // adds up, adding a different one never does, whether or not either has a
+      // drug id. Anything else - an OTC add off the catalogue - merges only on a
+      // real drug id and matching batch, and an empty id merges with nothing.
+      const existing = prev.find((c) =>
+        item.pharmacyOrderItemId
+          ? c.pharmacyOrderItemId === item.pharmacyOrderItemId
+          : !!item.drugId &&
+            c.drugId === item.drugId &&
+            c.batchId === item.batchId
       );
       if (existing) {
         return prev.map((c) =>
