@@ -55,6 +55,12 @@ export const workspaces = pgTable("workspaces", {
   name:        text("name").notNull(),
   type:        text("type").notNull(),
   description: text("description"),
+  // Printed on receipts and dispensing records. Null until a facility records
+  // them; a receipt omits any line it has no value for rather than inventing
+  // one. See migration 0084.
+  licensenumber: text("license_number"),
+  phone:         text("phone"),
+  address:       text("address"),
   isactive:    boolean("isactive").notNull().default(true),
   settings:    jsonb("settings").default("{}"),
   createdat:   timestamp("createdat", { withTimezone: true }).defaultNow().notNull(),

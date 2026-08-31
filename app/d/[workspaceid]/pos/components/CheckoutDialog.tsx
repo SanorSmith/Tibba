@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -113,6 +113,33 @@ export function CheckoutDialog({
     saleDate: string;
   } | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  // The facility's own licence, telephone and address, for the receipt header.
+  // Loaded once the dialog opens rather than on every render of the POS.
+  const [facility, setFacility] = useState<{
+    licensenumber: string | null;
+    phone: string | null;
+    address: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/d/${workspaceId}/facility`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setFacility(data.facility ?? null);
+      } catch {
+        // A receipt without the header lines is still a valid receipt; a
+        // failed checkout because of them would not be.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, workspaceId]);
 
   const paymentsTotal = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = total - paymentsTotal;
@@ -387,6 +414,13 @@ export function CheckoutDialog({
               <div className="header">
                 <h1>PHARMACY RECEIPT</h1>
                 <p>{workspaceName}</p>
+                {/* Recorded per facility (migration 0084). A line with no
+                    value is left off rather than filled with a placeholder:
+                    an invented licence number on a receipt is a false legal
+                    assertion, and an invented address is just wrong. */}
+                {facility?.licensenumber && <p>License: {facility.licensenumber}</p>}
+                {facility?.address && <p>Address: {facility.address}</p>}
+                {facility?.phone && <p>Tel: {facility.phone}</p>}
               </div>
 
               <div className="info">
