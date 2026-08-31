@@ -102,85 +102,128 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Which batch this stock belongs to has to be settled before any of it is
+  // written down.
+  //
+  // This used to look up `item_id AND warehouse_id LIMIT 1` - the first batch
+  // of the item in the warehouse, whichever one that happened to be - and then
+  // only ever updated its prices. The batch number and expiry date the user
+  // typed were destructured out of the request body and then used nowhere at
+  // all. So receiving 300 units of a drug whose one existing batch had already
+  // expired raised the shelf count to 400 and filed every new unit under the
+  // expired lot. The POS went on refusing to dispense it, which was the right
+  // call on the wrong data, and the pharmacist was left adding good stock to a
+  // shelf that stayed unsellable. A batch is identified by its number and its
+  // expiry date, not by being the first row the query returned.
+  //
+  // Resolving it also has to happen whether or not prices were supplied. This
+  // used to sit inside `if (unitCost !== null || sellingPrice !== null)`, so
+  // stock received without a price got an inventory_stock row with a null
+  // batch_id - invisible to the POS, which reaches stock through item_batches.
+  const expiry = expiryDate ? String(expiryDate) : null;
+  const receivedQty = parseInt(adjustmentQty);
+  let targetBatchId: string | null = batchId ?? null;
+  let batchIsNew = false;
+
+  if (!targetBatchId) {
+    const conds: string[] = ["item_id = $1", "warehouse_id = $2"];
+    const vals: unknown[] = [itemId, warehouseId];
+    if (batchNumber) {
+      conds.push(`batch_number = $${vals.length + 1}`);
+      vals.push(batchNumber);
+    }
+    // A different expiry date is a different lot. Stock must never be merged
+    // into a lot that expires on another day, least of all one already past.
+    if (expiry) {
+      conds.push(`expiry_date = $${vals.length + 1}::date`);
+      vals.push(expiry);
+    } else {
+      conds.push("expiry_date IS NULL");
+    }
+
+    const match = await pool.query(
+      `SELECT id FROM item_batches WHERE ${conds.join(" AND ")} LIMIT 1`,
+      vals
+    );
+
+    if (match.rows.length > 0) {
+      targetBatchId = match.rows[0].id;
+    } else {
+      const created = await pool.query(
+        `INSERT INTO item_batches
+           (id, item_id, warehouse_id, batch_number, quantity, unit_cost, selling_price, expiry_date)
+         VALUES (gen_random_uuid(), $1, $2, $3, GREATEST(0, $4), $5, $6, $7::date)
+         RETURNING id`,
+        [
+          itemId,
+          warehouseId,
+          batchNumber || `BATCH-${Date.now()}`,
+          receivedQty,
+          unitCost ?? null,
+          sellingPrice ?? null,
+          expiry,
+        ]
+      );
+      targetBatchId = created.rows[0].id;
+      batchIsNew = true;
+    }
+  }
+
+  // A batch that already existed takes the received quantity on top of what it
+  // held; one just created was inserted carrying it. Keeping item_batches.quantity
+  // in step with the shelf matters beyond bookkeeping - the dispense route picks
+  // batches with `ib.quantity > 0`, so a batch left at its opening figure while
+  // the shelf grew is a batch that stops being dispensable early.
+  if (!batchIsNew) {
+    await pool.query(
+      `UPDATE item_batches
+          SET unit_cost     = COALESCE($1, unit_cost),
+              selling_price = COALESCE($2, selling_price),
+              quantity      = GREATEST(0, quantity + $3)
+        WHERE id = $4`,
+      [unitCost ?? null, sellingPrice ?? null, receivedQty, targetBatchId]
+    );
+  }
+
   await pool.query(
     `INSERT INTO stock_adjustments (id, workspace_id, item_id, warehouse_id, batch_id, quantity, reason, created_by, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-    [adjId, workspaceid, itemId, warehouseId, batchId ?? null, parseInt(adjustmentQty), reason, createdBy ?? "Pharmacy"]
+    [adjId, workspaceid, itemId, warehouseId, targetBatchId, receivedQty, reason, createdBy ?? "Pharmacy"]
   );
 
-  // Update or insert inventory_stock
+  // Stock is recorded against the batch it actually belongs to. The old upsert
+  // matched `($3::uuid IS NULL OR batch_id = $3)` with a null $3, which matched
+  // whatever row happened to be there and poured the new stock into it.
   const checkStock = await pool.query(
-    `SELECT id, quantity FROM inventory_stock 
-     WHERE item_id = $1 AND warehouse_id = $2 AND ($3::uuid IS NULL OR batch_id = $3)
-     LIMIT 1`,
-    [itemId, warehouseId, batchId ?? null]
+    `SELECT id, quantity FROM inventory_stock
+      WHERE item_id = $1 AND warehouse_id = $2 AND batch_id IS NOT DISTINCT FROM $3
+      LIMIT 1`,
+    [itemId, warehouseId, targetBatchId]
   );
 
   if (checkStock.rows.length > 0) {
-    // Update existing stock
+    // last_updated was never touched here, so a receive left no trace of when
+    // it happened - which made a 300-unit top-up impossible to date afterwards.
     await pool.query(
-      `UPDATE inventory_stock 
-       SET quantity = GREATEST(0, quantity + $1)
-       WHERE id = $2`,
-      [parseInt(adjustmentQty), checkStock.rows[0].id]
+      `UPDATE inventory_stock
+          SET quantity = GREATEST(0, quantity + $1), last_updated = NOW()
+        WHERE id = $2`,
+      [receivedQty, checkStock.rows[0].id]
     );
   } else {
-    // Insert new stock record
     await pool.query(
-      `INSERT INTO inventory_stock (id, item_id, warehouse_id, batch_id, quantity, reserved_quantity)
-       VALUES (gen_random_uuid(), $1, $2, $3, GREATEST(0, $4), 0)`,
-      [itemId, warehouseId, batchId ?? null, parseInt(adjustmentQty)]
+      `INSERT INTO inventory_stock (id, item_id, warehouse_id, batch_id, quantity, reserved_quantity, last_updated)
+       VALUES (gen_random_uuid(), $1, $2, $3, GREATEST(0, $4), 0, NOW())`,
+      [itemId, warehouseId, targetBatchId, receivedQty]
     );
-  }
-
-  // Update or create batch with pricing if provided
-  let createdBatchId = batchId;
-  if (unitCost !== null || sellingPrice !== null) {
-    const batchCheck = await pool.query(
-      `SELECT id FROM item_batches 
-       WHERE item_id = $1 AND warehouse_id = $2
-       LIMIT 1`,
-      [itemId, warehouseId]
-    );
-
-    if (batchCheck.rows.length > 0) {
-      // Update existing batch pricing
-      await pool.query(
-        `UPDATE item_batches 
-         SET unit_cost = COALESCE($1, unit_cost),
-             selling_price = COALESCE($2, selling_price)
-         WHERE id = $3`,
-        [unitCost, sellingPrice, batchCheck.rows[0].id]
-      );
-      createdBatchId = batchCheck.rows[0].id;
-    } else {
-      // Create new batch with pricing
-      const batchResult = await pool.query(
-        `INSERT INTO item_batches (id, item_id, warehouse_id, batch_number, quantity, unit_cost, selling_price)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6)
-         RETURNING id`,
-        [itemId, warehouseId, `BATCH-${Date.now()}`, parseInt(adjustmentQty), unitCost, sellingPrice]
-      );
-      createdBatchId = batchResult.rows[0].id;
-    }
-
-    // Update inventory_stock with batch_id if it was NULL
-    if (createdBatchId && (!batchId || batchId === null)) {
-      await pool.query(
-        `UPDATE inventory_stock 
-         SET batch_id = $1
-         WHERE item_id = $2 AND warehouse_id = $3 AND batch_id IS NULL`,
-        [createdBatchId, itemId, warehouseId]
-      );
-    }
   }
 
   // Log transaction (use STOCK_IN for positive, STOCK_OUT for negative)
-  const transactionType = parseInt(adjustmentQty) > 0 ? 'STOCK_IN' : 'STOCK_OUT';
+  const transactionType = receivedQty > 0 ? 'STOCK_IN' : 'STOCK_OUT';
   await pool.query(
     `INSERT INTO stock_transactions (id, workspace_id, item_id, warehouse_id, batch_id, transaction_type, quantity, notes, created_by, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
-    [crypto.randomUUID(), workspaceid, itemId, warehouseId, batchId ?? null, transactionType, Math.abs(parseInt(adjustmentQty)), reason, createdBy ?? "Pharmacy"]
+    [crypto.randomUUID(), workspaceid, itemId, warehouseId, targetBatchId, transactionType, Math.abs(receivedQty), reason, createdBy ?? "Pharmacy"]
   );
 
   return NextResponse.json({ success: true, id: adjId });
