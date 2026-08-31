@@ -14,11 +14,7 @@
  * Someone with a single facility never sees this — they are redirected
  * straight in, as before.
  */
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Building2, ChevronRight } from "lucide-react";
+import { Building2, ExternalLink } from "lucide-react";
 
 export type PickerWorkspace = {
   workspaceid: string;
@@ -33,53 +29,51 @@ function humanRole(role: string) {
 }
 
 export function WorkspacePicker({ workspaces }: { workspaces: PickerWorkspace[] }) {
-  const router = useRouter();
-  const [going, setGoing] = useState<string | null>(null);
-
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Choose a facility</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        You have access to {workspaces.length} facilities. You can switch at any time from the
-        sidebar.
+        You have access to {workspaces.length} facilities. Each opens in a new tab, so you
+        can work in several at once.
       </p>
 
       <ul className="mt-8 space-y-3">
-        {workspaces.map((w) => {
-          const busy = going === w.workspaceid;
-          return (
-            <li key={w.workspaceid}>
-              <button
-                type="button"
-                disabled={going !== null}
-                onClick={() => {
-                  setGoing(w.workspaceid);
-                  router.push(`/d/${w.workspaceid}`);
-                }}
-                className="group flex w-full items-center gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent disabled:opacity-60"
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-background">
-                  <Building2 className="size-5 text-muted-foreground" aria-hidden />
-                </span>
+        {workspaces.map((w) => (
+          <li key={w.workspaceid}>
+            {/*
+              A real link rather than a button calling router.push. Opening each
+              facility in its own tab is the point - someone who works across
+              several should not have to come back here and pick again - and an
+              anchor also gives middle-click, ctrl-click and open-in-new-window
+              for free, which a button can never do.
 
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{w.name}</span>
-                  <span className="block truncate text-sm text-muted-foreground">
-                    {humanRole(w.role)}
-                    {w.type ? ` · ${w.type}` : ""}
-                  </span>
-                </span>
+              rel=noopener stops the opened tab reaching back through
+              window.opener.
+            */}
+            <a
+              href={`/d/${w.workspaceid}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex w-full items-center gap-4 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-background">
+                <Building2 className="size-5 text-muted-foreground" aria-hidden />
+              </span>
 
-                <ChevronRight
-                  className={`size-4 shrink-0 text-muted-foreground transition-transform ${
-                    busy ? "animate-pulse" : "group-hover:translate-x-0.5"
-                  }`}
-                  aria-hidden
-                />
-              </button>
-            </li>
-          );
-        })}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{w.name}</span>
+                <span className="block truncate text-sm text-muted-foreground">
+                  {humanRole(w.role)}
+                  {w.type ? ` · ${w.type}` : ""}
+                </span>
+              </span>
+
+              {/* Says out loud what the icon only implies. */}
+              <span className="sr-only">(opens in a new tab)</span>
+              <ExternalLink className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </a>
+          </li>
+        ))}
       </ul>
     </main>
   );
