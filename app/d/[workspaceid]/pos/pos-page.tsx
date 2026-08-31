@@ -178,12 +178,55 @@ export default function POSClientPage({
       console.log("[POS] Patient data:", data.patient?.firstname, data.patient?.lastname);
       console.log("[POS] Dispensed orders:", data.dispensedOrders?.length ?? 0);
       setPatient(data);
-      // Auto-load first dispensed order
-      if (data.dispensedOrders?.length > 0) {
-        await handleOrderSelect(data.dispensedOrders[0].orderid);
-      } else {
+
+      // Every prescription waiting for this patient, not just the newest.
+      // Loading only the first meant a patient with three pending orders had
+      // two of them invisible, with nothing on screen saying so - the panel
+      // looked like the whole picture. The cashier picks which lines to add;
+      // that choice needs all of them in front of them.
+      const orderIds: string[] = (data.dispensedOrders ?? []).map(
+        (o: any) => o.orderid
+      );
+      if (orderIds.length === 0) {
         setDispensedOrder(null);
+        return;
       }
+
+      const loaded = (
+        await Promise.all(
+          orderIds.map(async (id) => {
+            try {
+              const r = await fetch(
+                `/api/pos/orders/${id}?workspaceid=${workspaceid}`
+              );
+              return r.ok ? await r.json() : null;
+            } catch {
+              return null;
+            }
+          })
+        )
+      ).filter(Boolean) as any[];
+
+      if (loaded.length === 0) {
+        setDispensedOrder(null);
+        return;
+      }
+
+      // Merged into the one shape the panel already renders. Each line keeps
+      // the order it came from so it can be labelled, and so adding it looks
+      // up stock against its own order rather than the first one's.
+      setDispensedOrder({
+        order: loaded[0].order,
+        orders: loaded.map((l) => l.order),
+        patient: loaded[0].patient ?? data.patient,
+        items: loaded.flatMap((l) =>
+          (l.items ?? []).map((it: any) => ({
+            ...it,
+            orderid: l.order?.orderid,
+            ordercreatedat: l.order?.createdat,
+          }))
+        ),
+      });
     } catch (err) {
       console.error("[POS] Patient lookup failed:", err);
     }

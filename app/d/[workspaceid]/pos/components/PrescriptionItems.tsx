@@ -55,11 +55,16 @@ type OrderItem = {
   sellingprice?: string;
   unitcost?: string;
   availableStock?: number;
+  // Which order this line came from. A patient can have several waiting, and
+  // the panel lists them together, so a line has to remember its own.
+  orderid?: string;
+  ordercreatedat?: string;
 };
 
 type Props = {
   order: {
     order: any;
+    orders?: any[];
     items: OrderItem[];
     patient: any;
   } | null;
@@ -123,6 +128,9 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
     (item) => !["DISPENSED"].includes(item.status?.toUpperCase())
   );
 
+  const orderCount = order.orders?.length ?? (order.order ? 1 : 0);
+  const multipleOrders = orderCount > 1;
+
   const isInCart = (itemId: string) =>
     cartItems.some((c) => c.pharmacyOrderItemId === itemId);
 
@@ -160,7 +168,7 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
 
   const addItem = async (item: OrderItem) => {
     try {
-      const orderId = order?.order?.orderid;
+      const orderId = item.orderid ?? order?.order?.orderid;
       if (!orderId) {
         console.error('[PrescriptionItems] Missing order ID');
         return;
@@ -323,7 +331,14 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
           <Badge variant="secondary" className="text-xs ml-1">
             {items.length}
           </Badge>
-          {order.order?.orderid && (
+          {multipleOrders && (
+            <span className="text-xs font-normal text-muted-foreground">
+              from {orderCount} prescriptions
+            </span>
+          )}
+          {/* Editing targets one order, so this only appears when one is
+              shown. With several on screen it would be ambiguous which. */}
+          {!multipleOrders && order.order?.orderid && (
             <button
               onClick={() => onEditOrder?.(order.order.orderid)}
               className="ml-2 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
@@ -374,6 +389,15 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
                   <TableRow key={item.itemid}>
                     <TableCell className="py-2">
                       <div className="text-sm font-medium">{item.drugname}</div>
+                      {/* Only when there is more than one prescription on
+                          screen, so a single order stays uncluttered. */}
+                      {multipleOrders && item.orderid && (
+                        <div className="text-[10px] text-muted-foreground/80">
+                          Order {item.orderid.slice(0, 8)}
+                          {item.ordercreatedat &&
+                            ` · ${new Date(item.ordercreatedat).toLocaleDateString()}`}
+                        </div>
+                      )}
                       <div className="text-xs text-muted-foreground">
                         {item.form} {item.strength}
                         {item.lotnumber && ` | Lot: ${item.lotnumber}`}
