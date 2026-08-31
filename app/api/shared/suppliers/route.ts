@@ -174,7 +174,7 @@ export async function POST(
             ? validatedData.creditlimit.toString()
             : undefined,
         createdby: user.userid,
-        createdat: new Date().toISOString(),
+        createdat: new Date(),
         workspaceid,
       })
       .returning();

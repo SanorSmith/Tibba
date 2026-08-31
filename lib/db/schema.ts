@@ -174,16 +174,60 @@ export const drugInventory = pgTable("drug_inventory", {
 
 // ─── Suppliers ────────────────────────────────────────────────────────────────
 
+// Mirrors the real `suppliers` table. This was a seven-column stub that named
+// three columns the table does not have - contactname, phone, address - and
+// omitted four the supplier routes query by name: code, category, type and
+// ispreferred. /api/d/[workspaceid]/suppliers and /api/shared/suppliers both
+// filter and order on those, so they were reaching for properties that did not
+// exist on the object. The real column names are contactperson, phonenumber
+// and addressline1.
 export const suppliers = pgTable("suppliers", {
-  supplierid:  uuid("supplierid").primaryKey().defaultRandom(),
-  workspaceid: uuid("workspaceid").references(() => workspaces.workspaceid),
-  name:        text("name").notNull(),
-  contactname: text("contactname"),
-  phone:       text("phone"),
-  email:       text("email"),
-  address:     text("address"),
-  isactive:    boolean("isactive").default(true),
-  createdat:   timestamp("createdat", { withTimezone: true }).defaultNow(),
+  supplierid:     uuid("supplierid").primaryKey().defaultRandom(),
+  workspaceid:    uuid("workspaceid").references(() => workspaces.workspaceid),
+  name:           text("name").notNull(),
+  code:           text("code"),
+  description:    text("description"),
+  // contact
+  phonenumber:    text("phonenumber"),
+  phonenumber2:   text("phonenumber2"),
+  email:          text("email"),
+  email2:         text("email2"),
+  website:        text("website"),
+  addressline1:   text("addressline1"),
+  addressline2:   text("addressline2"),
+  city:           text("city"),
+  state:          text("state"),
+  postalcode:     text("postalcode"),
+  country:        text("country"),
+  // named contact
+  contactperson:  text("contactperson"),
+  contacttitle:   text("contacttitle"),
+  contactphone:   text("contactphone"),
+  contactemail:   text("contactemail"),
+  // classification
+  category:       text("category"),
+  type:           text("type"),
+  specialization: text("specialization"),
+  rating:         decimal("rating", { precision: 3, scale: 2 }),
+  ispreferred:    boolean("ispreferred").default(false),
+  isactive:       boolean("isactive").default(true),
+  // commercial
+  taxid:          text("taxid"),
+  licensenumber:  text("licensenumber"),
+  paymentterms:   text("paymentterms"),
+  creditlimit:    decimal("creditlimit", { precision: 12, scale: 2 }),
+  currency:       text("currency"),
+  establishedyear: integer("establishedyear"),
+  supportphone:   text("supportphone"),
+  supportemail:   text("supportemail"),
+  technicalcontact: text("technicalcontact"),
+  contracturl:    text("contracturl"),
+  catalogurl:     text("catalogurl"),
+  notes:          text("notes"),
+  createdby:      text("createdby"),
+  createdat:      timestamp("createdat", { withTimezone: true }).defaultNow(),
+  updatedby:      text("updatedby"),
+  updatedat:      timestamp("updatedat", { withTimezone: true }).defaultNow(),
 });
 
 // ─── Drug Suppliers ───────────────────────────────────────────────────────────
@@ -741,43 +785,43 @@ export const grnItems = pgTable("grn_items", {
 
 export const supplierClaims = pgTable("supplier_claims", {
   id:              uuid("id").primaryKey().defaultRandom(),
-  workspaceid:     uuid("workspace_id").references(() => workspaces.workspaceid).notNull(),
-  claimnumber:     text("claim_number").notNull(),
+  workspaceid:     uuid("workspaceid").references(() => workspaces.workspaceid).notNull(),
+  claimnumber:     text("claimnumber").notNull(),
   grnid:           uuid("grnid").references(() => goodsReceiptNotes.id),
   grnitemid:       uuid("grnitemid").references(() => grnItems.id),
   vendorid:        uuid("vendorid").references(() => vendors.id),
-  claimtype:       text("claim_type").notNull(), // DAMAGED, INCORRECT, SHORTAGE, EXPIRED
+  claimtype:       text("claimtype").notNull(), // DAMAGED, INCORRECT, SHORTAGE, EXPIRED
   status:          text("status").default("submitted"), // submitted, approved, rejected, resolved
-  claimdate:       timestamp("claim_date", { withTimezone: true }).defaultNow(),
+  claimdate:       timestamp("claimdate", { withTimezone: true }).defaultNow(),
   description:     text("description").notNull(),
-  quantityclaimed: integer("quantity_claimed").notNull(),
-  amountclaimed:   decimal("amount_claimed", { precision: 12, scale: 4 }),
-  resolveddate:    timestamp("resolved_date", { withTimezone: true }),
-  resolutionnotes: text("resolution_notes"),
-  createdby:       text("created_by"),
-  createdat:       timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedat:       timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  quantityclaimed: integer("quantityclaimed").notNull(),
+  amountclaimed:   decimal("amountclaimed", { precision: 12, scale: 4 }),
+  resolveddate:    timestamp("resolvedat", { withTimezone: true }),
+  resolutionnotes: text("resolutionnotes"),
+  createdby:       text("createdby"),
+  createdat:       timestamp("createdat", { withTimezone: true }).defaultNow(),
+  updatedat:       timestamp("updatedat", { withTimezone: true }).defaultNow(),
 });
 
 // ─── Supplier Returns ─────────────────────────────────────────────────────────────
 
 export const supplierReturns = pgTable("supplier_returns", {
   id:            uuid("id").primaryKey().defaultRandom(),
-  workspaceid:   uuid("workspace_id").references(() => workspaces.workspaceid).notNull(),
-  returnnumber:  text("return_number").notNull(),
+  workspaceid:   uuid("workspaceid").references(() => workspaces.workspaceid).notNull(),
+  returnnumber:  text("returnnumber").notNull(),
   claimid:       uuid("claimid").references(() => supplierClaims.id),
   vendorid:      uuid("vendorid").references(() => vendors.id),
   status:        text("status").default("pending"), // pending, authorized, shipped, received, credited
-  returndate:    timestamp("return_date", { withTimezone: true }).defaultNow(),
-  expecteddate:  timestamp("expected_date", { withTimezone: true }),
+  returndate:    timestamp("returndate", { withTimezone: true }).defaultNow(),
+  expecteddate:  timestamp("expecteddate", { withTimezone: true }),
   description:   text("description").notNull(),
-  totalamount:   decimal("total_amount", { precision: 12, scale: 4 }),
-  creditnote:    text("credit_note"),
-  receiveddate:  timestamp("received_date", { withTimezone: true }),
-  receivedby:    text("received_by"),
-  createdby:     text("created_by"),
-  createdat:     timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedat:     timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  totalamount:   decimal("totalamount", { precision: 12, scale: 4 }),
+  creditnote:    text("creditnote"),
+  receiveddate:  timestamp("receiveddate", { withTimezone: true }),
+  receivedby:    text("receivedby"),
+  createdby:     text("createdby"),
+  createdat:     timestamp("createdat", { withTimezone: true }).defaultNow(),
+  updatedat:     timestamp("updatedat", { withTimezone: true }).defaultNow(),
 });
 
 // ─── Supplier Return Items ─────────────────────────────────────────────────────────
@@ -788,9 +832,9 @@ export const supplierReturnItems = pgTable("supplier_return_items", {
   itemid:    uuid("itemid").references(() => items.id).notNull(),
   batchid:   uuid("batchid").references(() => itemBatches.id),
   quantity:  integer("quantity").notNull(),
-  unitprice: decimal("unit_price", { precision: 10, scale: 4 }),
+  unitprice: decimal("unitprice", { precision: 10, scale: 4 }),
   reason:    text("reason").notNull(),
-  createdat: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  createdat: timestamp("createdat", { withTimezone: true }).defaultNow(),
 });
 
 // ─── Relations ────────────────────────────────────────────────────────────────
