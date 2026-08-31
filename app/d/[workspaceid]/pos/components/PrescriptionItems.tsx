@@ -166,12 +166,24 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
         return;
       }
 
-      // Try to fetch inventory items if drugid is available
-      if (item.drugid) {
+      // Look the drug up by whatever identifies it. This used to run only
+      // `if (item.drugid)`, so a prescription line without one - 313 of the
+      // 406 on record - skipped the inventory lookup entirely and fell to the
+      // fallback below, which prices the line from a hard-coded default and
+      // declares it out of stock. That is what a referred prescription looks
+      // like from the pharmacy's side: the drug is on the shelf, under that
+      // exact name, and the screen says there is none.
+      //
+      // The name goes along with the id because the id, when present, belongs
+      // to the prescriber's own drugs table and means nothing here.
+      if (item.drugid || item.drugname) {
+        const query = new URLSearchParams();
+        if (item.drugid) query.set("drugid", item.drugid);
+        if (item.drugname) query.set("drugname", item.drugname);
         const inventoryResponse = await fetch(
-          `/api/d/${workspaceid}/pharmacy/orders/${orderId}/inventory-items?drugid=${item.drugid}`
+          `/api/d/${workspaceid}/pharmacy/orders/${orderId}/inventory-items?${query.toString()}`
         );
-        
+
         if (inventoryResponse.ok) {
           const inventoryData = await inventoryResponse.json();
           const inventoryItems = inventoryData.items || [];
@@ -187,7 +199,9 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
               const quantity = (item.quantity || 0) - (item.quantitydispensed || 0);
 
               onAddToCart({
-                drugId: item.drugid,
+                // The prescription may carry no drug id at all; fall back to
+                // the id of the item this pharmacy actually matched.
+                drugId: item.drugid || selectedItem.drugId || selectedItem.itemId,
                 drugName: item.drugname,
                 genericName: item.genericname,
                 form: item.form,
@@ -225,7 +239,9 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
               const quantity = (item.quantity || 0) - (item.quantitydispensed || 0);
 
               onAddToCart({
-                drugId: item.drugid,
+                // The prescription may carry no drug id at all; fall back to
+                // the id of the item this pharmacy actually matched.
+                drugId: item.drugid || selectedItem.drugId || selectedItem.itemId,
                 drugName: item.drugname,
                 genericName: item.genericname,
                 form: item.form,

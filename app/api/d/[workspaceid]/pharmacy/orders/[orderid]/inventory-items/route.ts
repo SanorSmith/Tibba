@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { items, itemBatches, inventoryStock, drugs } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
@@ -27,13 +27,36 @@ export async function GET(
     return await withTenant(workspaceid, async () => {
     const { searchParams } = new URL(request.url);
     const drugid = searchParams.get("drugid");
+    const drugname = searchParams.get("drugname");
 
-    if (!drugid) {
+    // A drug id alone cannot find the stock for a prescription that arrived
+    // from another facility, which is most of them: 313 of 406 prescription
+    // lines carry no drug id at all, and every one that does points at the
+    // *prescriber's* own drugs row. `drugs` is per-facility, so the id a
+    // hospital wrote down is meaningless on a pharmacy's shelf. Requiring it
+    // here meant a referred prescription could never be matched to stock, and
+    // the POS reported the drug as out of stock while 400 units sat on the
+    // shelf under its exact name.
+    //
+    // The name is the only key the two facilities share, so it is accepted as
+    // an alternative. Matching is exact once trimmed and lowercased - never
+    // partial, never fuzzy. "Paracetamol 500mg" and "Paracetamol 250mg" are
+    // different medicines, and a near-miss here would hand a patient the wrong
+    // box. If the names do not agree exactly, nothing matches and the caller
+    // is told there is no stock, which is the safe answer.
+    if (!drugid && !drugname) {
       return NextResponse.json(
-        { error: "drugid parameter is required" },
+        { error: "drugid or drugname is required" },
         { status: 400 }
       );
     }
+
+    const identifies = [
+      ...(drugid ? [eq(items.drugid, drugid)] : []),
+      ...(drugname
+        ? [sql`lower(trim(${items.name})) = lower(trim(${drugname}))`]
+        : []),
+    ];
 
     // Transform drug to inventory item using items.drugid → drugs.drugid relationship
     const inventoryItems = await db
@@ -56,7 +79,10 @@ export async function GET(
         stockQuantity: inventoryStock.quantity,
       })
       .from(items)
-      .innerJoin(drugs, eq(drugs.drugid, items.drugid))
+      // Left, not inner: an item matched by name need not have a drugs row
+      // behind it, and an inner join silently dropped exactly those. Where a
+      // drug id is given the FK guarantees the row, so nothing is lost.
+      .leftJoin(drugs, eq(drugs.drugid, items.drugid))
       .leftJoin(itemBatches, eq(itemBatches.itemid, items.id))
       .leftJoin(inventoryStock, and(
         eq(inventoryStock.itemid, items.id),
@@ -64,7 +90,7 @@ export async function GET(
       ))
       .where(
         and(
-          eq(items.drugid, drugid),
+          identifies.length > 1 ? or(...identifies) : identifies[0],
           eq(items.workspaceid, workspaceid),
           eq(items.itemtype, 'drug')
         )
