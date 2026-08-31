@@ -385,22 +385,35 @@ export default function PharmacyOrdersPage({
       <div className="flex-1 min-h-0 flex flex-col px-4 pb-4">
         <Card className="flex-1 min-h-0 flex flex-col">
         <CardContent className="p-0 flex-1 min-h-0 overflow-auto">
-          {!search.trim() ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Search className="h-12 w-12 text-muted-foreground mb-2" />
-              <p className="text-lg font-medium text-gray-700 mb-1">Search to View Orders</p>
-              <p className="text-sm text-muted-foreground">Enter patient name, national ID, or order ID to find orders</p>
-            </div>
-          ) : loading ? (
+          {/* The queue is what this screen is for, so it shows by default.
+              This used to render "Search to View Orders" until something was
+              typed, which meant a pharmacy opening the Orders tab saw an empty
+              page rather than the prescriptions doctors had sent it. The orders
+              were fetched the whole time - only the table was withheld - so
+              there was no sign anything was waiting. Search now narrows the
+              list instead of unlocking it. */}
+          {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-3" />
-              <p className="text-sm font-medium text-gray-700">Searching orders...</p>
-              <p className="text-xs text-muted-foreground mt-1">Please wait while we find matching orders</p>
+              <p className="text-sm font-medium text-gray-700">
+                {search.trim() ? "Searching orders..." : "Loading orders..."}
+              </p>
             </div>
           ) : paginatedOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Package className="h-12 w-12 text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">No orders found</p>
+              {search.trim() ? (
+                <>
+                  <p className="text-muted-foreground">No orders match that search</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Clear the search to see every order sent to this pharmacy
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  No orders have been sent to this pharmacy yet
+                </p>
+              )}
             </div>
           ) : (
             <Table>
