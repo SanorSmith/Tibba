@@ -15,6 +15,7 @@ import { eq, and, or, ilike, desc, isNull } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 import {
   getOpenEHREHRBySubjectId,
   getOpenEHRPrescriptions,
@@ -120,7 +121,7 @@ export async function GET(
         .from(pharmacyOrders)
         .where(
           and(
-            eq(pharmacyOrders.workspaceid, workspaceid),
+            ordersForFacility(workspaceid),
             eq(pharmacyOrders.patientid, patientid)
           )
         )

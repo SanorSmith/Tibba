@@ -17,6 +17,7 @@ import {
 import { eq, and, sql, lt, gte, count } from "drizzle-orm";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 
 const LOW_STOCK_THRESHOLD = 10;
 const OVERDUE_HOURS = 24;
@@ -114,7 +115,7 @@ export async function GET(
           count: count(),
         })
         .from(pharmacyOrders)
-        .where(eq(pharmacyOrders.workspaceid, workspaceid))
+        .where(ordersForFacility(workspaceid))
         .groupBy(pharmacyOrders.status),
 
       // 3. Today's orders & unique patients
@@ -126,7 +127,7 @@ export async function GET(
         .from(pharmacyOrders)
         .where(
           and(
-            eq(pharmacyOrders.workspaceid, workspaceid),
+            ordersForFacility(workspaceid),
             gte(pharmacyOrders.createdat, todayStart)
           )
         ),
@@ -178,7 +179,7 @@ export async function GET(
         .from(pharmacyOrders)
         .where(
           and(
-            eq(pharmacyOrders.workspaceid, workspaceid),
+            ordersForFacility(workspaceid),
             eq(pharmacyOrders.status, "PENDING"),
             lt(pharmacyOrders.createdat, overdueThreshold)
           )
@@ -198,7 +199,7 @@ export async function GET(
         .from(pharmacyOrders)
         .where(
           and(
-            eq(pharmacyOrders.workspaceid, workspaceid),
+            ordersForFacility(workspaceid),
             sql`${pharmacyOrders.status} IN ('PENDING', 'IN_PROGRESS')`,
             sql`${pharmacyOrders.priority} IN ('urgent', 'stat')`
           )
@@ -237,7 +238,7 @@ export async function GET(
         .innerJoin(drugs, eq(pharmacyOrderItems.drugid, drugs.drugid))
         .where(
           and(
-            eq(pharmacyOrders.workspaceid, workspaceid),
+            ordersForFacility(workspaceid),
             sql`${pharmacyOrders.status} IN ('DISPENSED', 'COMPLETED')`,
             gte(pharmacyOrders.createdat, monthStart)
           )
@@ -255,7 +256,7 @@ export async function GET(
         })
         .from(invoices)
         .innerJoin(pharmacyOrders, eq(invoices.orderid, pharmacyOrders.orderid))
-        .where(eq(pharmacyOrders.workspaceid, workspaceid)),
+        .where(ordersForFacility(workspaceid)),
 
       // 10. Sales comparison (POS): today vs same day 1yr ago vs same day 2yrs ago
       db

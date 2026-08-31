@@ -12,6 +12,7 @@
  * direction, and deleting a live endpoint belongs in its own change.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import {
@@ -58,7 +59,7 @@ export async function GET(
         count: count(),
       })
       .from(pharmacyOrders)
-      .where(eq(pharmacyOrders.workspaceid, workspaceid))
+      .where(ordersForFacility(workspaceid))
       .groupBy(pharmacyOrders.status);
 
     const totalOrders = orderStats.reduce((sum, s) => sum + Number(s.count), 0);
@@ -78,7 +79,7 @@ export async function GET(
       .from(pharmacyOrders)
       .where(
         and(
-          eq(pharmacyOrders.workspaceid, workspaceid),
+          ordersForFacility(workspaceid),
           gte(pharmacyOrders.createdat, todayStart)
         )
       );
@@ -92,7 +93,7 @@ export async function GET(
       })
       .from(invoices)
       .innerJoin(pharmacyOrders, eq(invoices.orderid, pharmacyOrders.orderid))
-      .where(eq(pharmacyOrders.workspaceid, workspaceid));
+      .where(ordersForFacility(workspaceid));
 
     // Today's sales
     const [todaySales] = await db
@@ -103,7 +104,7 @@ export async function GET(
       .innerJoin(pharmacyOrders, eq(invoices.orderid, pharmacyOrders.orderid))
       .where(
         and(
-          eq(pharmacyOrders.workspaceid, workspaceid),
+          ordersForFacility(workspaceid),
           gte(invoices.createdat, todayStart)
         )
       );
@@ -123,7 +124,7 @@ export async function GET(
       .from(pharmacyOrders)
       .where(
         and(
-          eq(pharmacyOrders.workspaceid, workspaceid),
+          ordersForFacility(workspaceid),
           eq(pharmacyOrders.status, "PENDING"),
           lt(pharmacyOrders.createdat, overdueThreshold)
         )
@@ -143,7 +144,7 @@ export async function GET(
       .from(pharmacyOrders)
       .where(
         and(
-          eq(pharmacyOrders.workspaceid, workspaceid),
+          ordersForFacility(workspaceid),
           sql`${pharmacyOrders.status} IN ('PENDING', 'IN_PROGRESS')`,
           sql`${pharmacyOrders.priority} IN ('urgent', 'stat')`
         )

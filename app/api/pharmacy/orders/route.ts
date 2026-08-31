@@ -17,6 +17,7 @@ import { getUser } from "@/lib/user";
 import { z } from "zod";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 
 // ── GET: list orders ──────────────────────────────────────────────────
 export async function GET(
@@ -40,7 +41,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    const conditions: any[] = [eq(pharmacyOrders.workspaceid, workspaceid)];
+    const conditions: any[] = [ordersForFacility(workspaceid)];
     if (status) conditions.push(eq(pharmacyOrders.status, status as any));
 
     const orders = await db
