@@ -33,9 +33,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { orderId } = await params;
 
-    // Only the record id is known here, so the owning facility is
-    // resolved first and membership decides whether to go on.
-    const workspaceid = await ownerWorkspaceOf("pharmacy_order", orderId);
+    // Which facility is asking. ownerWorkspaceOf answers "who raised this
+    // order", which is the prescriber - so for a prescription routed from a
+    // hospital to a pharmacy it named the hospital, and the pharmacist about
+    // to dispense it was refused as a non-member of somewhere they have never
+    // worked. A dispensing pharmacy could not open the order it had been sent.
+    //
+    // The caller names its own facility and proves membership of it, exactly
+    // as /api/pos/patients does. Row-level security then decides whether the
+    // order is theirs to see: its policy admits the sender and the dispensing
+    // facility, and nobody else, so a facility naming itself cannot reach an
+    // order that was never routed to it.
+    const claimed = request.nextUrl.searchParams.get("workspaceid");
+    const workspaceid = claimed ?? (await ownerWorkspaceOf("pharmacy_order", orderId));
     if (!workspaceid) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }

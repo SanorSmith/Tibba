@@ -161,7 +161,15 @@ export default function POSClientPage({
   const handlePatientSelect = useCallback(async (patientId: string) => {
     try {
       console.log("[POS] Fetching patient:", patientId);
-      const res = await fetch(`/api/pos/patients/${patientId}`);
+      // The facility has to be named: this route sits outside /d/[workspaceid]
+      // and refuses a request that does not say who is asking. It was never
+      // sent, so every patient lookup came back 403 and the caller returned
+      // early - which is why picking a patient loaded neither their details
+      // nor the prescriptions waiting for them, and the panel just read
+      // "No prescription loaded".
+      const res = await fetch(
+        `/api/pos/patients/${patientId}?workspaceid=${workspaceid}`
+      );
       if (!res.ok) {
         console.error("[POS] Patient API error:", res.status);
         return;
@@ -179,12 +187,14 @@ export default function POSClientPage({
     } catch (err) {
       console.error("[POS] Patient lookup failed:", err);
     }
-  }, []);
+  }, [workspaceid]);
 
   const handleOrderSelect = useCallback(async (orderId: string) => {
     try {
       console.log("[POS] Fetching order:", orderId);
-      const res = await fetch(`/api/pos/orders/${orderId}`);
+      const res = await fetch(
+        `/api/pos/orders/${orderId}?workspaceid=${workspaceid}`
+      );
       if (!res.ok) {
         console.error("[POS] Order API error:", res.status);
         return;
@@ -202,7 +212,7 @@ export default function POSClientPage({
     } catch (err) {
       console.error("[POS] Order lookup failed:", err);
     }
-  }, [patient]);
+  }, [patient, workspaceid]);
 
   // Cart operations
   const addToCart = useCallback((item: Omit<CartItem, "cartItemId">) => {
