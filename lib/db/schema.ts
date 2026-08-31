@@ -318,15 +318,6 @@ export const warehouseSections = pgTable("warehouse_sections", {
 
 // ─── Warehouse Stock ──────────────────────────────────────────────────────────
 
-export const warehouseStock = pgTable("warehouse_stock", {
-  id:          uuid("id").primaryKey().defaultRandom(),
-  warehouseid: uuid("warehouse_id").references(() => warehouses.id).notNull(),
-  sectionid:   uuid("section_id").references(() => warehouseSections.id),
-  drugid:      uuid("drug_id").references(() => drugs.drugid).notNull(),
-  quantity:    integer("quantity").notNull().default(0),
-  createdat:   timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
-
 // ─── Items (Universal Item Master) ───────────────────────────────────────────
 
 export const items = pgTable("items", {
@@ -848,7 +839,6 @@ export const drugsRelations = relations(drugs, ({ one, many }) => ({
   interactionsAsB: many(drugInteractions, { relationName: "drug_b" }),
   alternatives:    many(drugAlternatives, { relationName: "drug" }),
   dispensingLog:   many(dispensingLog),
-  warehouseStock:  many(warehouseStock),
   items:           many(items),
 }));
 
@@ -874,19 +864,11 @@ export const dispensingLogRelations = relations(dispensingLog, ({ one }) => ({
 
 export const warehousesRelations = relations(warehouses, ({ many }) => ({
   sections: many(warehouseSections),
-  stock:    many(warehouseStock),
   stores:   many(stores),
 }));
 
 export const warehouseSectionsRelations = relations(warehouseSections, ({ one, many }) => ({
   warehouse: one(warehouses, { fields: [warehouseSections.warehouseid], references: [warehouses.id] }),
-  stock:     many(warehouseStock),
-}));
-
-export const warehouseStockRelations = relations(warehouseStock, ({ one }) => ({
-  warehouse: one(warehouses, { fields: [warehouseStock.warehouseid], references: [warehouses.id] }),
-  section:   one(warehouseSections, { fields: [warehouseStock.sectionid], references: [warehouseSections.id] }),
-  drug:      one(drugs, { fields: [warehouseStock.drugid], references: [drugs.drugid] }),
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
