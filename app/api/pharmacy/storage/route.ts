@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       FROM warehouse_sections ws
       JOIN warehouses w ON w.id = ws.warehouse_id
       WHERE w.warehouse_type = 'pharmacy'
-        AND w.workspaceid = $2
+        AND w.workspace_id = $2
         AND ws.isactive = true
         AND ($1 = '' OR ws.sectionname ILIKE $1 OR ws.bin_location ILIKE $1)
       ORDER BY ws.sectionname`,
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     // section could be attached to another facility's warehouse.
     const whResult = await pool.query(
       `SELECT id FROM warehouses
-        WHERE warehouse_type = 'pharmacy' AND is_active = true AND workspaceid = $1
+        WHERE warehouse_type = 'pharmacy' AND is_active = true AND workspace_id = $1
         LIMIT 1`,
       [workspaceid]
     );

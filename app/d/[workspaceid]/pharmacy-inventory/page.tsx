@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AddDrugToPharmacyWizard } from "@/components/AddDrugToPharmacyWizard";
@@ -577,7 +577,47 @@ function ViewItemModal({ item, onClose, addToShopList, showToast }: { item: any;
 function BatchModal({ item, onClose }: { item: any; onClose: ()=>void }) {
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { fetch(`/api/pharmacy/items/${item.id}/batches`).then(r=>r.json()).then(d=>{setBatches(Array.isArray(d)?d:[]);setLoading(false);}); }, [item.id]);
+  // Correcting an expiry date, one batch at a time. The date is a fact read off
+  // the physical box, so the reason is required and the change is recorded -
+  // this is a correction, not a free edit, and it is deliberately a bit slow.
+  const [editingId, setEditingId]   = useState<string|null>(null);
+  const [editDate, setEditDate]     = useState("");
+  const [editReason, setEditReason] = useState("");
+  const [saving, setSaving]         = useState(false);
+  const [editError, setEditError]   = useState<string|null>(null);
+
+  const load = () => fetch(`/api/pharmacy/items/${item.id}/batches`).then(r=>r.json()).then(d=>{setBatches(Array.isArray(d)?d:[]);setLoading(false);});
+  useEffect(() => { load(); }, [item.id]);
+
+  function startEdit(b: any) {
+    setEditingId(b.id);
+    setEditDate(b.expiryDate ? new Date(b.expiryDate).toISOString().slice(0,10) : "");
+    setEditReason("");
+    setEditError(null);
+  }
+  function cancelEdit() { setEditingId(null); setEditReason(""); setEditError(null); }
+
+  async function saveExpiry(batchId: string) {
+    setSaving(true); setEditError(null);
+    try {
+      const res = await fetch(`/api/pharmacy/items/${item.id}/batches`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId, expiryDate: editDate || null, reason: editReason }),
+      });
+      const data = await res.json().catch(()=>({}));
+      // The endpoint refuses a missing reason and a date that has not moved.
+      // Say which, rather than failing silently the way the receive form did.
+      if (!res.ok) { setEditError(data?.error || "Could not save the expiry date"); return; }
+      setEditingId(null); setEditReason("");
+      await load();
+    } catch {
+      setEditError("Could not reach the server");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function batchStatus(b: any) {
     if (!b.expiryDate) return { label:"No Expiry", bg:"#f3f4f6", color:"#374151" };
     const days = Math.ceil((new Date(b.expiryDate).getTime()-Date.now())/86400000);
@@ -586,12 +626,13 @@ function BatchModal({ item, onClose }: { item: any; onClose: ()=>void }) {
     if (days<=90) return {label:`${days}d`,bg:"#fef3c7",color:"#92400e"};
     return {label:"OK",bg:"#d1fae5",color:"#065f46"};
   }
+  const reasonTooShort = editReason.trim().length < 10;
   return (
-    <div style={s.overlay}><div style={{...s.modal,width:780}}>
+    <div style={s.overlay}><div style={{...s.modal,width:880}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
           <h3 style={{fontSize:16,fontWeight:600,margin:0}}>{item.name}</h3>
-          <div style={{fontSize:12,color:"#6b7280",marginTop:2}}>{item.itemcode} · {item.uom} · Batch Viewer (FEFO order)</div>
+          <div style={{fontSize:12,color:"#6b7280",marginTop:2}}>{item.itemcode} · {item.uom} · Batches (FEFO order)</div>
         </div>
         <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer"}}><Icon d={icons.x} size={18} color="#6b7280"/></button>
       </div>
@@ -599,10 +640,11 @@ function BatchModal({ item, onClose }: { item: any; onClose: ()=>void }) {
       : batches.length===0 ? <div style={{padding:40,textAlign:"center",color:"#9ca3af"}}>No batches found</div>
       : <>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr>{["Batch No","Qty","Purchase Price","Selling Price","Expiry","Warehouse","Status"].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["Batch No","Qty","Purchase Price","Selling Price","Expiry","Warehouse","Status",""].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
           <tbody>
             {batches.map(b=>{const st=batchStatus(b); return (
-              <tr key={b.id}>
+              <Fragment key={b.id}>
+              <tr>
                 <td style={{...s.td,fontFamily:"monospace",fontWeight:600}}>{b.batchNumber??"—"}</td>
                 <td style={{...s.td,fontWeight:700,fontSize:15}}>{b.quantity}</td>
                 <td style={s.td}>{b.unitCost?`${parseFloat(b.unitCost).toFixed(2)} IQD`:"—"}</td>
@@ -610,7 +652,44 @@ function BatchModal({ item, onClose }: { item: any; onClose: ()=>void }) {
                 <td style={s.td}>{b.expiryDate?new Date(b.expiryDate).toLocaleDateString():"—"}</td>
                 <td style={{...s.td,fontSize:12}}>{b.warehouseName??"—"}</td>
                 <td style={s.td}><span style={{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:st.bg,color:st.color}}>{st.label}</span></td>
+                <td style={s.td}>
+                  {editingId===b.id
+                    ? <button onClick={cancelEdit} style={{background:"none",border:"none",color:"#6b7280",fontSize:11,cursor:"pointer",textDecoration:"underline"}}>Cancel</button>
+                    : <button onClick={()=>startEdit(b)} title="Correct the expiry date recorded for this batch" style={{background:"none",border:"none",color:"#2563eb",fontSize:11,cursor:"pointer",textDecoration:"underline"}}>Correct expiry</button>}
+                </td>
               </tr>
+              {editingId===b.id && (
+                <tr>
+                  <td colSpan={8} style={{padding:"12px 10px",background:"#f9fafb",borderBottom:"1px solid #e5e7eb"}}>
+                    <div style={{display:"flex",gap:12,alignItems:"flex-end",flexWrap:"wrap"}}>
+                      <div>
+                        <label style={{...s.label,display:"block",marginBottom:4}}>Expiry date</label>
+                        <input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} style={{...s.input,width:170}}/>
+                      </div>
+                      <div style={{flex:1,minWidth:280}}>
+                        <label style={{...s.label,display:"block",marginBottom:4}}>Reason (required, recorded)</label>
+                        <input
+                          type="text"
+                          value={editReason}
+                          onChange={e=>setEditReason(e.target.value)}
+                          placeholder="e.g. corrected against the date printed on the box"
+                          style={{...s.input,width:"100%"}}
+                        />
+                      </div>
+                      <button
+                        onClick={()=>saveExpiry(b.id)}
+                        disabled={saving||reasonTooShort}
+                        style={{...s.btn("purple"),opacity:(saving||reasonTooShort)?0.5:1,cursor:(saving||reasonTooShort)?"not-allowed":"pointer"}}
+                      >{saving?"Saving...":"Save correction"}</button>
+                    </div>
+                    <div style={{fontSize:11,color:"#6b7280",marginTop:8}}>
+                      An expiry date is read off the physical box. This change is recorded against the batch with your name and the reason above.
+                    </div>
+                    {editError && <div style={{fontSize:12,color:"#dc2626",marginTop:6}}>{editError}</div>}
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             );})}
           </tbody>
         </table>
