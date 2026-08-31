@@ -188,7 +188,11 @@ export function ShoppingCart({
                   {item.availableStock !== undefined && (aggregatedQuantities[item.drugName] > item.availableStock || item.availableStock === 0) && (
                     <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded px-2 py-1">
                       <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                      {item.availableStock === 0 ? 'Out of stock' : `Only ${item.availableStock} available (cart total: ${aggregatedQuantities[item.drugName]})`}
+                      {item.stockIssue === 'expired'
+                        ? `Expired${item.expiryDate ? ` ${new Date(item.expiryDate).toLocaleDateString()}` : ''} — ${item.expiredStock ?? 0} in stock, none dispensable`
+                        : item.availableStock === 0
+                        ? 'Out of stock'
+                        : `Only ${item.availableStock} available (cart total: ${aggregatedQuantities[item.drugName]})`}
                     </div>
                   )}
                 </div>
@@ -232,7 +236,9 @@ export function ShoppingCart({
               {hasInsufficientStock && (
                 <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded px-2 py-1.5">
                   <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                  Insufficient stock for checkout
+                  {items.some(i => i.stockIssue === 'expired')
+                    ? 'Expired stock cannot be dispensed'
+                    : 'Insufficient stock for checkout'}
                 </div>
               )}
               <Button

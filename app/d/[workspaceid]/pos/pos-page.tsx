@@ -44,6 +44,11 @@ export type CartItem = {
   prescribedQuantity?: number;
   quantitydispensed?: number;
   availableStock?: number;
+  // Why availableStock is 0, when there is a reason worth naming. "expired"
+  // means the shelf is not empty - the stock on it is past its expiry date -
+  // so the cart can say that instead of the misleading "Out of stock".
+  stockIssue?: "expired";
+  expiredStock?: number;
 };
 
 type ShiftData = {

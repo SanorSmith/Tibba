@@ -210,6 +210,53 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
               console.log('[PrescriptionItems] Added item to cart:', item.drugname, 'Batch:', selectedBatch.batchNumber);
               return;
             }
+
+            // Stock is on the shelf, but every batch of it has expired. Add
+            // the line anyway so the cashier sees the drug and the reason -
+            // priced from the real batch rather than the invented default
+            // below, which is what made an expired 2,500 IQD box read as
+            // 10,000. The cart still blocks checkout on availableStock 0:
+            // expired medicine must not be dispensed, only explained.
+            const expiredBatch = selectedItem.expiredBatches?.[0] ?? null;
+            if (expiredBatch) {
+              const price = expiredBatch.sellingPrice
+                ? parseFloat(expiredBatch.sellingPrice)
+                : resolvePrice(item);
+              const quantity = (item.quantity || 0) - (item.quantitydispensed || 0);
+
+              onAddToCart({
+                drugId: item.drugid,
+                drugName: item.drugname,
+                genericName: item.genericname,
+                form: item.form,
+                strength: item.strength,
+                batchId: expiredBatch.batchId,
+                lotNumber: expiredBatch.batchNumber,
+                expiryDate: expiredBatch.expiryDate,
+                quantity: quantity,
+                unitPrice: price,
+                discountPercent: 0,
+                discountAmount: 0,
+                taxAmount: 0,
+                totalAmount: price * quantity,
+                pharmacyOrderItemId: item.itemid,
+                prescribedQuantity: item.quantity,
+                quantitydispensed: item.quantitydispensed,
+                availableStock: 0,
+                stockIssue: 'expired',
+                expiredStock: selectedItem.expiredStock,
+              });
+
+              console.log(
+                '[PrescriptionItems] Added item to cart (expired stock only):',
+                item.drugname,
+                'Batch:',
+                expiredBatch.batchNumber,
+                'expired',
+                expiredBatch.expiryDate
+              );
+              return;
+            }
           }
         }
       }

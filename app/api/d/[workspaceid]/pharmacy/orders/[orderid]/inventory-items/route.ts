@@ -70,16 +70,22 @@ export async function GET(
         )
       );
 
-    // Filter to only show batches with stock and not expired
-    const availableItems = inventoryItems.filter(item => {
-      const hasStock = item.stockQuantity && item.stockQuantity > 0;
-      const notExpired = !item.expiryDate || new Date(item.expiryDate) > new Date();
-      return hasStock && notExpired;
-    });
+    // Everything actually sitting on the shelf. Expiry decides whether that
+    // stock may be dispensed - it must not decide whether the row is reported
+    // at all. Dropping expired batches here left the caller unable to tell
+    // "we hold none of this" from "all we hold has expired", and both arrived
+    // at the POS as a bare "Out of stock" while the inventory screen showed
+    // the same batch as 400 units in green. The pharmacist was right to find
+    // that contradictory: the stock is there, it just cannot be sold.
+    const stockedRows = inventoryItems.filter(
+      item => (item.stockQuantity ?? 0) > 0
+    );
 
-    // Group by item and calculate total stock
+    const now = new Date();
+
+    // Group by item, keeping dispensable and expired stock apart.
     const itemMap = new Map();
-    availableItems.forEach(item => {
+    stockedRows.forEach(item => {
       const key = item.itemId;
       if (!itemMap.has(key)) {
         itemMap.set(key, {
@@ -94,28 +100,42 @@ export async function GET(
           form: item.form,
           strength: item.strength,
           totalStock: 0,
+          expiredStock: 0,
           batches: [],
+          expiredBatches: [],
         });
       }
       const itemData = itemMap.get(key);
-      itemData.totalStock += (item.stockQuantity || 0);
-      itemData.batches.push({
+      const expired = !!item.expiryDate && new Date(item.expiryDate) <= now;
+      const batch = {
         batchId: item.batchId,
         batchNumber: item.batchNumber,
         expiryDate: item.expiryDate,
         sellingPrice: item.sellingPrice,
         unitCost: item.unitCost,
         quantity: item.stockQuantity,
-      });
+        expired,
+      };
+      if (expired) {
+        itemData.expiredStock += (item.stockQuantity || 0);
+        itemData.expiredBatches.push(batch);
+      } else {
+        // `batches` stays dispensable-only, exactly as before, so a caller
+        // that reaches for batches[0] can never land on expired stock.
+        itemData.totalStock += (item.stockQuantity || 0);
+        itemData.batches.push(batch);
+      }
     });
 
     // Sort by FIFO (earliest expiry first)
+    const byExpiry = (a: any, b: any) => {
+      const dateA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
+      const dateB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
+      return dateA - dateB;
+    };
     itemMap.forEach(item => {
-      item.batches.sort((a: any, b: any) => {
-        const dateA = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
-        const dateB = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
-        return dateA - dateB;
-      });
+      item.batches.sort(byExpiry);
+      item.expiredBatches.sort(byExpiry);
     });
 
     return NextResponse.json({
