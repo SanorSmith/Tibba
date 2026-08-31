@@ -196,7 +196,21 @@ export async function POST(request: NextRequest) {
         }
 
         // Resolve drugId: use item.drugId, or look up from pharmacy order item, or find by name
+        //
+        // drugid is a foreign key to `drugs`, and item.drugId arrives from the
+        // browser. The POS briefly sent an items id here, and every checkout of
+        // such a line died inside the transaction with "Key is not present in
+        // table drugs" - surfacing to the cashier as a bare "Checkout failed".
+        // A caller-supplied id is checked against the table it points at before
+        // it is trusted; an id that is not a drug is treated as no id, which the
+        // lookups below already know how to handle.
         let resolvedDrugId = item.drugId;
+        if (resolvedDrugId) {
+          const known = await tx.execute(sql`
+            SELECT 1 FROM drugs WHERE drugid::text = ${String(resolvedDrugId)} LIMIT 1
+          `);
+          if (!((known as any)?.length)) resolvedDrugId = null;
+        }
         if (!resolvedDrugId && item.pharmacyOrderItemId) {
           const [orderItem] = await tx
             .select({ drugid: pharmacyOrderItems.drugid })

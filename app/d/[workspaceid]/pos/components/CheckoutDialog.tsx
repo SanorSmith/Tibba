@@ -203,8 +203,16 @@ export function CheckoutDialog({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Checkout failed");
+        const data = await res.json().catch(() => ({}));
+        // The route returns the real cause in `details`; only `error` was
+        // shown, so every failure read "Checkout failed" and said nothing
+        // about why - a foreign key violation and a missing shift looked
+        // identical to the cashier.
+        throw new Error(
+          [data?.error || "Checkout failed", data?.details]
+            .filter(Boolean)
+            .join(": ")
+        );
       }
 
       const data = await res.json();

@@ -198,7 +198,14 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
               onAddToCart({
                 // The prescription may carry no drug id at all; fall back to
                 // the id of the item this pharmacy actually matched.
-                drugId: item.drugid || selectedItem.drugId || selectedItem.itemId,
+                // The prescription may carry no drug id at all. Fall back to
+                // the matched item's *drug* id and nothing further: I had
+                // selectedItem.itemId here, which is an items id, and
+                // pos_sale_items.drugid is a foreign key to drugs - so every
+                // checkout of such a line died on "Key is not present in
+                // table drugs". Empty means unknown, and the checkout route
+                // resolves it from the order line or by name.
+                drugId: item.drugid || selectedItem.drugId || "",
                 drugName: item.drugname,
                 genericName: item.genericname,
                 form: item.form,
@@ -238,7 +245,14 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
               onAddToCart({
                 // The prescription may carry no drug id at all; fall back to
                 // the id of the item this pharmacy actually matched.
-                drugId: item.drugid || selectedItem.drugId || selectedItem.itemId,
+                // The prescription may carry no drug id at all. Fall back to
+                // the matched item's *drug* id and nothing further: I had
+                // selectedItem.itemId here, which is an items id, and
+                // pos_sale_items.drugid is a foreign key to drugs - so every
+                // checkout of such a line died on "Key is not present in
+                // table drugs". Empty means unknown, and the checkout route
+                // resolves it from the order line or by name.
+                drugId: item.drugid || selectedItem.drugId || "",
                 drugName: item.drugname,
                 genericName: item.genericname,
                 form: item.form,
