@@ -93,6 +93,33 @@ export async function POST(req: NextRequest) {
         RETURNING supplierid AS id, name, code, contactperson AS "contactPerson", email,
                   phonenumber AS phone, addressline1 AS address, category, type
       `)) as unknown as Row[];
+
+      // Procurement reads a different table. Its "Select supplier" dropdown,
+      // its purchase orders and its goods receipts are all built on `vendors`
+      // - pharmacy_purchase_orders.supplier_id and pharmacy_orders.vendorid
+      // are foreign keys to it - so a supplier registered only here was
+      // invisible the moment the pharmacist went to order from them, with
+      // nothing on either screen saying the two lists were different.
+      //
+      // Registering a supplier therefore registers the vendor too. Guarded by
+      // name so registering an existing supplier again does not duplicate it.
+      //
+      // This mirrors rather than unifies, which is a wart worth removing: one
+      // supplier belongs in one table. Doing that properly means migrating
+      // four foreign keys, so the bridge stands until then.
+      await db.execute(sql`
+        INSERT INTO vendors (id, workspaceid, name, code, contactname, phone,
+                             email, address, isactive, createdat, updatedat)
+        SELECT gen_random_uuid(), ${workspaceid}::uuid, ${name}, ${supplierCode},
+               ${contactPerson ?? null}, ${phone ?? null}, ${email ?? null},
+               ${address ?? null}, true, NOW(), NOW()
+        WHERE NOT EXISTS (
+          SELECT 1 FROM vendors v
+           WHERE v.workspaceid = ${workspaceid}::uuid
+             AND lower(trim(v.name)) = lower(trim(${name}))
+        )
+      `);
+
       return NextResponse.json(rows[0]);
     });
   } catch (error) {

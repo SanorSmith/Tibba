@@ -134,36 +134,25 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
   const isInCart = (itemId: string) =>
     cartItems.some((c) => c.pharmacyOrderItemId === itemId);
 
+  // A price this pharmacy actually recorded, or nothing.
+  //
+  // This used to end in a ladder of invented figures - 15,000 for anything
+  // whose form mentioned injection, 8,500 for tablets, 10,000 for everything
+  // else - so a line the pharmacy had never priced still showed a confident
+  // number in green. That is how a 2,500 IQD box came to be rung up at 10,000,
+  // and how three unrelated drugs all displayed the same 10,000 on one screen.
+  // A guessed price on a dispensing counter is worse than no price: it is
+  // wrong, and it does not look wrong.
+  //
+  // 0 means "not known". The table prints "Price not determined" for it and
+  // the line cannot be added, so nothing is sold at a number nobody set.
   const resolvePrice = (item: OrderItem): number => {
-    // Debug: Log all available price fields
-    console.log(`[PrescriptionItems Price Debug] ${item.drugname}:`, {
-      unitprice: item.unitprice,
-      sellingprice: item.sellingprice,
-      unitcost: item.unitcost,
-      directFetchedPrice: itemPrices[item.itemid]
-    });
-
-    // Prioritize direct fetched price for ILoprost (database connection)
-    if (item.drugname.includes('ILoprost') && itemPrices[item.itemid]) {
-      console.log(`[Direct Price] Using fetched price: ${itemPrices[item.itemid]} for ${item.drugname}`);
-      return itemPrices[item.itemid];
-    }
-
-    // Prioritize pharmacy order unitprice
+    const fetched = itemPrices[item.itemid];
+    if (fetched && fetched > 0) return fetched;
     if (item.unitprice && parseFloat(item.unitprice) > 0) return parseFloat(item.unitprice);
-    
-    // Then try selling price from unified inventory system (item_batches)
     if (item.sellingprice && parseFloat(item.sellingprice) > 0) return parseFloat(item.sellingprice);
-    
-    // Fallback: unit cost from item_batches
     if (item.unitcost && parseFloat(item.unitcost) > 0) return parseFloat(item.unitcost);
-
-    // Only use hardcoded fallback as last resort
-    const form = item.form?.toLowerCase() || '';
-    if (form.includes('injection')) return 15000; // 15,000 IQD for injections
-    if (form.includes('tablet') || form.includes('capsule')) return 8500; // 8,500 IQD for tablets/capsules  
-    if (form.includes('syrup') || form.includes('suspension')) return 5000; // 5,000 IQD for liquids
-    return 10000; // 10,000 IQD default for other forms
+    return 0;
   };
 
   const addItem = async (item: OrderItem) => {
@@ -316,9 +305,12 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
     }
   };
 
+  // Skips anything with no recorded price, for the same reason the row's own
+  // button is disabled: "Add All" must not be the way an unpriced line slips
+  // into a sale.
   const addAll = () => {
     items.forEach((item) => {
-      if (!isInCart(item.itemid)) addItem(item);
+      if (!isInCart(item.itemid) && resolvePrice(item) > 0) addItem(item);
     });
   };
 
@@ -408,10 +400,18 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
                     <TableCell className="text-center text-sm">
                       {(item.quantity || 0) - (item.quantitydispensed || 0)}
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium text-green-700">
-                      {price > 0
-                        ? `${price.toLocaleString()} IQD`
-                        : "Price not determined"}
+                    <TableCell
+                      className={`text-right text-sm font-medium ${
+                        price > 0 ? "text-green-700" : "text-amber-600"
+                      }`}
+                    >
+                      {price > 0 ? (
+                        `${price.toLocaleString()} IQD`
+                      ) : (
+                        <span title="No selling price is recorded for this medicine in this pharmacy. Set one in Inventory before dispensing it.">
+                          No price set
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {inCart ? (
@@ -422,6 +422,12 @@ export function PrescriptionItems({ order, onAddToCart, cartItems, workspaceid, 
                           variant="ghost"
                           className="h-7 w-7 p-0"
                           onClick={() => addItem(item)}
+                          disabled={price <= 0}
+                          title={
+                            price > 0
+                              ? "Add to cart"
+                              : "Set a selling price for this medicine in Inventory before dispensing it"
+                          }
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
