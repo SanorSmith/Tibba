@@ -9,15 +9,17 @@
  * query returns names and ids only — no clinical or financial data crosses a
  * facility boundary here.
  *
- * `hospital` is included alongside the pharmacy types because a hospital
- * dispenses its own prescriptions; Alis is one, and it is where every
- * prescription written so far has been filed.
+ * Pharmacy workspaces only. This first listed hospitals too, on the reasoning
+ * that a hospital dispenses its own prescriptions — but no hospital here is a
+ * pharmacy workspace, so sending an order to one files it where nothing can
+ * dispense it. A hospital that wants to fill its own prescriptions needs a
+ * pharmacy workspace of its own, and it will then appear here by name.
  */
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { db } from "@/lib/db";
 import { workspaces } from "@/lib/db/schema";
-import { and, or, eq, ilike } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -34,13 +36,7 @@ export async function GET() {
       })
       .from(workspaces)
       .where(
-        and(
-          or(
-            ilike(workspaces.type, "pharmacy"),
-            ilike(workspaces.type, "hospital"),
-          ),
-          eq(workspaces.isactive, true),
-        ),
+        and(ilike(workspaces.type, "pharmacy"), eq(workspaces.isactive, true)),
       )
       .orderBy(workspaces.name);
 

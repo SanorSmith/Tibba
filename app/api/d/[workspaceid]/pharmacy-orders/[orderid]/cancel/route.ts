@@ -13,6 +13,7 @@ import { eq, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { facilityHandlesOrder } from "@/lib/pharmacy/order-access";
 
 type RouteParams = { params: Promise<{ workspaceid: string; orderid: string }> };
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .where(eq(pharmacyOrders.orderid, orderid))
       .limit(1);
 
-    if (!order || order.workspaceid !== workspaceid) {
+    if (!order || !facilityHandlesOrder(order, workspaceid)) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 

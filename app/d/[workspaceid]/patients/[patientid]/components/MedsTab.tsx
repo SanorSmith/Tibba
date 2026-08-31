@@ -98,6 +98,31 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
       .then((d) => setPharmacies(Array.isArray(d.pharmacies) ? d.pharmacies : []))
       .catch(() => setPharmacies([]));
   }, []);
+
+  // A prescription has to land somewhere that can dispense it. Only pharmacy
+  // workspaces can, so "this facility" is a valid destination only when the
+  // prescriber is sitting in one; a doctor at a hospital has to name a pharmacy.
+  const prescriberIsPharmacy = pharmacies.some(
+    (p) => p.workspaceid === workspaceid,
+  );
+  // The pharmacy this doctor usually sends to, remembered on their profile so
+  // the picker opens on it. Applied only once the list has loaded and only if
+  // it is still there, so a closed pharmacy cannot quietly stay the default.
+  const [savedPharmacyId, setSavedPharmacyId] = useState<string | null>(null);
+  const [rememberPharmacy, setRememberPharmacy] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/user/default-pharmacy?workspaceid=${workspaceid}`)
+      .then((r) => r.json())
+      .then((d) => setSavedPharmacyId(d?.pharmacyWorkspaceId ?? null))
+      .catch(() => setSavedPharmacyId(null));
+  }, [workspaceid]);
+
+  useEffect(() => {
+    if (savedPharmacyId && pharmacies.some((p) => p.workspaceid === savedPharmacyId)) {
+      setDispensingPharmacyId(savedPharmacyId);
+    }
+  }, [savedPharmacyId, pharmacies]);
   const [medicationSummaryData, setMedicationSummaryData] = useState<any>(null);
   const [showMedicationSummary, setShowMedicationSummary] = useState(false);
   const [medicationsList, setMedicationsList] = useState<typeof prescriptionForm[]>([]);
@@ -501,6 +526,14 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
       return;
     }
 
+    if (!dispensingPharmacyId && !prescriberIsPharmacy) {
+      showToast(
+        "Choose the pharmacy that should dispense this prescription",
+        "error",
+      );
+      return;
+    }
+
     try {
       const res = await fetch(
         `/api/d/${workspaceid}/patients/${patientid}/prescriptions`,
@@ -519,6 +552,18 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
         await loadPrescriptions();
         setShowPrescriptionForm(false);
         setMedicationsList([]);
+        // Only when the doctor asked for it, and never in a way that can fail the
+        // prescription that was just accepted.
+        if (rememberPharmacy) {
+          fetch("/api/user/default-pharmacy", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workspaceid,
+              pharmacyWorkspaceId: dispensingPharmacyId || null,
+            }),
+          }).catch(() => {});
+        }
         resetPrescriptionForm();
       } else {
         const data = await res.json();
@@ -1226,13 +1271,24 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                   value={dispensingPharmacyId}
                   onChange={(e) => setDispensingPharmacyId(e.target.value)}
                 >
-                  <option value="">This facility</option>
+                  <option value="">
+                    {prescriberIsPharmacy ? "This facility" : "Select a pharmacy…"}
+                  </option>
                   {pharmacies.map((p) => (
                     <option key={p.workspaceid} value={p.workspaceid}>
                       {p.name}
                     </option>
                   ))}
                 </select>
+                <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={rememberPharmacy}
+                    onChange={(e) => setRememberPharmacy(e.target.checked)}
+                  />
+                  Remember for next time
+                </label>
               </div>
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"

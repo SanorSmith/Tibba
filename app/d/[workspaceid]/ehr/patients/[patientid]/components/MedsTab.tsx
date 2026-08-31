@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -140,6 +140,45 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
 
   // Whether we are viewing active prescriptions or history (expired)
   const [showHistory, setShowHistory] = useState(false);
+
+  // Where the prescription is dispensed. Without this the order is stamped
+  // with the prescriber's own facility and only that facility can read it,
+  // so a prescription written at a hospital reaches no pharmacy at all.
+  const [pharmacies, setPharmacies] = useState<
+    { workspaceid: string; name: string; type: string }[]
+  >([]);
+  const [dispensingPharmacyId, setDispensingPharmacyId] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/workspaces/pharmacies")
+      .then((r) => r.json())
+      .then((d) => setPharmacies(Array.isArray(d.pharmacies) ? d.pharmacies : []))
+      .catch(() => setPharmacies([]));
+  }, []);
+
+  // Only a pharmacy workspace can dispense, so "this facility" is a valid
+  // destination only when the prescriber is sitting in one.
+  const prescriberIsPharmacy = pharmacies.some(
+    (p) => p.workspaceid === workspaceid,
+  );
+  // The pharmacy this doctor usually sends to, remembered on their profile so
+  // the picker opens on it. Applied only once the list has loaded and only if
+  // it is still there, so a closed pharmacy cannot quietly stay the default.
+  const [savedPharmacyId, setSavedPharmacyId] = useState<string | null>(null);
+  const [rememberPharmacy, setRememberPharmacy] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/user/default-pharmacy?workspaceid=${workspaceid}`)
+      .then((r) => r.json())
+      .then((d) => setSavedPharmacyId(d?.pharmacyWorkspaceId ?? null))
+      .catch(() => setSavedPharmacyId(null));
+  }, [workspaceid]);
+
+  useEffect(() => {
+    if (savedPharmacyId && pharmacies.some((p) => p.workspaceid === savedPharmacyId)) {
+      setDispensingPharmacyId(savedPharmacyId);
+    }
+  }, [savedPharmacyId, pharmacies]);
 
   return (
     <>
@@ -653,6 +692,35 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
               >
                 Cancel
               </Button>
+              <div className="flex items-center gap-2 mr-auto">
+                <label htmlFor="dispensing-pharmacy" className="text-sm text-muted-foreground">
+                  Send to
+                </label>
+                <select
+                  id="dispensing-pharmacy"
+                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={dispensingPharmacyId}
+                  onChange={(e) => setDispensingPharmacyId(e.target.value)}
+                >
+                  <option value="">
+                    {prescriberIsPharmacy ? "This facility" : "Select a pharmacy…"}
+                  </option>
+                  {pharmacies.map((p) => (
+                    <option key={p.workspaceid} value={p.workspaceid}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={rememberPharmacy}
+                    onChange={(e) => setRememberPharmacy(e.target.checked)}
+                  />
+                  Remember for next time
+                </label>
+              </div>
               <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={async () => {
@@ -669,6 +737,13 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                     return;
                   }
 
+                  if (!dispensingPharmacyId && !prescriberIsPharmacy) {
+                    alert(
+                      "Choose the pharmacy that should dispense this prescription"
+                    );
+                    return;
+                  }
+
                   try {
                     const res = await fetch(
                       `/api/d/${workspaceid}/patients/${patientid}/prescriptions`,
@@ -677,6 +752,8 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           prescription: prescriptionForm,
+                          // Empty means dispense here, which only a pharmacy can do.
+                          target_pharmacy_workspace_id: dispensingPharmacyId || null,
                         }),
                       }
                     );
@@ -684,6 +761,18 @@ export function MedsTab({ workspaceid, patientid, prescriptions, loadingPrescrip
                     if (res.ok) {
                       await loadPrescriptions();
                       setShowPrescriptionForm(false);
+                      // Only when the doctor asked for it, and never in a way that can fail the
+                      // prescription that was just accepted.
+                      if (rememberPharmacy) {
+                        fetch("/api/user/default-pharmacy", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            workspaceid,
+                            pharmacyWorkspaceId: dispensingPharmacyId || null,
+                          }),
+                        }).catch(() => {});
+                      }
                       setPrescriptionForm({
                         medicationItem: "",
                         medicationItemCode: "",

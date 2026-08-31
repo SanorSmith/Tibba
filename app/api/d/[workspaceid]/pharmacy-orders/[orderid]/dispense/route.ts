@@ -20,6 +20,7 @@ import { createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { patients } from "@/lib/db/tables/patient";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { facilityHandlesOrder } from "@/lib/pharmacy/order-access";
 import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 import { pool } from "@/lib/db/pool";
 
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       notes: order.notes
     });
 
-    if (!order || order.workspaceid !== workspaceid) {
+    if (!order || !facilityHandlesOrder(order, workspaceid)) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 

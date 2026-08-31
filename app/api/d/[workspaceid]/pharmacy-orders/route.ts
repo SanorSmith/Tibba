@@ -23,6 +23,7 @@ import { z } from "zod";
 import { getOpenEHREHRBySubjectId, createOpenEHRComposition } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 
 // ── Helper: Select optimal batch using FIFO/expiry logic ──────────────
 async function selectOptimalBatch(drugid: string, requiredQty: number) {
@@ -109,7 +110,9 @@ export async function GET(
     const search = searchParams.get("search");
 
     // Build base conditions for pharmacy orders table
-    const baseConditions: any[] = [eq(pharmacyOrders.workspaceid, workspaceid)];
+    // Both this facility's own orders and the ones other facilities sent here
+    // to be dispensed. Filtering on the prescriber alone hid every routed order.
+    const baseConditions: any[] = [ordersForFacility(workspaceid)];
     if (status) baseConditions.push(eq(pharmacyOrders.status, status as any));
 
     // Run all queries in parallel for better performance

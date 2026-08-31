@@ -9,6 +9,7 @@ import { createMedicationDispenseComposition, MEDICATION_DISPENSE_ACTION_STATES 
 import { createOpenEHRComposition, getOpenEHREHRBySubjectId } from "@/lib/openehr/openehr";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 import { recordCompositionOwner } from "@/lib/openehr/composition-ownership";
 
 /**
@@ -70,7 +71,8 @@ export async function POST(
       .where(
         and(
           eq(pharmacyOrders.orderid, orderid),
-          eq(pharmacyOrders.workspaceid, workspaceid)
+          // Either the facility that wrote it or the one it was sent to.
+          ordersForFacility(workspaceid)
         )
       )
       .limit(1));

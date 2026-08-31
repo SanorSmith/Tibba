@@ -22,6 +22,7 @@ import { asc, gt } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { facilityHandlesOrder } from "@/lib/pharmacy/order-access";
 import { pool } from "@/lib/db/pool";
 
 type RouteParams = { params: Promise<{ workspaceid: string; orderid: string }> };
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .where(eq(pharmacyOrders.orderid, orderid))
       .limit(1);
 
-    if (!orderData || orderData.order.workspaceid !== workspaceid) {
+    if (!orderData || !facilityHandlesOrder(orderData.order, workspaceid)) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 

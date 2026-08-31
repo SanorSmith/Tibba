@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { getUser } from "@/lib/user";
 import { isWorkspaceMember } from "@/lib/lims/require-membership";
 import { withTenant } from "@/lib/db/tenant";
+import { ordersForFacility } from "@/lib/pharmacy/order-access";
 
 export async function GET(
   request: NextRequest,
@@ -33,7 +34,7 @@ export async function GET(
         count: sql<number>`count(*)::int`,
       })
       .from(pharmacyOrders)
-      .where(eq(pharmacyOrders.workspaceid, workspaceid))
+      .where(ordersForFacility(workspaceid))
       .groupBy(pharmacyOrders.status);
 
     // Calculate totals

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/user";
 import { getUserWorkspaces } from "@/lib/db/queries/workspace";
 import { db } from "@/lib/db";
-import { patients, pharmacyOrders, pharmacyOrderItems, drugs } from "@/lib/db/schema";
+import { patients, pharmacyOrders, pharmacyOrderItems, drugs, workspaces as workspacesTable } from "@/lib/db/schema";
 import { eq, ilike } from "drizzle-orm";
 import { UserWorkspace } from "@/lib/db/tables/workspace";
 import { getOpenEHREHRBySubjectId, createOpenEHRComposition, getOpenEHRPrescriptions } from "@/lib/openehr/openehr";
@@ -150,6 +150,30 @@ export async function POST(
     if (prescriptions.length === 0) {
       return NextResponse.json(
         { error: "No prescriptions provided" },
+        { status: 400 }
+      );
+    }
+
+    // Only a pharmacy workspace can dispense. Enforced here and not just in
+    // the form, because an order filed against a hospital is one no pharmacy
+    // will ever read - the state Salam ALI's first two prescriptions sat in.
+    const dispensingTargetId = dispensingWorkspaceId ?? workspaceid;
+    const [dispensingWorkspace] = await db
+      .select({ type: workspacesTable.type, isactive: workspacesTable.isactive })
+      .from(workspacesTable)
+      .where(eq(workspacesTable.workspaceid, dispensingTargetId))
+      .limit(1);
+
+    if (
+      !dispensingWorkspace ||
+      !dispensingWorkspace.isactive ||
+      String(dispensingWorkspace.type).toLowerCase() !== "pharmacy"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "A prescription has to be sent to a pharmacy. Choose the pharmacy that should dispense it.",
+        },
         { status: 400 }
       );
     }
@@ -429,7 +453,7 @@ export async function POST(
             .insert(pharmacyOrders)
             .values({
               workspaceid: workspaceid,
-              dispensingworkspaceid: dispensingWorkspaceId ?? workspaceid,
+              dispensingworkspaceid: dispensingTargetId,
               patientid: patientid,
               prescriberid: user.userid,
               status: "PENDING",
