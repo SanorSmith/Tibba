@@ -60,10 +60,12 @@ type ShiftData = {
 
 export default function POSClientPage({
   workspaceid,
+  workspaceName,
   userName,
   userId,
 }: {
   workspaceid: string;
+  workspaceName: string;
   userName: string;
   userId: string;
 }) {
@@ -432,6 +434,8 @@ export default function POSClientPage({
         saleType={saleType}
         shiftId={currentShift?.shiftid || null}
         workspaceId={workspaceid}
+        workspaceName={workspaceName}
+        cashierName={userName}
         onSuccess={clearAll}
       />
 

@@ -52,6 +52,8 @@ type Props = {
   saleType: string;
   shiftId: string | null;
   workspaceId: string;
+  workspaceName: string;
+  cashierName: string;
   onSuccess: () => void;
 };
 
@@ -68,6 +70,8 @@ export function CheckoutDialog({
   saleType,
   shiftId,
   workspaceId,
+  workspaceName,
+  cashierName,
   onSuccess,
 }: Props) {
   const router = useRouter();
@@ -79,10 +83,34 @@ export function CheckoutDialog({
   const [cardTransactionId, setCardTransactionId] = useState("");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Everything the receipt needs, frozen at the moment the sale completes.
+  //
+  // The receipt used to render straight from the live POS state - `cart`,
+  // `subtotal`, `total`, `payments`, `patient`. Completing a sale clears that
+  // state (onSuccess -> clearAll), so once it had been cleared the receipt
+  // printed an empty item list and 0.00 totals against a real cash figure,
+  // because `cashReceived` is local to this dialog and survived. A receipt is
+  // a record of what was sold; reading it from state that is deliberately
+  // emptied afterwards can only ever be a race.
+  //
+  // The totals come from the sale the server actually recorded, not from the
+  // figures this dialog posted, so the paper agrees with the books.
   const [success, setSuccess] = useState<{
     saleNumber: string;
     change: number;
     saleData?: any;
+    items: CartItem[];
+    subtotal: number;
+    taxAmount: number;
+    discountAmount: number;
+    total: number;
+    paidAmount: number;
+    paymentMethod: string;
+    cashReceived: number | null;
+    patientName: string | null;
+    patientId: string | null;
+    orderId: string | null;
+    saleDate: string;
   } | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -153,10 +181,31 @@ export function CheckoutDialog({
       }
 
       const data = await res.json();
+      const num = (v: unknown, fallback: number) => {
+        const n = parseFloat(String(v));
+        return Number.isFinite(n) ? n : fallback;
+      };
       setSuccess({
         saleNumber: data.saleNumber,
-        change: parseFloat(data.sale.changeamount),
+        change: num(data.sale?.changeamount, change),
         saleData: data.sale,
+        // Snapshot: taken before anything upstream can clear the cart.
+        items: cart,
+        subtotal: num(data.sale?.subtotal, subtotal),
+        taxAmount: num(data.sale?.taxamount, taxAmount),
+        discountAmount: num(data.sale?.discountamount, discountAmount),
+        total: num(data.sale?.totalamount, total),
+        paidAmount: num(data.sale?.paidamount, paymentsTotal),
+        paymentMethod: payments[0]?.method ?? "CASH",
+        cashReceived:
+          payments[0]?.method === "CASH" ? num(cashReceived, 0) : null,
+        patientName: patient?.patient
+          ? `${patient.patient.firstname ?? ""} ${patient.patient.lastname ?? ""}`.trim()
+          : null,
+        patientId: patient?.patient?.patientid ?? null,
+        orderId: dispensedOrder?.order?.orderid ?? null,
+        // The sale's own timestamp, not the moment the paper came out.
+        saleDate: data.sale?.saledate ?? new Date().toISOString(),
       });
     } catch (err: any) {
       setError(err.message || "Checkout failed");
@@ -337,12 +386,9 @@ export function CheckoutDialog({
             <div ref={receiptRef} className="hidden">
               <div className="header">
                 <h1>PHARMACY RECEIPT</h1>
-                <p>Tibbna Pharmacy</p>
-                <p>License: PH-2024-001</p>
-                <p>Address: Baghdad, Iraq</p>
-                <p>Tel: +964 780 000 0000</p>
+                <p>{workspaceName}</p>
               </div>
-              
+
               <div className="info">
                 <div className="info-row">
                   <span>Receipt #:</span>
@@ -350,28 +396,28 @@ export function CheckoutDialog({
                 </div>
                 <div className="info-row">
                   <span>Date:</span>
-                  <span>{new Date().toLocaleString()}</span>
+                  <span>{new Date(success.saleDate).toLocaleString()}</span>
                 </div>
                 <div className="info-row">
                   <span>Cashier:</span>
-                  <span>POS-{workspaceId.slice(0, 8)}</span>
+                  <span>{cashierName}</span>
                 </div>
-                {patient?.patient && (
+                {success.patientName && (
                   <>
                     <div className="info-row">
                       <span>Patient:</span>
-                      <span>{patient.patient.firstname} {patient.patient.lastname}</span>
+                      <span>{success.patientName}</span>
                     </div>
                     <div className="info-row">
                       <span>Patient ID:</span>
-                      <span>{patient.patient.patientid?.slice(0, 8)}...</span>
+                      <span>{success.patientId?.slice(0, 8)}...</span>
                     </div>
                   </>
                 )}
-                {dispensedOrder?.order?.orderid && (
+                {success.orderId && (
                   <div className="info-row">
                     <span>Order #:</span>
-                    <span>{dispensedOrder.order.orderid?.slice(0, 8)}...</span>
+                    <span>{success.orderId.slice(0, 8)}...</span>
                   </div>
                 )}
               </div>
@@ -382,7 +428,7 @@ export function CheckoutDialog({
                   <span className="item-qty">Qty</span>
                   <span className="item-price">Price</span>
                 </div>
-                {cart.map((item, idx) => (
+                {success.items.map((item, idx) => (
                   <div key={idx} className="item">
                     <span className="item-name">{item.drugName}</span>
                     <span className="item-qty">{item.quantity}</span>
@@ -394,35 +440,35 @@ export function CheckoutDialog({
               <div className="totals">
                 <div className="total-row">
                   <span>Subtotal:</span>
-                  <span>{subtotal.toFixed(2)} IQD</span>
+                  <span>{success.subtotal.toFixed(2)} IQD</span>
                 </div>
-                {discountAmount > 0 && (
+                {success.discountAmount > 0 && (
                   <div className="total-row">
                     <span>Discount:</span>
-                    <span>-{discountAmount.toFixed(2)} IQD</span>
+                    <span>-{success.discountAmount.toFixed(2)} IQD</span>
                   </div>
                 )}
-                {taxAmount > 0 && (
+                {success.taxAmount > 0 && (
                   <div className="total-row">
                     <span>Tax:</span>
-                    <span>{taxAmount.toFixed(2)} IQD</span>
+                    <span>{success.taxAmount.toFixed(2)} IQD</span>
                   </div>
                 )}
                 <div className="total-row grand">
                   <span>TOTAL:</span>
-                  <span>{total.toFixed(2)} IQD</span>
+                  <span>{success.total.toFixed(2)} IQD</span>
                 </div>
               </div>
 
               <div className="payment">
                 <div className="info-row">
                   <span>Payment Method:</span>
-                  <span>{payments[0].method}</span>
+                  <span>{success.paymentMethod}</span>
                 </div>
-                {payments[0].method === "CASH" && (
+                {success.cashReceived !== null && (
                   <div className="info-row">
                     <span>Cash Received:</span>
-                    <span>{parseFloat(cashReceived).toFixed(2)} IQD</span>
+                    <span>{success.cashReceived.toFixed(2)} IQD</span>
                   </div>
                 )}
                 {success.change > 0 && (
@@ -434,7 +480,7 @@ export function CheckoutDialog({
               </div>
 
               <div className="footer">
-                <p>Thank you for choosing Tibbna Pharmacy</p>
+                <p>Thank you for choosing {workspaceName}</p>
                 <p>Please keep this receipt for warranty</p>
                 <p>For inquiries: support@tibbna.com</p>
                 <p style={{marginTop: '10px'}}>*** End of Receipt ***</p>

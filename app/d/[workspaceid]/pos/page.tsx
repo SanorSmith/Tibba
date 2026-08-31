@@ -32,6 +32,7 @@ export default async function POSServerPage({ params }: PageProps) {
   return (
     <POSClientPage
       workspaceid={workspaceid}
+      workspaceName={membership.workspace.name}
       userName={user.name || user.email || "User"}
       userId={user.userid}
     />
