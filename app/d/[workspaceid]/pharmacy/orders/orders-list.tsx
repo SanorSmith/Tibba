@@ -148,8 +148,12 @@ export default function PharmacyOrdersPage({
       const data = await res.json();
       return data.counts || { all: 0, PENDING: 0, IN_PROGRESS: 0, DISPENSED: 0 };
     },
-    staleTime: 60000, // Cache for 1 minute
-    refetchOnWindowFocus: false,
+    staleTime: 30000,
+    // A pharmacy queue has to notice work arriving. These counts sat behind
+    // refetchOnWindowFocus: false with nothing else to refresh them, so the
+    // badges only changed on a hard reload.
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
   });
 
   // Use React Query to cache orders - fetch when search is active or filters are set
@@ -166,13 +170,20 @@ export default function PharmacyOrdersPage({
       const res = await fetch(`/api/d/${workspaceid}/pharmacy-orders${qs}`);
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      console.log("API returned:", data); // Debug log
       return data.orders || [];
     },
-    staleTime: 10 * 1000, // Cache for 10 seconds (shorter for testing)
-    refetchOnWindowFocus: false, // Don't refetch when window regains focus
-    refetchOnMount: false, // Use cached data if available
-    enabled: true, // Always enabled to ensure refetch works when filters change
+    staleTime: 10 * 1000,
+    // An order a doctor sends here should appear without the pharmacist
+    // reloading the page. With refetchOnMount and refetchOnWindowFocus both
+    // off and nothing polling, this list refetched only when a filter changed:
+    // returning to the Orders tab, or coming back to the window after serving
+    // a customer, redisplayed whatever had been fetched the first time. A
+    // prescription that arrived in between was simply not on the screen, and
+    // nothing said so.
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: 30000,
+    enabled: true,
   });
 
   // Apply date filtering on client side
