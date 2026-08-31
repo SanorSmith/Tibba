@@ -132,9 +132,48 @@ export async function POST(
         .returning();
 
       for (const item of orderItems) {
+        // A line may name a medicine this facility does not stock yet: the
+        // search offers the national catalogue alongside the facility's own
+        // items, because ordering is how a drug you do not stock becomes one
+        // you do. pharmacy_purchase_order_items.item_id is a foreign key to
+        // `items`, so the row has to exist before the line can point at it.
+        // It is created here, once, at the moment it is first ordered.
+        //
+        // Matched on name so ordering the same catalogue drug twice reuses the
+        // item rather than growing a second one beside it. Stock stays at
+        // nothing until the goods receipt arrives - this registers what the
+        // pharmacy deals in, not what is on the shelf.
+        let itemId: string | null = item.itemId || null;
+        if (!itemId && item.globalDrugId) {
+          const existing = (await tx.execute(sql`
+            SELECT id::text AS id FROM items
+             WHERE workspace_id = ${workspaceid}
+               AND lower(trim(name)) = lower(trim(${item.itemName ?? ""}))
+             LIMIT 1
+          `)) as unknown as { id: string }[];
+
+          if (existing.length > 0) {
+            itemId = existing[0].id;
+          } else {
+            const created = (await tx.execute(sql`
+              INSERT INTO items (id, workspace_id, item_code, name, generic_name,
+                                 item_type, inventory_category, uom, is_active,
+                                 created_at, updated_at)
+              SELECT gen_random_uuid(), ${workspaceid},
+                     COALESCE(NULLIF(gd.nationalcode, ''), 'CAT-' || left(gd.drugid::text, 8)),
+                     gd.name, gd.genericname, 'drug', 'pharmacy',
+                     COALESCE(NULLIF(gd.unit, ''), 'unit'), true, NOW(), NOW()
+                FROM global_drugs gd
+               WHERE gd.drugid = ${item.globalDrugId}::uuid
+              RETURNING id::text AS id
+            `)) as unknown as { id: string }[];
+            itemId = created.length > 0 ? created[0].id : null;
+          }
+        }
+
         await tx.insert(pharmacyPurchaseOrderItems).values({
           orderid: order.id,
-          itemid: item.itemId || null,
+          itemid: itemId,
           itemname: item.itemName || null,
           uom: item.uom || null,
           orderedqty: item.orderedQty || 0,
@@ -144,11 +183,11 @@ export async function POST(
         });
 
         // Sync price back to items table
-        if (item.itemId && item.unitCost) {
+        if (itemId && item.unitCost) {
           await tx
             .update(items)
             .set({ updatedat: new Date() })
-            .where(eq(items.id, item.itemId))
+            .where(eq(items.id, itemId))
             .catch(() => {});
         }
       }

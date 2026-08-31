@@ -128,7 +128,15 @@ function CreateOrderModal({ allItems, suppliers, onClose, onSuccess, onSearchIte
   const [error, setError] = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
   const filtered = allItems; // API now handles filtering
-  const addItem = (item: any) => { if (cart.find(c => c.itemId === item.itemid)) return; setCart(c => [...c, { itemId: item.itemid, itemName: item.name, uom: item.uom || "piece", orderedQty: 1, unitCost: "" }]); setItemSearch(""); };
+  // A row is either a stocked item (itemid) or a catalogue drug (globaldrugid),
+  // never both. Deduping on itemId alone matched every catalogue row against
+  // every other, because they all carry null - the same trap the POS cart had.
+  const addItem = (item: any) => {
+    const key = item.itemid ?? item.globaldrugid;
+    if (!key || cart.find(c => (c.itemId ?? c.globalDrugId) === key)) return;
+    setCart(c => [...c, { itemId: item.itemid ?? null, globalDrugId: item.globaldrugid ?? null, itemName: item.name, uom: item.uom || "piece", orderedQty: 1, unitCost: "" }]);
+    setItemSearch("");
+  };
   const updateCart = (idx: number, k: string, v: any) => setCart(c => c.map((x, i) => i === idx ? { ...x, [k]: v } : x));
   
   // Load cart data from sessionStorage if available
@@ -206,10 +214,12 @@ function CreateOrderModal({ allItems, suppliers, onClose, onSuccess, onSearchIte
           {itemSearch && filtered.length > 0 && (
             <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #6366f1", borderRadius: 8, zIndex: 200, maxHeight: 200, overflowY: "auto" }}>
               {filtered.slice(0, 10).map(item => (
-                <div key={item.itemid} onClick={() => addItem(item)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f3f4f6" }}
+                <div key={item.itemid ?? item.globaldrugid} onClick={() => addItem(item)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f3f4f6" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")} onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-                  <span><strong>{item.name}</strong> <span style={{ fontSize: 11, color: "#6b7280" }}>{item.itemcode}</span></span>
-                  <span style={{ fontSize: 11, color: "#6b7280" }}>{item.uom}{cart.find(c => c.itemId === item.itemid) ? " ✓ added" : ""}</span>
+                  <span><strong>{item.name}</strong> <span style={{ fontSize: 11, color: "#6b7280" }}>{item.itemcode}</span>
+                    {item.source === "catalogue" && <span style={{ fontSize: 10, color: "#6366f1", marginLeft: 6, border: "1px solid #c7d2fe", borderRadius: 10, padding: "0 6px" }}>catalogue</span>}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#6b7280" }}>{item.uom}{cart.find(c => (c.itemId ?? c.globalDrugId) === (item.itemid ?? item.globaldrugid)) ? " ✓ added" : ""}</span>
                 </div>
               ))}
             </div>
@@ -253,7 +263,15 @@ function EditOrderModal({ detail, suppliers, allItems, onClose, onSuccess, onSea
   const [error, setError] = useState("");
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
   const filtered = allItems; // API now handles filtering
-  const addItem = (item: any) => { if (cart.find(c => c.itemId === item.itemid)) return; setCart(c => [...c, { itemId: item.itemid, itemName: item.name, uom: item.uom, orderedQty: 1, unitCost: "" }]); setItemSearch(""); };
+  // A row is either a stocked item (itemid) or a catalogue drug (globaldrugid),
+  // never both. Deduping on itemId alone matched every catalogue row against
+  // every other, because they all carry null - the same trap the POS cart had.
+  const addItem = (item: any) => {
+    const key = item.itemid ?? item.globaldrugid;
+    if (!key || cart.find(c => (c.itemId ?? c.globalDrugId) === key)) return;
+    setCart(c => [...c, { itemId: item.itemid ?? null, globalDrugId: item.globaldrugid ?? null, itemName: item.name, uom: item.uom || "piece", orderedQty: 1, unitCost: "" }]);
+    setItemSearch("");
+  };
   const updateCart = (idx: number, k: string, v: any) => setCart(c => c.map((x, i) => i === idx ? { ...x, [k]: v } : x));
 
   // Debounced search
@@ -296,9 +314,9 @@ function EditOrderModal({ detail, suppliers, allItems, onClose, onSuccess, onSea
           {itemSearch && filtered.length > 0 && (
             <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #6366f1", borderRadius: 8, zIndex: 200, maxHeight: 200, overflowY: "auto" }}>
               {filtered.slice(0, 10).map(item => (
-                <div key={item.itemid} onClick={() => addItem(item)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                <div key={item.itemid ?? item.globaldrugid} onClick={() => addItem(item)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f9fafb")} onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-                  <strong>{item.name}</strong> <span style={{ fontSize: 11, color: "#6b7280" }}>{item.uom}{cart.find(c => c.itemId === item.itemid) ? " ✓" : ""}</span>
+                  <strong>{item.name}</strong> <span style={{ fontSize: 11, color: "#6b7280" }}>{item.uom}{cart.find(c => (c.itemId ?? c.globalDrugId) === (item.itemid ?? item.globaldrugid)) ? " ✓" : ""}</span>
                 </div>
               ))}
             </div>
