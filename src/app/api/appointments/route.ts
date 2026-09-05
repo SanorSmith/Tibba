@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import {
+  resolveDoctorIdentity,
+  noLoginWarning,
+} from '@/lib/appointments/resolve-doctor';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -255,45 +259,12 @@ export async function POST(request: NextRequest) {
     // Since the booking form lists staff, that value was a staffid, and the
     // doctor's dashboard - asking for their userid - never matched it. The
     // appointment saved, filed under the right patient in the right facility,
-    // and was invisible to the one person who needed it. 9 of 21 appointments
-    // on record are in that state.
+    // and was invisible to the one person who needed it.
     //
-    // Whichever id the caller sends is resolved to both halves here.
-    let doctorUserId: string | null = null;
-    let staffRecordId: string | null = null;
-
-    const resolved = await pool.query(
-      `SELECT u.userid::text        AS user_id,
-              s.staffid::text       AS staff_id,
-              trim(coalesce(s.firstname,'') || ' ' || coalesce(s.lastname,''))
-                                    AS staff_name
-         FROM (SELECT $1::uuid AS given) g
-         LEFT JOIN workspaceusers wu
-                ON wu.userid = g.given AND wu.workspaceid = $2
-         LEFT JOIN users u  ON u.userid = wu.userid
-         LEFT JOIN staff s
-                ON s.workspaceid = $2
-               AND (s.staffid = g.given OR s.userid = u.userid)`,
-      [doctorid, workspaceid]
-    );
-
-    const match = resolved.rows[0];
-    if (match?.user_id) {
-      // A login, and one that belongs to this facility.
-      doctorUserId = match.user_id;
-      staffRecordId = match.staff_id ?? null;
-    } else if (match?.staff_id) {
-      // An employment record. It may have no login attached, which is not an
-      // error - most do not - but it does mean nobody can open this
-      // appointment in the EHR, so the response says so instead of leaving
-      // reception to find out from the doctor.
-      staffRecordId = match.staff_id;
-      const linked = await pool.query(
-        `SELECT userid::text FROM staff WHERE staffid = $1 AND workspaceid = $2`,
-        [staffRecordId, workspaceid]
-      );
-      doctorUserId = linked.rows[0]?.userid ?? null;
-    } else {
+    // The edit route resolves it the same way, through the same helper, so the
+    // two cannot drift apart again.
+    const identity = await resolveDoctorIdentity(pool, String(doctorid), workspaceid);
+    if (!identity) {
       return NextResponse.json(
         {
           error:
@@ -302,6 +273,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const doctorUserId = identity.doctorUserId;
+    const staffRecordId = identity.staffRecordId;
 
     // Check if appointments table exists
     const tableCheck = await pool.query(`
@@ -382,9 +355,7 @@ export async function POST(request: NextRequest) {
         // Booked, filed and visible in this ERP either way - but if the staff
         // member has no login, no one can open it in the EHR. Reception should
         // hear that at the counter, not from the doctor afterwards.
-        warning: doctorUserId
-          ? undefined
-          : `${match?.staff_name?.trim() || 'This member of staff'} has no user account in this facility, so the appointment will not appear in their EHR schedule. Link their staff record to a login to fix that.`,
+        warning: noLoginWarning(identity),
       });
     } catch (insertError) {
       console.error('Insert failed - Detailed error:', {

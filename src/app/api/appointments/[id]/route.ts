@@ -7,17 +7,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
+import {
+  resolveDoctorIdentity,
+  noLoginWarning,
+} from '@/lib/appointments/resolve-doctor';
 
 export const dynamic = 'force-dynamic';
 
 
 type Params = { params: Promise<{ id: string }> };
 
-// Whitelist of columns a client may update
+// Whitelist of columns a client may update.
+//
+// `doctorid` and `staff_id` are deliberately absent: they are two halves of
+// one identity and are set together, from whichever id the client sent, by the
+// same resolver the create route uses. Letting them through here would let an
+// edit put a staffid back into `doctorid` - the very mix-up that hid
+// appointments from the doctors they name.
 const EDITABLE = [
   'status', 'starttime', 'endtime', 'location', 'unit',
   'appointmentname', 'appointmenttype', 'clinicalindication',
-  'reasonforrequest', 'description', 'notes', 'doctorid', 'staff_id',
+  'reasonforrequest', 'description', 'notes',
 ];
 
 export async function PATCH(request: NextRequest, { params }: Params) {
@@ -41,6 +51,34 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         values.push(body[key]);
       }
     }
+
+    // Changing who the appointment is with sets both columns, or neither.
+    let warning: string | undefined;
+    if ('doctorid' in body) {
+      if (body.doctorid === null || body.doctorid === '') {
+        sets.push(`doctorid = $${i++}`, `staff_id = $${i++}`);
+        values.push(null, null);
+      } else {
+        const identity = await resolveDoctorIdentity(
+          pool!,
+          String(body.doctorid),
+          workspaceId
+        );
+        if (!identity) {
+          return NextResponse.json(
+            {
+              error:
+                'That doctor does not belong to this facility. Choose a member of staff or a user account from this hospital.',
+            },
+            { status: 400 }
+          );
+        }
+        sets.push(`doctorid = $${i++}`, `staff_id = $${i++}`);
+        values.push(identity.doctorUserId, identity.staffRecordId);
+        warning = noLoginWarning(identity);
+      }
+    }
+
     if (sets.length === 0) {
       return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
     }
@@ -60,7 +98,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (r.rows.length === 0) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: r.rows[0] });
+    return NextResponse.json({ success: true, data: r.rows[0], warning });
   } catch (error) {
     console.error('[appointments PATCH]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
