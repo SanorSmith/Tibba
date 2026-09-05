@@ -163,7 +163,15 @@ export async function GET(request: NextRequest) {
           sr.gratuity_eligible as "gratuityEligible",
           
           -- National ID
-          nid.national_id as "nationalId"
+          nid.national_id as "nationalId",
+
+          -- The platform account this employment record belongs to, and the
+          -- role that account actually holds in this facility. The job title
+          -- in s.role is what HR calls them; this is what they may open.
+          s.userid as "userId",
+          u.email as "loginEmail",
+          u.name as "loginName",
+          wu.role as "platformRole"
           
         FROM staff s
         LEFT JOIN employment_details ed ON s.staffid = ed.staff_id
@@ -171,6 +179,9 @@ export async function GET(request: NextRequest) {
         LEFT JOIN employee_profile ep ON s.staffid = ep.staff_id
         LEFT JOIN settlement_rules sr ON s.staffid = sr.staff_id
         LEFT JOIN national_id nid ON s.staffid = nid.staff_id
+        LEFT JOIN users u ON u.userid = s.userid
+        LEFT JOIN workspaceusers wu
+               ON wu.userid = s.userid AND wu.workspaceid = s.workspaceid
         WHERE s.staffid = $1 AND s.workspaceid = $2
       `;
 
@@ -200,23 +211,46 @@ export async function GET(request: NextRequest) {
     console.log('Specialty filter:', specialty);
     console.log('Department filter:', department);
 
+    // Who a staff member is, and - separately - what they may sign in as.
+    //
+    // `staff.role` is a job title typed into this app: "Doctor", "Nurse",
+    // "ADMINISTRATIVE", "gf", "tttt". It grants nothing and never did. What
+    // decides whether someone can log in, and to which facility, is their
+    // membership in `workspaceusers` - the platform's own record, the one the
+    // Users screen manages.
+    //
+    // Those two had no connection at all until `staff.userid` (migration 004),
+    // which is why the same person could be a doctor on the platform and
+    // ADMINISTRATIVE here at the same time, and why an appointment booked
+    // against a staff row never reached anyone's dashboard.
+    //
+    // `platformRole` is the authoritative one and comes from the membership.
+    // `userId` null means this employment record has no login yet: nothing is
+    // broken, but nobody can act as that person in the EHR.
     let query = `
       SELECT 
-        staffid as id,
-        firstname as "firstName",
-        middlename as "middleName",
-        lastname as "lastName",
-        email,
-        phone,
-        role,
-        unit,
-        specialty,
-        dateofbirth as "dateOfBirth",
-        custom_staff_id as "customStaffId",
-        createdat as "createdAt",
-        updatedat as "updatedAt"
-      FROM staff
-      WHERE workspaceid = $1
+        s.staffid as id,
+        s.firstname as "firstName",
+        s.middlename as "middleName",
+        s.lastname as "lastName",
+        s.email,
+        s.phone,
+        s.role,
+        s.unit,
+        s.specialty,
+        s.dateofbirth as "dateOfBirth",
+        s.custom_staff_id as "customStaffId",
+        s.createdat as "createdAt",
+        s.updatedat as "updatedAt",
+        s.userid as "userId",
+        u.email as "loginEmail",
+        u.name as "loginName",
+        wu.role as "platformRole"
+      FROM staff s
+      LEFT JOIN users u ON u.userid = s.userid
+      LEFT JOIN workspaceusers wu
+             ON wu.userid = s.userid AND wu.workspaceid = s.workspaceid
+      WHERE s.workspaceid = $1
     `;
 
     const params: any[] = [workspaceId];
@@ -224,28 +258,28 @@ export async function GET(request: NextRequest) {
 
     if (searchTerm) {
       query += ` AND (
-        firstname ILIKE $${paramIndex} OR 
-        lastname ILIKE $${paramIndex} OR 
-        email ILIKE $${paramIndex} OR 
-        role ILIKE $${paramIndex}
+        s.firstname ILIKE $${paramIndex} OR 
+        s.lastname ILIKE $${paramIndex} OR 
+        s.email ILIKE $${paramIndex} OR 
+        s.role ILIKE $${paramIndex}
       )`;
       params.push(`%${searchTerm}%`);
       paramIndex++;
     }
 
     if (specialty) {
-      query += ` AND specialty ILIKE $${paramIndex}`;
+      query += ` AND s.specialty ILIKE $${paramIndex}`;
       params.push(`%${specialty}%`);
       paramIndex++;
     }
 
     if (department) {
-      query += ` AND unit ILIKE $${paramIndex}`;
+      query += ` AND s.unit ILIKE $${paramIndex}`;
       params.push(`%${department}%`);
       paramIndex++;
     }
 
-    query += ` ORDER BY lastname, firstname`;
+    query += ` ORDER BY s.lastname, s.firstname`;
 
     const result = await pool.query(query, params);
 
@@ -347,7 +381,11 @@ export async function POST(request: NextRequest) {
       settlementEligible,
       settlementCalculationMethod,
       noticePeriodDays,
-      gratuityEligible
+      gratuityEligible,
+      // The login this employment record belongs to. Optional: plenty of staff
+      // have no account, and an unlinked record is a person who simply cannot
+      // sign in yet - not an error.
+      userId
     } = body;
 
     // Validate required fields
@@ -401,10 +439,11 @@ export async function POST(request: NextRequest) {
           emergency_contact_phone,
           emergency_contact_relationship,
           dateofbirth,
+          userid,
           createdat,
           updatedat
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
         )
         RETURNING *
       `, [
@@ -426,7 +465,11 @@ export async function POST(request: NextRequest) {
         emergencyContactName || null,
         emergencyContactPhone || null,
         emergencyContactRelationship || null,
-        dateOfBirth
+        dateOfBirth,
+        // The platform account, when one was chosen. The database refuses an
+        // account belonging to another facility (trigger, migration 004), so a
+        // bad id here fails the insert rather than quietly crossing a boundary.
+        userId || null
       ]);
       
       // Insert employment details if any provided
@@ -694,6 +737,10 @@ export async function PUT(request: NextRequest) {
       emergencyContactPhone: 'emergency_contact_phone',
       emergencyContactRelationship: 'emergency_contact_relationship',
       dateOfBirth: 'dateofbirth',
+      // The platform account this record belongs to. Send null to unlink.
+      // Membership is enforced in the database (migration 004), so a login
+      // from another facility is refused rather than accepted quietly.
+      userId: 'userid',
       // Employment Details
       jobTitle: 'job_title',
       departmentId: 'department_id',

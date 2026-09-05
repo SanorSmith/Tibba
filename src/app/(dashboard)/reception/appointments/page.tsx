@@ -47,6 +47,13 @@ type Doctor = {
   phone?: string;
   role: string;
   customStaffId?: string;
+  // The platform account behind this employment record, if there is one.
+  // Without it the person cannot sign in, and an appointment booked with them
+  // cannot appear on anybody's EHR schedule - so the form says so before the
+  // booking is made rather than after.
+  userId?: string | null;
+  platformRole?: string | null;
+  loginEmail?: string | null;
 };
 
 type Patient = {
@@ -281,7 +288,17 @@ export default function AppointmentsPage() {
           const wasEditing = !!editingId;
           resetForm();
           loadAppointments();
-          alert(result.message || (wasEditing ? 'Appointment updated successfully!' : 'Appointment created successfully!'));
+          // The booking may be saved and still not reach the person it names -
+          // that happens when their staff record has no platform account. Say
+          // it here, at the counter, while it can still be dealt with.
+          alert(
+            [
+              result.message || (wasEditing ? 'Appointment updated successfully!' : 'Appointment created successfully!'),
+              result.warning,
+            ]
+              .filter(Boolean)
+              .join('\n\n')
+          );
         } else {
           alert(`Failed to save appointment: ${result.error || 'Unknown error'}`);
         }
@@ -765,14 +782,21 @@ export default function AppointmentsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select medical staff (optional)</option>
-                      {doctors.map((doctor) => (
-                        <option 
-                          key={doctor.id} 
-                          value={doctor.id}
-                        >
-                          {doctor.firstName} {doctor.lastName} - {doctor.role.charAt(0).toUpperCase() + doctor.role.slice(1).replace('_', ' ')}{doctor.unit ? ` (${doctor.unit})` : ''}
-                        </option>
-                      ))}
+                      {doctors.map((doctor) => {
+                        // The role that decides what they may open comes from
+                        // their facility membership, not from the job title
+                        // typed into this app. Show the real one where it
+                        // exists and fall back to the title where it does not.
+                        const shownRole = doctor.platformRole || doctor.role || '';
+                        return (
+                          <option 
+                            key={doctor.id} 
+                            value={doctor.id}
+                          >
+                            {doctor.firstName} {doctor.lastName} - {shownRole.charAt(0).toUpperCase() + shownRole.slice(1).replace('_', ' ')}{doctor.unit ? ` (${doctor.unit})` : ''}{doctor.userId ? '' : ' — no login'}
+                          </option>
+                        );
+                      })}
                     </select>
                     <Stethoscope size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
                   </div>

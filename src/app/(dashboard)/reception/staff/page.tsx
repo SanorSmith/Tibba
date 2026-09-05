@@ -27,6 +27,12 @@ interface Staff {
   email: string;
   customStaffId?: string;
   dateOfBirth?: string;
+  // The platform account behind this employment record. `role` above is the
+  // job title this app stores; `platformRole` is the membership that actually
+  // decides what the person can sign in to, and it is the authoritative one.
+  userId?: string | null;
+  platformRole?: string | null;
+  loginEmail?: string | null;
 }
 
 export default function StaffInfoPage() {
@@ -71,7 +77,10 @@ export default function StaffInfoPage() {
           phone: member.phone || '',
           email: member.email || '',
           customStaffId: member.customStaffId,
-          dateOfBirth: member.dateOfBirth
+          dateOfBirth: member.dateOfBirth,
+          userId: member.userId ?? null,
+          platformRole: member.platformRole ?? null,
+          loginEmail: member.loginEmail ?? null
         }));
         setStaff(transformedStaff);
         setFilteredStaff(transformedStaff);
@@ -302,9 +311,19 @@ export default function StaffInfoPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
+                      {/* The facility membership first, because that is what
+                          grants access. The job title underneath it, because
+                          that is what HR calls the post - the two are often
+                          different and only one of them means anything. */}
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
-                        {member.role || 'Not specified'}
+                        {member.platformRole || member.role || 'Not specified'}
                       </span>
+                      {member.platformRole && member.role &&
+                        member.platformRole.toLowerCase() !== member.role.toLowerCase() && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          job title: {member.role}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm text-gray-900">
                       {member.unit || 'Not assigned'}
@@ -339,9 +358,26 @@ export default function StaffInfoPage() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-                        Staff Member
-                      </span>
+                      {/* This column used to print the words "Staff Member"
+                          for everybody. It now answers the question it was
+                          always asking: can this person sign in? Without an
+                          account they cannot, and nothing booked with them
+                          reaches an EHR schedule. */}
+                      {member.userId ? (
+                        <span
+                          className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700"
+                          title={member.loginEmail || undefined}
+                        >
+                          Linked
+                        </span>
+                      ) : (
+                        <span
+                          className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700"
+                          title="No user account in this facility, so this person cannot sign in and appointments booked with them will not appear in the EHR."
+                        >
+                          No login
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
