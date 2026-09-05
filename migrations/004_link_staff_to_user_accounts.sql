@@ -115,22 +115,44 @@ UPDATE staff s
 
 -- Keep the fact first: whoever the booking names, record them as the staff
 -- member. This is the half that was always true and was being overwritten.
+--
+-- Same facility only. Six appointments at Alis name staff who work at
+-- Hospital 1 - nothing stopped them, because the column had no constraint and
+-- the old booking form was not always scoped. Copying those into `staff_id`
+-- would turn a stale pointer into a permanent cross-facility link, which is
+-- the exact thing this migration exists to prevent.
 UPDATE appointments a
    SET staff_id = a.doctorid
   FROM staff s
  WHERE a.staff_id IS NULL
-   AND s.staffid = a.doctorid;
+   AND s.staffid = a.doctorid
+   AND s.workspaceid = a.workspaceid;
+
+-- The cross-facility ones lose their pointer, but not the evidence: what it
+-- held is written into the appointment's own notes. Someone may want to know
+-- why a booking has no doctor, and "it named a member of another hospital's
+-- staff" is the answer.
+UPDATE appointments a
+   SET notes = coalesce(a.notes, '{}'::jsonb) || jsonb_build_object(
+         'migration_004_cleared_doctorid', a.doctorid::text,
+         'migration_004_reason',
+         'pointed at a staff record belonging to another facility')
+  FROM staff s
+ WHERE s.staffid = a.doctorid
+   AND s.workspaceid <> a.workspaceid;
 
 -- An appointment can legitimately have no doctor *user*: booked with a staff
 -- member who has no login. Nothing to point at, and pretending otherwise is
 -- what produced this mess.
 ALTER TABLE appointments ALTER COLUMN doctorid DROP NOT NULL;
 
--- Where the staff member does have an account, that account is the doctor.
+-- Where the staff member does have an account, that account is the doctor -
+-- again only within the facility the appointment belongs to.
 UPDATE appointments a
    SET doctorid = s.userid
   FROM staff s
  WHERE s.staffid = a.doctorid
+   AND s.workspaceid = a.workspaceid
    AND s.userid IS NOT NULL;
 
 -- Where they do not, say so rather than leaving a staffid masquerading as a
