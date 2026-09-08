@@ -19,6 +19,17 @@ export interface Membership {
   workspace_name: string;
   ws_type: string;
   ws_role: string;
+  /**
+   * What the platform's role catalogue grants this role in this type of
+   * facility. Null when the role has no catalogue row - a membership older
+   * than the catalogue's coverage of it.
+   */
+  role_permissions?: string[] | null;
+  /**
+   * Whether the catalogue says anything at all about ERP access for this type
+   * of facility. Until it does, the built-in list decides - see canLogIn.
+   */
+  type_declares_erp?: boolean | null;
 }
 
 export interface Facility {
@@ -76,7 +87,35 @@ const LOGIN_ALLOWED_ROLES = new Set([
   'hr_officer',
 ]);
 
-export function canLogIn(wsRole: string): boolean {
+/**
+ * The catalogue permission that opens this application.
+ *
+ * This list above is now the fallback, not the rule. The rule lives in the
+ * platform's `workspace_roles` catalogue as `Open ERP` (migration 0088),
+ * where the administrator granting a role can see what it grants. Deciding it
+ * here meant whoever assigned "accountant" in the admin panel had no way to
+ * know they were opening a second application.
+ *
+ * The fallback still earns its place: a role with no catalogue row for its
+ * facility type has no permissions at all, and refusing those outright would
+ * lock out anyone whose membership predates the catalogue covering them.
+ */
+export const OPEN_ERP_PERMISSION = 'Open ERP';
+
+export function canLogIn(
+  wsRole: string,
+  rolePermissions?: string[] | null,
+  typeDeclaresErp?: boolean | null
+): boolean {
+  // The catalogue governs only once it has something to say. If no active role
+  // for this facility type carries `Open ERP`, the permission has not been
+  // seeded yet and every membership would read as "may not log in" - locking
+  // the whole application out on a deploy that merely arrived before its
+  // migration. Deferring to the built-in list until then makes the two
+  // orderings equivalent.
+  if (typeDeclaresErp && Array.isArray(rolePermissions)) {
+    return rolePermissions.includes(OPEN_ERP_PERMISSION);
+  }
   return LOGIN_ALLOWED_ROLES.has(wsRole);
 }
 
@@ -105,9 +144,20 @@ export async function resolveFacility(
     // one named user and returns memberships only. The workspace rows are
     // then joined normally, since SELECT on `workspaces` is open by design.
     const m = await pool.query(
-      `SELECT mem.workspaceid, w.name AS workspace_name, w.type AS ws_type, mem.role AS ws_role
+      `SELECT mem.workspaceid, w.name AS workspace_name, w.type AS ws_type,
+              mem.role AS ws_role, r.permissions AS role_permissions,
+              seeded.declared AS type_declares_erp
          FROM public.app_user_memberships($1) AS mem
          JOIN workspaces w ON w.workspaceid = mem.workspaceid
+         LEFT JOIN workspace_roles r
+                ON r.workspacetype = w.type
+               AND r.name = mem.role
+               AND r.isactive
+         LEFT JOIN LATERAL (
+           SELECT bool_or(r2.permissions @> '["Open ERP"]'::jsonb) AS declared
+             FROM workspace_roles r2
+            WHERE r2.workspacetype = w.type AND r2.isactive
+         ) seeded ON true
         WHERE w.isactive IS NOT FALSE
         ORDER BY (w.type = 'hospital') DESC, w.createdat ASC`,
       [userid]
@@ -128,7 +178,9 @@ export async function resolveFacility(
   // don't get to open this app — they belong in the separate EHR/care app.
   // A user with several facilities still gets in if at least one of those
   // memberships carries a role this app actually serves.
-  const memberships = allMemberships.filter((x) => canLogIn(x.ws_role));
+  const memberships = allMemberships.filter((x) =>
+    canLogIn(x.ws_role, x.role_permissions, x.type_declares_erp)
+  );
   if (memberships.length === 0 && allMemberships.length > 0) {
     return {
       kind: 'error',
