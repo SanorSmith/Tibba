@@ -20,6 +20,7 @@ import {
   encodeSession,
   canLogIn,
   sessionCookieOptions,
+  landingPathFor,
 } from '@/lib/auth/facility-session';
 
 export const dynamic = 'force-dynamic';
@@ -90,7 +91,12 @@ export async function GET(request: NextRequest) {
 
   const session = buildSession(dbUser.rows[0], membership, dbUser.rows[0].email ?? undefined);
 
-  const res = NextResponse.redirect(new URL('/', request.url));
+  // Not `/`. Only SUPER_ADMIN may open the root, so everyone else crossed
+  // over with a valid session and was met by "Access Denied" on the very next
+  // request. Land them in the module their role actually owns.
+  const res = NextResponse.redirect(
+    new URL(landingPathFor(session.role), request.url),
+  );
   res.cookies.set(
     'tibbna_session',
     await encodeSession(session),

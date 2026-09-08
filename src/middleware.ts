@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth/session-token';
-import { clearSessionCookieOptions } from '@/lib/auth/facility-session';
+import {
+  clearSessionCookieOptions,
+  ROLE_MODULES,
+} from '@/lib/auth/facility-session';
 import type { NextRequest } from 'next/server';
 
 // Role → allowed path prefixes (* means all)
-const ROLE_MODULES: Record<string, string[]> = {
-  SUPER_ADMIN:      ['*'],
-  FINANCE_ADMIN:    ['/finance'],
-  HR_ADMIN:         ['/hr', '/staff'],
-  INVENTORY_ADMIN:  ['/inventory', '/hospital'],
-  RECEPTION_ADMIN:  ['/reception'],
-};
+// One definition, in facility-session.ts - see the note there.
 
 // Paths that are always public
 const PUBLIC_PATHS = ['/login', '/unauthorized', '/api'];

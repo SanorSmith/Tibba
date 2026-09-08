@@ -68,6 +68,40 @@ export const WS_ROLE_TO_APP_ROLE: Record<string, string> = {
   inventory_officer: 'INVENTORY_ADMIN',
 };
 
+/**
+ * Which parts of the ERP each module role may open, and where it lands.
+ *
+ * These two tables were written out three times - in the middleware, and
+ * twice in the login page - so a role could be allowed somewhere by one copy
+ * and sent somewhere else by another. The handoff from the platform needed
+ * them a fourth time, which was the point to stop copying.
+ *
+ * A landing path must be inside that role's own modules, or arriving anywhere
+ * lands on "Access Denied": the handoff sent people to `/`, which only
+ * SUPER_ADMIN may open, so a receptionist crossed over successfully and was
+ * turned away by the next request.
+ */
+export const ROLE_MODULES: Record<string, string[]> = {
+  SUPER_ADMIN: ['*'],
+  FINANCE_ADMIN: ['/finance'],
+  HR_ADMIN: ['/hr', '/staff'],
+  INVENTORY_ADMIN: ['/inventory', '/hospital'],
+  RECEPTION_ADMIN: ['/reception'],
+};
+
+export const ROLE_HOME: Record<string, string> = {
+  SUPER_ADMIN: '/dashboard',
+  FINANCE_ADMIN: '/finance',
+  HR_ADMIN: '/hr',
+  INVENTORY_ADMIN: '/hospital',
+  RECEPTION_ADMIN: '/reception',
+};
+
+/** Where to put someone whose session has just been created. */
+export function landingPathFor(appRole: string): string {
+  return ROLE_HOME[appRole] ?? '/dashboard';
+}
+
 export function appRoleFor(membership: Membership): string {
   return WS_ROLE_TO_APP_ROLE[membership.ws_role] ?? 'RECEPTION_ADMIN';
 }
