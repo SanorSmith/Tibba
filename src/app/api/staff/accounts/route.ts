@@ -29,23 +29,50 @@ const pool = databaseUrl
   ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
   : null;
 
-/** Only a facility administrator delegates; everyone else is a user of it. */
-async function isFacilityAdministrator(request: NextRequest) {
+/**
+ * Who may create and manage accounts here, and which roles each may grant.
+ *
+ * An HR officer does the onboarding, so making them wait for an administrator
+ * to finish it is a bottleneck with no safety in it. What an HR officer must
+ * not do is grant `administrator`: that role appoints and removes everyone
+ * else, so an HR officer who could grant it could promote themselves, and the
+ * separation between the two would be decoration.
+ *
+ * Expressed as "which roles may this app role hand out" rather than a boolean,
+ * because the interesting question is never whether someone may act but how
+ * far. A facility administrator may grant anything the catalogue offers for
+ * their facility type; an HR officer may grant all of it except the one role
+ * that would let the grantee take the facility over.
+ */
+const NEVER_GRANTED_BY_HR = new Set(['administrator']);
+
+type Manager = { appRole: string; canGrant: (role: string) => boolean };
+
+async function accountManager(request: NextRequest): Promise<Manager | null> {
   const session = await readSession(request);
-  return session?.role === 'SUPER_ADMIN';
+  const appRole = session?.role;
+
+  if (appRole === 'SUPER_ADMIN') {
+    return { appRole, canGrant: () => true };
+  }
+  if (appRole === 'HR_ADMIN') {
+    return { appRole, canGrant: (role) => !NEVER_GRANTED_BY_HR.has(role) };
+  }
+  return null;
 }
+
+const NOT_ALLOWED = {
+  error:
+    'Only an administrator or an HR officer of this facility can manage sign-in accounts.',
+};
 
 export async function GET(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
-  if (!(await isFacilityAdministrator(request))) {
-    return NextResponse.json(
-      { error: 'Only an administrator of this facility can manage accounts.' },
-      { status: 403 },
-    );
-  }
+  const manager = await accountManager(request);
+  if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
 
   // Scoped by provenance, not by membership. A facility's administrator
   // manages the accounts their facility made - not every account that happens
@@ -75,11 +102,15 @@ export async function GET(request: NextRequest) {
     [workspaceId],
   );
 
+  // Filtered by what this caller may hand out, so the form offers only roles
+  // the server would accept - the alternative is a dropdown with an entry that
+  // fails on submit.
   return NextResponse.json({
     success: true,
     accounts: rows.rows,
     count: rows.rowCount,
-    availableRoles: roles.rows,
+    availableRoles: roles.rows.filter((r) => manager.canGrant(r.name)),
+    grantsAdministrator: manager.canGrant('administrator'),
   });
 }
 
@@ -88,12 +119,8 @@ export async function POST(request: NextRequest) {
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
-  if (!(await isFacilityAdministrator(request))) {
-    return NextResponse.json(
-      { error: 'Only an administrator of this facility can create accounts.' },
-      { status: 403 },
-    );
-  }
+  const manager = await accountManager(request);
+  if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
 
   const body = await request.json().catch(() => null);
   const email = String(body?.email ?? '').trim().toLowerCase();
@@ -125,6 +152,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: `"${role}" is not a role this facility can assign.` },
       { status: 400 },
+    );
+  }
+
+  if (!manager.canGrant(role)) {
+    return NextResponse.json(
+      {
+        error: `An HR officer cannot grant "${role}". That role appoints and removes everyone else in the facility, so only an administrator can hand it out.`,
+      },
+      { status: 403 },
     );
   }
 
@@ -193,12 +229,8 @@ export async function PATCH(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-  if (!(await isFacilityAdministrator(request))) {
-    return NextResponse.json(
-      { error: 'Only an administrator of this facility can manage accounts.' },
-      { status: 403 },
-    );
-  }
+  const manager = await accountManager(request);
+  if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
 
   const body = await request.json().catch(() => null);
   const userid = String(body?.userid ?? '').trim();
@@ -231,6 +263,33 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
+  if (!manager.canGrant(role)) {
+    return NextResponse.json(
+      {
+        error: `An HR officer cannot grant "${role}". Only an administrator can.`,
+      },
+      { status: 403 },
+    );
+  }
+
+  // And cannot change someone who already holds a role they could not grant.
+  // Without this an HR officer could demote the facility's administrator,
+  // which is the same power as promoting themselves, reached from the other
+  // direction.
+  const current = await pool.query(
+    `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2 LIMIT 1`,
+    [userid, workspaceId],
+  );
+  const currentRole = current.rows[0]?.role;
+  if (currentRole && !manager.canGrant(currentRole)) {
+    return NextResponse.json(
+      {
+        error: `That person is ${currentRole} in this facility. Only an administrator can change them.`,
+      },
+      { status: 403 },
+    );
+  }
+
   await pool.query(
     `UPDATE workspaceusers SET role = $3 WHERE userid = $1 AND workspaceid = $2`,
     [userid, workspaceId, role],
@@ -251,12 +310,8 @@ export async function DELETE(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-  if (!(await isFacilityAdministrator(request))) {
-    return NextResponse.json(
-      { error: 'Only an administrator of this facility can manage accounts.' },
-      { status: 403 },
-    );
-  }
+  const manager = await accountManager(request);
+  if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
 
   const userid = request.nextUrl.searchParams.get('userid');
   if (!userid) return NextResponse.json({ error: 'Which account?' }, { status: 400 });
@@ -268,6 +323,20 @@ export async function DELETE(request: NextRequest) {
   if (owned.rows.length === 0) {
     return NextResponse.json(
       { error: 'That account was not created by this facility, so it cannot be removed here.' },
+      { status: 403 },
+    );
+  }
+
+  const held = await pool.query(
+    `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2 LIMIT 1`,
+    [userid, workspaceId],
+  );
+  const heldRole = held.rows[0]?.role;
+  if (heldRole && !manager.canGrant(heldRole)) {
+    return NextResponse.json(
+      {
+        error: `That person is ${heldRole} in this facility. Only an administrator can remove them.`,
+      },
       { status: 403 },
     );
   }

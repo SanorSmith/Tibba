@@ -104,7 +104,8 @@ export default function FacilityAccountsPage() {
     return (
       <div className="p-6">
         <div className="max-w-lg rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Only an administrator of this facility can manage sign-in accounts.
+          Only an administrator or an HR officer of this facility can manage
+          sign-in accounts.
         </div>
       </div>
     );
@@ -120,7 +121,8 @@ export default function FacilityAccountsPage() {
         <p className="mt-1 text-sm text-gray-500 max-w-2xl">
           Accounts this facility created. People placed here by the platform
           owner, and staff from other facilities who also work here, are not
-          listed &mdash; those belong to whoever created them.
+          listed &mdash; those belong to whoever created them. An HR officer
+          sees and manages everyone except administrators.
         </p>
       </div>
 
