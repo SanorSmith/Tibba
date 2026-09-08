@@ -34,6 +34,24 @@ function formatRole(role: string) {
   return role.replace(/_/g, ' ');
 }
 
+/**
+ * What to call this person.
+ *
+ * Two different things are called "role" here. `facilityRole` is the one the
+ * platform holds and a human would recognise - receptionist, accountant,
+ * pharmacist. `role` is this application's access level, and it is coarser:
+ * WS_ROLE_TO_APP_ROLE maps doctor, nurse, receptionist, plastic_surgeon and
+ * lab_technician all onto RECEPTION_ADMIN. Showing that told a receptionist
+ * they were a "RECEPTION ADMIN", which is neither their title nor a thing
+ * anyone granted them.
+ *
+ * The facility role is the truth about who they are; the module role is an
+ * implementation detail of what this application lets them open.
+ */
+function displayRole(user: SessionUser) {
+  return formatRole(user.facilityRole || user.role);
+}
+
 export function UserMenu() {
   const [user, setUser] = useState<SessionUser | null>(null);
 
@@ -78,7 +96,7 @@ export function UserMenu() {
         </span>
         <div className="grid flex-1 text-left text-sm leading-tight transition-colors">
           <span className="truncate font-medium">{user.name}</span>
-          <span className="truncate text-xs opacity-90">{formatRole(user.role)}</span>
+          <span className="truncate text-xs opacity-90">{displayRole(user)}</span>
           <span className="truncate text-[10px] opacity-80">
             {new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} • {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </span>
@@ -99,12 +117,12 @@ export function UserMenu() {
             </Avatar>
             <div className="flex flex-col">
               <p className="text-sm font-semibold text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-500">{formatRole(user.role)}</p>
+              <p className="text-xs text-gray-500">{displayRole(user)}</p>
               <p className="text-xs text-gray-400">{user.email}</p>
               {user.workspaceName && (
                 <p className="mt-1 text-xs font-medium text-blue-700">
                   {user.workspaceName.trim()}
-                  {user.facilityRole ? ` · ${formatRole(user.facilityRole)}` : ''}
+                  {user.facilityRole ? ` · ${formatRole(user.role)} access` : ''}
                 </p>
               )}
             </div>
