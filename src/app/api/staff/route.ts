@@ -399,6 +399,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Is this person already on the books here?
+    //
+    // Migration 005 makes it impossible to register them twice, but a unique
+    // index answers with a constraint violation, and the caller deserves to
+    // know *who* they have collided with - the whole difficulty with the two
+    // Sanor Smith records in Hospital 1 was that neither screen ever mentioned
+    // the other. Asking first turns "duplicate key" into a name and a staff
+    // number.
+    //
+    // Per facility, because working at two hospitals is ordinary. Trimmed and
+    // lowercased, to match the index.
+    const emailClash = await pool.query(
+      `SELECT staffid, firstname, lastname, custom_staff_id
+         FROM staff
+        WHERE workspaceid = $1
+          AND email IS NOT NULL
+          AND lower(trim(email)) = lower(trim($2))
+        LIMIT 1`,
+      [sessionWorkspaceId, email],
+    );
+    if (emailClash.rows.length > 0) {
+      const found = emailClash.rows[0];
+      return NextResponse.json(
+        {
+          error: `${found.firstname} ${found.lastname} is already registered in this facility with the email ${email}${found.custom_staff_id ? ` (staff ID ${found.custom_staff_id})` : ''}. Edit that record instead of creating a second one.`,
+          conflict: 'email',
+          existingStaffId: found.staffid,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (nationalId && String(nationalId).trim() !== '') {
+      const nidClash = await pool.query(
+        `SELECT s.staffid, s.firstname, s.lastname, s.custom_staff_id
+           FROM national_id n
+           JOIN staff s ON s.staffid = n.staff_id
+          WHERE n.workspaceid = $1
+            AND lower(trim(n.national_id)) = lower(trim($2))
+          LIMIT 1`,
+        [sessionWorkspaceId, String(nationalId)],
+      );
+      if (nidClash.rows.length > 0) {
+        const found = nidClash.rows[0];
+        return NextResponse.json(
+          {
+            error: `That national ID already belongs to ${found.firstname} ${found.lastname} in this facility${found.custom_staff_id ? ` (staff ID ${found.custom_staff_id})` : ''}. Two staff records for one person is what this prevents.`,
+            conflict: 'nationalId',
+            existingStaffId: found.staffid,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     // Generate staff IDs
     const staffId = generateUUID(); // Primary key (UUID)
     const customStaffId = generateStaffId(unit, specialty, dateOfBirth); // Custom format
@@ -636,6 +691,9 @@ export async function POST(request: NextRequest) {
     
     // Check for unique constraint violations
     if (error instanceof Error) {
+      // Reached only when two requests race past the check above; the index
+      // from migration 005 is what actually decides. Until that index existed
+      // this branch was unreachable and its message was a guess.
       if (error.message.includes('unique constraint') || error.message.includes('duplicate key')) {
         return NextResponse.json(
           { 
