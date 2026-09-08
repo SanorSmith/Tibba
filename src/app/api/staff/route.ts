@@ -759,6 +759,57 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // The same two questions the create path asks, for the same reason - with
+    // one addition: exclude the record being edited, or saving a form without
+    // touching the email would report the person as a duplicate of themselves.
+    if (updateData.email && String(updateData.email).trim() !== '') {
+      const clash = await pool.query(
+        `SELECT staffid, firstname, lastname, custom_staff_id
+           FROM staff
+          WHERE workspaceid = $1
+            AND staffid <> $2
+            AND email IS NOT NULL
+            AND lower(trim(email)) = lower(trim($3))
+          LIMIT 1`,
+        [updateWorkspaceId, staffId, String(updateData.email)],
+      );
+      if (clash.rows.length > 0) {
+        const found = clash.rows[0];
+        return NextResponse.json(
+          {
+            error: `${found.firstname} ${found.lastname} already uses ${updateData.email} in this facility${found.custom_staff_id ? ` (staff ID ${found.custom_staff_id})` : ''}. Two staff records for one person is what this prevents.`,
+            conflict: 'email',
+            existingStaffId: found.staffid,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
+    if (updateData.nationalId && String(updateData.nationalId).trim() !== '') {
+      const clash = await pool.query(
+        `SELECT s.staffid, s.firstname, s.lastname, s.custom_staff_id
+           FROM national_id n
+           JOIN staff s ON s.staffid = n.staff_id
+          WHERE n.workspaceid = $1
+            AND n.staff_id <> $2
+            AND lower(trim(n.national_id)) = lower(trim($3))
+          LIMIT 1`,
+        [updateWorkspaceId, staffId, String(updateData.nationalId)],
+      );
+      if (clash.rows.length > 0) {
+        const found = clash.rows[0];
+        return NextResponse.json(
+          {
+            error: `That national ID already belongs to ${found.firstname} ${found.lastname} in this facility${found.custom_staff_id ? ` (staff ID ${found.custom_staff_id})` : ''}.`,
+            conflict: 'nationalId',
+            existingStaffId: found.staffid,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     // This handler also writes side tables (employment_details, bank_details,
     // settlement_rules, …) keyed only by staff_id, so confirm the employee is
     // ours before touching any of them.
