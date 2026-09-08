@@ -15,7 +15,7 @@ import {
   buildSession,
   encodeSession,
   resolveFacility,
-  SESSION_COOKIE_OPTIONS,
+  sessionCookieOptions,
 } from '@/lib/auth/facility-session';
 
 export const dynamic = 'force-dynamic';
@@ -73,7 +73,11 @@ export async function POST(request: NextRequest) {
   const role = appRoleFor(membership);
 
   const res = NextResponse.json({ success: true, role, user: session });
-  res.cookies.set('tibbna_session', await encodeSession(session), SESSION_COOKIE_OPTIONS);
+  res.cookies.set(
+    'tibbna_session',
+    await encodeSession(session),
+    sessionCookieOptions(request.headers.get('host')),
+  );
   res.cookies.delete(GOOGLE_PENDING_COOKIE);
   return res;
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifySession } from '@/lib/auth/session-token';
+import { clearSessionCookieOptions } from '@/lib/auth/facility-session';
 import type { NextRequest } from 'next/server';
 
 // Role → allowed path prefixes (* means all)
@@ -51,7 +52,13 @@ export async function middleware(request: NextRequest) {
     const url = new URL('/login', request.url);
     url.searchParams.set('returnTo', pathname);
     const res = NextResponse.redirect(url);
-    res.cookies.set('tibbna_session', '', { maxAge: 0 });
+    // Must carry the same domain it was set with, or a .tibbna.com cookie
+    // survives the clear and signs the user straight back in.
+    res.cookies.set(
+      'tibbna_session',
+      '',
+      clearSessionCookieOptions(request.headers.get('host')),
+    );
     return res;
   }
 

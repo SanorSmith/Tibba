@@ -250,3 +250,39 @@ export const SESSION_COOKIE_OPTIONS = {
   maxAge: 8 * 60 * 60, // 8 hours
   path: '/',
 };
+
+/**
+ * The session cookie, scoped to whatever host is actually serving.
+ *
+ * On a tibbna.com host the cookie is set for `.tibbna.com`, so one session
+ * covers erp.tibbna.com alongside anything else the platform serves there
+ * rather than each host holding its own.
+ *
+ * Everywhere else it stays host-only, and that is not a detail: a browser
+ * rejects a Domain attribute that is not a parent of the current host, and it
+ * rejects it silently. Setting `.tibbna.com` unconditionally would mean no
+ * cookie at all on tibbna-erp.vercel.app, on preview deployments and on
+ * localhost - sign-in would appear to succeed and land straight back at the
+ * login page, with nothing in any log to say why.
+ */
+export function sessionCookieOptions(host: string | null | undefined) {
+  const hostname = (host ?? '').split(':')[0].toLowerCase();
+  const onPlatformDomain =
+    hostname === 'tibbna.com' || hostname.endsWith('.tibbna.com');
+
+  return onPlatformDomain
+    ? { ...SESSION_COOKIE_OPTIONS, domain: '.tibbna.com' }
+    : { ...SESSION_COOKIE_OPTIONS };
+}
+
+/**
+ * The same options with the lifetime removed, for signing out.
+ *
+ * A cookie is only replaced by one with a matching name, path *and* domain.
+ * Clearing without the domain leaves a `.tibbna.com` cookie sitting in the
+ * browser, so the user appears signed out and is signed back in on the next
+ * request - which is why this exists rather than each caller passing maxAge 0.
+ */
+export function clearSessionCookieOptions(host: string | null | undefined) {
+  return { ...sessionCookieOptions(host), maxAge: 0 };
+}

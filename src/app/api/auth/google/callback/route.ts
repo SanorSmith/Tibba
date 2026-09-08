@@ -26,7 +26,7 @@ import {
   buildSession,
   encodeSession,
   resolveFacility,
-  SESSION_COOKIE_OPTIONS,
+  sessionCookieOptions,
   appRoleFor,
 } from '@/lib/auth/facility-session';
 
@@ -175,7 +175,11 @@ export async function GET(request: NextRequest) {
   }
 
   const res = NextResponse.redirect(new URL(target, request.url));
-  res.cookies.set('tibbna_session', await encodeSession(session), SESSION_COOKIE_OPTIONS);
+  res.cookies.set(
+    'tibbna_session',
+    await encodeSession(session),
+    sessionCookieOptions(request.headers.get('host')),
+  );
   res.cookies.delete(GOOGLE_STATE_COOKIE);
   return res;
 }

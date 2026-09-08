@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { signSession } from '@/lib/auth/session-token';
 import { verifyPassword } from '@/lib/auth/password';
-import { WS_ROLE_TO_APP_ROLE, resolveFacility } from '@/lib/auth/facility-session';
+import {
+  WS_ROLE_TO_APP_ROLE,
+  resolveFacility,
+  sessionCookieOptions,
+} from '@/lib/auth/facility-session';
 import { pool } from '@/lib/db/pool';
 
 export const dynamic = 'force-dynamic';
@@ -226,13 +230,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Set the session cookie that middleware expects
-    response.cookies.set('tibbna_session', sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 8 * 60 * 60, // 8 hours
-      path: '/',
-    });
+    // The options were spelled out here and shared elsewhere, so the two
+    // could drift; they now come from one place, which is also what decides
+    // whether the cookie is scoped to .tibbna.com for this host.
+    response.cookies.set(
+      'tibbna_session',
+      sessionCookie,
+      sessionCookieOptions(request.headers.get('host')),
+    );
 
     return response;
 
