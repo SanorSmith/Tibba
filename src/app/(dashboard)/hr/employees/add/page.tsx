@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -42,6 +42,22 @@ export default function AddEmployeePage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   
+  // Giving this person a login is a separate act from recording their
+  // employment, so it is opt-in rather than implied. Most staff registered so
+  // far have no account - there was never a way to make one from here.
+  const [createLogin, setCreateLogin] = useState(false);
+  const [loginRole, setLoginRole] = useState('');
+  const [availableRoles, setAvailableRoles] = useState<
+    { name: string; label: string; opens_erp: boolean }[]
+  >([]);
+
+  useEffect(() => {
+    fetch('/api/staff/accounts')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setAvailableRoles(d?.availableRoles ?? []))
+      .catch(() => setAvailableRoles([]));
+  }, []);
+
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: '',
     middleName: '',
@@ -182,6 +198,34 @@ export default function AddEmployeePage() {
     try {
       console.log('Creating staff member:', formData);
 
+      // The account first, when one was asked for. If it fails the staff
+      // record is not created either - a person half-registered, with a login
+      // and no employment record or the reverse, is worse than a failed form.
+      let userId: string | null = null;
+      if (createLogin) {
+        if (!loginRole) {
+          toast.error('Choose a role for the login');
+          setLoading(false);
+          return;
+        }
+        const acct = await fetch('/api/staff/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            role: loginRole,
+          }),
+        });
+        const acctResult = await acct.json();
+        if (!acct.ok) {
+          toast.error(acctResult.error || 'Could not create the login');
+          setLoading(false);
+          return;
+        }
+        userId = acctResult.user.userid;
+      }
+
       const response = await fetch('/api/staff', {
         method: 'POST',
         headers: {
@@ -197,6 +241,7 @@ export default function AddEmployeePage() {
           unit: formData.unit,
           specialty: formData.specialty,
           dateOfBirth: formData.dateOfBirth,
+          userId,
         }),
       });
 
@@ -298,6 +343,57 @@ export default function AddEmployeePage() {
                   {errors.dateOfBirth && <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>}
                   <p className="mt-1 text-xs text-gray-500">Used to generate Staff ID</p>
                 </div>
+              </div>
+            </div>
+
+            {/* Sign-in account */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sign-in account</h3>
+              <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={createLogin}
+                    onChange={(e) => setCreateLogin(e.target.checked)}
+                  />
+                  <span className="text-sm">
+                    <span className="font-medium text-gray-900">
+                      Give this person a login
+                    </span>
+                    <span className="block text-gray-500">
+                      Creates an account for this facility using the email above.
+                      They sign in with Google - no password is set here. Leave
+                      it unticked to record the employment only.
+                    </span>
+                  </span>
+                </label>
+
+                {createLogin && (
+                  <div className="pl-7">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Role in this facility <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={loginRole}
+                      onChange={(e) => setLoginRole(e.target.value)}
+                    >
+                      <option value="">Choose a role…</option>
+                      {availableRoles.map((r) => (
+                        <option key={r.name} value={r.name}>
+                          {r.label}
+                          {r.opens_erp ? ' — opens the ERP' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      This decides what they can open. Roles marked as opening
+                      the ERP reach Reception, Finance, HR and Inventory; the
+                      rest work in the EHR.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
