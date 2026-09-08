@@ -51,9 +51,19 @@ export default function AddEmployeePage() {
     { name: string; label: string; opens_erp: boolean }[]
   >([]);
 
+  // Whether this person may create a login at all. The endpoint answers 403
+  // to anyone who is not an administrator of the facility, and asking it is
+  // how the form finds out - rather than keeping its own copy of the rule,
+  // which is how the two role tables drifted apart in the first place.
+  const [canCreateLogin, setCanCreateLogin] = useState(false);
+
   useEffect(() => {
     fetch('/api/staff/accounts')
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (!r.ok) return null;
+        setCanCreateLogin(true);
+        return r.json();
+      })
       .then((d) => setAvailableRoles(d?.availableRoles ?? []))
       .catch(() => setAvailableRoles([]));
   }, []);
@@ -346,7 +356,10 @@ export default function AddEmployeePage() {
               </div>
             </div>
 
-            {/* Sign-in account */}
+            {/* Sign-in account - only for those who may actually create one.
+                Offering the option to an HR officer and failing at submit is
+                worse than not offering it. */}
+            {canCreateLogin && (
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Sign-in account</h3>
               <div className="rounded-lg border border-gray-200 p-4 space-y-3">
@@ -396,6 +409,7 @@ export default function AddEmployeePage() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Contact Information */}
             <div>
