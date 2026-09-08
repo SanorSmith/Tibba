@@ -171,6 +171,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Is this person already on the books here?
+    //
+    // The same two questions /api/staff asks. They were added there first
+    // because that is the route I found; this is the one the Add Employee
+    // button reaches, so the checks were guarding a door nobody used. The
+    // unique indexes from migration 005 caught it either way, but with a
+    // constraint violation rather than a name.
+    const emailClash = await pool.query(
+      `SELECT staffid, firstname, lastname, custom_staff_id
+         FROM staff
+        WHERE workspaceid = $1
+          AND email IS NOT NULL
+          AND lower(trim(email)) = lower(trim($2))
+        LIMIT 1`,
+      [workspaceId, email],
+    );
+    if (emailClash.rows.length > 0) {
+      const found = emailClash.rows[0];
+      return NextResponse.json(
+        {
+          success: false,
+          error: `${found.firstname} ${found.lastname} is already registered in this facility with the email ${email}${found.custom_staff_id ? ` (staff ID ${found.custom_staff_id})` : ''}. Edit that record instead of creating a second one.`,
+          conflict: 'email',
+          existingStaffId: found.staffid,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (national_id && String(national_id).trim() !== '') {
+      const nidClash = await pool.query(
+        `SELECT s.staffid, s.firstname, s.lastname, s.custom_staff_id
+           FROM national_id n
+           JOIN staff s ON s.staffid = n.staff_id
+          WHERE n.workspaceid = $1
+            AND lower(trim(n.national_id)) = lower(trim($2))
+          LIMIT 1`,
+        [workspaceId, String(national_id)],
+      );
+      if (nidClash.rows.length > 0) {
+        const found = nidClash.rows[0];
+        return NextResponse.json(
+          {
+            success: false,
+            error: `That national ID already belongs to ${found.firstname} ${found.lastname} in this facility${found.custom_staff_id ? ` (staff ID ${found.custom_staff_id})` : ''}.`,
+            conflict: 'nationalId',
+            existingStaffId: found.staffid,
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     // Start transaction
     const client = await pool.connect();
     
@@ -187,9 +240,10 @@ export async function POST(request: NextRequest) {
           email,
           role,
           unit,
+          userid,
           createdat,
           updatedat
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         RETURNING staffid, custom_staff_id
       `;
       
@@ -202,7 +256,10 @@ export async function POST(request: NextRequest) {
         last_name,
         email,
         job_title || 'Staff',
-        department_id || 'General'
+        department_id || 'General',
+        // The platform account this employment belongs to, when the form
+        // created one. The database refuses an account from another facility.
+        body.userId || null
       ]);
 
       const newEmployee = employeeResult.rows[0];

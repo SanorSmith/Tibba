@@ -76,6 +76,27 @@ export default function NewEmployeePage() {
   const [specialties, setSpecialties] = useState<any[]>([]);
   const [loadingSpecialties, setLoadingSpecialties] = useState(false);
 
+  // Giving this person a login is a separate act from recording employment,
+  // so it is opt-in. Whether the current user may do it at all is the
+  // endpoint's answer, not a rule copied into the client.
+  const [canCreateLogin, setCanCreateLogin] = useState(false);
+  const [createLogin, setCreateLogin] = useState(false);
+  const [loginRole, setLoginRole] = useState('');
+  const [availableRoles, setAvailableRoles] = useState<
+    { name: string; label: string; opens_erp: boolean }[]
+  >([]);
+
+  useEffect(() => {
+    fetch('/api/staff/accounts')
+      .then(async (r) => {
+        if (!r.ok) return null;
+        setCanCreateLogin(true);
+        return r.json();
+      })
+      .then((d) => setAvailableRoles(d?.availableRoles ?? []))
+      .catch(() => setAvailableRoles([]));
+  }, []);
+
   const update = (field: keyof EmployeeFormData, value: string | number | boolean | undefined) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
@@ -203,13 +224,38 @@ export default function NewEmployeePage() {
     };
 
     try {
+      // The account first, when one was asked for. If it fails, no employee is
+      // created either - half a registration is worse than a failed form.
+      let userId: string | null = null;
+      if (createLogin) {
+        if (!loginRole) {
+          toast.error('Choose a role for the login');
+          return;
+        }
+        const acct = await fetch('/api/staff/accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: form.email,
+            name: `${form.first_name ?? ''} ${form.last_name ?? ''}`.trim(),
+            role: loginRole,
+          }),
+        });
+        const acctResult = await acct.json();
+        if (!acct.ok) {
+          toast.error(acctResult.error || 'Could not create the login');
+          return;
+        }
+        userId = acctResult.user.userid;
+      }
+
       // First create the employee
       const response = await fetch('/api/hr/employees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newEmployee),
+        body: JSON.stringify({ ...newEmployee, userId }),
       });
 
       const result = await response.json();
@@ -405,6 +451,55 @@ export default function NewEmployeePage() {
                 </FormGroup>
               </FormRow>
             </FormSection>
+
+            {canCreateLogin && (
+              <FormSection title="Sign-in account">
+                <div style={{ border: '1px solid rgb(229,231,235)', borderRadius: 8, padding: 16 }}>
+                  <label style={{ display: 'flex', gap: 12, cursor: 'pointer', alignItems: 'flex-start' }}>
+                    <input
+                      type="checkbox"
+                      checked={createLogin}
+                      onChange={e => setCreateLogin(e.target.checked)}
+                      style={{ marginTop: 4 }}
+                    />
+                    <span style={{ fontSize: 13 }}>
+                      <strong style={{ display: 'block' }}>Give this person a login</strong>
+                      <span style={{ color: 'rgb(107,114,128)' }}>
+                        Creates an account for this facility using the email
+                        above. They sign in with Google &mdash; no password is
+                        set here. Leave it unticked to record the employment
+                        only.
+                      </span>
+                    </span>
+                  </label>
+
+                  {createLogin && (
+                    <div style={{ marginTop: 12, paddingLeft: 28 }}>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+                        Role in this facility *
+                      </label>
+                      <select
+                        className="tibbna-input"
+                        value={loginRole}
+                        onChange={e => setLoginRole(e.target.value)}
+                      >
+                        <option value="">Choose a role&hellip;</option>
+                        {availableRoles.map(r => (
+                          <option key={r.name} value={r.name}>
+                            {r.label}{r.opens_erp ? ' — opens the ERP' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: 11, color: 'rgb(163,163,163)' }}>
+                        This decides what they can open. Roles marked as opening
+                        the ERP reach Reception, Finance, HR and Inventory; the
+                        rest work in the EHR.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            )}
 
             <FormSection title="Contact Information">
               <FormRow columns={2}>
