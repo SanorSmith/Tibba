@@ -56,11 +56,29 @@ try {
 
 const SEED_IDS = `SELECT id FROM employees WHERE employee_id LIKE 'EMP-2024-%'`;
 
+// Compensation rows belong to a staff member. The ones that resolve to no
+// staff record are left over from the seeded people; the handful that do
+// resolve were created by the add employee form and are real, so they stay.
+const ORPHAN_COMPENSATION = `
+  SELECT ec.id FROM employee_compensation ec
+  LEFT JOIN staff s ON s.staffid = ec.employee_id
+  WHERE s.staffid IS NULL`;
+
 const targets = [
   ['employees', `SELECT * FROM employees WHERE employee_id LIKE 'EMP-2024-%'`],
   ['leave_requests', `SELECT * FROM leave_requests WHERE employee_id IN (${SEED_IDS}) OR employee_name = 'user999999 test99999999'`],
   ['job_vacancies', `SELECT * FROM job_vacancies WHERE position = 'Integration Test - Pharmacist'`],
   ['daily_attendance', `SELECT * FROM daily_attendance WHERE employee_name IS NULL`],
+  // The payroll chain. All three periods are seeded: January and February
+  // 2026 at 14.9M gross, then March at 35.1M for the same ten fabricated
+  // employees, and the transactions behind them are named "John Smith",
+  // "Emily Brown", "Custom ID". March sitting unpaid in CALCULATED is what
+  // fires the red URGENT alert on the HR dashboard.
+  ['payroll_approvals', `SELECT * FROM payroll_approvals`],
+  ['payroll_adjustments', `SELECT * FROM payroll_adjustments`],
+  ['payroll_transactions', `SELECT * FROM payroll_transactions`],
+  ['payroll_periods', `SELECT * FROM payroll_periods`],
+  ['employee_compensation (orphans)', `SELECT * FROM employee_compensation WHERE id IN (${ORPHAN_COMPENSATION})`],
 ];
 
 const backup = {};
@@ -96,6 +114,14 @@ try {
     ['nameless seeded attendance rows', `DELETE FROM daily_attendance WHERE employee_name IS NULL`],
     ['the integration-test vacancy', `DELETE FROM job_vacancies WHERE position = 'Integration Test - Pharmacist'`],
     ['seeded employee records', `DELETE FROM employees WHERE employee_id LIKE 'EMP-2024-%'`],
+    // Approvals and adjustments hold the period with NO ACTION, so they have
+    // to go before the periods themselves or the delete is refused.
+    // Transactions cascade, but are deleted explicitly to report the count.
+    ['payroll approvals', `DELETE FROM payroll_approvals`],
+    ['payroll adjustments', `DELETE FROM payroll_adjustments`],
+    ['payroll transactions', `DELETE FROM payroll_transactions`],
+    ['payroll periods', `DELETE FROM payroll_periods`],
+    ['orphaned compensation records', `DELETE FROM employee_compensation WHERE id IN (${ORPHAN_COMPENSATION})`],
   ];
   console.log('');
   for (const [label, sql] of steps) {
@@ -111,10 +137,12 @@ try {
 }
 
 const after = await client.query(`
-  SELECT (SELECT count(*) FROM employees)                       AS employees_left,
-         (SELECT count(*) FROM leave_requests)                  AS leave_requests_left,
-         (SELECT count(*) FROM daily_attendance)                AS attendance_left,
-         (SELECT count(*) FROM job_vacancies WHERE status='OPEN') AS open_vacancies`);
+  SELECT (SELECT count(*) FROM employees)                         AS employees_left,
+         (SELECT count(*) FROM leave_requests)                    AS leave_requests_left,
+         (SELECT count(*) FROM daily_attendance)                  AS attendance_left,
+         (SELECT count(*) FROM job_vacancies WHERE status='OPEN') AS open_vacancies,
+         (SELECT count(*) FROM payroll_periods)                   AS payroll_periods_left,
+         (SELECT count(*) FROM employee_compensation)             AS compensation_left`);
 console.log('\nAfter:');
 console.table(after.rows);
 

@@ -53,6 +53,13 @@ export default function HRPage() {
       }
     : { name: '—', status: 'N/A', total_gross: 0, total_net: 0 };
 
+  // The URGENT payroll alert was the one alert on this card with no condition
+  // on it, so it fired even with no payroll period at all — reading "— payroll
+  // is in N/A status" in red. It belongs on a period that exists and has not
+  // been paid out yet; a closed or paid period is not due, it is done.
+  const payrollNeedsAttention =
+    !!data?.payroll && !['PAID', 'CLOSED', 'COMPLETED'].includes(latestPayroll.status.toUpperCase());
+
   const quickActions = [
     { href: '/hr/employees', icon: Users, label: 'Employees' },
     { href: '/hr/attendance', icon: Clock, label: 'Attendance' },
@@ -173,13 +180,15 @@ export default function HRPage() {
                   <p style={{ fontSize: '12px', color: '#1E40AF' }}>Leave requests awaiting manager approval</p>
                 </div>
               )}
-              <div style={{ padding: '12px', backgroundColor: '#FEE2E2', border: '1px solid #FECACA' }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="tibbna-badge badge-error">URGENT</span>
-                  <span style={{ fontSize: '14px', fontWeight: 500 }}>Payroll Processing Due</span>
+              {payrollNeedsAttention && (
+                <div style={{ padding: '12px', backgroundColor: '#FEE2E2', border: '1px solid #FECACA' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="tibbna-badge badge-error">URGENT</span>
+                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Payroll Processing Due</span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#991B1B' }}>{latestPayroll.name} payroll is in {latestPayroll.status} status</p>
                 </div>
-                <p style={{ fontSize: '12px', color: '#991B1B' }}>{latestPayroll.name} payroll is in {latestPayroll.status} status</p>
-              </div>
+              )}
               {pendingReviews > 0 && (
                 <div style={{ padding: '12px', backgroundColor: '#F3E8FF', border: '1px solid #E9D5FF' }}>
                   <div className="flex items-center gap-2 mb-1">
