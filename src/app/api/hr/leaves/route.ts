@@ -302,15 +302,25 @@ export async function PUT(request: NextRequest) {
 
     if (status === 'APPROVED' && approved_by) {
       // Get approver details
+      // Named from `staff`, the roster the rest of the ERP uses. This read
+      // `employees` — the seeded table the HR dashboard also used to count —
+      // and matched on its text employee code. Because the miss was handled
+      // silently below, an approval whose approver was not in that table
+      // simply recorded no name and no approval timestamp at all.
       const approverResult = await pool.query(
-        'SELECT first_name, last_name FROM employees WHERE employee_id = $1 AND workspaceid = $2',
+        `SELECT firstname, lastname FROM staff
+         WHERE (staffid::text = $1 OR custom_staff_id = $1) AND workspaceid = $2`,
         [approved_by, workspaceId]
       );
 
+      // The timestamp is not conditional on recognising the approver: the
+      // leave was approved either way, and losing approved_at made the row
+      // sort last in the dashboard's recent-activity list.
+      query += `, approved_at = NOW()`;
       if (approverResult.rows.length > 0) {
         const approver = approverResult.rows[0];
-        query += `, approved_by_name = $${paramIndex}, approved_at = NOW()`;
-        params.push(`${approver.first_name} ${approver.last_name}`);
+        query += `, approved_by_name = $${paramIndex}`;
+        params.push(`${approver.firstname} ${approver.lastname}`);
         paramIndex++;
       }
     }

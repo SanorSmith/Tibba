@@ -28,19 +28,57 @@ export async function GET(request: NextRequest) {
   // each one remembering its WHERE clause.
   return await withTenant(ws, async () => {
 
+  // The roster lives in `staff`, which is what the Staff Directory, the add
+  // employee form and the rest of the ERP read. This tile used to count
+  // `employees`, a near-abandoned table holding ten seeded demo records. It
+  // reported 10 while the directory reported 1, and both were querying the
+  // same facility correctly — the disagreement was the table, not the scope.
+  // Four LEFT JOINs against `employees` survive in the recruitment routes;
+  // every column they join on is null, so they resolve to nothing either way.
+  //
+  // `staff` has no employment_status column: a row exists for as long as the
+  // person is employed, so everyone in it is active. It has no category
+  // column either — the add employee form collects "Employee Category" and
+  // then never stores it — so the five buckets are derived from `role`, a
+  // free-text job title like "Senior Physician". Hence patterns rather than
+  // exact matches. Order carries meaning: nursing first so a "Nurse Manager"
+  // is not administration, imaging before medicine so a "Radiologist" is not
+  // filed next to the surgeons.
   const emp = await safe(async () => {
     const r = await pool.query(`
+      WITH categorised AS (
+        SELECT CASE
+          WHEN role ILIKE ANY (ARRAY['%nurse%','%midwife%'])                        THEN 'nursing'
+          WHEN role ILIKE ANY (ARRAY['%technician%','%lab%','%radiolog%','%pharmac%','%imaging%'])        THEN 'technical'
+          WHEN role ILIKE ANY (ARRAY['%doctor%','%physician%','%surgeon%','%consultant%','%specialist%','%ologist%','%iatrist%','%dentist%']) THEN 'medical'
+          WHEN role ILIKE ANY (ARRAY['%administrator%','%admin%','%reception%','%account%','%human resource%','%hr officer%','%hr_officer%','%manager%','%clerk%','%officer%']) THEN 'admin'
+          ELSE 'support'
+        END AS category
+        FROM staff WHERE workspaceid = $1
+      )
       SELECT
-        COUNT(*) FILTER (WHERE employment_status = 'ACTIVE')   AS active,
-        COUNT(*) FILTER (WHERE employment_status = 'ON_LEAVE') AS on_leave,
-        COUNT(*) FILTER (WHERE employment_status = 'ACTIVE' AND employee_category = 'MEDICAL_STAFF')   AS medical,
-        COUNT(*) FILTER (WHERE employment_status = 'ACTIVE' AND employee_category = 'NURSING')         AS nursing,
-        COUNT(*) FILTER (WHERE employment_status = 'ACTIVE' AND employee_category = 'ADMINISTRATIVE')  AS admin,
-        COUNT(*) FILTER (WHERE employment_status = 'ACTIVE' AND employee_category = 'TECHNICAL')       AS technical,
-        COUNT(*) FILTER (WHERE employment_status = 'ACTIVE' AND employee_category = 'SUPPORT')         AS support
-      FROM employees WHERE workspaceid = $1`, [ws]);
+        COUNT(*)                                      AS active,
+        COUNT(*) FILTER (WHERE category = 'medical')   AS medical,
+        COUNT(*) FILTER (WHERE category = 'nursing')   AS nursing,
+        COUNT(*) FILTER (WHERE category = 'admin')     AS admin,
+        COUNT(*) FILTER (WHERE category = 'technical') AS technical,
+        COUNT(*) FILTER (WHERE category = 'support')   AS support
+      FROM categorised`, [ws]);
     return r.rows[0];
-  }, { active: 0, on_leave: 0, medical: 0, nursing: 0, admin: 0, technical: 0, support: 0 });
+  }, { active: 0, medical: 0, nursing: 0, admin: 0, technical: 0, support: 0 });
+
+  // Who is away right now. There is no key joining `leave_requests` back to
+  // `staff` — the table carries a denormalised `employee_name` and an
+  // `employee_id` that pointed at the retired `employees` table — so this
+  // counts distinct names on approved leave spanning today. Two staff sharing
+  // a name would count once; linking leave to `staff.staffid` is the real fix.
+  const onLeave = await safe(async () => {
+    const r = await pool.query(`
+      SELECT COUNT(DISTINCT employee_name) AS c FROM leave_requests
+      WHERE workspaceid = $1 AND status = 'APPROVED'
+        AND CURRENT_DATE BETWEEN start_date AND end_date`, [ws]);
+    return parseInt(r.rows[0].c) || 0;
+  }, 0);
 
   const attendance = await safe(async () => {
     const r = await pool.query(`
@@ -64,12 +102,15 @@ export async function GET(request: NextRequest) {
     return r.rows;
   }, []);
 
+  // The tile is labelled "Open Vacancies", so it counts postings. The sum of
+  // `openings` is the headcount being recruited, which is a larger and
+  // different number; this query used to compute it and then discard it.
   const vacancies = await safe(async () => {
     const r = await pool.query(`
-      SELECT COUNT(*) AS open_count, COALESCE(SUM(openings),0) AS openings
+      SELECT COUNT(*) AS open_count
       FROM job_vacancies WHERE status = 'OPEN' AND workspace_id = $1`, [ws]);
     return r.rows[0];
-  }, { open_count: 0, openings: 0 });
+  }, { open_count: 0 });
 
   const candidates = await safe(async () => {
     const r = await pool.query(`SELECT COUNT(*) AS c FROM job_applications WHERE workspace_id = $1`, [ws]);
@@ -92,9 +133,9 @@ export async function GET(request: NextRequest) {
   const recognitions = await safe(async () => {
     const r = await pool.query(`
       SELECT er.title, er.reason, er.recognition_date,
-             e.first_name || ' ' || e.last_name AS employee_name
+             s.firstname || ' ' || s.lastname AS employee_name
       FROM employee_recognitions er
-      LEFT JOIN employees e ON e.id = er.employee_id
+      LEFT JOIN staff s ON s.staffid = er.employee_id
       WHERE er.workspaceid = $1
       ORDER BY er.recognition_date DESC NULLS LAST LIMIT 3`, [ws]);
     return r.rows;
@@ -104,7 +145,7 @@ export async function GET(request: NextRequest) {
     success: true,
     employees: {
       active: parseInt(emp.active) || 0,
-      on_leave: parseInt(emp.on_leave) || 0,
+      on_leave: onLeave,
       categories: [
         { name: 'Medical',   value: parseInt(emp.medical)   || 0, color: '#3B82F6' },
         { name: 'Nursing',   value: parseInt(emp.nursing)   || 0, color: '#EC4899' },

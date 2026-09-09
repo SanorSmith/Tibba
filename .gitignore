@@ -38,3 +38,6 @@ next-env.d.ts
 # Local tooling
 .claude/
 .windsurf/
+
+# Database backups taken by scripts/clear-demo-hr-rows.mjs. Real staff data.
+.hr-backups/
