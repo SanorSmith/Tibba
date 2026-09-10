@@ -171,7 +171,7 @@ export default function SpecialtiesPage() {
               <Download size={16} />
               Export
             </button>
-            <Link href="/departments/specialties/add">
+            <Link href="/hr/departments/specialties/add">
               <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 <Plus size={16} />
                 Add Specialty
@@ -182,7 +182,7 @@ export default function SpecialtiesPage() {
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600">
-          <Link href="/departments" className="hover:text-gray-900">Departments</Link>
+          <Link href="/hr/departments" className="hover:text-gray-900">Departments</Link>
           <span>/</span>
           <span className="text-gray-900">Specialties</span>
         </nav>
@@ -229,7 +229,7 @@ export default function SpecialtiesPage() {
               }
             </p>
             {specialties.length === 0 && (
-              <Link href="/departments/specialties/add">
+              <Link href="/hr/departments/specialties/add">
                 <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                   <Plus size={16} />
                   Add Your First Specialty

@@ -85,7 +85,7 @@ export default function DepartmentListPage() {
           <h1 className="text-3xl font-bold text-gray-900">Department List</h1>
           <p className="text-gray-600 mt-1">View and manage all hospital departments</p>
         </div>
-        <Link href="/departments/add">
+        <Link href="/hr/departments/add">
           <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
             <Plus size={16} />
             Add Department
@@ -163,7 +163,7 @@ export default function DepartmentListPage() {
                 {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first department.'}
               </p>
               {!searchTerm && (
-                <Link href="/departments/add">
+                <Link href="/hr/departments/add">
                   <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
                     <Plus size={16} className="mr-2" />
                     Add Department

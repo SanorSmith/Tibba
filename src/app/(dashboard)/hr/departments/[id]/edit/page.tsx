@@ -65,11 +65,11 @@ export default function EditDepartmentPage() {
         });
       } else {
         toast.error(data.error || 'Failed to fetch department');
-        router.push('/departments/list');
+        router.push('/hr/departments/list');
       }
     } catch (error) {
       toast.error('Failed to fetch department');
-      router.push('/departments/list');
+      router.push('/hr/departments/list');
     } finally {
       setFetching(false);
     }
@@ -108,7 +108,7 @@ export default function EditDepartmentPage() {
 
       if (data.success) {
         toast.success('Department updated successfully!');
-        router.push('/departments/list');
+        router.push('/hr/departments/list');
       } else {
         toast.error(data.error || 'Failed to update department');
       }
@@ -137,7 +137,7 @@ export default function EditDepartmentPage() {
             <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Department not found</h3>
             <p className="text-gray-500 mb-4">The department you're looking for doesn't exist.</p>
-            <Link href="/departments/list">
+            <Link href="/hr/departments/list">
               <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 Back to Departments
               </button>
@@ -152,7 +152,7 @@ export default function EditDepartmentPage() {
     <div className="max-w-2xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6">
-        <Link href="/departments/list" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+        <Link href="/hr/departments/list" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
           <ArrowLeft size={16} className="mr-2" />
           Back to Departments
         </Link>
@@ -291,7 +291,7 @@ export default function EditDepartmentPage() {
 
           {/* Actions */}
           <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-gray-200">
-            <Link href="/departments/list">
+            <Link href="/hr/departments/list">
               <button
                 type="button"
                 className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"

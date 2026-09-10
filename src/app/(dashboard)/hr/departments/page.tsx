@@ -13,7 +13,7 @@ export default function DepartmentsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Add Department Card */}
-        <Link href="/departments/add">
+        <Link href="/hr/departments/add">
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
@@ -32,7 +32,7 @@ export default function DepartmentsPage() {
         </Link>
 
         {/* Department Orders Card */}
-        <Link href="/departments/orders">
+        <Link href="/hr/departments/orders">
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
@@ -51,7 +51,7 @@ export default function DepartmentsPage() {
         </Link>
 
         {/* Department List Card */}
-        <Link href="/departments/list">
+        <Link href="/hr/departments/list">
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
@@ -70,7 +70,7 @@ export default function DepartmentsPage() {
         </Link>
 
         {/* Test CRUD Card */}
-        <Link href="/departments/test">
+        <Link href="/hr/departments/test">
           <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">

@@ -87,7 +87,7 @@ export default function TestCrudPage() {
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6">
-        <Link href="/departments" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
+        <Link href="/hr/departments" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4">
           <ArrowLeft size={16} className="mr-2" />
           Back to Departments
         </Link>

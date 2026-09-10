@@ -118,7 +118,7 @@ export default function AddSpecialtyPage() {
       if (response.ok) {
         console.log('Specialty created successfully:', result);
         toast.success('Specialty created successfully');
-        router.push('/departments/specialties');
+        router.push('/hr/departments/specialties');
       } else {
         console.error('Error creating specialty:', result);
         toast.error(result.error || 'Failed to create specialty');
@@ -143,7 +143,7 @@ export default function AddSpecialtyPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <Link href="/departments/specialties" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
+        <Link href="/hr/departments/specialties" className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
           <ArrowLeft size={16} />
           Back to Specialties
         </Link>
@@ -264,7 +264,7 @@ export default function AddSpecialtyPage() {
             <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
               <button
                 type="button"
-                onClick={() => router.push('/departments/specialties')}
+                onClick={() => router.push('/hr/departments/specialties')}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel

@@ -260,7 +260,7 @@ export default function SpecialtiesTabsPage() {
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/departments/specialties/add">
+                <Link href="/hr/departments/specialties/add">
                   <button className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                     <Plus size={16} />
                     Add New Specialty
@@ -361,7 +361,7 @@ export default function SpecialtiesTabsPage() {
                     }
                   </p>
                   {specialties.length === 0 && (
-                    <Link href="/departments/specialties/add">
+                    <Link href="/hr/departments/specialties/add">
                       <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         <Plus size={16} />
                         Add Your First Specialty
@@ -596,7 +596,7 @@ export default function SpecialtiesTabsPage() {
               <Download size={16} />
               Export
             </button>
-            <Link href="/departments/specialties/add">
+            <Link href="/hr/departments/specialties/add">
               <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 <Plus size={16} />
                 Add Specialty
@@ -607,7 +607,7 @@ export default function SpecialtiesTabsPage() {
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600">
-          <Link href="/departments" className="hover:text-gray-900">Departments</Link>
+          <Link href="/hr/departments" className="hover:text-gray-900">Departments</Link>
           <span>/</span>
           <span className="text-gray-900">Specialties</span>
         </nav>
