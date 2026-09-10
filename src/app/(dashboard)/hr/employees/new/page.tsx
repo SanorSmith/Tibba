@@ -104,6 +104,7 @@ export default function NewEmployeePage() {
       })
       .then((d) => setAvailableRoles(d?.availableRoles ?? []))
       .catch(() => setAvailableRoles([]));
+  }, []);
 
   // Only accounts that already hold a role in this facility. Offering anyone
   // else would let a hospital attach a stranger's account to itself, which is
@@ -115,7 +116,6 @@ export default function NewEmployeePage() {
       .then((d) => setLinkable(d?.users ?? []))
       .catch(() => setLinkable([]));
   }, [accountMode, createLogin]);
-  }, []);
 
   const update = (field: keyof EmployeeFormData, value: string | number | boolean | undefined) => {
     setForm(prev => ({ ...prev, [field]: value }));

@@ -93,10 +93,15 @@ export async function POST(request: NextRequest) {
 
   const next = buildSession(
     {
-      userId: session.userId,
+      // `userid`, not `userId`. The field is spelled the database's way here,
+      // and an `as never` cast was silencing the mismatch: the session this
+      // built carried no user id at all, so the very next request that needed
+      // one - including another switch - answered 401. A cast that exists to
+      // quiet a type error is usually the type system being right.
+      userid: session.userId,
       name: null,
       email: session.email ?? null,
-    } as never,
+    },
     {
       workspaceid: session.workspaceId,
       workspace_name: match.workspace_name,
