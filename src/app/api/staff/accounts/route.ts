@@ -266,30 +266,65 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  // And cannot change someone who already holds a role they could not grant.
-  // Without this an HR officer could demote the facility's administrator,
-  // which is the same power as promoting themselves, reached from the other
-  // direction.
+  // Every role they hold here, because a person can hold several since
+  // migration 0093 and "their role" is no longer a single thing.
   const current = await pool.query(
-    `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2 LIMIT 1`,
+    `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2`,
     [userid, workspaceId],
   );
-  const currentRole = current.rows[0]?.role;
-  if (currentRole && !manager.canGrant(currentRole)) {
+  const heldRoles: string[] = current.rows.map((r) => r.role);
+
+  // Cannot change someone who holds any role the caller could not grant.
+  // Without this an HR officer could demote the facility's administrator,
+  // which is the same power as promoting themselves, reached from the other
+  // direction. Checked across all of their roles, not just one: holding
+  // `administrator` alongside `nurse` must protect them just as much.
+  const protectedRole = heldRoles.find((r) => !manager.canGrant(r));
+  if (protectedRole) {
     return NextResponse.json(
       {
-        error: `That person is ${currentRole} in this facility. Only an administrator can change them.`,
+        error: `That person is ${protectedRole} in this facility. Only an administrator can change them.`,
       },
       { status: 403 },
     );
   }
 
+  // Which role is being changed. The caller names it when the person holds
+  // several; with one there is no ambiguity to resolve.
+  const from = String(body?.from ?? '').trim() || heldRoles[0];
+
+  if (heldRoles.length > 1 && !body?.from) {
+    // Refusing beats guessing. The old statement had no role in its WHERE
+    // clause, so it rewrote every row this person had in the facility to the
+    // same value — which the primary key now rejects outright, and which would
+    // silently have destroyed four of five roles before it did.
+    return NextResponse.json(
+      {
+        error: `That person holds ${heldRoles.length} roles here (${heldRoles.join(', ')}). Say which one to change, or remove the one you do not want.`,
+        roles: heldRoles,
+      },
+      { status: 409 },
+    );
+  }
+
+  if (!heldRoles.includes(from)) {
+    return NextResponse.json(
+      { error: `They do not hold "${from}" in this facility.` },
+      { status: 400 },
+    );
+  }
+
+  if (heldRoles.includes(role)) {
+    // Already theirs. Nothing to do, and the key would refuse the write.
+    return NextResponse.json({ success: true, userid, role, unchanged: true });
+  }
+
   await pool.query(
-    `UPDATE workspaceusers SET role = $3 WHERE userid = $1 AND workspaceid = $2`,
-    [userid, workspaceId, role],
+    `UPDATE workspaceusers SET role = $4 WHERE userid = $1 AND workspaceid = $2 AND role = $3`,
+    [userid, workspaceId, from, role],
   );
 
-  return NextResponse.json({ success: true, userid, role });
+  return NextResponse.json({ success: true, userid, role, replaced: from });
 }
 
 /**
