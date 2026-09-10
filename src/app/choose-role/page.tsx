@@ -40,8 +40,20 @@ export default function ChooseRolePage() {
 
   useEffect(() => {
     fetch('/api/auth/switch-role')
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        // A 401 is not "no roles", it is "no session". Treating the two the
+        // same is why a signed-out or expired session looked exactly like the
+        // picker being broken: the page read an empty list and forwarded on
+        // without a word.
+        if (r.status === 401) {
+          window.location.href = '/login';
+          return null;
+        }
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d) => {
+        if (!d) return;
         const all: Role[] = d?.roles ?? [];
 
         // Nothing to decide. Showing a page with one button would be a step
