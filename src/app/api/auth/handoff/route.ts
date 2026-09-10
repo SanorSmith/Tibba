@@ -91,12 +91,20 @@ export async function GET(request: NextRequest) {
 
   const session = buildSession(dbUser.rows[0], membership, dbUser.rows[0].email ?? undefined);
 
-  // Not `/`. Only SUPER_ADMIN may open the root, so everyone else crossed
-  // over with a valid session and was met by "Access Denied" on the very next
-  // request. Land them in the module their role actually owns.
-  const res = NextResponse.redirect(
-    new URL(landingPathFor(session.role), request.url),
-  );
+  // Through the role chooser, not straight to the module.
+  //
+  // Not `/`, for the reason that cost a day once: only SUPER_ADMIN may open
+  // the root, so everyone else crossed over with a valid session and met
+  // "Access Denied" on the very next request. But landing them directly in
+  // their module skipped the question of *which* role they are crossing as,
+  // which is how someone holding five roles arrived as the administrator every
+  // time even after the chooser existed. This route is a third way in and it
+  // was still bypassing it.
+  //
+  // The chooser forwards on by itself when there is only one role, so nobody
+  // who has one notices the extra step.
+  const res = NextResponse.redirect(new URL('/choose-role', request.url));
+  void landingPathFor;
   res.cookies.set(
     'tibbna_session',
     await encodeSession(session),
