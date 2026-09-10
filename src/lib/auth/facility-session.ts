@@ -154,6 +154,33 @@ export function canLogIn(
 }
 
 /**
+ * The one role an HR officer may never hand out.
+ *
+ * `administrator` appoints and removes everyone else in the facility, so an HR
+ * officer who could grant it could promote themselves and the separation
+ * between the two would be decoration.
+ */
+export const NEVER_GRANTED_BY_HR = new Set(['administrator']);
+
+/**
+ * Which roles this app role may hand out, or null if it may not manage
+ * accounts at all.
+ *
+ * Expressed as a predicate rather than a boolean because the interesting
+ * question is never whether someone may act but how far. It lives here rather
+ * than inside the accounts route so it can be tested without importing a file
+ * that opens a database pool on load, and so it sits beside the other role
+ * tables instead of becoming a fourth copy of the same idea.
+ */
+export function grantRuleFor(
+  appRole: string | null | undefined
+): ((role: string) => boolean) | null {
+  if (appRole === 'SUPER_ADMIN') return () => true;
+  if (appRole === 'HR_ADMIN') return (role) => !NEVER_GRANTED_BY_HR.has(role);
+  return null;
+}
+
+/**
  * Which facility should this user open?
  *
  * Ordering when they belong to several: this app is the hospital ERP, so

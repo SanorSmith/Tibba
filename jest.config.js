@@ -23,7 +23,14 @@ const customJestConfig = {
   modulePathIgnorePatterns: ['<rootDir>/.claude/'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/.claude/'],
 
-  testMatch: ['<rootDir>/src/__tests__/**/*.test.ts', '<rootDir>/src/__tests__/**/*.test.tsx'],
+  // Relative globs, not `<rootDir>/…`. On Windows the interpolated rootDir
+  // arrives with a backslash before `.claude`, and a glob reads `\.` as an
+  // escaped dot, so the pattern silently matched nothing and jest reported
+  // "no tests found" from inside a worktree while the same files ran fine
+  // from the main checkout. The ignore patterns below are regexes rather than
+  // globs, so they were never affected and still keep node_modules and other
+  // worktrees out.
+  testMatch: ['**/src/__tests__/**/*.test.ts', '**/src/__tests__/**/*.test.tsx'],
 
   collectCoverageFrom: [
     'src/lib/workspace.ts',

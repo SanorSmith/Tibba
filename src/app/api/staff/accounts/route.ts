@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { getWorkspaceId, readSession } from '@/lib/workspace';
+import { grantRuleFor } from '@/lib/auth/facility-session';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,21 +45,14 @@ const pool = databaseUrl
  * their facility type; an HR officer may grant all of it except the one role
  * that would let the grantee take the facility over.
  */
-const NEVER_GRANTED_BY_HR = new Set(['administrator']);
-
 type Manager = { appRole: string; canGrant: (role: string) => boolean };
 
 async function accountManager(request: NextRequest): Promise<Manager | null> {
   const session = await readSession(request);
   const appRole = session?.role;
 
-  if (appRole === 'SUPER_ADMIN') {
-    return { appRole, canGrant: () => true };
-  }
-  if (appRole === 'HR_ADMIN') {
-    return { appRole, canGrant: (role) => !NEVER_GRANTED_BY_HR.has(role) };
-  }
-  return null;
+  const canGrant = grantRuleFor(appRole);
+  return canGrant && appRole ? { appRole, canGrant } : null;
 }
 
 const NOT_ALLOWED = {
