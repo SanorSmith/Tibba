@@ -68,7 +68,11 @@ function LoginForm() {
       returnTo.startsWith('/') &&
       !returnTo.startsWith('//') &&
       (allowed.includes('*') || allowed.some(p => returnTo.startsWith(p)));
-    window.location.href = canReturn ? returnTo : home;
+    // Where they asked to be, if the role allows it. Otherwise the role
+    // chooser, which forwards straight on when there is only one role and so
+    // costs nothing for the people who have one.
+    window.location.href = canReturn ? returnTo : '/choose-role';
+    void home;
   };
 
   // Finish a Google sign-in once a facility has been chosen.
@@ -139,7 +143,10 @@ function LoginForm() {
           returnTo.startsWith('/') &&
           !returnTo.startsWith('//') &&
           (allowed.includes('*') || allowed.some(p => returnTo.startsWith(p)));
-        window.location.href = canReturn ? returnTo : home;
+        // See landAfterLogin: the chooser forwards on by itself when there is
+        // only one role, so this costs nothing for almost everyone.
+        window.location.href = canReturn ? returnTo : '/choose-role';
+        void home;
       } else {
         setError(data.error || 'Invalid credentials');
         setIsLoading(false);

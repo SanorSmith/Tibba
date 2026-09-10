@@ -59,6 +59,13 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
+  // Choosing which of your roles to work as is not a module, so no role's
+  // list contains it. Gating it by role would mean only a super admin could
+  // reach it, and switching away from any other role would be a one-way trip
+  // out of the app. Signed in is the right bar here: the endpoint behind the
+  // page still checks every requested role against real memberships.
+  if (pathname.startsWith('/choose-role')) return NextResponse.next();
+
   // Super admin — allow everything
   const allowed = ROLE_MODULES[session.role] ?? [];
   if (allowed.includes('*')) return NextResponse.next();
