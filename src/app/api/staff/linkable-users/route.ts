@@ -15,7 +15,8 @@
  * isolation.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getWorkspaceId } from '@/lib/workspace';
+import { getWorkspaceId, readSession } from '@/lib/workspace';
+import { grantRuleFor } from '@/lib/auth/facility-session';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
 
@@ -31,6 +32,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Database not configured' },
         { status: 500 }
+      );
+    }
+
+    // What this caller may hand out is also what they may attach themselves to.
+    // Without this an HR officer could bind an administrator's account to an
+    // employment record they manage - the same power the accounts screen
+    // refuses them, reached through a different door.
+    const session = await readSession(request);
+    const canGrant = grantRuleFor(session?.role);
+    if (!canGrant) {
+      return NextResponse.json(
+        { error: 'Only an administrator or an HR officer can link accounts.' },
+        { status: 403 },
       );
     }
 
@@ -57,10 +71,20 @@ export async function GET(request: NextRequest) {
         [workspaceId]
       );
 
+      // Roles arrive aggregated as "administrator, nurse", so the check is per
+      // role: holding one the caller cannot grant protects the whole account.
+      const offerable = result.rows.filter((u) => {
+        const held = String(u.platformRole ?? '')
+          .split(',')
+          .map((r: string) => r.trim())
+          .filter(Boolean);
+        return held.every((r: string) => canGrant(r));
+      });
+
       return NextResponse.json({
         success: true,
-        users: result.rows,
-        count: result.rows.length,
+        users: offerable,
+        count: offerable.length,
       });
     });
   } catch (error) {

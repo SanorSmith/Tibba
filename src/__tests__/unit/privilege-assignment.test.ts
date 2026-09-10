@@ -194,3 +194,55 @@ describe("collapseByFacility", () => {
     expect(out.map((x) => x.workspaceid)).toEqual(['h2', 'h1']);
   });
 });
+
+/**
+ * The same rule, read the way the two link paths read it.
+ *
+ * Filtering the dropdown was the first attempt and it is not enough: the
+ * account id travels in a request body, and a request body can be written by
+ * hand. Both the picker and the save now ask `grantRuleFor` the same question
+ * about every role the target account holds in this facility, so these cases
+ * describe what each of them must decide.
+ */
+describe('linking an existing account to a staff record', () => {
+  /** What the routes compute: may this manager attach that account? */
+  const mayLink = (managerRole: string | undefined, heldByTarget: string[]) => {
+    const canGrant = grantRuleFor(managerRole);
+    if (!canGrant) return false;
+    // No role here means no business here, whoever is asking.
+    if (heldByTarget.length === 0) return false;
+    return heldByTarget.every((r) => canGrant(r));
+  };
+
+  it('refuses an HR officer the account of an administrator', () => {
+    expect(mayLink('HR_ADMIN', ['administrator'])).toBe(false);
+  });
+
+  it('refuses it even when the administrator role is one of several', () => {
+    // The dangerous role hidden among ordinary ones is the case a naive
+    // "does it hold any role I can grant" check would wave through.
+    expect(mayLink('HR_ADMIN', ['receptionist', 'administrator'])).toBe(false);
+  });
+
+  it('lets an HR officer link the accounts they do manage', () => {
+    expect(mayLink('HR_ADMIN', ['receptionist'])).toBe(true);
+    expect(mayLink('HR_ADMIN', ['accountant', 'pharmacist'])).toBe(true);
+  });
+
+  it('lets an administrator link anyone in the facility, administrators included', () => {
+    expect(mayLink('SUPER_ADMIN', ['administrator'])).toBe(true);
+  });
+
+  it('refuses an account that holds no role in this facility', () => {
+    // A platform administrator with no membership here is the live example:
+    // real account, real permissions, and nothing to do with this hospital
+    // until someone assigns it.
+    expect(mayLink('SUPER_ADMIN', [])).toBe(false);
+    expect(mayLink('HR_ADMIN', [])).toBe(false);
+  });
+
+  it('refuses everyone who cannot manage accounts at all', () => {
+    expect(mayLink('RECEPTION_ADMIN', ['receptionist'])).toBe(false);
+    expect(mayLink(undefined, ['receptionist'])).toBe(false);
+  });
+});

@@ -170,17 +170,31 @@ export async function POST(request: NextRequest) {
 
   // An address already in use belongs to a person who may work elsewhere on
   // the platform, and attaching them here would hand this facility a foothold
-  // on someone else's account. Refused, and deliberately without confirming
-  // whose it is: this facility has no business learning that.
+  // on someone else's account. Still refused - but the old message sent
+  // everyone to the admin panel, including people whose account is already a
+  // member of this very facility and could simply be linked. Two situations,
+  // two answers.
+  //
+  // Whether they are a member here is the one fact this facility is entitled
+  // to: it already appears in the link picker. Nothing else about the account
+  // is disclosed, because an address in use elsewhere is not this facility's
+  // business.
   const taken = await pool.query(
-    `SELECT 1 FROM users WHERE lower(trim(email)) = $1 LIMIT 1`,
-    [email],
+    `SELECT EXISTS (
+              SELECT 1 FROM workspaceusers wu
+               WHERE wu.userid = u.userid AND wu.workspaceid = $2
+            ) AS member_here
+       FROM users u
+      WHERE lower(trim(u.email)) = $1
+      LIMIT 1`,
+    [email, workspaceId],
   );
   if (taken.rows.length > 0) {
     return NextResponse.json(
       {
-        error:
-          'That email already has a Tibbna account. Giving an existing account a role in this facility is done from the platform admin panel, under Users, because the account may belong to someone who works elsewhere.',
+        error: taken.rows[0].member_here
+          ? 'That email already has a Tibbna account and it already holds a role in this facility. Choose "Link an existing account" rather than creating a second one.'
+          : 'That email already has a Tibbna account, and that account holds no role in this facility. Nobody here can attach it: a platform administrator has to assign the account to this facility from the admin panel first.',
       },
       { status: 409 },
     );

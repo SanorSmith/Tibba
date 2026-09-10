@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getWorkspaceId } from '@/lib/workspace';
+import { getWorkspaceId, readSession } from '@/lib/workspace';
+import { grantRuleFor } from '@/lib/auth/facility-session';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
 
@@ -124,6 +125,46 @@ export async function POST(request: NextRequest) {
     return await withTenant(workspaceId, async () => {
 
     const body = await request.json();
+
+    // Attaching an existing account to an employment record is checked here,
+    // not only in the picker that offers them. A short dropdown is a courtesy;
+    // this is the rule. Without it an HR officer could post the id of an
+    // administrator's account directly and bind it to a staff record they
+    // manage - exactly what the accounts screen refuses them.
+    if (body.userId) {
+      const session = await readSession(request);
+      const canGrant = grantRuleFor(session?.role);
+      if (!canGrant) {
+        return NextResponse.json(
+          { error: 'You cannot attach a sign-in account to a staff record.' },
+          { status: 403 },
+        );
+      }
+
+      const held = await pool.query(
+        `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2`,
+        [body.userId, workspaceId],
+      );
+
+      // Not a member of this facility at all. Nothing here may be attached to
+      // an account that has no business in this hospital.
+      if (held.rows.length === 0) {
+        return NextResponse.json(
+          { error: 'That account does not hold a role in this facility.' },
+          { status: 403 },
+        );
+      }
+
+      const beyond = held.rows.find((r) => !canGrant(r.role));
+      if (beyond) {
+        return NextResponse.json(
+          {
+            error: `That account is ${beyond.role} in this facility. Only an administrator can attach it to a staff record.`,
+          },
+          { status: 403 },
+        );
+      }
+    }
     
     // Debug: Log what we're receiving
     console.log('🔍 API Received Data:', {
