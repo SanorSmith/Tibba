@@ -78,7 +78,10 @@ export async function GET(request: NextRequest) {
           .split(',')
           .map((r: string) => r.trim())
           .filter(Boolean);
-        return held.every((r: string) => canGrant(r));
+        // `every` on an empty list is true, and "no roles here" must never
+        // read as "safe to offer". The join makes that unreachable today;
+        // the write path relies on the same rule and cannot assume it.
+        return held.length > 0 && held.every((r: string) => canGrant(r));
       });
 
       return NextResponse.json({
