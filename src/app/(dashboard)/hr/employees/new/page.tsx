@@ -82,6 +82,15 @@ export default function NewEmployeePage() {
   const [canCreateLogin, setCanCreateLogin] = useState(false);
   const [createLogin, setCreateLogin] = useState(false);
   const [loginRole, setLoginRole] = useState('');
+  // Two ways to give someone a login, and they are genuinely different acts.
+  // Creating makes an account; linking attaches one that already exists to
+  // this employment record. Conflating them is why registering an email that
+  // already had an account simply failed with no way forward.
+  const [accountMode, setAccountMode] = useState<'new' | 'existing'>('new');
+  const [linkUserId, setLinkUserId] = useState('');
+  const [linkable, setLinkable] = useState<
+    { userid: string; name: string | null; email: string; platformRole: string | null; linkedStaffId: string | null; linkedStaffName: string | null }[]
+  >([]);
   const [availableRoles, setAvailableRoles] = useState<
     { name: string; label: string; opens_erp: boolean }[]
   >([]);
@@ -95,6 +104,17 @@ export default function NewEmployeePage() {
       })
       .then((d) => setAvailableRoles(d?.availableRoles ?? []))
       .catch(() => setAvailableRoles([]));
+
+  // Only accounts that already hold a role in this facility. Offering anyone
+  // else would let a hospital attach a stranger's account to itself, which is
+  // exactly what the refusal on the create path exists to prevent.
+  useEffect(() => {
+    if (accountMode !== 'existing' || !createLogin) return;
+    fetch('/api/staff/linkable-users')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setLinkable(d?.users ?? []))
+      .catch(() => setLinkable([]));
+  }, [accountMode, createLogin]);
   }, []);
 
   const update = (field: keyof EmployeeFormData, value: string | number | boolean | undefined) => {
@@ -227,7 +247,16 @@ export default function NewEmployeePage() {
       // The account first, when one was asked for. If it fails, no employee is
       // created either - half a registration is worse than a failed form.
       let userId: string | null = null;
-      if (createLogin) {
+      if (createLogin && accountMode === 'existing') {
+        // Linking, not creating. No account is made and no role is granted:
+        // the person is already a member of this facility, and this only
+        // records that the employment record in front of us is theirs.
+        if (!linkUserId) {
+          toast.error('Choose the account to link');
+          return;
+        }
+        userId = linkUserId;
+      } else if (createLogin) {
         if (!loginRole) {
           toast.error('Choose a role for the login');
           return;
@@ -465,15 +494,71 @@ export default function NewEmployeePage() {
                     <span style={{ fontSize: 13 }}>
                       <strong style={{ display: 'block' }}>Give this person a login</strong>
                       <span style={{ color: 'rgb(107,114,128)' }}>
-                        Creates an account for this facility using the email
-                        above. They sign in with Google &mdash; no password is
-                        set here. Leave it unticked to record the employment
-                        only.
+                        Either create an account for them, or attach one that
+                        already exists in this facility. Leave it unticked to
+                        record the employment only.
                       </span>
                     </span>
                   </label>
 
                   {createLogin && (
+                    <div style={{ marginTop: 12, paddingLeft: 28, display: 'flex', gap: 16 }}>
+                      <label style={{ display: 'flex', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          checked={accountMode === 'new'}
+                          onChange={() => setAccountMode('new')}
+                        />
+                        Create a new account
+                      </label>
+                      <label style={{ display: 'flex', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          checked={accountMode === 'existing'}
+                          onChange={() => setAccountMode('existing')}
+                        />
+                        Link an account that already exists
+                      </label>
+                    </div>
+                  )}
+
+                  {createLogin && accountMode === 'existing' && (
+                    <div style={{ marginTop: 12, paddingLeft: 28 }}>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+                        Which account? *
+                      </label>
+                      <select
+                        className="tibbna-input"
+                        value={linkUserId}
+                        onChange={e => setLinkUserId(e.target.value)}
+                      >
+                        <option value="">Choose an account&hellip;</option>
+                        {linkable
+                          .filter(u => !u.linkedStaffId)
+                          .map(u => (
+                            <option key={u.userid} value={u.userid}>
+                              {(u.name || u.email) + ' — ' + (u.platformRole ?? 'no role')}
+                            </option>
+                          ))}
+                      </select>
+                      <p style={{ fontSize: 12, color: 'rgb(107,114,128)', marginTop: 6 }}>
+                        Only people who already hold a role in this facility and
+                        are not yet attached to an employment record. No account
+                        is created and no role is granted, so this changes
+                        nothing about what they can reach. Someone who is not
+                        listed has to be given a role first, from the platform
+                        admin panel.
+                      </p>
+                      {linkable.filter(u => !u.linkedStaffId).length === 0 && (
+                        <p style={{ fontSize: 12, color: 'rgb(180,83,9)', marginTop: 6 }}>
+                          Everyone with a role here is already attached to an
+                          employment record.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {createLogin && accountMode === 'new' && (
                     <div style={{ marginTop: 12, paddingLeft: 28 }}>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
                         Role in this facility *

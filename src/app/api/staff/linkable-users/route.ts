@@ -39,7 +39,11 @@ export async function GET(request: NextRequest) {
         `SELECT u.userid,
                 u.name,
                 u.email,
-                wu.role                                   AS "platformRole",
+                -- Roles aggregated, not one row each. Since migration 0093 a
+                -- person can hold several here, and joining the membership
+                -- table plainly listed the same account once per role.
+                string_agg(DISTINCT wu.role, ', ' ORDER BY wu.role)
+                                                          AS "platformRole",
                 s.staffid                                 AS "linkedStaffId",
                 trim(coalesce(s.firstname, '') || ' ' ||
                      coalesce(s.lastname, ''))            AS "linkedStaffName"
@@ -48,6 +52,7 @@ export async function GET(request: NextRequest) {
            LEFT JOIN staff s
                   ON s.userid = u.userid AND s.workspaceid = wu.workspaceid
           WHERE wu.workspaceid = $1
+          GROUP BY u.userid, u.name, u.email, s.staffid, s.firstname, s.lastname
           ORDER BY u.name NULLS LAST, u.email`,
         [workspaceId]
       );
