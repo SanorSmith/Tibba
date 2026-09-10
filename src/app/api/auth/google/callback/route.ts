@@ -156,16 +156,31 @@ export async function GET(request: NextRequest) {
   );
   const role = appRoleFor(membership);
 
-  // Land somewhere this role can actually reach, honouring returnTo only when
-  // the role is allowed there — otherwise the middleware bounces them straight
-  // to /unauthorized.
-  let target = ROLE_HOME[role] ?? '/dashboard';
+  // Through the role chooser, honouring returnTo only when the role is allowed
+  // there — otherwise the middleware bounces them straight to /unauthorized.
+  //
+  // This was the fourth and last way into the app that decided a landing of
+  // its own. Password login, Google select and the platform handoff were all
+  // taught to ask which role; this one kept sending people directly to the
+  // strongest role's home, so signing in with Google arrived as the
+  // administrator every time and no amount of fixing the others changed it.
+  //
+  // The chooser forwards on by itself when only one role opens this app, so
+  // nobody holding one sees an extra step.
+  let target = '/choose-role';
+  void ROLE_HOME;
   try {
     const requested = Buffer.from(encodedReturn, 'base64url').toString('utf-8');
     const allowed = ROLE_MODULES[role] ?? [];
     if (
       requested.startsWith('/') &&
       !requested.startsWith('//') &&
+      // Never the root. It is a static landing page with a "Go to Login"
+      // button, and a super admin's '*' means the check below waves it
+      // through - so honouring it hands them a screen that looks exactly like
+      // being signed out, moments after signing in.
+      requested !== '/' &&
+      !requested.startsWith('/login') &&
       (allowed.includes('*') || allowed.some((p) => requested.startsWith(p)))
     ) {
       target = requested;
