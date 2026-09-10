@@ -68,10 +68,13 @@ function LoginForm() {
       returnTo.startsWith('/') &&
       !returnTo.startsWith('//') &&
       (allowed.includes('*') || allowed.some(p => returnTo.startsWith(p)));
-    // Where they asked to be, if the role allows it. Otherwise the role
-    // chooser, which forwards straight on when there is only one role and so
-    // costs nothing for the people who have one.
-    window.location.href = canReturn ? returnTo : '/choose-role';
+    // Always the chooser, carrying where they were headed. Using returnTo
+    // *instead of* the chooser hid it from administrators specifically: their
+    // module list is '*', so canReturn was true for any path and the question
+    // was skipped for the very people most likely to hold several roles.
+    window.location.href = canReturn
+      ? `/choose-role?returnTo=${encodeURIComponent(returnTo!)}`
+      : '/choose-role';
     void home;
   };
 
@@ -143,9 +146,11 @@ function LoginForm() {
           returnTo.startsWith('/') &&
           !returnTo.startsWith('//') &&
           (allowed.includes('*') || allowed.some(p => returnTo.startsWith(p)));
-        // See landAfterLogin: the chooser forwards on by itself when there is
-        // only one role, so this costs nothing for almost everyone.
-        window.location.href = canReturn ? returnTo : '/choose-role';
+        // See landAfterLogin: the chooser decides, carrying the destination
+        // rather than being replaced by it.
+        window.location.href = canReturn
+          ? `/choose-role?returnTo=${encodeURIComponent(returnTo!)}`
+          : '/choose-role';
         void home;
       } else {
         setError(data.error || 'Invalid credentials');

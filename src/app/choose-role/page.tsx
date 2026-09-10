@@ -63,7 +63,21 @@ export default function ChooseRolePage() {
         // super admin sees a "Go to Login" screen and everyone else is bounced
         // to /unauthorized.
         if (all.length <= 1) {
-          window.location.href = d?.home ?? '/dashboard';
+          // Where they were heading before sign-in interrupted them, when the
+          // callback judged it reachable for this role. Read from the address
+          // rather than useSearchParams, which would need a Suspense boundary
+          // for no benefit here.
+          const requested = new URLSearchParams(window.location.search).get(
+            'returnTo',
+          );
+          const safe =
+            requested &&
+            requested.startsWith('/') &&
+            !requested.startsWith('//') &&
+            requested !== '/' &&
+            !requested.startsWith('/login');
+
+          window.location.href = safe ? requested : d?.home ?? '/dashboard';
           return;
         }
         setRoles(all);

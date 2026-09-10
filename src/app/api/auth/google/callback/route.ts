@@ -183,7 +183,17 @@ export async function GET(request: NextRequest) {
       !requested.startsWith('/login') &&
       (allowed.includes('*') || allowed.some((p) => requested.startsWith(p)))
     ) {
-      target = requested;
+      // Carried to the chooser, not used instead of it. Overriding the target
+      // here is what made this invisible for administrators specifically: a
+      // super admin's module list is '*', so every path passed this check and
+      // replaced /choose-role, while anyone with a narrower list failed it and
+      // saw the question. The picker looked broken for exactly the person most
+      // likely to be testing it.
+      //
+      // The chooser forwards here when there is nothing to choose, and drops
+      // it when there is - having just picked a role, landing anywhere but
+      // that role's own home would be a strange reward for answering.
+      target = `/choose-role?returnTo=${encodeURIComponent(requested)}`;
     }
   } catch {
     /* keep the role's home */
