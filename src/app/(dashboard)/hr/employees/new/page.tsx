@@ -542,17 +542,21 @@ export default function NewEmployeePage() {
                           ))}
                       </select>
                       <p style={{ fontSize: 12, color: 'rgb(107,114,128)', marginTop: 6 }}>
-                        Only people who already hold a role in this facility and
-                        are not yet attached to an employment record. No account
-                        is created and no role is granted, so this changes
-                        nothing about what they can reach. Someone who is not
-                        listed has to be given a role first, from the platform
-                        admin panel.
+                        Only people who already hold a role in this facility,
+                        are not yet attached to an employment record, and hold
+                        no role above what you may grant &mdash; an
+                        administrator&rsquo;s account is not offered to an HR
+                        officer. No account is created and no role is granted,
+                        so this changes nothing about what they can reach. An
+                        account that is missing has to be given a role in this
+                        facility first, from the platform admin panel.
                       </p>
                       {linkable.filter(u => !u.linkedStaffId).length === 0 && (
                         <p style={{ fontSize: 12, color: 'rgb(180,83,9)', marginTop: 6 }}>
-                          Everyone with a role here is already attached to an
-                          employment record.
+                          Nobody is available to link. Everyone with a role
+                          here is either already attached to an employment
+                          record, or holds a role only an administrator can
+                          attach.
                         </p>
                       )}
                     </div>
