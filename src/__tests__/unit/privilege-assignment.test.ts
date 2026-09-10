@@ -17,6 +17,7 @@ import {
   ROLE_MODULES,
   WS_ROLE_TO_APP_ROLE,
   canLogIn,
+  collapseByFacility,
   grantRuleFor,
   landingPathFor,
 } from '@/lib/auth/facility-session';
@@ -147,5 +148,49 @@ describe('landing paths stay inside their own modules', () => {
     for (const appRole of Object.values(WS_ROLE_TO_APP_ROLE)) {
       expect(ROLE_HOME[appRole]).toBeDefined();
     }
+  });
+});
+
+describe("collapseByFacility", () => {
+  const m = (workspaceid: string, ws_role: string) => ({
+    workspaceid,
+    workspace_name: workspaceid,
+    ws_type: 'hospital',
+    ws_role,
+  });
+
+  it("shows a facility once, however many roles are held there", () => {
+    // Without this the picker lists the same hospital two or three times.
+    const out = collapseByFacility([m('h1', 'receptionist'), m('h1', 'administrator')]);
+    expect(out).toHaveLength(1);
+  });
+
+  it("keeps the role that opens the most of this app", () => {
+    // Whichever row the database returned first must not decide the session.
+    // An administrator who is also a receptionist signs in as the administrator.
+    expect(
+      collapseByFacility([m('h1', 'receptionist'), m('h1', 'administrator')])[0].ws_role
+    ).toBe('administrator');
+    expect(
+      collapseByFacility([m('h1', 'administrator'), m('h1', 'receptionist')])[0].ws_role
+    ).toBe('administrator');
+  });
+
+  it("never lets an unrecognised role outrank a real one", () => {
+    expect(
+      collapseByFacility([m('h1', 'some_future_title'), m('h1', 'accountant')])[0].ws_role
+    ).toBe('accountant');
+  });
+
+  it("leaves separate facilities separate", () => {
+    const out = collapseByFacility([m('h1', 'administrator'), m('h2', 'accountant')]);
+    expect(out.map((x) => x.workspaceid)).toEqual(['h1', 'h2']);
+  });
+
+  it("preserves the query's hospital-first ordering", () => {
+    // The query sorts hospitals first and then by age; collapsing must not
+    // reshuffle that or the default facility changes.
+    const out = collapseByFacility([m('h2', 'accountant'), m('h1', 'administrator')]);
+    expect(out.map((x) => x.workspaceid)).toEqual(['h2', 'h1']);
   });
 });

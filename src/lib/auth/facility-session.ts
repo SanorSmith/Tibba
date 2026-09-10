@@ -181,6 +181,54 @@ export function grantRuleFor(
 }
 
 /**
+ * One entry per facility, keeping the role that opens the most of this app.
+ *
+ * Since migration 0093 a person can hold several roles in the same facility,
+ * so the membership query returns a row per role. Left alone that shows the
+ * facility picker the same hospital two or three times, and worse, the session
+ * would be built from whichever row the database happened to return first — so
+ * an administrator who is also a receptionist could sign in as the
+ * receptionist and lose access to everything else.
+ *
+ * The order is by reach inside *this* application, which is why it is not
+ * identical to the platform's. Receptionist sits above the clinical roles here
+ * because it opens a module and they do not. It is a second copy of an idea
+ * that also lives in the EHR, and that is deliberate: the two are separate
+ * codebases and sharing the list would mean coupling their deployments.
+ */
+const ERP_ROLE_PRECEDENCE = [
+  'administrator',
+  'hr_officer',
+  'accountant',
+  'inventory_officer',
+  'pharmacist',
+  'receptionist',
+  'doctor',
+  'nurse',
+  'plastic_surgeon',
+  'lab_technician',
+];
+
+export function collapseByFacility(memberships: Membership[]): Membership[] {
+  const rank = (role: string) => {
+    const i = ERP_ROLE_PRECEDENCE.indexOf(role);
+    // An unrecognised role sorts last, so a typo can never outrank a real one.
+    return i === -1 ? ERP_ROLE_PRECEDENCE.length : i;
+  };
+
+  const best = new Map<string, Membership>();
+  for (const m of memberships) {
+    const held = best.get(m.workspaceid);
+    if (!held || rank(m.ws_role) < rank(held.ws_role)) {
+      best.set(m.workspaceid, m);
+    }
+  }
+  // Map preserves insertion order, so the query's hospital-first ordering
+  // survives.
+  return [...best.values()];
+}
+
+/**
  * Which facility should this user open?
  *
  * Ordering when they belong to several: this app is the hospital ERP, so
@@ -239,8 +287,10 @@ export async function resolveFacility(
   // don't get to open this app — they belong in the separate EHR/care app.
   // A user with several facilities still gets in if at least one of those
   // memberships carries a role this app actually serves.
-  const memberships = allMemberships.filter((x) =>
-    canLogIn(x.ws_role, x.role_permissions, x.type_declares_erp)
+  const memberships = collapseByFacility(
+    allMemberships.filter((x) =>
+      canLogIn(x.ws_role, x.role_permissions, x.type_declares_erp)
+    )
   );
   if (memberships.length === 0 && allMemberships.length > 0) {
     return {
