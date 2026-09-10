@@ -21,7 +21,16 @@ export interface SessionInfo {
   workspaceName: string | null;
   userId: string | null;
   email: string | null;
+  /** The module-access role this app gates on: SUPER_ADMIN, HR_ADMIN and so on. */
   role: string | null;
+  /**
+   * The platform facility role behind it: administrator, hr_officer, nurse.
+   * Both are in the cookie and neither replaces the other - the role switcher
+   * needs to know which facility role is currently active, and the user menu
+   * shows it, so dropping it here meant reading the cookie twice.
+   */
+  facilityRole: string | null;
+  username: string | null;
 }
 
 /**
@@ -43,6 +52,8 @@ export async function readSession(request: NextRequest): Promise<SessionInfo | n
       userId: s.userId ?? null,
       email: s.email ?? null,
       role: s.role ?? null,
+      facilityRole: s.facilityRole ?? null,
+      username: s.username ?? null,
   };
 }
 

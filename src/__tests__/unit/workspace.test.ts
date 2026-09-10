@@ -56,6 +56,11 @@ describe('readSession', () => {
       userId: 'user-1',
       email: 'nurse@example.com',
       role: 'RECEPTION_ADMIN',
+      // Both roles are carried, not one. `role` is what this app gates
+      // modules on; `facilityRole` is the platform role behind it, which the
+      // role switcher needs in order to know what is currently active.
+      facilityRole: 'nurse',
+      username: 'nurse@example.com',
     });
   });
 
@@ -67,6 +72,8 @@ describe('readSession', () => {
       userId: null,
       email: null,
       role: null,
+      facilityRole: null,
+      username: null,
     });
   });
 

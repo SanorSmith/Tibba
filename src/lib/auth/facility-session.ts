@@ -332,16 +332,34 @@ export async function resolveFacility(
   };
 }
 
-/** The payload stored in the `tibbna_session` cookie. */
-export function buildSession(dbUser: DbUser, membership: Membership, username?: string) {
+/**
+ * The payload stored in the `tibbna_session` cookie.
+ *
+ * `asRole` overrides which of the person's facility roles this session acts
+ * as. Sign-in passes nothing and gets the strongest, which is right when
+ * nobody has expressed a preference. The role switcher passes one, having
+ * first checked the person actually holds it — this function trusts its
+ * caller, so that check is not optional.
+ *
+ * Unlike the platform, the choice here really does decide access: the app role
+ * in this cookie is what the middleware gates modules on. Choosing HR officer
+ * means seeing HR and not Finance, which is the point of choosing.
+ */
+export function buildSession(
+  dbUser: DbUser,
+  membership: Membership,
+  username?: string,
+  asRole?: string
+) {
+  const effective = asRole ? { ...membership, ws_role: asRole } : membership;
   return {
     username: username ?? dbUser.email ?? dbUser.userid,
-    role: appRoleFor(membership),
+    role: appRoleFor(effective),
     timestamp: Date.now(),
     userId: dbUser.userid,
     workspaceId: membership.workspaceid,
     workspaceName: membership.workspace_name,
-    facilityRole: membership.ws_role,
+    facilityRole: effective.ws_role,
     email: dbUser.email,
   };
 }

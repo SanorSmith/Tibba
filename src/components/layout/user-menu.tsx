@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronsUpDown, User, Settings, LogOut } from 'lucide-react';
+import { ChevronsUpDown, User, Settings, LogOut, UserCog } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +54,43 @@ function displayRole(user: SessionUser) {
 
 export function UserMenu() {
   const [user, setUser] = useState<SessionUser | null>(null);
+  // The other roles this person holds here. Empty for almost everyone, which
+  // is why the switcher below is hidden unless there is a real choice.
+  const [otherRoles, setOtherRoles] = useState<{ role: string; label: string }[]>([]);
+  const [switching, setSwitching] = useState(false);
+
+  // The roles worth offering: ones held in this facility that open this app,
+  // minus the one already active. The endpoint decides which qualify.
+  useEffect(() => {
+    fetch('/api/auth/switch-role')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const all: { role: string; label: string }[] = d?.roles ?? [];
+        setOtherRoles(all.filter((r) => r.role !== d?.current));
+      })
+      .catch(() => setOtherRoles([]));
+  }, []);
+
+  const switchTo = async (role: string) => {
+    setSwitching(true);
+    try {
+      const res = await fetch('/api/auth/switch-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSwitching(false);
+        return;
+      }
+      // A full navigation, not a client-side push: the session cookie changed
+      // and every server component needs to be rendered again against it.
+      window.location.href = data.redirectTo ?? '/';
+    } catch {
+      setSwitching(false);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -128,6 +165,26 @@ export function UserMenu() {
             </div>
           </div>
         </DropdownMenuLabel>
+
+        {otherRoles.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-normal text-gray-500">
+              Work as
+            </DropdownMenuLabel>
+            {otherRoles.map((r) => (
+              <DropdownMenuItem
+                key={r.role}
+                className="cursor-pointer"
+                disabled={switching}
+                onClick={() => switchTo(r.role)}
+              >
+                <UserCog className="mr-2 h-4 w-4" />
+                <span>{r.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
 
         <DropdownMenuSeparator />
 
