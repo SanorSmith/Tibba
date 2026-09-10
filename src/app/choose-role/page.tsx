@@ -45,18 +45,25 @@ export default function ChooseRolePage() {
         const all: Role[] = d?.roles ?? [];
 
         // Nothing to decide. Showing a page with one button would be a step
-        // that exists only to be dismissed, so it forwards instead.
+        // that exists only to be dismissed, so it forwards instead - to the
+        // role's own home, never to `/`. The root is a static landing page
+        // that no role's modules include, so sending anyone there means a
+        // super admin sees a "Go to Login" screen and everyone else is bounced
+        // to /unauthorized.
         if (all.length <= 1) {
-          window.location.href = '/';
+          window.location.href = d?.home ?? '/dashboard';
           return;
         }
         setRoles(all);
         setCurrent(d?.current ?? null);
       })
       .catch(() => {
-        // A failure here must not strand anyone at a dead page: the session is
-        // already valid, so send them on and let the app place them.
-        window.location.href = '/';
+        // Redirecting on a failure is guesswork: without the answer there is
+        // no way to know which paths this role may open, and /dashboard would
+        // bounce an HR officer straight to /unauthorized. Say so instead and
+        // let them retry.
+        setRoles([]);
+        setError('Could not read your roles. Reload to try again.');
       });
   }, []);
 
@@ -77,7 +84,7 @@ export default function ChooseRolePage() {
       }
       // A full navigation: the session cookie changed and every page has to be
       // rendered again against it.
-      window.location.href = data.redirectTo ?? '/';
+      window.location.href = data.redirectTo ?? '/dashboard';
     } catch {
       setError('Could not switch to that role.');
       setBusy(null);
@@ -89,6 +96,18 @@ export default function ChooseRolePage() {
       <div className="flex min-h-screen items-center justify-center text-gray-500">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Loading&hellip;
+      </div>
+    );
+  }
+
+  // The load failed. Not a redirect: see the catch above.
+  if (roles.length === 0) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-3 p-6">
+        <p className="text-sm text-red-600">{error}</p>
+        <a href="/login" className="text-sm text-blue-600 hover:underline">
+          Sign in again
+        </a>
       </div>
     );
   }

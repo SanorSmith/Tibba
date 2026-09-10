@@ -161,8 +161,22 @@ export async function GET(request: NextRequest) {
     .filter((r) => canLogIn(r.ws_role, r.role_permissions, r.type_declares_erp))
     .map((r) => ({ role: r.ws_role, label: r.label ?? r.ws_role }));
 
+  // Where this person belongs right now. The chooser needs it for the case
+  // where there is nothing to choose: it forwards rather than rendering a page
+  // with one button, and it must forward somewhere the role can actually open.
+  //
+  // It used to send them to `/`, which is a static landing page with a "Go to
+  // Login" button that no role's module list contains — so a super admin saw
+  // what looked like being signed out, and everyone else was bounced to
+  // /unauthorized. That was worse than the problem it replaced.
+  const currentRole = session.facilityRole ?? null;
+  const appRole = currentRole
+    ? WS_ROLE_TO_APP_ROLE[currentRole] ?? 'RECEPTION_ADMIN'
+    : session.role ?? 'RECEPTION_ADMIN';
+
   return NextResponse.json({
     roles,
-    current: session.facilityRole ?? null,
+    current: currentRole,
+    home: landingPathFor(appRole),
   });
 }
