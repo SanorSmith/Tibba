@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          'That email cannot be registered here. If this person already has a Tibbna account, ask the platform owner to link it to your facility.',
+          'That email already has a Tibbna account. Giving an existing account a role in this facility is done from the platform admin panel, under Users, because the account may belong to someone who works elsewhere.',
       },
       { status: 409 },
     );
