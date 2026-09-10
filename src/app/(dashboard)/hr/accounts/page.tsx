@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { KeyRound, Loader2, UserMinus, ExternalLink } from 'lucide-react';
+import { KeyRound, Loader2, UserMinus, ExternalLink, X } from 'lucide-react';
 
 type Account = {
   userid: string;
@@ -20,7 +20,12 @@ type Account = {
   email: string;
   isactive: boolean;
   created_via: string | null;
-  role: string | null;
+  /**
+   * Every role held in this facility. A person can hold more than one since
+   * migration 0093, and this screen used to show a single `role`, so someone
+   * with five appeared five times over.
+   */
+  roles: string[];
   staffid: string | null;
   staff_name: string | null;
 };
@@ -56,20 +61,54 @@ export default function FacilityAccountsPage() {
     load();
   }, []);
 
-  const changeRole = async (userid: string, role: string) => {
+  // Adding, not replacing. Picking a role from the dropdown used to overwrite
+  // whatever was there, which is how someone loses four roles by choosing a
+  // fifth.
+  const addRole = async (userid: string, role: string) => {
+    if (!role) return;
     setBusy(userid);
     try {
       const res = await fetch('/api/staff/accounts', {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userid, role }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not change the role');
-      toast.success('Role updated');
+      if (!res.ok) throw new Error(data.error || 'Could not add the role');
+      toast.success(data.unchanged ? 'They already had that role' : 'Role added');
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not change the role');
+      toast.error(e instanceof Error ? e.message : 'Could not add the role');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const removeRole = async (a: Account, role: string) => {
+    const who = a.name || a.email;
+    if (a.roles.length === 1) {
+      // Taking the only role is removing them from the facility, so it gets
+      // the same warning as the Remove button rather than happening quietly
+      // behind a small cross.
+      const warning = `Take away ${role} from ${who}?
+
+It is their only role here, so they lose access to this facility.`;
+      if (!window.confirm(warning)) return;
+    }
+
+    setBusy(a.userid);
+    try {
+      const res = await fetch(
+        '/api/staff/accounts?userid=' + encodeURIComponent(a.userid) +
+        '&role=' + encodeURIComponent(role),
+        { method: 'DELETE' },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not remove the role');
+      toast.success(role + ' removed');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove the role');
     } finally {
       setBusy(null);
     }
@@ -151,7 +190,7 @@ export default function FacilityAccountsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Person</th>
                 <th className="px-4 py-3 font-medium">Staff record</th>
-                <th className="px-4 py-3 font-medium">Role here</th>
+                <th className="px-4 py-3 font-medium">Roles here</th>
                 <th className="px-4 py-3 font-medium text-right">Access</th>
               </tr>
             </thead>
@@ -175,23 +214,58 @@ export default function FacilityAccountsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {a.role ? (
-                      <select
-                        className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                        value={a.role}
-                        disabled={busy === a.userid}
-                        onChange={(e) => changeRole(a.userid, e.target.value)}
-                      >
-                        {roles.map((r) => (
+                    {a.roles.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {a.roles.map((role) => {
+                          const known = roles.find((r) => r.name === role);
+                          return (
+                            <span
+                              key={role}
+                              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-gray-50 py-0.5 pl-2 pr-1 text-xs"
+                              title={known?.opens_erp ? 'Opens the ERP' : undefined}
+                            >
+                              {known?.label ?? role}
+                              {known?.opens_erp && (
+                                <span className="text-[10px] text-gray-500">ERP</span>
+                              )}
+                              <button
+                                type="button"
+                                aria-label={'Remove ' + (known?.label ?? role)}
+                                disabled={busy === a.userid}
+                                onClick={() => removeRole(a, role)}
+                                className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-red-700 disabled:opacity-50"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">no role here</span>
+                    )}
+
+                    {/* Add, rather than replace. The value resets each time so
+                        the control reads as an action, not a current state. */}
+                    <select
+                      className="mt-1.5 rounded-md border border-gray-300 px-2 py-1 text-xs"
+                      value=""
+                      disabled={busy === a.userid}
+                      onChange={(e) => {
+                        addRole(a.userid, e.target.value);
+                        e.target.value = '';
+                      }}
+                    >
+                      <option value="">Add a role&hellip;</option>
+                      {roles
+                        .filter((r) => !a.roles.includes(r.name))
+                        .map((r) => (
                           <option key={r.name} value={r.name}>
                             {r.label}
                             {r.opens_erp ? ' — opens the ERP' : ''}
                           </option>
                         ))}
-                      </select>
-                    ) : (
-                      <span className="text-xs text-gray-500">no role here</span>
-                    )}
+                    </select>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

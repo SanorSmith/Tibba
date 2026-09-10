@@ -72,13 +72,23 @@ export async function GET(request: NextRequest) {
   // manages the accounts their facility made - not every account that happens
   // to hold a role there, which would include people the platform owner
   // placed and other facilities' staff working here too.
+  // Roles come back as a list. Since migration 0093 a person can hold several
+  // here, and joining the membership table plainly returned them once per
+  // role, so the screen showed the same person two or three times over.
   const rows = await pool.query(
-    `SELECT u.userid, u.name, u.email, u.isactive, u.created_via, wu.role,
-            s.staffid, trim(coalesce(s.firstname,'') || ' ' || coalesce(s.lastname,'')) AS staff_name
+    `SELECT u.userid, u.name, u.email, u.isactive, u.created_via,
+            coalesce(
+              array_agg(wu.role ORDER BY wu.role) FILTER (WHERE wu.role IS NOT NULL),
+              '{}'
+            ) AS roles,
+            s.staffid,
+            trim(coalesce(s.firstname,'') || ' ' || coalesce(s.lastname,'')) AS staff_name
        FROM users u
        LEFT JOIN workspaceusers wu ON wu.userid = u.userid AND wu.workspaceid = $1
        LEFT JOIN staff s ON s.userid = u.userid AND s.workspaceid = $1
       WHERE u.created_by_workspaceid = $1
+      GROUP BY u.userid, u.name, u.email, u.isactive, u.created_via,
+               s.staffid, s.firstname, s.lastname
       ORDER BY u.name NULLS LAST, u.email`,
     [workspaceId],
   );
@@ -357,32 +367,58 @@ export async function DELETE(request: NextRequest) {
   }
 
   const held = await pool.query(
-    `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2 LIMIT 1`,
+    `SELECT role FROM workspaceusers WHERE userid = $1 AND workspaceid = $2`,
     [userid, workspaceId],
   );
-  const heldRole = held.rows[0]?.role;
-  if (heldRole && !manager.canGrant(heldRole)) {
+  const heldRoles: string[] = held.rows.map((r) => r.role);
+
+  // Checked across every role, not just one. Someone who is an administrator
+  // as well as a nurse must be protected by the administrator, whichever row
+  // happens to come back first.
+  const protectedRole = heldRoles.find((r) => !manager.canGrant(r));
+  if (protectedRole) {
     return NextResponse.json(
       {
-        error: `That person is ${heldRole} in this facility. Only an administrator can remove them.`,
+        error: `That person is ${protectedRole} in this facility. Only an administrator can remove them.`,
       },
       { status: 403 },
     );
   }
+
+  // One role, or the whole membership. Naming a role takes that role away and
+  // leaves the rest; naming none removes the person from the facility. The
+  // screen's per-role cross sends a role, its Remove button does not.
+  const role = request.nextUrl.searchParams.get('role');
+  if (role && !heldRoles.includes(role)) {
+    return NextResponse.json(
+      { error: `They do not hold "${role}" in this facility.` },
+      { status: 400 },
+    );
+  }
+  const removingLastRole = !role || heldRoles.length <= 1;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     // The staff record keeps its history and loses its login. The trigger from
     // migration 004 refuses a link to a non-member, so this has to come first.
-    await client.query(
-      `UPDATE staff SET userid = NULL WHERE userid = $1 AND workspaceid = $2`,
-      [userid, workspaceId],
-    );
-    const removed = await client.query(
-      `DELETE FROM workspaceusers WHERE userid = $1 AND workspaceid = $2`,
-      [userid, workspaceId],
-    );
+    // Only when the last role goes: taking one role from someone who keeps
+    // others must not unlink their staff record.
+    if (removingLastRole) {
+      await client.query(
+        `UPDATE staff SET userid = NULL WHERE userid = $1 AND workspaceid = $2`,
+        [userid, workspaceId],
+      );
+    }
+    const removed = role
+      ? await client.query(
+          `DELETE FROM workspaceusers WHERE userid = $1 AND workspaceid = $2 AND role = $3`,
+          [userid, workspaceId, role],
+        )
+      : await client.query(
+          `DELETE FROM workspaceusers WHERE userid = $1 AND workspaceid = $2`,
+          [userid, workspaceId],
+        );
     await client.query('COMMIT');
     return NextResponse.json({ success: true, removed: removed.rowCount });
   } catch (e) {
@@ -392,4 +428,70 @@ export async function DELETE(request: NextRequest) {
   } finally {
     client.release();
   }
+}
+
+/**
+ * Give an existing account another role in this facility.
+ *
+ * Separate from PATCH, which replaces one role with another. Adding is not
+ * replacing, and conflating them is how someone loses four roles by picking a
+ * fifth from a dropdown.
+ *
+ * The same four guards as everywhere else in this file: the caller must manage
+ * accounts here, the role must exist for this facility type, the caller must
+ * be allowed to grant it, and `users.permissions` is never touched.
+ */
+export async function PUT(request: NextRequest) {
+  const workspaceId = await getWorkspaceId(request);
+  if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+
+  const manager = await accountManager(request);
+  if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
+
+  const body = await request.json().catch(() => null);
+  const userid = String(body?.userid ?? '').trim();
+  const role = String(body?.role ?? '').trim();
+  if (!userid || !role) {
+    return NextResponse.json({ error: 'Which account, and which role?' }, { status: 400 });
+  }
+
+  const validRole = await pool.query(
+    `SELECT 1
+       FROM workspaces w
+       JOIN workspace_roles r ON r.workspacetype = w.type AND r.isactive
+      WHERE w.workspaceid = $1 AND r.name = $2 LIMIT 1`,
+    [workspaceId, role],
+  );
+  if (validRole.rows.length === 0) {
+    return NextResponse.json(
+      { error: `"${role}" is not a role this facility can assign.` },
+      { status: 400 },
+    );
+  }
+
+  if (!manager.canGrant(role)) {
+    return NextResponse.json(
+      { error: `An HR officer cannot grant "${role}". Only an administrator can.` },
+      { status: 403 },
+    );
+  }
+
+  // Already theirs. Saying so beats a primary key violation the caller has to
+  // interpret.
+  const existing = await pool.query(
+    `SELECT 1 FROM workspaceusers WHERE userid = $1 AND workspaceid = $2 AND role = $3 LIMIT 1`,
+    [userid, workspaceId, role],
+  );
+  if (existing.rows.length > 0) {
+    return NextResponse.json({ success: true, userid, role, unchanged: true });
+  }
+
+  await pool.query(
+    `INSERT INTO workspaceusers (workspaceid, userid, role, createdat)
+     VALUES ($1, $2, $3, now())`,
+    [workspaceId, userid, role],
+  );
+
+  return NextResponse.json({ success: true, userid, role, added: true });
 }
