@@ -176,7 +176,7 @@ It is their only role here, so they lose access to this facility.`;
             This facility has not created any accounts yet.
           </p>
           <a
-            href="/hr/employees/add"
+            href="/hr/employees/new"
             className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700"
           >
             Register a staff member and give them a login

@@ -316,7 +316,7 @@ export default function EmployeesPage() {
                     </button>
                   </Link>
                 </div>
-                <Link href="/hr/employees/add">
+                <Link href="/hr/employees/new">
                   <button className="btn-secondary">
                     <UserPlus size={16} className="mr-2" />
                     Add Employee (After Setup)
