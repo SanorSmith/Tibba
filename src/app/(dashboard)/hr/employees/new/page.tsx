@@ -197,8 +197,6 @@ export default function NewEmployeePage() {
   };
 
   const handleSubmit = async () => {
-    const dept = departments.find(d => d.id === form.department_id);
-
     // Debug: Log what we're sending
     console.log('🔍 Form Data Being Submitted:', {
       first_name: form.first_name,

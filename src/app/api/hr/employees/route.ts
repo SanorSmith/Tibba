@@ -265,6 +265,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // `staff.unit` is a department *name*, not an id. Every reader treats it
+    // as one - the directory prints it, the appointment picker prints it, and
+    // the department filters compare it against the names in their dropdown -
+    // but this route wrote whatever `department_id` contained. The most recent
+    // employee therefore shows as "Qisa Muktar - Doctor (0408c7b9-ea30-...)"
+    // and matches no department filter at all.
+    //
+    // Resolved here rather than asking the form to send the name: the server
+    // should not depend on the client having looked it up, and the form's own
+    // lookup was computed and then thrown away.
+    //
+    // A value that is not a department of this facility is kept as written, so
+    // a caller passing a plain name still works.
+    let unitName: string = department_id || 'General';
+    if (department_id) {
+      const dept = await pool.query(
+        `SELECT name FROM departments WHERE departmentid::text = $1 AND workspaceid = $2 LIMIT 1`,
+        [String(department_id), workspaceId],
+      );
+      if (dept.rows.length > 0 && dept.rows[0].name) unitName = dept.rows[0].name;
+    }
+
     // Start transaction
     const client = await pool.connect();
     
@@ -297,7 +319,7 @@ export async function POST(request: NextRequest) {
         last_name,
         email,
         job_title || 'Staff',
-        department_id || 'General',
+        unitName,
         // The platform account this employment belongs to, when the form
         // created one. The database refuses an account from another facility.
         body.userId || null
