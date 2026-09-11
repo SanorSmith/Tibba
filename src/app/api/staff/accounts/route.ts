@@ -19,16 +19,18 @@
  * force a change - is worse than asking them to use an identity provider.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
 import { getWorkspaceId, readSession } from '@/lib/workspace';
 import { grantRuleFor } from '@/lib/auth/facility-session';
+// The shared pool, not a second one built here. This route used to open its
+// own `new Pool` against OPENEHR_DATABASE_URL - the same database through the
+// pooler endpoint, so it read the right data, but it was a connection
+// `withTenant` has no way to reach. Wrapping the handlers would have set the
+// facility on a connection none of these queries ran on, which looks exactly
+// like a fix and is not one.
+import { pool } from '@/lib/db/pool';
+import { withTenant } from '@/lib/db/tenant';
 
 export const dynamic = 'force-dynamic';
-
-const databaseUrl = process.env.OPENEHR_DATABASE_URL;
-const pool = databaseUrl
-  ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
-  : null;
 
 /**
  * Who may create and manage accounts here, and which roles each may grant.
@@ -63,10 +65,18 @@ const NOT_ALLOWED = {
 export async function GET(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
   const manager = await accountManager(request);
   if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
+
+  // Every query below touches `workspaceusers` or `staff`, and both carry
+  // row-level security. Without the facility on the connection they return
+  // nothing at all - not an error, just an empty result - so a check that
+  // reads someone's current roles concluded they held none. That made
+  // "already has a role here" answer no for an account holding six, and
+  // worse, let the guard protecting an administrator pass by finding
+  // nothing to protect.
+  return await withTenant(workspaceId, async () => {
 
   // Scoped by provenance, not by membership. A facility's administrator
   // manages the accounts their facility made - not every account that happens
@@ -116,15 +126,24 @@ export async function GET(request: NextRequest) {
     availableRoles: roles.rows.filter((r) => manager.canGrant(r.name)),
     grantsAdministrator: manager.canGrant('administrator'),
   });
+  });
 }
 
 export async function POST(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
   const manager = await accountManager(request);
   if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
+
+  // Every query below touches `workspaceusers` or `staff`, and both carry
+  // row-level security. Without the facility on the connection they return
+  // nothing at all - not an error, just an empty result - so a check that
+  // reads someone's current roles concluded they held none. That made
+  // "already has a role here" answer no for an account holding six, and
+  // worse, let the guard protecting an administrator pass by finding
+  // nothing to protect.
+  return await withTenant(workspaceId, async () => {
 
   const body = await request.json().catch(() => null);
   const email = String(body?.email ?? '').trim().toLowerCase();
@@ -233,6 +252,7 @@ export async function POST(request: NextRequest) {
   } finally {
     client.release();
   }
+  });
 }
 
 /**
@@ -246,9 +266,17 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const manager = await accountManager(request);
   if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
+
+  // Every query below touches `workspaceusers` or `staff`, and both carry
+  // row-level security. Without the facility on the connection they return
+  // nothing at all - not an error, just an empty result - so a check that
+  // reads someone's current roles concluded they held none. That made
+  // "already has a role here" answer no for an account holding six, and
+  // worse, let the guard protecting an administrator pass by finding
+  // nothing to protect.
+  return await withTenant(workspaceId, async () => {
 
   const body = await request.json().catch(() => null);
   const userid = String(body?.userid ?? '').trim();
@@ -349,6 +377,7 @@ export async function PATCH(request: NextRequest) {
   );
 
   return NextResponse.json({ success: true, userid, role, replaced: from });
+  });
 }
 
 /**
@@ -362,9 +391,17 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   const manager = await accountManager(request);
   if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
+
+  // Every query below touches `workspaceusers` or `staff`, and both carry
+  // row-level security. Without the facility on the connection they return
+  // nothing at all - not an error, just an empty result - so a check that
+  // reads someone's current roles concluded they held none. That made
+  // "already has a role here" answer no for an account holding six, and
+  // worse, let the guard protecting an administrator pass by finding
+  // nothing to protect.
+  return await withTenant(workspaceId, async () => {
 
   const userid = request.nextUrl.searchParams.get('userid');
   if (!userid) return NextResponse.json({ error: 'Which account?' }, { status: 400 });
@@ -442,6 +479,7 @@ export async function DELETE(request: NextRequest) {
   } finally {
     client.release();
   }
+  });
 }
 
 /**
@@ -458,10 +496,18 @@ export async function DELETE(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const workspaceId = await getWorkspaceId(request);
   if (!workspaceId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-  if (!pool) return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
 
   const manager = await accountManager(request);
   if (!manager) return NextResponse.json(NOT_ALLOWED, { status: 403 });
+
+  // Every query below touches `workspaceusers` or `staff`, and both carry
+  // row-level security. Without the facility on the connection they return
+  // nothing at all - not an error, just an empty result - so a check that
+  // reads someone's current roles concluded they held none. That made
+  // "already has a role here" answer no for an account holding six, and
+  // worse, let the guard protecting an administrator pass by finding
+  // nothing to protect.
+  return await withTenant(workspaceId, async () => {
 
   const body = await request.json().catch(() => null);
   const userid = String(body?.userid ?? '').trim();
@@ -508,4 +554,5 @@ export async function PUT(request: NextRequest) {
   );
 
   return NextResponse.json({ success: true, userid, role, added: true });
+  });
 }
