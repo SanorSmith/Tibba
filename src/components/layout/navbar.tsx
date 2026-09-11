@@ -10,7 +10,10 @@ export function Navbar({ onMobileMenuToggle }: { onMobileMenuToggle?: () => void
   const [searchValue, setSearchValue] = useState('');
 
   return (
-    <header className="flex h-16 shrink-0 items-center bg-[#618FF5] justify-between mt-8 gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    // No top margin: it pushed the bar down the page and left a white strip
+    // above it, which reads as the layout having failed to load rather than as
+    // spacing. The bar belongs against the top of the window.
+    <header className="flex h-16 shrink-0 items-center bg-[#618FF5] justify-between gap-4 px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex items-center flex-1 min-w-0">
         {/* Mobile menu button */}
         <button
