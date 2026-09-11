@@ -10,6 +10,13 @@
  * print on paper, or save as PDF to get a file to attach to an email.
  *
  * Deliberately plain. It is a claim form going to an insurer, not a screen.
+ *
+ * It sits outside the (dashboard) route group on purpose, so it renders under
+ * the root layout with no navbar and no sidebar. Inside the group the app's
+ * own chrome - the search box, the module menu - printed along with the claim
+ * form, and hiding it with print rules would have meant this page reaching
+ * into a layout it does not own. The URL is unchanged: a route group in
+ * parentheses contributes nothing to the path.
  */
 
 import { useEffect, useState } from 'react';
@@ -136,6 +143,9 @@ export default function InsuranceReportPrintPage() {
           .no-print { display: none !important; }
           @page { margin: 14mm; }
         }
+        /* The root layout paints nothing, so the page supplies its own ground
+           rather than inheriting whatever the browser defaults to. */
+        body { background: #fff; }
       `}</style>
 
       <div
