@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil, Heart, Target, Star, Save, User, Briefcase } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Shield, GraduationCap, Award, Building2, Clock, FileText, Trash2, Pencil, Heart, Target, Star, Save, User, Briefcase, KeyRound, Link2Off } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import attendanceData from '@/data/hr/attendance.json';
@@ -26,9 +26,78 @@ export default function EmployeeProfilePage() {
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Accounts this facility could attach to the record, and whether the
+  // control is allowed to this caller at all. An empty list and a refusal
+  // look the same on screen unless they are kept apart.
+  const [linkable, setLinkable] = useState<
+    { userid: string; name: string | null; email: string; platformRole: string | null; linkedStaffId: string | null }[]
+  >([]);
+  const [mayLink, setMayLink] = useState<boolean | null>(null);
+  const [pickedAccount, setPickedAccount] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
+
   useEffect(() => {
     loadEmployee();
   }, [params.id]);
+
+  // Its own effect, not nested inside loadEmployee's. A hook placed inside
+  // another hook's body is valid syntax, so nothing catches it until React
+  // fails at runtime with error #321.
+  useEffect(() => {
+    let live = true;
+    fetch('/api/staff/linkable-users')
+      .then(async (r) => {
+        if (!live) return;
+        if (r.status === 403) { setMayLink(false); return null; }
+        if (!r.ok) return null;
+        setMayLink(true);
+        return r.json();
+      })
+      .then((d) => { if (live && d) setLinkable(d.users ?? []); })
+      .catch(() => { if (live) setMayLink(false); });
+    return () => { live = false; };
+  }, []);
+
+  const attachAccount = async () => {
+    if (!pickedAccount || !employee?.id) return;
+    setLinkBusy(true);
+    try {
+      const res = await fetch(`/api/staff/${employee.id}/account`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: pickedAccount }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not attach the account');
+      toast.success('Account attached');
+      setPickedAccount('');
+      await loadEmployee();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not attach the account');
+    } finally {
+      setLinkBusy(false);
+    }
+  };
+
+  const detachAccount = async () => {
+    if (!employee?.id) return;
+    const warning = `Detach the sign-in account from this record?
+
+The account and its roles are untouched. This record simply stops pointing at it, so nobody can act as this person in the EHR.`;
+    if (!window.confirm(warning)) return;
+    setLinkBusy(true);
+    try {
+      const res = await fetch(`/api/staff/${employee.id}/account`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not detach the account');
+      toast.success('Account detached');
+      await loadEmployee();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not detach the account');
+    } finally {
+      setLinkBusy(false);
+    }
+  };
 
   const loadEmployee = async () => {
     try {
@@ -327,6 +396,85 @@ export default function EmployeeProfilePage() {
                   <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151' }}>Department</label>
                   <div className="tibbna-input bg-gray-50">{employee.unit || 'Not set'}</div>
                 </div>
+              </div>
+
+              {/* Which login this record belongs to.
+                  Linking used to be possible only while creating the employee,
+                  so anyone registered before their account existed showed
+                  "no login" for ever with no way to change it - and nothing
+                  joined their work to a person who could open it. */}
+              <div className="flex flex-col gap-1.5">
+                <label style={{ fontSize: '13px', fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Sign-in account
+                </label>
+
+                {employee.userId ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="tibbna-input bg-gray-50 flex-1" style={{ minWidth: 220 }}>
+                      {linkable.find((u) => u.userid === employee.userId)?.email
+                        || employee.email
+                        || 'Attached'}
+                    </div>
+                    {mayLink && (
+                      <button
+                        type="button"
+                        disabled={linkBusy}
+                        onClick={detachAccount}
+                        className="btn-secondary btn-sm flex items-center gap-1.5"
+                      >
+                        <Link2Off className="w-3.5 h-3.5" />
+                        Detach
+                      </button>
+                    )}
+                  </div>
+                ) : mayLink === false ? (
+                  <div className="tibbna-input bg-gray-50" style={{ color: '#92400e' }}>
+                    No login attached. Only an administrator or an HR officer can attach one.
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        className="tibbna-input flex-1"
+                        style={{ minWidth: 220 }}
+                        value={pickedAccount}
+                        disabled={linkBusy}
+                        onChange={(e) => setPickedAccount(e.target.value)}
+                      >
+                        <option value="">No login attached &mdash; choose an account&hellip;</option>
+                        {linkable
+                          .filter((u) => !u.linkedStaffId)
+                          .map((u) => (
+                            <option key={u.userid} value={u.userid}>
+                              {(u.name || u.email) + ' — ' + (u.platformRole ?? 'no role')}
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={linkBusy || !pickedAccount}
+                        onClick={attachAccount}
+                        className="btn-primary btn-sm"
+                      >
+                        Attach
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6b7280' }}>
+                      Only people who already hold a role in this facility and are
+                      not attached to another record. No account is created and no
+                      role is granted, so this changes nothing about what they can
+                      reach &mdash; it tells the system that this employee and that
+                      login are the same person.
+                    </p>
+                    {linkable.filter((u) => !u.linkedStaffId).length === 0 && (
+                      <p style={{ fontSize: '12px', color: '#b45309' }}>
+                        Nothing to attach. Everyone with a role here is already on a
+                        record, or holds a role only an administrator can attach.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
               <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-1.5">
