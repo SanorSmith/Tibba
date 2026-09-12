@@ -66,19 +66,37 @@ export async function GET(request: NextRequest) {
     // 1. REAL REVENUE CALCULATION
     console.log('💰 Calculating real revenue data...');
     
-    // Revenue from paid invoices by service category
+    // Revenue by service category, apportioned from the invoice total.
+    //
+    // This summed line items while the summary below summed invoice totals, so
+    // the same page reported two revenue figures that differed by 440,000. The
+    // cause is that nine of the eighteen paid invoices have line items that do
+    // not add up to their own total, by 231,000 between them.
+    //
+    // The invoice total is the authority: it is what was billed and what the
+    // reconciliation balances against. Each category therefore takes its share
+    // of that total, in proportion to the line items it holds, so the
+    // breakdown sums to the headline exactly rather than approximately.
+    //
+    // An invoice with no line items cannot appear in a breakdown by service.
+    // There are none today, and the NULLIF keeps a future one from dividing by
+    // zero rather than silently dropping it from both figures.
     const revenueByServiceQuery = `
       SELECT 
         COALESCE(s.category, 'OTHER') as category,
         COALESCE(s.name, 'Unknown Service') as service_name,
-        SUM(ii.total_price) as revenue,
+        SUM(ii.total_price / NULLIF(tot.items, 0) * i.total_amount) as revenue,
         COUNT(DISTINCT ii.invoice_id) as transaction_count,
         COUNT(ii.id) as item_count,
-        AVG(ii.total_price) as avg_transaction_value
+        AVG(ii.total_price / NULLIF(tot.items, 0) * i.total_amount) as avg_transaction_value
       FROM invoice_items ii
       JOIN invoices i ON ii.invoice_id = i.id
+      JOIN LATERAL (
+        SELECT SUM(total_price) AS items FROM invoice_items x WHERE x.invoice_id = i.id
+      ) tot ON true
       LEFT JOIN services s ON s.id::text = ii.service_id::text
-      WHERE i.workspaceid = $1 AND i.status = 'PAID' ${dateFilter}
+      WHERE i.workspaceid = $1 AND i.status = 'PAID'
+        AND COALESCE(tot.items, 0) <> 0 ${dateFilter}
       GROUP BY s.category, s.name
       ORDER BY revenue DESC
     `;
