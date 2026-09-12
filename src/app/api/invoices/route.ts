@@ -225,7 +225,25 @@ export async function POST(request: NextRequest) {
     const insurance_coverage_amount = body.insurance_coverage_amount ?? Math.round(total_amount * insurance_coverage_percentage / 100);
     const patient_responsibility = body.patient_responsibility ?? (total_amount - insurance_coverage_amount);
     const amount_paid = body.amount_paid ?? 0;
-    const balance_due = body.balance_due ?? (patient_responsibility - amount_paid);
+
+    // What is still owed on this invoice, computed here rather than taken
+    // from the request.
+    //
+    // Two things were wrong. The browser could send any balance it liked and
+    // it was written down unquestioned. And when it sent none, the fallback
+    // subtracted from `patient_responsibility` instead of from the invoice
+    // total - on an insured invoice those differ by exactly the insurer's
+    // share, so the row could not add up. Twenty-three of the sixty invoices
+    // in Hospital 1 do not, insured ones failing at three times the rate of
+    // uninsured, and sixteen of them match this formula precisely.
+    //
+    // The total is what is owed to the facility, whoever settles it. The
+    // insurer's share is a fact about who pays, not about how much. Nothing
+    // is clamped at zero: overpaying gives a negative balance, which is the
+    // honest way to record money owed back, and it keeps total, paid and
+    // balance adding up - now enforced by a check constraint in migration
+    // 0095, so a wrong figure is refused rather than stored.
+    const balance_due = total_amount - amount_paid;
     
     console.log('Generated invoice number:', invoice_number);
     console.log('Calculated values:', {

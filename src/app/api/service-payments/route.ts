@@ -160,7 +160,12 @@ export async function POST(request: NextRequest) {
     // 3. Update invoice financials
     const newAmountPaid = (parseFloat(String(inv.amount_paid)) || 0) + payAmt;
     const totalAmount   = parseFloat(String(inv.total_amount)) || 0;
-    const newBalance    = Math.max(0, totalAmount - newAmountPaid);
+    // Not clamped at zero. Overpaying used to leave the balance at 0 while
+    // amount_paid exceeded the total, so the row no longer added up - two
+    // invoices are in that state today. A negative balance is the honest
+    // record of money owed back to the payer, and it keeps total, paid and
+    // balance in agreement, which migration 0095 now requires.
+    const newBalance    = totalAmount - newAmountPaid;
     const newStatus     = newBalance <= 0 ? 'PAID' : 'PARTIAL';
 
     await client.query(

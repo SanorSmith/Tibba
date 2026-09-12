@@ -168,7 +168,12 @@ export async function PUT(
             const inv = invRes.rows[0];
             const invTotalAmount = parseFloat(inv.total_amount) || 0;
             const invAmountPaid  = (parseFloat(inv.amount_paid) || 0) + newPayment;
-            const invBalanceDue  = Math.max(0, invTotalAmount - invAmountPaid);
+            // Not clamped at zero. Overpaying used to leave the balance at 0 while
+            // amount_paid exceeded the total, so the row no longer added up - two
+            // invoices are in that state today. A negative balance is the honest
+            // record of money owed back to the payer, and it keeps total, paid and
+            // balance in agreement, which migration 0095 now requires.
+            const invBalanceDue  = invTotalAmount - invAmountPaid;
             const invStatus      = invBalanceDue <= 0 ? 'PAID' : 'PARTIAL';
             await pool.query(
               `UPDATE invoices

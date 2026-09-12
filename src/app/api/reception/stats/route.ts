@@ -58,12 +58,24 @@ export async function GET(request: NextRequest) {
 
     // Bills this facility raised that are not yet settled — not limited to
     // today, since an unpaid bill from last week is still outstanding.
+    //
+    // The balance is derived rather than trusted. Requiring `balance_due > 0`
+    // meant an invoice whose balance was never calculated counted as nothing
+    // owed: four pending invoices worth 325,000 were missing from this figure,
+    // and Reception saw 24 outstanding bills where there were 28. A null
+    // balance means "not worked out", not "settled", so it falls back to the
+    // total less whatever has been paid.
+    //
+    // Invoices are created with a computed balance now, so this mainly covers
+    // rows written before that. It stays because the fallback is the correct
+    // reading either way.
     const pending = await pool.query(
-      `SELECT COUNT(*)::int AS n, COALESCE(SUM(balance_due), 0) AS amount
+      `SELECT COUNT(*)::int AS n,
+              COALESCE(SUM(COALESCE(balance_due, total_amount - COALESCE(amount_paid, 0))), 0) AS amount
          FROM invoices
         WHERE workspaceid = $1
           AND COALESCE(status, '') NOT IN ('PAID', 'CANCELLED')
-          AND COALESCE(balance_due, 0) > 0`,
+          AND COALESCE(balance_due, total_amount - COALESCE(amount_paid, 0)) > 0`,
       [workspaceId]
     );
 
