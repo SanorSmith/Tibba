@@ -67,12 +67,11 @@ export async function GET(request: NextRequest) {
                 ic.company_name,
                 ic.company_code
            FROM invoices i
-           -- patients.patientid is a uuid and invoices.patient_id is varchar,
-           -- so the join needs a cast. The uuid is cast to text rather than
-           -- the text to uuid: an invoice carrying anything that is not a
-           -- uuid then simply fails to match, instead of aborting the whole
-           -- search with a cast error.
-           LEFT JOIN patients p ON p.patientid::text = i.patient_id
+           -- Both sides are uuid since migration 0096, which also added the
+           -- foreign key, so this joins directly and can use the index. It
+           -- used to cast the uuid to text because invoices.patient_id was
+           -- varchar and could hold anything at all.
+           LEFT JOIN patients p ON p.patientid = i.patient_id
            LEFT JOIN insurance_companies ic
                   ON ic.company_id = i.insurance_company_id
           WHERE i.workspaceid = $1
