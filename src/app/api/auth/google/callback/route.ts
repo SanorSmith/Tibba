@@ -12,6 +12,7 @@
  *      cookie is issued
  */
 import { pool } from '@/lib/db/pool';
+import { ROLE_MODULES } from '@/lib/auth/role-modules';
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import {
@@ -40,13 +41,6 @@ const ROLE_HOME: Record<string, string> = {
   HR_ADMIN: '/hr',
   INVENTORY_ADMIN: '/hospital',
   RECEPTION_ADMIN: '/reception',
-};
-const ROLE_MODULES: Record<string, string[]> = {
-  SUPER_ADMIN: ['*'],
-  FINANCE_ADMIN: ['/finance'],
-  HR_ADMIN: ['/hr', '/staff'],
-  INVENTORY_ADMIN: ['/inventory', '/hospital'],
-  RECEPTION_ADMIN: ['/reception'],
 };
 
 function backToLogin(request: NextRequest, error: string) {

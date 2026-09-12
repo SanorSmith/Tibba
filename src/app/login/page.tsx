@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent, Suspense } from 'react';
+import { ROLE_MODULES } from '@/lib/auth/role-modules';
 import { useSearchParams } from 'next/navigation';
 import { Hospital, Shield, Loader2, Eye, EyeOff } from 'lucide-react';
 
@@ -53,13 +54,6 @@ function LoginForm() {
       HR_ADMIN: '/hr',
       INVENTORY_ADMIN: '/hospital',
       RECEPTION_ADMIN: '/reception',
-    };
-    const ROLE_MODULES: Record<string, string[]> = {
-      SUPER_ADMIN: ['*'],
-      FINANCE_ADMIN: ['/finance'],
-      HR_ADMIN: ['/hr', '/staff'],
-      INVENTORY_ADMIN: ['/inventory', '/hospital'],
-      RECEPTION_ADMIN: ['/reception'],
     };
     const home = ROLE_HOME[role] ?? '/dashboard';
     const allowed = ROLE_MODULES[role] ?? [];
@@ -127,14 +121,6 @@ function LoginForm() {
           HR_ADMIN: '/hr',
           INVENTORY_ADMIN: '/hospital',
           RECEPTION_ADMIN: '/reception',
-        };
-        // Must match ROLE_MODULES in src/middleware.ts
-        const ROLE_MODULES: Record<string, string[]> = {
-          SUPER_ADMIN: ['*'],
-          FINANCE_ADMIN: ['/finance'],
-          HR_ADMIN: ['/hr', '/staff'],
-          INVENTORY_ADMIN: ['/inventory', '/hospital'],
-          RECEPTION_ADMIN: ['/reception'],
         };
         const home = ROLE_HOME[data.role] ?? '/dashboard';
         const allowed = ROLE_MODULES[data.role] ?? [];

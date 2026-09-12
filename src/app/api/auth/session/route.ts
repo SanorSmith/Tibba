@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ROLE_MODULES } from '@/lib/auth/role-modules';
 import { verifySession } from '@/lib/auth/session-token';
 
 export const dynamic = 'force-dynamic';
 
-// Mirrors ROLE_MODULES in src/middleware.ts — the middleware is what actually
-// blocks a request, so these must agree or the UI will offer links that then
-// bounce the user to /unauthorized.
-const ROLE_MODULES: Record<string, string[]> = {
-  SUPER_ADMIN:     ['*'],
-  FINANCE_ADMIN:   ['/finance'],
-  HR_ADMIN:        ['/hr', '/staff'],
-  INVENTORY_ADMIN: ['/inventory', '/hospital'],
-  RECEPTION_ADMIN: ['/reception'],
-};
+// The same map the middleware enforces, not a copy of it. This endpoint tells
+// the sidebar what to offer; a copy that drifted would offer a menu item that
+// then bounced the user to /unauthorized.
 
 export async function GET(request: NextRequest) {
   try {

@@ -81,21 +81,11 @@ export const WS_ROLE_TO_APP_ROLE: Record<string, string> = {
  * SUPER_ADMIN may open, so a receptionist crossed over successfully and was
  * turned away by the next request.
  */
-export const ROLE_MODULES: Record<string, string[]> = {
-  SUPER_ADMIN: ['*'],
-  FINANCE_ADMIN: ['/finance'],
-  HR_ADMIN: ['/hr', '/staff'],
-  INVENTORY_ADMIN: ['/inventory', '/hospital'],
-  RECEPTION_ADMIN: ['/reception'],
-};
-
-export const ROLE_HOME: Record<string, string> = {
-  SUPER_ADMIN: '/dashboard',
-  FINANCE_ADMIN: '/finance',
-  HR_ADMIN: '/hr',
-  INVENTORY_ADMIN: '/hospital',
-  RECEPTION_ADMIN: '/reception',
-};
+// Defined in role-modules.ts, which imports nothing and so can be read by a
+// client component too. Re-exported here because the middleware and several
+// routes already import them from this file.
+import { ROLE_HOME } from './role-modules';
+export { ROLE_MODULES, ROLE_HOME, mayOpen } from './role-modules';
 
 /** Where to put someone whose session has just been created. */
 export function landingPathFor(appRole: string): string {
