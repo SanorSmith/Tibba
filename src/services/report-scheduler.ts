@@ -23,7 +23,6 @@ export class ReportScheduler {
    * Initialize all scheduled reports
    */
   initializeSchedules(): void {
-    console.log('Initializing report schedules...');
 
     // Daily Attendance Report - Every day at 9:00 AM
     this.scheduleDailyAttendanceReport();
@@ -37,7 +36,6 @@ export class ReportScheduler {
     // License Expiry Report - Every Monday at 10:00 AM
     this.scheduleLicenseExpiryReport();
 
-    console.log(`Initialized ${this.scheduledTasks.size} scheduled reports`);
   }
 
   /**
@@ -46,7 +44,6 @@ export class ReportScheduler {
   private scheduleDailyAttendanceReport(): void {
     const task = cron.schedule('0 9 * * *', async () => {
       try {
-        console.log('Generating daily attendance report...');
         
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -69,7 +66,6 @@ export class ReportScheduler {
         });
 
         // TODO: Send email to HR team
-        console.log(`Daily attendance report generated for ${dateStr}`);
       } catch (error: any) {
         console.error('Error generating daily attendance report:', error);
         await this.logScheduledReportError('daily-attendance', error.message);
@@ -85,7 +81,6 @@ export class ReportScheduler {
   private scheduleMonthlyPayrollReport(): void {
     const task = cron.schedule('0 8 1 * *', async () => {
       try {
-        console.log('Generating monthly payroll report...');
         
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
@@ -111,7 +106,6 @@ export class ReportScheduler {
           status: 'completed',
         });
 
-        console.log(`Monthly payroll report generated for ${lastMonth.getFullYear()}-${lastMonth.getMonth() + 1}`);
       } catch (error: any) {
         console.error('Error generating monthly payroll report:', error);
         await this.logScheduledReportError('monthly-payroll', error.message);
@@ -127,7 +121,6 @@ export class ReportScheduler {
   private scheduleWeeklyOvertimeReport(): void {
     const task = cron.schedule('0 9 * * 1', async () => {
       try {
-        console.log('Generating weekly overtime report...');
         
         const today = new Date();
         const lastWeekStart = new Date(today);
@@ -150,7 +143,6 @@ export class ReportScheduler {
           status: 'completed',
         });
 
-        console.log('Weekly overtime report generated');
       } catch (error: any) {
         console.error('Error generating weekly overtime report:', error);
         await this.logScheduledReportError('overtime-analysis', error.message);
@@ -166,7 +158,6 @@ export class ReportScheduler {
   private scheduleLicenseExpiryReport(): void {
     const task = cron.schedule('0 10 * * 1', async () => {
       try {
-        console.log('Generating license expiry report...');
         
         const reportData = await reportGenerator.generateReport('license-expiry', {});
 
@@ -182,9 +173,7 @@ export class ReportScheduler {
             status: 'completed',
           });
 
-          console.log(`License expiry report generated - ${reportData.data.length} licenses expiring`);
         } else {
-          console.log('No licenses expiring in next 90 days');
         }
       } catch (error: any) {
         console.error('Error generating license expiry report:', error);
@@ -282,7 +271,6 @@ export class ReportScheduler {
   stopAll(): void {
     this.scheduledTasks.forEach((task, name) => {
       task.stop();
-      console.log(`Stopped scheduled task: ${name}`);
     });
     this.scheduledTasks.clear();
   }

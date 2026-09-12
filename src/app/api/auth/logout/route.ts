@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Logout request received');
 
     return NextResponse.json({
       success: true,

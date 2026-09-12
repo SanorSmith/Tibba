@@ -125,7 +125,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('POST /api/invoices - Request received');
     
     if (!pool) {
       console.error('Database pool not configured');
@@ -151,7 +150,6 @@ export async function POST(request: NextRequest) {
     return await withTenant(workspaceId, async () => {
 
     const body = await request.json();
-    console.log('Request body:', JSON.stringify(body, null, 2));
 
     // Generate invoice number if not provided
     const invoice_number = body.invoice_number || `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
@@ -173,12 +171,10 @@ export async function POST(request: NextRequest) {
     // Get service prices for items that don't have unit_price
     let servicePrices: Record<string, number> = {};
     if (items && Array.isArray(items)) {
-      console.log('Items received:', items);
       const serviceCodes = items
         .filter(item => !item.unit_price && (item.service_id || item.item_code))
         .map(item => item.service_id || item.item_code);
       
-      console.log('Service codes to fetch:', serviceCodes);
       
       if (serviceCodes.length > 0) {
         try {
@@ -187,14 +183,12 @@ export async function POST(request: NextRequest) {
             `SELECT code, id, price FROM services WHERE code = ANY($1) OR id = ANY($1)`,
             [serviceCodes]
           );
-          console.log('Price query result:', pricesResult.rows);
           servicePrices = pricesResult.rows.reduce((acc, row) => {
             // Store by both code and id for flexibility
             acc[row.code] = parseFloat(row.price) || 0;
             acc[row.id] = parseFloat(row.price) || 0;
             return acc;
           }, {} as Record<string, number>);
-          console.log('Fetched service prices:', servicePrices);
         } catch (priceError) {
           console.error('Error fetching service prices:', priceError);
           // Continue without prices - will use 0 as default
@@ -209,15 +203,11 @@ export async function POST(request: NextRequest) {
           const unitPrice = item.unit_price || servicePrices[serviceId] || 0;
           const quantity = item.quantity || 1;
           const itemTotal = unitPrice * quantity;
-          console.log(`Item: ${serviceId}, unitPrice: ${unitPrice}, quantity: ${quantity}, total: ${itemTotal}`);
           return sum + itemTotal;
         }, 0)
       : 0;
     
-    console.log('Calculated subtotal:', calculatedSubtotal);
-    console.log('Body subtotal:', body.subtotal);
     const subtotal = body.subtotal ?? calculatedSubtotal;
-    console.log('Final subtotal:', subtotal);
     const discount_percentage = body.discount_percentage ?? 0;
     const discount_amount = body.discount_amount ?? Math.round(subtotal * discount_percentage / 100);
     const total_amount = body.total_amount ?? (subtotal - discount_amount);
@@ -245,18 +235,6 @@ export async function POST(request: NextRequest) {
     // 0095, so a wrong figure is refused rather than stored.
     const balance_due = total_amount - amount_paid;
     
-    console.log('Generated invoice number:', invoice_number);
-    console.log('Calculated values:', {
-      subtotal,
-      discount_percentage,
-      discount_amount,
-      total_amount,
-      insurance_coverage_percentage,
-      insurance_coverage_amount,
-      patient_responsibility,
-      amount_paid,
-      balance_due
-    });
 
     // Start transaction
     await pool.query('BEGIN');
@@ -319,7 +297,6 @@ export async function POST(request: NextRequest) {
 
       // Insert invoice items if provided
       if (items && Array.isArray(items) && items.length > 0) {
-        console.log(`Inserting ${items.length} invoice items`);
         
         // Each line item can carry the receptionist's chosen provider (stakeholder)
         await ensureSchema(`ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS stakeholder_id UUID`).catch(() => {});
@@ -349,7 +326,6 @@ export async function POST(request: NextRequest) {
             openehr_order_id: item.openehr_order_id || null,
           };
 
-          console.log('Inserting item:', itemData);
 
           await pool.query(`
             INSERT INTO invoice_items (
@@ -379,7 +355,6 @@ export async function POST(request: NextRequest) {
             itemData.openehr_order_id,
           ]);
         }
-        console.log('All items inserted successfully');
       }
 
       // ── Auto-create invoice_shares from service_stakeholders config ──
@@ -428,7 +403,6 @@ export async function POST(request: NextRequest) {
             sharesInserted++;
           }
         }
-        console.log(`Auto-created ${sharesInserted} invoice_shares for invoice ${newInvoice.id}`);
       } catch (shareErr) {
         // Non-fatal: shares can be recreated later; don't fail the whole invoice
         console.error('Warning: invoice_shares auto-creation failed:', shareErr);

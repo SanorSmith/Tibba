@@ -46,10 +46,8 @@ export async function GET(request: NextRequest) {
       )
     `);
 
-    console.log('Services table exists:', tableExists.rows[0].exists);
 
     if (!tableExists.rows[0].exists) {
-      console.log('Services table does not exist, returning mock data');
       // Return mock medical services if table doesn't exist
       return NextResponse.json([
         { 
@@ -302,7 +300,6 @@ export async function GET(request: NextRequest) {
       ORDER BY category, name
     `, [workspaceId]);
     
-    console.log('Simple query result (no dept join):', simpleResult.rows.length, 'services found');
     
     // Try different department join approaches
     let result;
@@ -335,32 +332,23 @@ export async function GET(request: NextRequest) {
         WHERE s.active = true AND s.workspaceid = $1
         ORDER BY s.category, s.name
       `, [workspaceId]);
-      console.log('Department join (UUID match) result:', result.rows.length, 'services found');
     } catch (error) {
-      console.log('Department join failed, using simple query:', error instanceof Error ? error.message : String(error));
       result = simpleResult;
     }
 
-    console.log('Database query result (with dept join):', result.rows.length, 'services found');
-    console.log('First service sample:', result.rows[0]);
     
     // Also check total services count (including inactive)
     const totalCount = await pool.query('SELECT COUNT(*) as total FROM services WHERE workspaceid = $1', [workspaceId]);
-    console.log('Total services in table (including inactive):', totalCount.rows[0].total);
     
     // Check active services count
     const activeCount = await pool.query('SELECT COUNT(*) as active FROM services WHERE active = true AND workspaceid = $1', [workspaceId]);
-    console.log('Active services count:', activeCount.rows[0].active);
     
     // Always return the query with more services
     let finalResult = simpleResult.rows.length >= result.rows.length ? simpleResult : result;
     
-    console.log('Final result count:', finalResult.rows.length);
-    console.log('Using query:', simpleResult.rows.length >= result.rows.length ? 'simple (no dept join)' : 'with dept join');
 
     // If no active services found, show all services
     if (finalResult.rows.length === 0) {
-      console.log('No active services found, showing all services');
       const allServices = await pool.query(`
         SELECT 
           id,
@@ -387,7 +375,6 @@ export async function GET(request: NextRequest) {
         ORDER BY category, name
       `, [workspaceId]);
       finalResult = allServices;
-      console.log('All services count:', finalResult.rows.length);
     }
 
     return NextResponse.json(finalResult.rows);
@@ -479,12 +466,10 @@ export async function POST(request: NextRequest) {
 
     // Validate department exists (if provided)
     if (department_id) {
-      console.log(`Validating department_id: ${department_id}`);
       const deptCheck = await pool.query(`
         SELECT departmentid, name FROM departments WHERE departmentid = $1
       `, [department_id]);
       
-      console.log(`Department query result:`, deptCheck.rows);
       
       if (deptCheck.rows.length === 0) {
         return NextResponse.json(
@@ -497,7 +482,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      console.log(`Service linked to department: ${deptCheck.rows[0].name} (${department_id})`);
     }
 
     const result = await pool.query(`

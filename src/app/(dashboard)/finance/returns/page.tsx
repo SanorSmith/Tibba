@@ -97,7 +97,6 @@ export default function ReturnsPage() {
       if (res.ok) {
         const data = await res.json();
         const items = data.items || [];
-        console.log('📋 Invoice items loaded:', items);
         setInvoiceItems(items);
         // Initialize return items with 0 quantity for each
         const returnItemsInit = items.map((item: any) => ({
@@ -105,7 +104,6 @@ export default function ReturnsPage() {
           return_quantity: 0,
           return_amount: 0,
         }));
-        console.log('🔄 Return items initialized:', returnItemsInit);
         setReturnItems(returnItemsInit);
       }
     } catch (error) {
@@ -282,19 +280,11 @@ export default function ReturnsPage() {
     const validQty = Math.max(0, Math.min(qty, maxQty));
     updated[index].return_quantity = validQty;
     updated[index].return_amount = validQty * updated[index].unit_price;
-    console.log(`💰 Item ${index}: ${validQty} × ${updated[index].unit_price} = ${updated[index].return_amount}`);
     setReturnItems(updated);
   };
 
   const totalReturnAmount = returnItems.reduce((sum, item) => sum + item.return_amount, 0);
   if (returnItems.some(item => item.return_quantity > 0)) {
-    console.log('🧮 Return calculation:', returnItems.map(item => ({
-      name: item.description || item.service_name,
-      qty: item.return_quantity,
-      price: item.unit_price,
-      amount: item.return_amount
-    })));
-    console.log('💰 Total return amount:', totalReturnAmount);
   }
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;

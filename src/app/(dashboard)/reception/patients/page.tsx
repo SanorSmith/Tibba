@@ -109,7 +109,6 @@ export default function PatientsPage() {
         setInsuranceCompanies(Array.isArray(companies) ? companies : (companies.data || []));
       } else {
         // If API doesn't exist, we'll use a fallback approach
-        console.log('Insurance companies API not available, using fallback');
         // You might need to create this API endpoint or use a different approach
         setInsuranceCompanies([]);
       }
@@ -283,7 +282,6 @@ export default function PatientsPage() {
       return; 
     }
 
-    console.log('💾 Current state before save:', current);
 
     try {
       const patientData = {
@@ -301,7 +299,6 @@ export default function PatientsPage() {
         governorate: current.governorate,
       };
 
-      console.log('📤 Sending patient data:', patientData);
 
       if (modal === 'create') {
         const res = await fetch('/api/tibbna-openehr-patients', {

@@ -67,12 +67,10 @@ export async function GET(request: NextRequest) {
     // First, get total count
     const countQuery = `SELECT COUNT(*) FROM staff WHERE workspaceid = $1`;
     const countResult = await pool.query(countQuery, [workspaceId]);
-    console.log(`Total staff in database: ${countResult.rows[0].count}`);
 
     const result = await pool.query(query, params);
     
     // Log total count
-    console.log(`Total employees fetched: ${result.rows.length}`);
 
     // Format the response
     const formattedEmployees = result.rows.map(row => ({
@@ -167,15 +165,6 @@ export async function POST(request: NextRequest) {
     }
     
     // Debug: Log what we're receiving
-    console.log('🔍 API Received Data:', {
-      body_keys: Object.keys(body),
-      first_name: body.first_name,
-      last_name: body.last_name,
-      email: body.email,
-      date_of_hire: body.date_of_hire,
-      basic_salary: body.basic_salary,
-      payment_frequency: body.payment_frequency
-    });
     
     const {
       // Employee details

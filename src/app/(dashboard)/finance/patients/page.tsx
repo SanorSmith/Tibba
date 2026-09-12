@@ -83,7 +83,6 @@ export default function PatientsPage() {
       return; 
     }
 
-    console.log('💾 Current state before save:', current);
 
     try {
       const patientData = {
@@ -102,7 +101,6 @@ export default function PatientsPage() {
         medical_history: current.medical_history,
       };
 
-      console.log('📤 Sending patient data:', patientData);
 
       if (modal === 'create') {
         const res = await fetch('/api/tibbna-openehr-patients', {

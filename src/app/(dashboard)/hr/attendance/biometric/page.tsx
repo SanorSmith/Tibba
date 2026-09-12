@@ -32,7 +32,6 @@ export default function BiometricPage() {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`Loaded ${result.data.length} staff members`);
         
         // Map staff data to expected format - using correct field names from API
         const mappedStaff = result.data.map((s: any) => ({
@@ -72,11 +71,9 @@ export default function BiometricPage() {
   const filteredEmployees = useMemo(() => {
     if (!searchTerm) return [];
     
-    console.log(`Searching for "${searchTerm}" in ${activeEmployees.length} employees`);
     
     // Debug: Show first employee data
     if (activeEmployees.length > 0) {
-      console.log('First employee data:', activeEmployees[0]);
     }
     
     const filtered = activeEmployees.filter(e => {
@@ -90,27 +87,16 @@ export default function BiometricPage() {
       
       // Debug: Check Jessica specifically
       if (e.first_name === 'Jessica' && e.last_name === 'Miller') {
-        console.log('Jessica Miller found in data:', {
-          search,
-          firstNameMatch,
-          lastNameMatch,
-          fullNameMatch,
-          staffIdMatch,
-          customStaffIdMatch,
-          employeeNumberMatch
-        });
       }
       
       const matches = firstNameMatch || lastNameMatch || fullNameMatch || staffIdMatch || customStaffIdMatch || employeeNumberMatch;
       
       if (matches) {
-        console.log(`Found match: ${e.full_name} (${e.employee_number})`);
       }
       
       return matches;
     });
     
-    console.log(`Search results: ${filtered.length} matches`);
     return filtered;
   }, [activeEmployees, searchTerm]);
 

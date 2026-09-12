@@ -99,7 +99,6 @@ export async function GET(request: NextRequest) {
 
     // If staffId is provided, return individual staff member
     if (staffId) {
-      console.log('Fetching individual staff member:', staffId);
 
       const query = `
         SELECT 
@@ -197,7 +196,6 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      console.log('Staff member fetched successfully:', result.rows[0]);
 
       return NextResponse.json({
         success: true,
@@ -206,10 +204,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Otherwise, return all staff with filters
-    console.log('Fetching staff from database...');
-    console.log('Search term:', searchTerm);
-    console.log('Specialty filter:', specialty);
-    console.log('Department filter:', department);
 
     // Who a staff member is, and - separately - what they may sign in as.
     //
@@ -283,8 +277,6 @@ export async function GET(request: NextRequest) {
 
     const result = await pool.query(query, params);
 
-    console.log('Staff query executed successfully');
-    console.log('Found', result.rows.length, 'staff members');
 
     return NextResponse.json({
       success: true,
@@ -329,7 +321,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    console.log('Creating new staff member:', body);
 
     // Extract form data
     const {
@@ -457,8 +448,6 @@ export async function POST(request: NextRequest) {
     // Generate staff IDs
     const staffId = generateUUID(); // Primary key (UUID)
     const customStaffId = generateStaffId(unit, specialty, dateOfBirth); // Custom format
-    console.log('✅ Generated UUID:', staffId);
-    console.log('✅ Generated Custom ID:', customStaffId);
     
     // New staff belong to the facility of whoever is creating them. This used
     // to take workspaceId from the request body, and when absent it picked an
@@ -670,7 +659,6 @@ export async function POST(request: NextRequest) {
         WHERE staffid = $1
       `, [staffId]);
       
-      console.log('Staff member created successfully:', completeStaff.rows[0]);
       
       return NextResponse.json({
         success: true,
@@ -1029,7 +1017,6 @@ export async function PUT(request: NextRequest) {
         WHERE staffid = $1
       `, [staffId]);
       
-      console.log('Staff member updated successfully:', completeStaff.rows[0]);
       
       return NextResponse.json({
         success: true,
@@ -1116,7 +1103,6 @@ export async function DELETE(request: NextRequest) {
       [staffId, deleteWorkspaceId]
     );
 
-    console.log('Staff member deleted successfully:', staffId);
 
     return NextResponse.json({
       success: true,

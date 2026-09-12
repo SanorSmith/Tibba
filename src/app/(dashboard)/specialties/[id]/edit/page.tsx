@@ -147,7 +147,6 @@ export default function EditSpecialtyPage({ params }: { params: Promise<{ id: st
 
     setLoading(true);
     try {
-      console.log('Updating specialty:', resolvedParams.id, formData);
 
       const response = await fetch(`/api/specialties/${resolvedParams.id}`, {
         method: 'PUT',
@@ -166,7 +165,6 @@ export default function EditSpecialtyPage({ params }: { params: Promise<{ id: st
       const result = await response.json();
 
       if (response.ok) {
-        console.log('Specialty updated successfully:', result);
         toast.success('Specialty updated successfully');
         router.push('/specialties');
       } else {

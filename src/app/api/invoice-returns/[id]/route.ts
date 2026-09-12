@@ -28,7 +28,6 @@ export async function GET(
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('GET /api/invoice-returns/[id] - Request received');
     
     if (!pool) {
       console.error('Database pool not configured');
@@ -50,13 +49,10 @@ export async function GET(
       const url = new URL(request.url);
       const pathParts = url.pathname.split('/');
       id = pathParts[pathParts.length - 1];
-      console.log('Extracted ID from URL:', id);
     } else {
-      console.log('Extracted ID from params:', id);
     }
 
     if (!id) {
-      console.log('No ID found in params or URL');
       return NextResponse.json(
         { error: 'Invoice return ID is required' },
         { status: 400 }
@@ -129,7 +125,6 @@ export async function PUT(
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('PUT /api/invoice-returns/[id] - Request received');
     
     if (!pool) {
       console.error('Database pool not configured');
@@ -151,13 +146,10 @@ export async function PUT(
       const url = new URL(request.url);
       const pathParts = url.pathname.split('/');
       id = pathParts[pathParts.length - 1];
-      console.log('Extracted ID from URL:', id);
     } else {
-      console.log('Extracted ID from params:', id);
     }
 
     if (!id) {
-      console.log('No ID found in params or URL');
       return NextResponse.json(
         { error: 'Invoice return ID is required' },
         { status: 400 }
@@ -165,7 +157,6 @@ export async function PUT(
     }
 
     const body = await request.json();
-    console.log('Request body:', JSON.stringify(body, null, 2));
 
     // Build dynamic update query
     const updateFields = [];
@@ -247,8 +238,6 @@ export async function PUT(
     // Add the WHERE condition parameter
     updateValues.push(id, workspaceId);
 
-    console.log('Update fields:', updateFields);
-    console.log('Update values:', updateValues);
 
     const result = await pool.query(`
       UPDATE invoice_returns SET
@@ -264,7 +253,6 @@ export async function PUT(
       );
     }
 
-    console.log(`✅ Invoice return updated: ${id}`);
 
     return NextResponse.json({
       success: true,
@@ -300,7 +288,6 @@ export async function DELETE(
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('DELETE /api/invoice-returns/[id] - Request received');
     
     if (!pool) {
       console.error('Database pool not configured');
@@ -322,13 +309,10 @@ export async function DELETE(
       const url = new URL(request.url);
       const pathParts = url.pathname.split('/');
       id = pathParts[pathParts.length - 1];
-      console.log('Extracted ID from URL:', id);
     } else {
-      console.log('Extracted ID from params:', id);
     }
 
     if (!id) {
-      console.log('No ID found in params or URL');
       return NextResponse.json(
         { error: 'Invoice return ID is required' },
         { status: 400 }
@@ -344,7 +328,6 @@ export async function DELETE(
       );
     }
 
-    console.log(`✅ Invoice return deleted: ${id}`);
 
     return NextResponse.json({
       success: true,

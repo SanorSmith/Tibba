@@ -48,9 +48,6 @@ export async function GET(request: NextRequest) {
     const departmentId = searchParams.get('departmentId');
     const active = searchParams.get('active');
 
-    console.log('Fetching specialties from database...');
-    console.log('Department filter:', departmentId);
-    console.log('Active filter:', active);
 
     let query = `
       SELECT 
@@ -85,8 +82,6 @@ export async function GET(request: NextRequest) {
 
     const result = await pool.query(query, params);
 
-    console.log('Specialties query executed successfully');
-    console.log('Found', result.rows.length, 'specialties');
 
     return NextResponse.json({
       success: true,
@@ -132,7 +127,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    console.log('Creating new specialty:', body);
 
     const {
       name,
@@ -179,7 +173,6 @@ export async function POST(request: NextRequest) {
       workspaceId
     ]);
 
-    console.log('Specialty created successfully:', newSpecialty.rows[0]);
 
     return NextResponse.json({
       success: true,

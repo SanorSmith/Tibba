@@ -92,7 +92,6 @@ interface ExpenseItem {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Financial dashboard API called');
     
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'month';
@@ -101,7 +100,6 @@ export async function GET(request: NextRequest) {
     const departmentId = searchParams.get('department_id');
     const reportType = searchParams.get('report_type') || 'income_statement';
 
-    console.log('Parameters:', { period, startDate, endDate, departmentId, reportType });
 
     // Build date filter
     let dateFilter = '';
@@ -128,11 +126,8 @@ export async function GET(request: NextRequest) {
       params.push(departmentId);
     }
 
-    console.log('Date filter:', dateFilter);
-    console.log('Params:', params);
 
     // Use only existing tables - no financial_transactions table yet
-    console.log('Using existing tables fallback');
 
     let revenueData: { rows: RevenueItem[] } = { rows: [] };
     let expenseData: { rows: ExpenseItem[] } = { rows: [] };
@@ -152,10 +147,8 @@ export async function GET(request: NextRequest) {
         ORDER BY revenue DESC
       `;
       
-      console.log('Service query:', serviceRevenueQuery);
       const serviceResult = await pool.query(serviceRevenueQuery, params);
       revenueData.rows = serviceResult.rows;
-      console.log('Service revenue results:', revenueData.rows.length);
 
       // 2. Revenue from actual paid invoices (using only invoices table)
       const paidInvoicesRevenueQuery = `
@@ -170,7 +163,6 @@ export async function GET(request: NextRequest) {
       
       const paidInvoicesResult = await pool.query(paidInvoicesRevenueQuery, params);
       revenueData.rows.push(...paidInvoicesResult.rows);
-      console.log('Paid invoices revenue results:', paidInvoicesResult.rows);
 
       // 3. Revenue from insurance payments
       const insuranceRevenueQuery = `
@@ -186,7 +178,6 @@ export async function GET(request: NextRequest) {
       
       const insuranceResult = await pool.query(insuranceRevenueQuery, params);
       revenueData.rows.push(...insuranceResult.rows);
-      console.log('Insurance revenue results:', insuranceResult.rows);
 
       // 4. Patient payments (out-of-pocket)
       const patientRevenueQuery = `
@@ -202,7 +193,6 @@ export async function GET(request: NextRequest) {
       
       const patientResult = await pool.query(patientRevenueQuery, params);
       revenueData.rows.push(...patientResult.rows);
-      console.log('Patient revenue results:', patientResult.rows);
 
       // 5. Expenses from payroll (salaries)
       const payrollQuery = `
@@ -217,7 +207,6 @@ export async function GET(request: NextRequest) {
       
       const payrollResult = await pool.query(payrollQuery, params);
       expenseData.rows = payrollResult.rows;
-      console.log('Payroll expenses results:', payrollResult.rows);
 
       // 6. Get departments for filter dropdown
       const departmentsQuery = `
@@ -231,7 +220,6 @@ export async function GET(request: NextRequest) {
       `;
       
       const departmentsResult = await pool.query(departmentsQuery);
-      console.log('Departments results:', departmentsResult.rows);
 
       // Calculate totals
       const totalRevenue = revenueData.rows.reduce((sum, item) => sum + parseFloat(item.revenue?.toString() || '0'), 0);
@@ -242,7 +230,6 @@ export async function GET(request: NextRequest) {
       // Apply label mapping to revenue data
       const mappedRevenueData = revenueData.rows.map(item => {
         const label = getCategoryLabel(item.category);
-        console.log(`Mapping: "${item.category}" -> "${label}"`);
         return {
           ...item,
           category_label: label,
@@ -285,11 +272,6 @@ export async function GET(request: NextRequest) {
         }
       };
 
-      console.log('Final financial data:', financialData);
-      console.log('Revenue breakdown length:', financialData.revenue.breakdown.length);
-      console.log('Expense breakdown length:', financialData.expenses.breakdown.length);
-      console.log('Total Revenue calculated:', financialData.summary.totalRevenue);
-      console.log('Total Expenses calculated:', financialData.summary.totalExpenses);
 
       return NextResponse.json({
         success: true,

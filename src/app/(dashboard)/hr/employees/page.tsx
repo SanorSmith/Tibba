@@ -67,13 +67,7 @@ export default function EmployeesPage() {
       const data = await response.json();
       
       if (response.ok) {
-        console.log('✅ Staff loaded:', data.staff?.length || 0, 'members');
         if (data.staff && data.staff.length > 0) {
-          console.log('Sample staff data:', {
-            firstName: data.staff[0].firstName,
-            lastName: data.staff[0].lastName,
-            email: data.staff[0].email
-          });
         }
         setAllStaff(data.staff || []);
       } else {
@@ -144,7 +138,6 @@ export default function EmployeesPage() {
       const result = await response.json();
 
       if (response.ok) {
-        console.log('Staff member deleted successfully:', result);
         toast.success('Staff member deleted successfully');
         // Reload staff list
         await loadStaff();

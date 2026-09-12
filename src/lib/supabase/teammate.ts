@@ -5,7 +5,6 @@ import { sql } from 'drizzle-orm';
 // Teammate's Drizzle/PostgreSQL connection (server-side only)
 const connectionString = process.env.DATABASE_URL;
 
-console.log('Teammate DB URL:', connectionString ? 'Set' : 'Not set');
 
 // Create postgres client
 export const postgresClient = connectionString 

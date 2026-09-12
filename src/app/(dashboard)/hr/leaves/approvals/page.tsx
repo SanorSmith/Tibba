@@ -69,7 +69,6 @@ function ApprovalsPageContent() {
         ? '/api/hr/leaves/approvals/admin' 
         : `/api/hr/leaves/approvals?approver_id=${currentUser.id}`;
       
-      console.log(`Loading approvals from: ${endpoint} (User role: ${currentUser?.role})`);
       
       const response = await fetch(endpoint);
       const result = await response.json();
@@ -85,7 +84,6 @@ function ApprovalsPageContent() {
           return true;
         });
         
-        console.log(`Original: ${result.data.length}, After deduplication: ${uniqueApprovals.length}`);
         setApprovals(uniqueApprovals);
       } else {
         console.error('Failed to load pending approvals');
@@ -110,13 +108,8 @@ function ApprovalsPageContent() {
   };
 
   const confirmAction = async () => {
-    console.log('🔍 confirmAction called');
-    console.log('selectedApproval:', selectedApproval);
-    console.log('user:', user);
-    console.log('modalAction:', modalAction);
     
     if (!selectedApproval) {
-      console.log('❌ Missing selectedApproval');
       return;
     }
     
@@ -128,15 +121,12 @@ function ApprovalsPageContent() {
     };
     
     const currentUser = user || fallbackUser;
-    console.log('Using user:', currentUser);
     
     if (!currentUser) {
-      console.log('❌ No user available');
       return;
     }
 
     try {
-      console.log('🔧 Starting approval process...');
       setProcessing(true);
 
       // Use admin endpoint if user is admin and viewing all requests
@@ -159,8 +149,6 @@ function ApprovalsPageContent() {
             rejection_reason: rejectionReason,
           };
 
-      console.log(`Approving with endpoint: ${endpoint} (Admin: ${isAdmin}, AdminView: ${isUsingAdminView})`);
-      console.log('Request body:', body);
 
       const response = await fetch(
         `/api/hr/leaves/approvals/${selectedApproval.leave_request_id}/${endpoint}`,
@@ -171,19 +159,15 @@ function ApprovalsPageContent() {
         }
       );
 
-      console.log('Response status:', response.status);
       const result = await response.json();
-      console.log('Response result:', result);
 
       if (result.success) {
-        console.log('✅ Success case - closing modal');
         alert(result.message || `Leave request ${modalAction}d successfully`);
         setShowModal(false);
         setComments('');
         setRejectionReason('');
         loadPendingApprovals();
       } else {
-        console.log('❌ Error case - still closing modal');
         console.error(result.error || `Failed to ${modalAction} leave request`);
         alert(result.error || `Failed to ${modalAction} leave request`);
         // Still close modal and refresh data to handle cases where request was already approved
@@ -193,7 +177,6 @@ function ApprovalsPageContent() {
         loadPendingApprovals();
       }
     } catch (error) {
-      console.log('❌ Catch block - still closing modal');
       console.error(`Error ${modalAction}ing leave:`, error);
       alert(`Failed to ${modalAction} leave request`);
       // Still close modal and refresh data on error to prevent stuck modal
@@ -202,7 +185,6 @@ function ApprovalsPageContent() {
       setRejectionReason('');
       loadPendingApprovals();
     } finally {
-      console.log('🔧 Finally block - setting processing to false');
       setProcessing(false);
     }
   };
@@ -430,7 +412,6 @@ function ApprovalsPageContent() {
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  console.log('🔍 Cancel button clicked');
                   setShowModal(false);
                   setComments('');
                   setRejectionReason('');
@@ -442,7 +423,6 @@ function ApprovalsPageContent() {
               </button>
               <button
                 onClick={() => {
-                  console.log('🔍 Approve button clicked');
                   confirmAction();
                 }}
                 disabled={processing || (modalAction === 'reject' && !rejectionReason)}
@@ -457,7 +437,6 @@ function ApprovalsPageContent() {
               {/* Debug button to force close modal */}
               <button
                 onClick={() => {
-                  console.log('🔍 Force close button clicked');
                   setShowModal(false);
                   setComments('');
                   setRejectionReason('');

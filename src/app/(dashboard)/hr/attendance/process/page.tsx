@@ -207,7 +207,6 @@ export default function AttendanceProcessingPage() {
       if (overwrite) {
         let deleted = 0;
         dates.forEach(d => { deleted += dataStore.deleteProcessedSummariesByDate(d); });
-        if (deleted > 0) console.log(`Overwrite: removed ${deleted} old records`);
       }
 
       // Filter out already-existing if not overwriting

@@ -47,7 +47,6 @@ function getEmailTransporter() {
         const nodemailer = require('nodemailer');
         emailTransporter = nodemailer.createTransport(config);
       } catch (error) {
-        console.log('nodemailer not installed. Email notifications disabled.');
       }
     }
   }
@@ -195,7 +194,6 @@ async function sendEmail(
   const transporter = getEmailTransporter();
 
   if (!transporter) {
-    console.log('Email transporter not configured. Skipping email delivery.');
     return;
   }
 
@@ -208,7 +206,6 @@ async function sendEmail(
       html: body.replace(/\n/g, '<br>'),
     });
 
-    console.log(`✅ Email sent to ${to}`);
   } catch (error: any) {
     console.error(`❌ Error sending email to ${to}:`, error.message);
     throw error;
@@ -238,13 +235,11 @@ async function sendSMS(
         to: to,
       });
 
-      console.log(`✅ SMS sent to ${to}`);
     } catch (error: any) {
       console.error(`❌ Error sending SMS to ${to}:`, error.message);
       throw error;
     }
   } else {
-    console.log('SMS service not configured. Skipping SMS delivery.');
   }
 }
 

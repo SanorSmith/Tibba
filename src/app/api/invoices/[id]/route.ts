@@ -25,9 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const url = new URL(request.url);
       const pathParts = url.pathname.split('/');
       id = pathParts[pathParts.length - 1];
-      console.log('Extracted ID from URL:', id);
     } else {
-      console.log('Extracted ID from params:', id);
     }
     
     if (!pool) {
@@ -96,12 +94,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       createdat: item.createdat
     }));
 
-    console.log('🔍 API Debug - Invoice GET:');
-    console.log('- Invoice ID:', invoice.id);
-    console.log('- Items count (raw):', items.length);
-    console.log('- Items count (mapped):', mappedItems.length);
     if (mappedItems.length > 0) {
-      console.log('- First item (mapped):', mappedItems[0]);
     }
 
     return NextResponse.json({
@@ -127,8 +120,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log('PUT request received for invoices API');
-    console.log('Request URL:', request.url);
     
     if (!pool) {
       return NextResponse.json(
@@ -149,13 +140,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const url = new URL(request.url);
       const pathParts = url.pathname.split('/');
       id = pathParts[pathParts.length - 1];
-      console.log('Extracted ID from URL:', id);
     } else {
-      console.log('Extracted ID from params:', id);
     }
     
     if (!id) {
-      console.log('No ID found in params or URL');
       return NextResponse.json(
         { error: 'Invoice ID is required' },
         { status: 400 }
@@ -181,7 +169,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body = await request.json();
-    console.log('Request body:', JSON.stringify(body, null, 2));
     
     const {
       invoice_number,
@@ -344,8 +331,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
       // Handle invoice items if provided
       if (items && Array.isArray(items)) {
-        console.log(`Processing ${items.length} items...`);
-        console.log('Items data:', JSON.stringify(items, null, 2));
         
         // Delete existing invoice items (and their PENDING shares — PAID shares are kept)
         await pool.query(
@@ -353,12 +338,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           [id]
         );
         await pool.query('DELETE FROM invoice_items WHERE invoice_id = $1', [id]);
-        console.log('Deleted existing items and pending shares');
 
         // Insert new invoice items
         if (items.length > 0) {
           for (const item of items) {
-            console.log('Processing item:', item);
             
             await pool.query(`
               INSERT INTO invoice_items (
@@ -382,7 +365,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               item.subtotal || item.total_price || (item.quantity || 1) * (item.unit_price || 0)
             ]);
           }
-          console.log('Inserted new items');
         }
 
         // ── Auto-recreate invoice_shares from service_stakeholders config ──
@@ -423,7 +405,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               sharesInserted++;
             }
           }
-          console.log(`Auto-recreated ${sharesInserted} invoice_shares for invoice ${id}`);
         } catch (shareErr) {
           console.error('Warning: invoice_shares auto-recreation failed:', shareErr);
         }
@@ -521,9 +502,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       const url = new URL(request.url);
       const pathParts = url.pathname.split('/');
       id = pathParts[pathParts.length - 1];
-      console.log('Extracted ID from URL:', id);
     } else {
-      console.log('Extracted ID from params:', id);
     }
 
     if (!id) {

@@ -101,7 +101,6 @@ export default function FinancialReportsPageFixed() {
   
   // CRITICAL DEBUG - VERSION 3.0 - TIMESTAMP: 2026-03-26T21:52:00
   useEffect(() => {
-    console.log('��� VERSION 3.0 - FinancialReportsPageFixed MOUNTED at:', new Date().toISOString());
   }, []);
 
   const tabs = [
@@ -130,9 +129,6 @@ export default function FinancialReportsPageFixed() {
       
       if (result.success) {
         setFinancialData(result.data);
-        console.log('🔥🔥🔥 NEW Financial data loaded:', result.data);
-        console.log('🔥🔥🔥 NEW Revenue breakdown:', result.data.revenue.breakdown);
-        console.log('🔥🔥🔥 NEW Total Revenue:', result.data.summary.totalRevenue);
       } else {
         console.error('Failed to fetch financial data:', result.error);
       }
@@ -188,7 +184,6 @@ export default function FinancialReportsPageFixed() {
                 <span className="ml-6 text-gray-600">
                   {(() => {
                     const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
-                    console.log(`🔥🔥🔥 NEW Frontend rendering: "${item.category}" -> "${label}"`);
                     return label;
                   })()}
                 </span>
@@ -216,7 +211,6 @@ export default function FinancialReportsPageFixed() {
                 <span className="ml-6 text-gray-600">
                   {(() => {
                     const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
-                    console.log(`🔥🔥🔥 NEW Expense rendering: "${item.category}" -> "${label}"`);
                     return label;
                   })()}
                 </span>

@@ -169,14 +169,7 @@ export default function FinancePage() {
       const result = await response.json();
       
       if (result.success) {
-        console.log('🔍 Financial Data Debug:');
-        console.log('   - Raw Data:', result.data);
-        console.log('   - Summary Total Revenue:', result.data.summary.totalRevenue);
-        console.log('   - Summary Total Expenses:', result.data.summary.totalExpenses);
-        console.log('   - Revenue Breakdown:', result.data.revenue.breakdown);
-        console.log('   - Setting financialData state...');
         setFinancialData(result.data);
-        console.log('   - FinancialData state set');
       } else {
         console.error('Failed to fetch financial data:', result.error);
       }
@@ -194,13 +187,9 @@ export default function FinancePage() {
   const stats = useMemo(() => {
     if (!mounted) return null;
     
-    console.log('🧮 Stats Calculation Debug - Updated:');
-    console.log('   - financialData exists:', !!financialData);
-    console.log('   - financialData.summary:', financialData?.summary);
     
     // Use real financial data if available, fallback to mock data
     if (financialData) {
-      console.log('   - Using real financial data');
       const calculatedStats = {
         totalRevenue: financialData.summary.totalRevenue,
         totalPaid: financialData.revenue.breakdown.find((r: any) => r.category === 'PAID_INVOICES')?.revenue || 0,
@@ -225,7 +214,6 @@ export default function FinancePage() {
         expenseBreakdown: financialData.expenses.breakdown,
       };
       
-      console.log('   - Calculated Stats:', calculatedStats);
       return calculatedStats;
     }
     
@@ -625,7 +613,6 @@ export default function FinancePage() {
                       };
                       
                       const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
-                      console.log(`🔥 Finance page rendering: "${item.category}" -> "${label}"`);
                       return label;
                     })()}
                   </span>
@@ -689,7 +676,6 @@ export default function FinancePage() {
                       };
                       
                       const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
-                      console.log(`🔥 Finance expense rendering: "${item.category}" -> "${label}"`);
                       return label;
                     })()}
                   </span>

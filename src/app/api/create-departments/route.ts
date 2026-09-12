@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
   return await withTenant(workspaceId, async () => {
 
   try {
-    console.log('=== CREATE DEPARTMENTS TABLE ===');
     
     const { Pool } = await import('pg');
     
@@ -32,7 +31,6 @@ export async function GET(request: NextRequest) {
     }
 
 
-    console.log('Creating departments table...');
 
     // Create departments table
     await pool.query(`
@@ -45,7 +43,6 @@ export async function GET(request: NextRequest) {
       );
     `);
 
-    console.log('Table created, inserting sample data...');
 
     // Insert sample departments
     const sampleDepartments = [
@@ -65,11 +62,9 @@ export async function GET(request: NextRequest) {
       `, [dept.name, dept.description]);
     }
 
-    console.log('Sample data inserted');
 
     // Test the table
     const result = await pool.query('SELECT COUNT(*) as count FROM departments');
-    console.log('Departments count:', result.rows[0].count);
 
 
     return NextResponse.json({

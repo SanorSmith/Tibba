@@ -50,7 +50,6 @@ class PatientSyncService {
         .single();
 
       if (existing) {
-        console.log('Patient already exists in Supabase:', existing.patient_id);
         return existing;
       }
 
@@ -92,7 +91,6 @@ class PatientSyncService {
         return null;
       }
 
-      console.log('✅ Patient copied to Supabase:', data.patient_id);
       return data;
     } catch (error) {
       console.error('Error in copyPatientFromOpenEHR:', error);

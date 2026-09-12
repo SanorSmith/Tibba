@@ -100,7 +100,6 @@ export default function FinancialReportsPage() {
   const [endDate, setEndDate] = useState('');
   
   // DEBUG: Force recompilation
-  console.log('🔥 FinancialReportsPage rendered at:', new Date().toISOString());
 
   const tabs = [
     { id: 'income_statement', label: 'Income Statement' },
@@ -183,7 +182,6 @@ export default function FinancialReportsPage() {
                 <span className="ml-6 text-gray-600">
                   {(() => {
                     const label = item.category_label || item.display_name || getCategoryLabel(item.category) || item.category;
-                    console.log(`🔥 Frontend rendering: "${item.category}" -> "${label}"`);
                     return label;
                   })()}
                 </span>

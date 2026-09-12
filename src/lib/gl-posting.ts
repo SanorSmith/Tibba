@@ -390,7 +390,6 @@ async function insertJournal(
   // The accounts API is updated to compute running balance from fin_journal_lines
   // directly, so balances stay accurate without touching this table.
 
-  console.log(`[GL] Posted ${opts.source_type} — JE ${journalId} — DR/CR ${totalDebit.toFixed(2)}`);
   return journalId;
 }
 

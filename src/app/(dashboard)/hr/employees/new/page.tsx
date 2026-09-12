@@ -198,20 +198,6 @@ export default function NewEmployeePage() {
 
   const handleSubmit = async () => {
     // Debug: Log what we're sending
-    console.log('🔍 Form Data Being Submitted:', {
-      first_name: form.first_name,
-      last_name: form.last_name,
-      email: form.email,
-      date_of_hire: form.date_of_hire,
-      basic_salary: form.basic_salary,
-      payment_frequency: form.payment_frequency,
-      housing_allowance: form.housing_allowance,
-      transport_allowance: form.transport_allowance,
-      meal_allowance: form.meal_allowance,
-      department_id: form.department_id,
-      job_title: form.job_title,
-      national_id: form.national_id
-    });
 
     const newEmployee = {
       // Employee details - use snake_case to match API

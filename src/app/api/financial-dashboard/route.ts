@@ -24,7 +24,6 @@ const categoryConfig: { [key: string]: { label: string; color: string; icon: str
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔧 Enhanced Financial Dashboard API called');
     
     const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
@@ -42,7 +41,6 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('end_date');
     const departmentId = searchParams.get('department_id');
 
-    console.log('📊 Parameters:', { period, startDate, endDate, departmentId });
 
     // Build date filter
     // $1 is always the facility; the optional date range follows it.
@@ -60,11 +58,8 @@ export async function GET(request: NextRequest) {
       dateFilter = '';  // No date filter for all time data
     }
 
-    console.log('🗓️ Date filter:', dateFilter);
-    console.log('📝 Params:', params);
 
     // 1. REAL REVENUE CALCULATION
-    console.log('💰 Calculating real revenue data...');
     
     // Revenue by service category, apportioned from the invoice total.
     //
@@ -101,9 +96,7 @@ export async function GET(request: NextRequest) {
       ORDER BY revenue DESC
     `;
     
-    console.log('🔍 Revenue query:', revenueByServiceQuery);
     const revenueResult = await pool.query(revenueByServiceQuery, params);
-    console.log('📈 Revenue results:', revenueResult.rows.length, 'categories found');
 
     // Total revenue summary
     const totalRevenueQuery = `
@@ -119,12 +112,10 @@ export async function GET(request: NextRequest) {
     `;
     
     const totalRevenueResult = await pool.query(totalRevenueQuery, params);
-    console.log('💵 Total revenue summary:', totalRevenueResult.rows[0]);
 
     // 2. REAL EXPENSES CALCULATION — sourced from the General Ledger
     // (single source of truth, consistent with the Reports page). Includes
     // payroll, COGS, and any other posted expenses.
-    console.log('💸 Calculating expense data from GL...');
 
     let glExpensesResult: { rows: any[] } = { rows: [] };
     try {
@@ -142,13 +133,10 @@ export async function GET(request: NextRequest) {
         HAVING SUM(l.debit) - SUM(l.credit) <> 0
         ORDER BY amount DESC
       `, [workspaceId]);
-      console.log('🧾 GL expense accounts:', glExpensesResult.rows.length);
     } catch (error) {
-      console.log('⚠️ GL expenses query failed:', (error as Error).message);
     }
 
     // 3. PROCESS AND ENHANCE DATA
-    console.log('🔄 Processing financial data...');
 
     // Process revenue data with enhanced information
     const revenueStreams = revenueResult.rows.map(row => {
@@ -252,14 +240,6 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    console.log('✅ Enhanced financial data generated successfully');
-    console.log('📊 Summary:', {
-      totalRevenue: enhancedData.data.summary.totalRevenue,
-      totalExpenses: enhancedData.data.summary.totalExpenses,
-      netIncome: enhancedData.data.summary.netIncome,
-      profitMargin: enhancedData.data.summary.profitMargin,
-      status: enhancedData.data.summary.status
-    });
 
     return NextResponse.json(enhancedData);
 
@@ -268,7 +248,6 @@ export async function GET(request: NextRequest) {
     console.error('❌ Enhanced financial dashboard error:', error);
     
     // Fallback to original implementation if enhanced version fails
-    console.log('🔄 Falling back to original implementation...');
     
     try {
       // Return a simple fallback response

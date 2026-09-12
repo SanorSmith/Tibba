@@ -89,7 +89,6 @@ export default function NewInvoicePage() {
       }));
       
       setPatients(transformedPatients);
-      console.log('✅ Loaded OpenEHR patients:', transformedPatients.length);
     } catch (error: any) {
       console.error('Error loading OpenEHR patients:', error);
       toast.error('Failed to load patients from OpenEHR database');
@@ -126,7 +125,6 @@ export default function NewInvoicePage() {
     setPatientSearch(patient.full_name_ar || `${patient.firstname} ${patient.lastname}`);
     setShowPatientDropdown(false);
     setFilteredPatients([]);
-    console.log('✅ Selected OpenEHR patient:', patient.full_name_ar);
   };
 
   // Calculate totals
@@ -219,8 +217,6 @@ export default function NewInvoicePage() {
         }))
       };
 
-      console.log('📝 Creating invoice in OLD database:', invoiceData);
-      console.log('📋 Invoice payload:', JSON.stringify(invoiceData, null, 2));
 
       // Save to OLD database via API
       const response = await fetch('/api/invoices', {
@@ -229,13 +225,9 @@ export default function NewInvoicePage() {
         body: JSON.stringify(invoiceData),
       });
 
-      console.log('📡 API Response status:', response.status);
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Invoice saved to OLD database:', result);
-        console.log('✅ Invoice ID:', result.id);
-        console.log('✅ Invoice Number:', result.invoice_number);
         toast.success(`Invoice ${result.invoice_number || invoiceData.invoice_number} created successfully!`);
         router.push('/finance/invoices');
       } else {

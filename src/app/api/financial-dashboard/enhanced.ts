@@ -22,7 +22,6 @@ const categoryConfig: { [key: string]: { label: string; color: string; icon: str
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔧 Enhanced Financial Dashboard API called');
     
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'month';
@@ -30,7 +29,6 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('end_date');
     const departmentId = searchParams.get('department_id');
 
-    console.log('📊 Parameters:', { period, startDate, endDate, departmentId });
 
     // Build date filter
     let dateFilter = '';
@@ -51,11 +49,8 @@ export async function GET(request: NextRequest) {
       dateFilter = ` AND DATE(i.invoice_date) = CURRENT_DATE`;
     }
 
-    console.log('🗓️ Date filter:', dateFilter);
-    console.log('📝 Params:', params);
 
     // 1. REAL REVENUE CALCULATION
-    console.log('💰 Calculating real revenue data...');
     
     // Revenue from paid invoices by service category
     const revenueByServiceQuery = `
@@ -74,9 +69,7 @@ export async function GET(request: NextRequest) {
       ORDER BY revenue DESC
     `;
     
-    console.log('🔍 Revenue query:', revenueByServiceQuery);
     const revenueResult = await pool.query(revenueByServiceQuery, params);
-    console.log('📈 Revenue results:', revenueResult.rows.length, 'categories found');
 
     // Total revenue summary
     const totalRevenueQuery = `
@@ -92,10 +85,8 @@ export async function GET(request: NextRequest) {
     `;
     
     const totalRevenueResult = await pool.query(totalRevenueQuery, params);
-    console.log('💵 Total revenue summary:', totalRevenueResult.rows[0]);
 
     // 2. REAL EXPENSES CALCULATION
-    console.log('💸 Calculating real expense data...');
     
     // Payroll expenses
     const payrollExpensesQuery = `
@@ -110,7 +101,6 @@ export async function GET(request: NextRequest) {
     `;
     
     const payrollResult = await pool.query(payrollExpensesQuery);
-    console.log('💼 Payroll expenses:', payrollResult.rows[0]);
 
     // Financial transactions (other expenses)
     const otherExpensesQuery = `
@@ -128,13 +118,10 @@ export async function GET(request: NextRequest) {
     let otherExpensesResult = { rows: [] };
     try {
       otherExpensesResult = await pool.query(otherExpensesQuery);
-      console.log('🧾 Other expenses:', otherExpensesResult.rows.length, 'categories found');
     } catch (error) {
-      console.log('⚠️ Financial transactions table not found, using fallback');
     }
 
     // 3. PROCESS AND ENHANCE DATA
-    console.log('🔄 Processing financial data...');
 
     // Process revenue data with enhanced information
     const revenueStreams = revenueResult.rows.map(row => {
@@ -255,14 +242,6 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    console.log('✅ Enhanced financial data generated successfully');
-    console.log('📊 Summary:', {
-      totalRevenue: enhancedData.data.summary.totalRevenue,
-      totalExpenses: enhancedData.data.summary.totalExpenses,
-      netIncome: enhancedData.data.summary.netIncome,
-      profitMargin: enhancedData.data.summary.profitMargin,
-      status: enhancedData.data.summary.status
-    });
 
     return NextResponse.json(enhancedData);
 
@@ -270,7 +249,6 @@ export async function GET(request: NextRequest) {
     console.error('❌ Enhanced financial dashboard error:', error);
     
     // Fallback to original implementation if enhanced version fails
-    console.log('🔄 Falling back to original implementation...');
     
     try {
       // Return a simple fallback response

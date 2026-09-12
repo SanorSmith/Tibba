@@ -68,7 +68,6 @@ export default function SpecialtiesTabsPage() {
       
       if (response.ok) {
         setSpecialties(data.data || []);
-        console.log('Specialties loaded:', data.data?.length || 0, 'specialties');
       } else {
         console.error('Error loading specialties:', data.error);
         toast.error(data.error || 'Failed to load specialties');
@@ -89,7 +88,6 @@ export default function SpecialtiesTabsPage() {
       
       if (response.ok) {
         setDepartments(data.data || []);
-        console.log('Departments loaded:', data.data?.length || 0, 'departments');
       } else {
         console.error('Error loading departments:', data.error);
         toast.error(data.error || 'Failed to load departments');

@@ -5,7 +5,6 @@ import { withTenant } from '@/lib/db/tenant';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    console.log('=== GET SINGLE SPECIALTY ===');
     
     const { Pool } = await import('pg');
     const databaseUrl = process.env.OPENEHR_DATABASE_URL;
@@ -31,7 +30,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
-    console.log('Fetching specialty with ID:', id);
 
     const result = await pool.query(`
       SELECT 
@@ -58,7 +56,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
-    console.log('Specialty found:', result.rows[0].name);
 
     return NextResponse.json({
       success: true,
@@ -81,7 +78,6 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    console.log('=== UPDATE SPECIALTY ===');
     
     const { Pool } = await import('pg');
     const databaseUrl = process.env.OPENEHR_DATABASE_URL;
@@ -127,7 +123,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
-    console.log('Updating specialty:', id, 'with data:', { name, code });
 
     const result = await pool.query(`
       UPDATE specialties 
@@ -155,7 +150,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
-    console.log('Specialty updated successfully:', result.rows[0].name);
 
     return NextResponse.json({
       success: true,
@@ -188,7 +182,6 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ id:
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    console.log('=== DELETE SPECIALTY ===');
     
     const { Pool } = await import('pg');
     const databaseUrl = process.env.OPENEHR_DATABASE_URL;
@@ -214,7 +207,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     // scopes every query below in the database rather than relying on
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
-    console.log('Deleting specialty with ID:', id);
 
     // Check if specialty exists
     const existingSpecialty = await pool.query(
@@ -236,7 +228,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     await pool.query('DELETE FROM specialties WHERE specialtyid = $1 AND workspaceid = $2', [id, workspaceId]);
 
 
-    console.log('Specialty deleted successfully');
 
     return NextResponse.json({
       success: true,

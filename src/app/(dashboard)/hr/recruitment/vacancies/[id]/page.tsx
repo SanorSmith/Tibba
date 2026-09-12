@@ -19,49 +19,34 @@ export default function VacancyDetailPage() {
 
   const fetchVacancyData = async () => {
     try {
-      console.log('🔍 Starting fetchVacancyData...');
-      console.log('📋 params.id:', params.id);
       
       setLoading(true);
       
       // Fetch vacancy details
-      console.log('📡 Fetching vacancies...');
       const vacancyResponse = await fetch('/api/hr/recruitment?type=vacancies');
       const vacancyData = await vacancyResponse.json();
       
-      console.log('📊 Vacancy response:', vacancyData);
       
       if (vacancyData.success) {
-        console.log('🔍 Looking for vacancy with ID:', params.id);
-        console.log('📋 Available vacancy IDs:', vacancyData.data.map((v: any) => v.id));
-        console.log('📋 Available vacancy numbers:', vacancyData.data.map((v: any) => v.vacancy_number));
-        console.log('📋 Full vacancy data structure:', vacancyData.data[0]);
         
         const foundVacancy = vacancyData.data.find((v: any) => v.id === params.id);
-        console.log('✅ Found vacancy by UUID:', foundVacancy);
         
         // If not found by UUID, try by vacancy_number
         if (!foundVacancy) {
           const foundByNumber = vacancyData.data.find((v: any) => v.vacancy_number === params.id);
-          console.log('🔍 Trying to find by vacancy_number:', params.id);
-          console.log('✅ Found vacancy by number:', foundByNumber);
           setVacancy(foundByNumber);
         } else {
-          console.log('✅ Found vacancy by UUID:', foundVacancy);
           setVacancy(foundVacancy);
         }
       }
       
       // Fetch candidates for this vacancy
-      console.log('📡 Fetching candidates...');
       const candidatesResponse = await fetch('/api/hr/recruitment?type=candidates');
       const candidatesData = await candidatesResponse.json();
       
-      console.log('📊 Candidates response:', candidatesData);
       
       if (candidatesData.success) {
         const vacancyCandidates = candidatesData.data.filter((c: any) => c.vacancy_id === params.id);
-        console.log('👥 Vacancy candidates:', vacancyCandidates);
         setCandidates(vacancyCandidates);
       }
       
@@ -69,7 +54,6 @@ export default function VacancyDetailPage() {
       console.error('❌ Error fetching vacancy data:', error);
     } finally {
       setLoading(false);
-      console.log('✅ fetchVacancyData completed');
     }
   };
 
@@ -81,13 +65,8 @@ export default function VacancyDetailPage() {
     );
   }
 
-  console.log('🔍 Render state check:');
-  console.log('📋 loading:', loading);
-  console.log('📋 vacancy:', vacancy);
-  console.log('📋 params.id:', params.id);
 
   if (!vacancy) {
-    console.log('❌ Vacancy not found - showing error page');
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Vacancy Not Found</h2>
@@ -104,7 +83,6 @@ export default function VacancyDetailPage() {
     );
   }
 
-  console.log('✅ Rendering vacancy details for:', vacancy.position);
 
   const pipeline = {
     NEW: candidates.filter(c => c.status === 'NEW').length,

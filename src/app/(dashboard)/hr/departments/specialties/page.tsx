@@ -49,7 +49,6 @@ export default function SpecialtiesPage() {
       
       if (response.ok) {
         setSpecialties(data.data || []);
-        console.log('Specialties loaded:', data.data?.length || 0, 'specialties');
       } else {
         console.error('Error loading specialties:', data.error);
         

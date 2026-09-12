@@ -56,14 +56,12 @@ export default function LeaveRequestsListPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('🔍 Loading leave requests from API...');
       
       // Load real leave requests from API
       const response = await fetch('/api/hr/leaves');
       const result = await response.json();
       
       if (result.success) {
-        console.log(`✅ Loaded ${result.data.length} leave requests`);
         setAllRequests(result.data);
       } else {
         throw new Error(result.error || 'Failed to load leave requests');

@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Get current user request');
 
     // Mock user data - replace with actual session/token verification
     const mockUser = {

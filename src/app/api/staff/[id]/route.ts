@@ -43,7 +43,6 @@ export async function GET(
 
     const { id: staffId } = await params;
 
-    console.log('Fetching staff member from database:', staffId);
 
     const query = `
       SELECT 
@@ -76,7 +75,6 @@ export async function GET(
       );
     }
 
-    console.log('Staff member fetched successfully:', result.rows[0]);
 
     return NextResponse.json({
       success: true,

@@ -80,7 +80,6 @@ class DataStore {
 
       try {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(initialData));
-        console.log('✅ Data store initialized with default data');
       } catch (err) {
         console.error('❌ Failed to initialize data store:', err);
       }
@@ -579,7 +578,6 @@ class DataStore {
   reset(): void {
     localStorage.removeItem(this.STORAGE_KEY);
     this.initialize();
-    console.log('✅ Data store reset to defaults');
   }
 
   /** Export all data as JSON */
@@ -591,7 +589,6 @@ class DataStore {
   importData(data: HRDataStore): boolean {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
-      console.log('✅ Data imported successfully');
       return true;
     } catch {
       return false;

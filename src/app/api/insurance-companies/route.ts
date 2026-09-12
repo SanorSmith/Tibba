@@ -84,7 +84,6 @@ export async function GET(request: NextRequest) {
     `);
 
     const columns = columnsResult.rows.map(row => row.column_name);
-    console.log('Available columns in insurance_companies:', columns);
 
     // Build dynamic query based on available columns
     let selectColumns = [];

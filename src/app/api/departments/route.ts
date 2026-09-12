@@ -15,14 +15,11 @@ export async function GET(request: NextRequest) {
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('=== DEPARTMENTS API START ===');
     
     // Import pg dynamically
     const { Pool } = await import('pg');
-    console.log('PG imported successfully');
     
     const databaseUrl = process.env.DATABASE_URL || process.env.OPENEHR_DATABASE_URL;
-    console.log('Database URL exists:', !!databaseUrl);
     
     if (!databaseUrl) {
       return NextResponse.json(
@@ -34,9 +31,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('Creating pool...');
 
-    console.log('Fetching departments from database...');
 
     const result = await pool.query(`
       SELECT 
@@ -50,7 +45,6 @@ export async function GET(request: NextRequest) {
       ORDER BY name ASC
     `, [workspaceId]);
 
-    console.log('Departments fetched:', result.rows.length, 'departments found');
 
     // Transform the data to match expected interface
     const transformedData = result.rows.map((dept: any) => ({
@@ -68,7 +62,6 @@ export async function GET(request: NextRequest) {
       updated_at: dept.updated_at
     }));
 
-    console.log('Pool closed');
 
     return NextResponse.json({
       success: true,
@@ -140,7 +133,6 @@ export async function POST(request: NextRequest) {
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('=== DEPARTMENTS POST API START ===');
     
     // Import pg dynamically
     const { Pool } = await import('pg');

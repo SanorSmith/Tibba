@@ -81,10 +81,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
-    console.log('Fetching patients from non-medical database...');
-    console.log('Search term:', searchTerm);
-    console.log('Governorate filter:', governorate);
-    console.log('Page:', page, 'Limit:', limit);
 
     // Build the base query with age calculation and joins to related tables
     let query = `
@@ -204,15 +200,12 @@ export async function GET(request: NextRequest) {
     if (governorate) {
       // Since governorate doesn't exist in the actual table, we'll skip this filter
       // but keep the parameter for compatibility
-      console.log('Governorate filter not supported - column does not exist in table');
     }
 
     // Add ordering and pagination
     query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
-    console.log('Executing query:', query);
-    console.log('Parameters:', params);
 
     const result = await pool.query(query, params);
 
@@ -294,7 +287,6 @@ export async function GET(request: NextRequest) {
     const countResult = await pool.query(countQuery, countParams);
     const totalPatients = parseInt(countResult.rows[0].total);
 
-    console.log(`Found ${result.rows.length} patients out of ${totalPatients} total`);
 
     // Transform the data to match the expected format
     const patients = result.rows.map(row => ({
@@ -418,7 +410,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('Creating new patient:', body);
 
     // Generate openEHR ID using standard UUID format
     const patientNumber = body.patientNumber || generateOpenEHRId();
@@ -478,14 +469,11 @@ export async function POST(request: NextRequest) {
         body.governorate || body.address
       ];
 
-      console.log('Executing patient insert query:', patientQuery);
-      console.log('Parameters:', patientParams);
 
       const patientResult = await client.query(patientQuery, patientParams);
       const newPatient = patientResult.rows[0];
       const patientId = newPatient.patientid;
 
-      console.log('Patient created successfully with ID:', patientId);
 
       // 2. Insert emergency contact if provided
       if (body.emergency_contact || body.emergency_phone) {
@@ -505,7 +493,6 @@ export async function POST(request: NextRequest) {
           body.emergency_phone || null
         ]);
         
-        console.log('Emergency contact saved');
       }
 
       // 3. Insert insurance information if provided
@@ -526,25 +513,15 @@ export async function POST(request: NextRequest) {
           body.insurance_number || null
         ]);
         
-        console.log('Insurance information saved');
       }
 
       // 4. Insert medical information if provided
-      console.log('Checking medical fields:');
-      console.log('- allergies:', body.allergies);
-      console.log('- chronic_diseases:', body.chronic_diseases);
-      console.log('- current_medications:', body.current_medications);
-      console.log('- medical_history:', body.medical_history);
       
       const shouldInsertMedical = body.allergies || body.chronic_diseases || body.current_medications || body.medical_history;
-      console.log('Should insert medical info:', shouldInsertMedical);
       
       if (shouldInsertMedical) {
         const medicalHistoryValue = (body.medical_history && body.medical_history.trim() !== '') ? body.medical_history : null;
         
-        console.log('Medical history value type:', typeof body.medical_history);
-        console.log('Medical history raw value:', body.medical_history);
-        console.log('Medical history final value:', medicalHistoryValue);
         
         const medicalQuery = `
           INSERT INTO patient_medical_information (
@@ -567,13 +544,11 @@ export async function POST(request: NextRequest) {
             medicalHistoryValue
           ]);
           
-          console.log('✅ Medical information saved successfully with history:', medicalHistoryValue);
         } catch (medicalError) {
           console.error('❌ Error inserting medical information:', medicalError);
           throw medicalError;
         }
       } else {
-        console.log('⚠️ No medical information to insert');
       }
 
       // Commit the transaction
@@ -671,7 +646,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    console.log('Updating patient:', id, updateData);
 
     // Build the update query dynamically
     const updateFields = [];
@@ -731,8 +705,6 @@ export async function PUT(request: NextRequest) {
       RETURNING *
     `;
 
-    console.log('Executing update query:', query);
-    console.log('Parameters:', params);
 
     const result = await pool.query(query, params);
 
@@ -782,7 +754,6 @@ export async function PUT(request: NextRequest) {
         }
         
         client.release();
-        console.log('Emergency contact data updated:', emergencyFields);
         
       } catch (emergencyError) {
         console.error('Error updating emergency contact data:', emergencyError);
@@ -830,7 +801,6 @@ export async function PUT(request: NextRequest) {
         }
         
         client.release();
-        console.log('Medical information data updated:', medicalFields);
         
       } catch (medicalError) {
         console.error('Error updating medical information data:', medicalError);
@@ -929,7 +899,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('Deleting patient:', id);
 
     const query = 'DELETE FROM patients WHERE id = $1 RETURNING *';
     const result = await pool.query(query, [id]);
@@ -941,7 +910,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    console.log('Patient deleted successfully');
 
     return NextResponse.json({
       success: true,

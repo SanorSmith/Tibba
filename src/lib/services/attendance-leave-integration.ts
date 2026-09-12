@@ -119,11 +119,6 @@ export async function updateAttendanceForApprovedLeave(
     
     await client.query('COMMIT');
     
-    console.log(`✅ Attendance updated for leave request ${leaveRequest.id}:`, {
-      created: result.records_created,
-      updated: result.records_updated,
-      dates: result.dates_processed.length,
-    });
     
     return result;
     
@@ -219,10 +214,6 @@ export async function restoreAttendanceOnLeaveCancellation(
     
     await client.query('COMMIT');
     
-    console.log(`✅ Attendance restored for cancelled leave ${leaveRequest.id}:`, {
-      updated: result.records_updated,
-      dates: result.dates_processed.length,
-    });
     
     return result;
     
@@ -324,7 +315,6 @@ export async function syncAllApprovedLeavesToAttendance(): Promise<{
       }
     }
     
-    console.log(`✅ Sync completed:`, summary);
     
     return summary;
   } catch (error: any) {

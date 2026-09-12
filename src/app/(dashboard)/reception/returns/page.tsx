@@ -340,13 +340,6 @@ export default function ReturnsPage() {
 
   const totalReturnAmount = returnItems.reduce((sum, item) => sum + item.return_amount, 0);
   if (returnItems.some(item => item.return_quantity > 0)) {
-    console.log('🧮 Return calculation:', returnItems.map(item => ({
-      name: item.description || item.service_name,
-      qty: item.return_quantity,
-      price: item.unit_price,
-      amount: item.return_amount
-    })));
-    console.log('💰 Total return amount:', totalReturnAmount);
   }
 
   if (!mounted) return <div className="p-6"><div className="animate-pulse h-8 w-48 bg-gray-200 rounded" /></div>;

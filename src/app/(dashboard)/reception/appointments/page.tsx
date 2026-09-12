@@ -144,7 +144,6 @@ export default function AppointmentsPage() {
         setAppointments(data.data || []);
       } else {
         // API doesn't exist yet, set empty appointments array
-        console.log('Appointments API not available - using empty array');
         setAppointments([]);
       }
     } catch (error) {
@@ -226,7 +225,6 @@ export default function AppointmentsPage() {
         const data = await response.json();
         setDoctors(data.staff || []);
         if (data.message) {
-          console.log('Doctors API message:', data.message);
         }
       }
     } catch (error) {
@@ -318,11 +316,9 @@ export default function AppointmentsPage() {
     if (searchTerm.length >= 2) {
       setShowPatientDropdown(true);
       try {
-        console.log('Searching patients with term:', searchTerm);
         const response = await fetch(`/api/tibbna-openehr-patients?search=${encodeURIComponent(searchTerm)}`);
         if (response.ok) {
           const data = await response.json();
-          console.log('Patients found:', data.data?.length || 0);
           setPatients(data.data || []);
         } else {
           console.error('Search failed:', response.status);
@@ -344,7 +340,6 @@ export default function AppointmentsPage() {
   };
 
   const selectPatient = (patient: Patient) => {
-    console.log('selectPatient called with:', patient);
     
     // Update form with patient ID
     setFormData(prev => ({ 
@@ -359,9 +354,6 @@ export default function AppointmentsPage() {
     // Hide dropdown
     setShowPatientDropdown(false);
     
-    console.log('Form updated with patient ID:', patient.id);
-    console.log('Search term updated to:', displayName);
-    console.log('Current form data:', { ...formData, patientid: patient.id });
   };
 
   // Patients are now filtered on the server side, so we can use them directly
@@ -728,13 +720,11 @@ export default function AppointmentsPage() {
                       onChange={(e) => handlePatientSearch(e.target.value)}
                       onFocus={() => {
                         setShowPatientDropdown(true);
-                        console.log('Input focused - showing dropdown');
                       }}
                       onBlur={() => {
                         // Give click event time to fire before hiding dropdown
                         setTimeout(() => {
                           setShowPatientDropdown(false);
-                          console.log('Input blurred - hiding dropdown');
                         }, 150);
                       }}
                       className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -753,7 +743,6 @@ export default function AppointmentsPage() {
                               key={patient.id}
                               onMouseDown={(e) => {
                                 e.preventDefault(); // Prevent blur event
-                                console.log('Patient mouse down:', patient);
                                 selectPatient(patient);
                               }}
                               className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"

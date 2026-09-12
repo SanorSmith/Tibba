@@ -35,7 +35,6 @@ export default function AddServicePage() {
   }, []);
 
   useEffect(() => {
-    console.log('Providers state:', providers);
   }, [providers]);
 
   const fetchProviders = async () => {
@@ -43,7 +42,6 @@ export default function AddServicePage() {
       const response = await fetch('/api/insurance-companies');
       if (response.ok) {
         const data = await response.json();
-        console.log('Providers API response:', data);
         setProviders(data);
       }
     } catch (error) {
@@ -105,7 +103,6 @@ export default function AddServicePage() {
         service_fee: parseFloat(formData.service_fee) || 0,
       };
 
-      console.log('Submitting service:', payload);
 
       const response = await fetch('/api/services', {
         method: 'POST',
@@ -113,8 +110,6 @@ export default function AddServicePage() {
         body: JSON.stringify(payload),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
 
       // Check if response is JSON
       const contentType = response.headers.get('content-type');
@@ -127,7 +122,6 @@ export default function AddServicePage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Service created:', result);
         alert('Service created successfully!');
         router.push('/services');
       } else {

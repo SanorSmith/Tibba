@@ -48,7 +48,6 @@ export default function AddSpecialtyPage() {
       
       if (response.ok) {
         setDepartments(data.data || []);
-        console.log('Departments loaded:', data.data?.length || 0, 'departments');
       } else {
         console.error('Error loading departments:', data.error);
         toast.error(data.error || 'Failed to load departments');
@@ -97,7 +96,6 @@ export default function AddSpecialtyPage() {
 
     setLoading(true);
     try {
-      console.log('Creating specialty:', formData);
 
       const response = await fetch('/api/specialties', {
         method: 'POST',
@@ -116,7 +114,6 @@ export default function AddSpecialtyPage() {
       const result = await response.json();
 
       if (response.ok) {
-        console.log('Specialty created successfully:', result);
         toast.success('Specialty created successfully');
         router.push('/hr/departments/specialties');
       } else {

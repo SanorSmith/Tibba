@@ -152,12 +152,6 @@ describe('E2E: New Hire to First Paycheck', () => {
     expect(bankFileEntry.amount).toBeGreaterThan(0);
 
     // Final verification
-    console.log('✅ New hire to paycheck workflow completed successfully');
-    console.log(`Employee: ${bankFileEntry.employee_name}`);
-    console.log(`Gross Salary: ${grossResult.gross_salary.toFixed(2)} SAR`);
-    console.log(`Total Deductions: ${deductionResult.total_deductions.toFixed(2)} SAR`);
-    console.log(`Net Salary: ${netSalary.toFixed(2)} SAR`);
-    console.log(`Bank Transfer: ${bankFileEntry.iban} - ${bankFileEntry.amount.toFixed(2)} SAR`);
   });
 
   test('should handle employee with complex scenario', async () => {
@@ -211,10 +205,6 @@ describe('E2E: New Hire to First Paycheck', () => {
     const netSalary = grossResult.gross_salary - deductionResult.total_deductions;
     expect(netSalary).toBeGreaterThan(0);
 
-    console.log('✅ Complex scenario completed successfully');
-    console.log(`Gross: ${grossResult.gross_salary.toFixed(2)} SAR`);
-    console.log(`Deductions: ${deductionResult.total_deductions.toFixed(2)} SAR`);
-    console.log(`Net: ${netSalary.toFixed(2)} SAR`);
   });
 
   test('should handle part-time employee prorated salary', async () => {
@@ -239,7 +229,5 @@ describe('E2E: New Hire to First Paycheck', () => {
     expect(result.base_salary).toBeCloseTo(4000, 0); // 8000 * (15/30)
     expect(result.gross_salary).toBeCloseTo(4000, 0);
 
-    console.log('✅ Part-time employee prorated correctly');
-    console.log(`Prorated Salary: ${result.base_salary.toFixed(2)} SAR`);
   });
 });

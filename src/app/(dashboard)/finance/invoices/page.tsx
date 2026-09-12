@@ -227,7 +227,6 @@ export default function InvoicesPage() {
   // Auto-load items when viewInvoice changes
   useEffect(() => {
     if (viewInvoice?.id) {
-      console.log('🔄 Auto-loading items for invoice:', viewInvoice.id);
       loadInvoiceItems(viewInvoice.id);
     }
   }, [viewInvoice]);
@@ -237,9 +236,7 @@ export default function InvoicesPage() {
       const r = await fetch(`/api/invoices/${invoiceId}`);
       if (r.ok) { 
         const d = await r.json(); 
-        console.log('🔄 Auto-load response:', d);
         const items = d.data?.items || d.items || [];
-        console.log('🔄 Auto-loading items:', items);
         setViewItems(items);
       }
     } catch (error) {
@@ -366,11 +363,9 @@ export default function InvoicesPage() {
       const res = await fetch(`/api/invoices/${invoice.id}`);
       if (res.ok) {
         const response = await res.json();
-        console.log('🔍 Edit Modal - API Response:', response);
         
         // Handle both response formats: data.items or data.data.items
         const items = response.data?.items || response.data?.data?.items || [];
-        console.log('🔍 Edit Modal - Items found:', items.length);
         
         if (items.length > 0) {
           const mapped: LineItem[] = items.map((item: any) => {
@@ -513,7 +508,6 @@ export default function InvoicesPage() {
   const handleAmountPaidChange = (amountPaid: number) => {
     setFormData(prev => {
       const newBalanceDue = (prev.patient_responsibility || 0) - amountPaid;
-      console.log('💰 Amount paid changed:', { amountPaid, patientResp: prev.patient_responsibility, newBalanceDue });
       return {
         ...prev,
         amount_paid: amountPaid,
@@ -1082,13 +1076,9 @@ export default function InvoicesPage() {
                             const r = await fetch(`/api/invoices/${inv.id}`);
                             if (r.ok) {
                               const response = await r.json();
-                              console.log('🔍 Frontend Debug - API Response:', response);
-                              console.log('🔍 Frontend Debug - response.data.items:', response.data?.items);
-                              console.log('🔍 Frontend Debug - response.data.data.items:', response.data?.data?.items);
                               
                               // Handle both response formats: data.items or data.data.items
                               const items = response.data?.items || response.data?.data?.items || [];
-                              console.log('🔍 Frontend Debug - Final items:', items);
                               setViewItems(items); 
                             }
                           } catch (error) {

@@ -121,7 +121,6 @@ export default function EditEmployeePage() {
 
     setSaving(true);
     try {
-      console.log('Updating staff member:', params.id, form);
 
       const response = await fetch('/api/staff', {
         method: 'PUT',
@@ -145,7 +144,6 @@ export default function EditEmployeePage() {
       const result = await response.json();
 
       if (response.ok) {
-        console.log('Staff member updated successfully:', result);
         toast.success('Staff member updated successfully');
         router.push('/hr/employees');
       } else {

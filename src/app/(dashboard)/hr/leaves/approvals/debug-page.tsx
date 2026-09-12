@@ -36,12 +36,10 @@ export default function DebugApprovalsPage() {
         const sessionData = localStorage.getItem('tibbna_session');
         if (sessionData) {
           const parsed = JSON.parse(sessionData);
-          console.log('Found session data:', parsed);
           setUserInfo(parsed);
           return parsed;
         }
       } catch (e) {
-        console.log('No session data found');
       }
       
       // Fallback - create mock user for testing
@@ -64,12 +62,10 @@ export default function DebugApprovalsPage() {
       setLoading(true);
       setError(null);
       
-      console.log('Loading approvals for user:', user?.id);
       
       const response = await fetch(`/api/hr/leaves/approvals?approver_id=${user?.id || '00000000-0000-0000-0000-000000000001'}`);
       const result = await response.json();
 
-      console.log('API Response:', result);
 
       if (result.success) {
         setApprovals(result.data || []);

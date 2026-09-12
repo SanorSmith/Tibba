@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
     `);
 
     if (!tableCheck.rows[0].exists) {
-      console.log('Appointments table does not exist yet');
       return NextResponse.json({
         data: [],
         pagination: {
@@ -116,8 +115,6 @@ export async function GET(request: NextRequest) {
     
     params.push(limit, offset);
 
-    console.log('Executing appointments query:', query);
-    console.log('Parameters:', params);
 
     const result = await pool.query(query, params);
 
@@ -131,7 +128,6 @@ export async function GET(request: NextRequest) {
     const countResult = await pool.query(countQuery, [workspaceId]);
     const totalAppointments = parseInt(countResult.rows[0].total);
 
-    console.log(`Found ${result.rows.length} appointments out of ${totalAppointments} total`);
 
     // Transform the data to match the expected format
     const appointments = result.rows.map(row => ({
@@ -217,7 +213,6 @@ export async function POST(request: NextRequest) {
     return await withTenant(workspaceid, async () => {
 
     const body = await request.json();
-    console.log('Creating new appointment:', body);
 
     // Extract form data
     const {
@@ -286,7 +281,6 @@ export async function POST(request: NextRequest) {
     `);
 
     if (!tableCheck.rows[0].exists) {
-      console.log('Appointments table does not exist yet - returning success message');
       return NextResponse.json({
         success: true,
         message: 'Appointment created successfully (Note: Database table not yet created)',
@@ -346,7 +340,6 @@ export async function POST(request: NextRequest) {
         status || 'scheduled'
       ]);
       
-      console.log('Appointment created successfully:', newAppointment.rows[0]);
       
       return NextResponse.json({
         success: true,

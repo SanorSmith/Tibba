@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
   return await withTenant(workspaceId, async () => {
 
   try {
-    console.log('=== FIX SPECIALTIES ===');
     
     const { Pool } = await import('pg');
     const databaseUrl = process.env.OPENEHR_DATABASE_URL;
@@ -29,11 +28,9 @@ export async function GET(request: NextRequest) {
 
     // Get current departments
     const departmentsResult = await pool.query('SELECT departmentid, name FROM departments WHERE workspaceid = $1 ORDER BY name', [workspaceId]);
-    console.log('Departments:', departmentsResult.rows);
 
     // Get current specialties
     const specialtiesResult = await pool.query('SELECT specialtyid, name, departmentid FROM specialties WHERE workspaceid = $1', [workspaceId]);
-    console.log('Specialties before fix:', specialtiesResult.rows);
 
     // Create a mapping of department names to new IDs
     const deptMap = new Map();
@@ -68,7 +65,6 @@ export async function GET(request: NextRequest) {
       if (matchingDeptName) {
         const newDeptId = deptMap.get(matchingDeptName.toLowerCase());
         if (newDeptId && newDeptId !== specialty.departmentid) {
-          console.log(`Updating ${specialty.name}: old dept ${specialty.departmentid} -> new dept ${newDeptId}`);
           
           await pool.query(
             'UPDATE specialties SET departmentid = $1 WHERE specialtyid = $2 AND workspaceid = $3',

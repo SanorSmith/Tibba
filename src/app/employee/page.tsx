@@ -177,7 +177,6 @@ export default function EmployeePage() {
           }
         }
       } catch (err) {
-        console.log('No leave balances available');
         setLeaveBalances([
           { leave_type: 'Annual Leave', total_days: 30, used_days: 5, remaining_days: 25 },
           { leave_type: 'Sick Leave', total_days: 15, used_days: 2, remaining_days: 13 },
@@ -195,7 +194,6 @@ export default function EmployeePage() {
           }
         }
       } catch (err) {
-        console.log('No leave requests available');
         setLeaveRequests([]);
       }
       
@@ -211,7 +209,6 @@ export default function EmployeePage() {
           }
         }
       } catch (err) {
-        console.log('No attendance records available');
         setAttendanceRecords([]);
       }
     } catch (error) {
@@ -255,7 +252,6 @@ export default function EmployeePage() {
           setEditedProfile(mockProfile);
         }
       } catch (err) {
-        console.log('Using mock profile data');
         setProfile(mockProfile);
         setEditedProfile(mockProfile);
       }
@@ -270,7 +266,6 @@ export default function EmployeePage() {
           }
         }
       } catch (err) {
-        console.log('No leave balances available');
         setLeaveBalances([
           { leave_type: 'Annual Leave', total_days: 30, used_days: 5, remaining_days: 25 },
           { leave_type: 'Sick Leave', total_days: 15, used_days: 2, remaining_days: 13 },
@@ -288,7 +283,6 @@ export default function EmployeePage() {
           }
         }
       } catch (err) {
-        console.log('No leave requests available');
         setLeaveRequests([]);
       }
       
@@ -304,7 +298,6 @@ export default function EmployeePage() {
           }
         }
       } catch (err) {
-        console.log('No attendance records available');
         setAttendanceRecords([]);
       }
     } catch (error) {

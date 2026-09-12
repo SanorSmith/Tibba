@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Login attempt for:', loginIdentifier);
 
     // Look up real user in DB
     const lookupEmail = loginIdentifier.includes('@')

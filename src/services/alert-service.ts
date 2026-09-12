@@ -43,7 +43,6 @@ export class AlertService {
    * Initialize all scheduled alert checks
    */
   initializeSchedules(): void {
-    console.log('Initializing alert schedules...');
 
     // License expiry check - Daily at 6:00 AM
     this.scheduleLicenseExpiryCheck();
@@ -54,7 +53,6 @@ export class AlertService {
     // Leave balance check - Weekly on Monday at 9:00 AM
     this.scheduleLeaveBalanceCheck();
 
-    console.log(`Initialized ${this.scheduledTasks.size} alert schedules`);
   }
 
   /**
@@ -63,7 +61,6 @@ export class AlertService {
   private scheduleLicenseExpiryCheck(): void {
     const task = cron.schedule('0 6 * * *', async () => {
       try {
-        console.log('Running license expiry check...');
         await this.checkLicenseExpiry();
       } catch (error: any) {
         console.error('Error in license expiry check:', error);
@@ -79,7 +76,6 @@ export class AlertService {
   private scheduleAttendanceAnomalyCheck(): void {
     const task = cron.schedule('0 10 * * *', async () => {
       try {
-        console.log('Running attendance anomaly check...');
         await this.checkAttendanceAnomalies();
       } catch (error: any) {
         console.error('Error in attendance anomaly check:', error);
@@ -95,7 +91,6 @@ export class AlertService {
   private scheduleLeaveBalanceCheck(): void {
     const task = cron.schedule('0 9 * * 1', async () => {
       try {
-        console.log('Running leave balance check...');
         await this.checkLeaveBalances();
       } catch (error: any) {
         console.error('Error in leave balance check:', error);
@@ -590,7 +585,6 @@ export class AlertService {
   stopAll(): void {
     this.scheduledTasks.forEach((task, name) => {
       task.stop();
-      console.log(`Stopped alert task: ${name}`);
     });
     this.scheduledTasks.clear();
   }

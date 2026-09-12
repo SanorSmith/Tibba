@@ -54,24 +54,14 @@ function EmployeeCompensationPage() {
 
   const loadCompensation = async () => {
     try {
-      console.log('Loading compensation for:', testUserId);
       const response = await fetch(`/api/hr/compensation?employee_id=${testUserId}`);
       
-      console.log('API Response status:', response.status);
       const result = await response.json();
       
-      console.log('Compensation API response:', result);
-      console.log('Response success:', result.success);
-      console.log('Response data:', result.data);
       
       if (result.success && result.data) {
-        console.log('Setting compensation data:', result.data);
         setCompensation(result.data);
       } else {
-        console.log('API returned success=false or no data');
-        console.log('Success:', result.success);
-        console.log('Data:', result.data);
-        console.log('Error:', result.error);
       }
     } catch (error) {
       console.error('Error loading compensation:', error);

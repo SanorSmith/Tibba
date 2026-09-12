@@ -11,7 +11,6 @@ export function useIdleTimeout(timeoutMinutes: number = 10) {
     }
     
     timeoutRef.current = setTimeout(() => {
-      console.log('🔴 User idle for', timeoutMinutes, 'minutes - logging out...');
       logout();
       // Cleared for the host and, on tibbna.com, for the shared domain as
       // well - a cookie is only replaced by one whose name, path and domain

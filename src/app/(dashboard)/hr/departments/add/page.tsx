@@ -52,16 +52,13 @@ export default function AddDepartmentPage() {
   const fetchDepartments = async () => {
     try {
       setLoadingDepartments(true);
-      console.log('Fetching departments...');
       
       const response = await fetch('/api/departments');
       const data = await response.json();
 
-      console.log('Departments API response:', data);
 
       if (data.success) {
         setDepartments(data.data);
-        console.log('Departments loaded:', data.data.length, 'departments');
       } else {
         console.error('API Error:', data);
         toast.error(data.error || 'Failed to fetch departments');

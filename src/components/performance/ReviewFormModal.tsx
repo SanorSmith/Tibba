@@ -73,7 +73,6 @@ export default function ReviewFormModal({ employeeId, employeeName, reviewId, re
     try {
       const response = await fetch('/api/staff');
       const data = await response.json();
-      console.log('Staff API Response:', data);
       if (data.success && data.staff) {
         setEmployees(data.staff);
       } else {
@@ -107,7 +106,6 @@ export default function ReviewFormModal({ employeeId, employeeName, reviewId, re
         });
       } else {
         // API failed, try to load from the list of reviews in the parent component
-        console.log('API failed, trying to load from parent component data');
         // This is a temporary workaround until the API is fixed
         toast.error('API temporarily unavailable - please restart server');
       }

@@ -6,7 +6,6 @@ export async function GET(
 ) {
   const { id } = params;
   
-  console.log('🧪 Test route called with ID:', id);
   
   return NextResponse.json({
     success: true,

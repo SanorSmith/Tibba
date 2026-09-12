@@ -196,7 +196,6 @@ export async function createPayrollAdjustment(
         ]
       );
     } catch (dbError) {
-      console.log('Note: payroll_adjustments table may not exist yet');
     }
 
     return adjustment;
@@ -384,7 +383,6 @@ export async function processMonthlyAccrualForAll(
       }
     }
 
-    console.log(`✅ Monthly accrual completed:`, summary);
 
     return summary;
 

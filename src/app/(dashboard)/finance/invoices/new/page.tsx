@@ -218,7 +218,6 @@ export default function NewInvoicePage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Invoice saved to database:', result);
         toast.success(`Invoice ${invoice.invoice_number} created and saved to database`);
         router.push('/finance/invoices');
       } else {

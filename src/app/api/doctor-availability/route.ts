@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
 
     // For now, return empty booked slots since we don't have availability data
     // This can be extended later to include actual availability logic
-    console.log('Fetching availability for doctor:', doctorId);
 
     // Query existing appointments for this doctor to get booked slots
     const query = `

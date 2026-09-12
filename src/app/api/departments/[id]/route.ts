@@ -50,7 +50,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('Fetching single department:', id);
     
     const result = await pool.query(
       `SELECT departmentid as id, name, phone as contact_phone, email as contact_email, 
@@ -60,7 +59,6 @@ export async function GET(request: NextRequest) {
       [id, workspaceId]
     );
 
-    console.log('Department query result:', result.rows.length, 'rows found');
 
     if (result.rows.length === 0) {
       return NextResponse.json(

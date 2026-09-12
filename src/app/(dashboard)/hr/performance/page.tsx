@@ -46,13 +46,11 @@ export default function PerformancePage() {
   const [editingReviewData, setEditingReviewData] = useState<any>(null);
 
   const loadData = useCallback(async () => {
-    console.log('🔄 Loading performance data from database...');
     try {
       // Load real staff data
       const realStaff = await StaffService.getAllStaff();
       const employees = realStaff.map(staff => StaffService.convertToEmployee(staff));
       setEmployees(employees);
-      console.log(`✅ Loaded ${employees.length} staff members`);
       
       // Load real performance reviews from API
       const reviewsResponse = await fetch('/api/hr/performance/reviews?limit=50');
@@ -60,7 +58,6 @@ export default function PerformancePage() {
       
       if (reviewsData.success) {
         setReviews(reviewsData.data);
-        console.log(`✅ Loaded ${reviewsData.data.length} performance reviews from database`);
       } else {
         console.warn('No reviews found, creating empty state');
         setReviews([]);
@@ -72,7 +69,6 @@ export default function PerformancePage() {
       
       if (recognitionsData.success) {
         setRecognitions(recognitionsData.data);
-        console.log(`✅ Loaded ${recognitionsData.data.length} recognitions from database`);
       } else {
         setRecognitions([]);
       }

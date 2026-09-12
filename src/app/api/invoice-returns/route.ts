@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('GET /api/invoice-returns - Request received');
     
     if (!pool) {
       console.error('Database pool not configured');
@@ -45,7 +44,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = (page - 1) * limit;
 
-    console.log('Query params:', { status, invoice_id, page, limit, offset });
 
     let query = `
       SELECT 
@@ -92,8 +90,6 @@ export async function GET(request: NextRequest) {
     query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
-    console.log('Executing query:', query);
-    console.log('With params:', params);
 
     const result = await pool.query(query, params);
 
@@ -116,7 +112,6 @@ export async function GET(request: NextRequest) {
     const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
 
-    console.log(`Found ${result.rows.length} returns out of ${total} total`);
 
     // Parse JSON items for each return
     const returnsWithItems = result.rows.map(row => {
@@ -138,9 +133,6 @@ export async function GET(request: NextRequest) {
           items: items
         };
       } catch (parseError) {
-        console.log('Error parsing items for return:', row.id, parseError);
-        console.log('Raw items type:', typeof row.items);
-        console.log('Raw items value:', row.items);
         return {
           ...row,
           items: []
@@ -184,7 +176,6 @@ export async function POST(request: NextRequest) {
     // each one remembering its WHERE clause.
     return await withTenant(workspaceId, async () => {
 
-    console.log('POST /api/invoice-returns - Request received');
     
     if (!pool) {
       console.error('Database pool not configured');
@@ -198,7 +189,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('Request body:', JSON.stringify(body, null, 2));
 
     // Generate return number if not provided
     const returnNumber = body.return_number || `RET-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
@@ -263,7 +253,6 @@ export async function POST(request: NextRequest) {
     // Commit transaction
     await pool.query('COMMIT');
 
-    console.log(`✅ Invoice return created: ${returnNumber}`);
 
     return NextResponse.json({
       success: true,

@@ -227,13 +227,10 @@ export default function InvoicesPage() {
 
     // Fetch existing items for this invoice
     try {
-      console.log('🔄 Fetching items for invoice:', invoice.id);
       const res = await fetch(`/api/invoices/${invoice.id}`);
       if (res.ok) {
         const data = await res.json();
-        console.log('🔄 API response:', data);
         const items = data.data?.items || data.items || [];
-        console.log('🔄 Items found:', items);
         
         if (items.length > 0) {
           const mapped: LineItem[] = items.map((item: any) => {
@@ -245,12 +242,6 @@ export default function InvoicesPage() {
             // Use the service UUID if found, otherwise use item_code
             const serviceId = svc?.id || item.item_code || '';
 
-            console.log('🔄 Service mapping:', {
-              item_code: item.item_code,
-              item_name: item.item_name,
-              found_service: svc,
-              service_id: serviceId
-            });
 
             // Lines pulled via "🩺 Get Orders" (openehr_source_uid set) never had a
             // catalog service — they're procedures/labs synthesized from OpenEHR
@@ -276,7 +267,6 @@ export default function InvoicesPage() {
               openehr_order_id: item.openehr_order_id || undefined,
             };
           });
-          console.log('🔄 Mapped line items:', mapped);
           setLineItems(mapped);
         }
       }
@@ -918,13 +908,10 @@ export default function InvoicesPage() {
                           setViewInvoice(inv);
                           setViewItems([]);
                           try {
-                            console.log('🔄 Loading view items for invoice:', inv.id);
                             const r = await fetch(`/api/invoices/${inv.id}`);
                             if (r.ok) { 
                               const d = await r.json(); 
-                              console.log('🔄 View API response:', d);
                               const items = d.data?.items || d.items || [];
-                              console.log('🔄 Setting viewItems:', items);
                               setViewItems(items); 
                             }
                           } catch (error) {
