@@ -245,7 +245,7 @@ export default function HRDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{metrics?.recentAlerts || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Unread notifications
+              Needing attention, last 30 days
             </p>
           </CardContent>
         </Card>

@@ -67,9 +67,25 @@ export async function GET(request: NextRequest) {
     const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const currentMonthPayrollStatus = 'Processing';
 
-    // Get recent alerts (unread notifications)
+    // Alerts an HR officer would act on, from the last thirty days.
+    //
+    // This counted every unread notification in the facility, which came to
+    // 401 on the HR dashboard - all of them laboratory events, sample
+    // registered and results released, none of them anything to do with HR.
+    // Not one had ever been read, because the ERP has no screen on which to
+    // read one, so the number only ever grew.
+    //
+    // A tile counting things nobody can open, in a category the reader does
+    // not work in, going back six months, is not an alert. It is a number.
+    // Scoped to what HR would act on and to the recent past, so a nonzero
+    // figure means something needs attention today.
     const alertsResult = await pool.query(
-      'SELECT COUNT(*) as count FROM notifications WHERE is_read = false AND workspaceid = $1',
+      `SELECT COUNT(*) AS count
+         FROM notifications
+        WHERE is_read = false
+          AND workspaceid = $1
+          AND COALESCE(category, '') <> 'LIMS'
+          AND created_at >= CURRENT_DATE - INTERVAL '30 days'`,
       [workspaceId]
     );
     const recentAlerts = parseInt(alertsResult.rows[0].count);
