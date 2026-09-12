@@ -25,15 +25,26 @@ export async function GET(request: NextRequest) {
     );
     const totalActiveEmployees = parseInt(activeEmployeesResult.rows[0].count);
 
-    // Get today's attendance
+    // Today's attendance, from the daily summary rather than the raw punches.
+    //
+    // This counted distinct people with an 'IN' punch, which cannot answer
+    // "who is here". A punch is one input among several: someone marked
+    // present by a manager has no punch, and someone on approved leave has no
+    // punch either but is accounted for. On this deployment eighteen of the
+    // nineteen daily rows were written by leave approval and were invisible
+    // to the old query, while the HR dashboard next door read the summary and
+    // reported a different number for the same day.
+    //
+    // attendance_transactions is not redundant - the punch handler writes it
+    // and rolls it up into this table in the same request. It is the input
+    // layer. This is the answer layer.
     const attendanceResult = await pool.query(`
       SELECT 
-        COUNT(DISTINCT employee_id) as present_count,
+        COUNT(DISTINCT employee_id) FILTER (WHERE status IN ('PRESENT', 'LATE', 'HALF_DAY')) as present_count,
+        COUNT(DISTINCT employee_id) FILTER (WHERE status IN ('LEAVE', 'ON_LEAVE')) as on_leave_count,
         (SELECT COUNT(*) FROM staff WHERE workspaceid = $2) as total_count
-      FROM attendance_transactions 
-      WHERE DATE(timestamp) = $1 
-        AND transaction_type = 'IN'
-        AND is_valid = true
+      FROM daily_attendance
+      WHERE date::date = $1
         AND workspaceid = $2
     `, [today, workspaceId]);
     
@@ -64,16 +75,17 @@ export async function GET(request: NextRequest) {
     const recentAlerts = parseInt(alertsResult.rows[0].count);
 
     // Get attendance trend for last 30 days
+    // The same correction, applied to the trend, so the chart and the tile
+    // above it are drawn from one source.
     const attendanceTrendResult = await pool.query(`
       SELECT 
-        DATE(timestamp) as date,
-        COUNT(DISTINCT employee_id) * 100.0 / NULLIF((SELECT COUNT(*) FROM staff WHERE workspaceid = $1), 0) as rate
-      FROM attendance_transactions 
-      WHERE DATE(timestamp) >= CURRENT_DATE - INTERVAL '29 days'
-        AND transaction_type = 'IN'
-        AND is_valid = true
+        date::date as date,
+        COUNT(DISTINCT employee_id) FILTER (WHERE status IN ('PRESENT', 'LATE', 'HALF_DAY'))
+          * 100.0 / NULLIF((SELECT COUNT(*) FROM staff WHERE workspaceid = $1), 0) as rate
+      FROM daily_attendance
+      WHERE date::date >= CURRENT_DATE - INTERVAL '29 days'
         AND workspaceid = $1
-      GROUP BY DATE(timestamp)
+      GROUP BY date::date
       ORDER BY date ASC
     `, [workspaceId]);
     
@@ -98,23 +110,24 @@ export async function GET(request: NextRequest) {
       count: parseInt(row.count)
     }));
 
-    // Get overtime by week (last 8 weeks)
+    // Overtime by week, from the hours actually recorded.
+    //
+    // This used to count punches falling outside 06:00-18:00 and multiply by
+    // 0.5 to produce "hours" - a number with no relationship to time worked.
+    // Someone clocking in at 05:55 scored half an hour of overtime for
+    // arriving early. Meanwhile `overtime_hours` sits on the daily summary,
+    // computed by the punch handler on check-out as anything beyond an
+    // eight-hour day.
     const overtimeResult = await pool.query(`
       SELECT 
-        'Week ' || EXTRACT(WEEK FROM timestamp) - EXTRACT(WEEK FROM CURRENT_DATE - INTERVAL '7 weeks') + 1 as week,
-        ROUND(SUM(CASE 
-          WHEN EXTRACT(HOUR FROM timestamp) >= 18 
-            OR EXTRACT(HOUR FROM timestamp) < 6 
-          THEN 1 
-          ELSE 0 
-        END) * 0.5, 1) as hours
-      FROM attendance_transactions 
-      WHERE timestamp >= CURRENT_DATE - INTERVAL '7 weeks'
-        AND timestamp < CURRENT_DATE
-        AND is_valid = true
+        to_char(date_trunc('week', date), 'DD Mon') as week,
+        ROUND(SUM(COALESCE(overtime_hours, 0))::numeric, 1) as hours
+      FROM daily_attendance
+      WHERE date >= CURRENT_DATE - INTERVAL '7 weeks'
+        AND date < CURRENT_DATE
         AND workspaceid = $1
-      GROUP BY EXTRACT(WEEK FROM timestamp)
-      ORDER BY week
+      GROUP BY date_trunc('week', date)
+      ORDER BY date_trunc('week', date)
     `, [workspaceId]);
     
     const overtimeByWeek = overtimeResult.rows.map(row => ({
@@ -124,6 +137,9 @@ export async function GET(request: NextRequest) {
 
     const metrics = {
       totalActiveEmployees,
+      // Distinct from absent. The old query could not tell the difference,
+      // because someone on approved leave never punches in.
+      onLeaveToday: parseInt(attendanceData.on_leave_count) || 0,
       todayAttendanceRate: Math.round(todayAttendanceRate * 10) / 10,
       pendingLeaveRequests,
       upcomingLicenseExpiries,
