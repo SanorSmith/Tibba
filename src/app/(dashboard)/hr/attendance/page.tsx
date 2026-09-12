@@ -90,6 +90,8 @@ export default function AttendancePage() {
       if (result.success) {
         setSummaries(result.data);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not load data');
         throw new Error(result.error || 'Failed to load attendance data');
       }
     } catch (error: any) {

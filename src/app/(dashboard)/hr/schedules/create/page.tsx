@@ -83,6 +83,8 @@ export default function CreateSchedulePage() {
         toast.success('Schedule created successfully');
         router.push('/hr/schedules');
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not submit');
         throw new Error(result.error);
       }
     } catch (error: any) {

@@ -156,6 +156,8 @@ export default function NewEmployeePage() {
       if (response.ok) {
         setDepartments(data.data || []);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error('Could not load departments');
         console.error('Failed to load departments:', data.error);
       }
     } catch (error) {
@@ -172,6 +174,8 @@ export default function NewEmployeePage() {
       if (response.ok) {
         setSpecialties(data.data || []);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error('Could not load specialties');
         console.error('Failed to load specialties:', data.error);
       }
     } catch (error) {

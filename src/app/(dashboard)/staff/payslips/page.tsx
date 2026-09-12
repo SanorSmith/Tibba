@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { FileText, Download, Eye, Calendar, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Payslip {
@@ -100,6 +101,8 @@ export default function EmployeePayslipsPage() {
           setSelectedPayslip(normalized[0]);
         }
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not load payslips');
         setPayslips([]);
       }
     } catch (error) {

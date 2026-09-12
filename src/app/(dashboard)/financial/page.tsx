@@ -2,6 +2,7 @@
 
 // COMPLETELY NEW FILE - BYPASS CACHE
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Download, DollarSign, Calendar, Building2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -130,6 +131,8 @@ export default function FinancialReportsPageFixed() {
       if (result.success) {
         setFinancialData(result.data);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not fetch financial data');
         console.error('Failed to fetch financial data:', result.error);
       }
     } catch (error) {

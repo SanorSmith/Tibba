@@ -69,6 +69,8 @@ export default function TodosPage() {
         setTodos(data.todos || []);
         setFilteredTodos(data.todos || []);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error('Could not load todos');
         console.error('Failed to load todos');
       }
     } catch (error) {

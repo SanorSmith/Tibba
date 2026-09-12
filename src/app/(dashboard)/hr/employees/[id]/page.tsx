@@ -108,6 +108,8 @@ The account and its roles are untouched. This record simply stops pointing at it
       if (response.ok) {
         setEmployee(data.staff);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error('Could not load employee');
         console.error('❌ Error loading employee:', data.error);
         setEmployee(null);
       }

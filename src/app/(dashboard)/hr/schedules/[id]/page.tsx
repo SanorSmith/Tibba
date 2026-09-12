@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Download, Printer, Calendar, Clock, User, Building2 } from 'lucide-react';
 // Using browser alert instead of react-hot-toast to avoid dependency issues
@@ -57,6 +58,8 @@ export default function ScheduleDetailPage() {
       if (result.success) {
         setSchedule(result.data);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not fetch schedule');
         throw new Error(result.error);
       }
     } catch (error: any) {

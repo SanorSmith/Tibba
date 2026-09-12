@@ -2173,7 +2173,7 @@ export default function HospitalPage(){
                   <div><label style={s.label}>Product Types</label><input style={s.input} value={mfrForm.product_types} onChange={e=>setMfrForm(f=>({...f,product_types:e.target.value}))}/></div>
                 </div>
                 <div style={{display:"flex",gap:8,marginTop:12}}>
-                  <button onClick={async()=>{if(!mfrForm.name.trim())return;const res=await fetch("/api/hospital/manufacturers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(mfrForm)});if(res.ok){setShowAddMfr(false);setMfrForm({name:"",code:"",country:"",contact_name:"",email:"",phone:"",product_types:""});fetchManufacturers();showToast("Added!");}}} style={s.btn("purple")}>Save</button>
+                  <button onClick={async()=>{if(!mfrForm.name.trim())return;const res=await fetch("/api/hospital/manufacturers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(mfrForm)});if(res.ok){setShowAddMfr(false);setMfrForm({name:"",code:"",country:"",contact_name:"",email:"",phone:"",product_types:""});fetchManufacturers();showToast("Added!");}else{const problem=await res.json().catch(()=>null);showToast(problem?.error||"Could not add the manufacturer");}}} style={s.btn("purple")}>Save</button>
                   <button onClick={()=>setShowAddMfr(false)} style={{...s.btn("ghost"),border:"1px solid #e5e7eb"}}>Cancel</button>
                 </div>
               </div>

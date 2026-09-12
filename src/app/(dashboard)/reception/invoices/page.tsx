@@ -269,9 +269,14 @@ export default function InvoicesPage() {
           });
           setLineItems(mapped);
         }
+      } else {
+        // Was silent. The form opened with no lines, which reads as an invoice
+        // that has none rather than one whose lines failed to load.
+        toast.error('Could not load the lines on this invoice.');
       }
     } catch (error) {
       console.error('Failed to load invoice items:', error);
+      toast.error('Could not load the lines on this invoice.');
     }
   };
 

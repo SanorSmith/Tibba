@@ -64,6 +64,8 @@ export default function LeaveRequestsListPage() {
       if (result.success) {
         setAllRequests(result.data);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'That did not work');
         throw new Error(result.error || 'Failed to load leave requests');
       }
       

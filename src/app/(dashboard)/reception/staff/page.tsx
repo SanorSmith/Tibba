@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { 
   Search, 
   Filter, 
@@ -85,6 +86,8 @@ export default function StaffInfoPage() {
         setStaff(transformedStaff);
         setFilteredStaff(transformedStaff);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error('Could not load staff');
         console.error('Failed to load staff');
       }
     } catch (error) {

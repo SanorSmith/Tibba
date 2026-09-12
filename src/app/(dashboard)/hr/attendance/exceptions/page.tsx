@@ -66,6 +66,8 @@ export default function AttendanceExceptionsPage() {
         toast.success(data.message);
         await loadData(); // Reload data
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(data?.error || 'Could not rescan');
         throw new Error(data.error);
       }
     } catch (error: any) {
@@ -99,6 +101,8 @@ export default function AttendanceExceptionsPage() {
         setActionModal(null);
         setJustification('');
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not exception action');
         throw new Error(result.error);
       }
     } catch (error: any) {
@@ -118,6 +122,8 @@ export default function AttendanceExceptionsPage() {
       if (data.success) {
         setExceptions(data.data || []);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(data?.error || 'Could not load data');
         throw new Error(data.error || 'Failed to load exceptions');
       }
     } catch (error) {
@@ -148,6 +154,8 @@ export default function AttendanceExceptionsPage() {
         toast.success('Exception deleted successfully');
         await loadData(); // Reload data
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not delete');
         throw new Error(result.error);
       }
     } catch (error: any) {

@@ -175,6 +175,8 @@ export default function FinancePage() {
       if (result.success) {
         setFinancialData(result.data);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not load financial data');
         console.error('Failed to fetch financial data:', result.error);
       }
     } catch (error) {

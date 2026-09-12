@@ -51,6 +51,8 @@ export default function StaffAttendanceHistoryPage() {
       if (result.success) {
         setRecords(result.data);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not load attendance records');
         throw new Error(result.error || 'Failed to load attendance records');
       }
     } catch (error: any) {

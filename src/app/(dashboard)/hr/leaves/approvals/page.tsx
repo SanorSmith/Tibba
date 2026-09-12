@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 // Using native notifications - toast library can be added later if needed
 import { Calendar, Clock, User, CheckCircle, XCircle, Send } from 'lucide-react';
@@ -86,6 +87,8 @@ function ApprovalsPageContent() {
         
         setApprovals(uniqueApprovals);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not load pending approvals');
         console.error('Failed to load pending approvals');
       }
     } catch (error) {

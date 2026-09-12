@@ -74,6 +74,8 @@ export default function SchedulesPage() {
         toast.success('Schedule deleted successfully');
         loadData();
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not delete');
         throw new Error(result.error);
       }
     } catch (error: any) {

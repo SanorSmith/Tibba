@@ -51,6 +51,8 @@ export default function BiometricPage() {
         
         setEmployees(mappedStaff);
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error(result?.error || 'Could not load employees');
         throw new Error(result.error || 'Failed to load staff');
       }
     } catch (error: any) {
@@ -200,6 +202,8 @@ export default function BiometricPage() {
           setManualId('');
           setTimeout(() => setScanState('READY'), 2000);
         } else {
+          // Logged but never shown: the person at the screen saw nothing.
+          toast.error(result?.error || 'Could not record attendance');
           throw new Error(result.error || 'Failed to record attendance');
         }
       } catch (error: any) {

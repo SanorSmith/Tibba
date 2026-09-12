@@ -144,8 +144,13 @@ export default function AppointmentsPage() {
         const data = await response.json();
         setAppointments(data.data || []);
       } else {
-        // API doesn't exist yet, set empty appointments array
+        // The comment here used to say "API doesn't exist yet". It does, and
+        // has for a while. Showing an empty list on a failed load tells the
+        // desk there are no appointments today, which is a different and much
+        // worse statement than "this did not load".
         setAppointments([]);
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load today\'s appointments.');
       }
     } catch (error) {
       console.error('Error loading appointments:', error);
@@ -330,6 +335,8 @@ export default function AppointmentsPage() {
           const data = await response.json();
           setPatients(data.data || []);
         } else {
+          // Logged but never shown: the person at the screen saw nothing.
+          toast.error('Could not patient search');
           console.error('Search failed:', response.status);
           setPatients([]);
         }

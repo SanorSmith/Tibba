@@ -112,6 +112,8 @@ export default function PatientsPage() {
         const companies = await res.json();
         setInsuranceCompanies(Array.isArray(companies) ? companies : (companies.data || []));
       } else {
+        // Logged but never shown: the person at the screen saw nothing.
+        toast.error('Could not load insurance companies');
         // If API doesn't exist, we'll use a fallback approach
         // You might need to create this API endpoint or use a different approach
         setInsuranceCompanies([]);
