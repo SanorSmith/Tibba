@@ -242,7 +242,7 @@ export default function SpecialtiesPage() {
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-600">
-          <Link href="/departments" className="hover:text-gray-900">Departments</Link>
+          <Link href="/hr/departments" className="hover:text-gray-900">Departments</Link>
           <span>/</span>
           <span className="text-gray-900">Specialties</span>
         </nav>

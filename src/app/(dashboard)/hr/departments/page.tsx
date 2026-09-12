@@ -69,24 +69,6 @@ export default function DepartmentsPage() {
           </div>
         </Link>
 
-        {/* Test CRUD Card */}
-        <Link href="/hr/departments/test">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer group">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                <Play className="w-6 h-6 text-orange-600" />
-              </div>
-              <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Test CRUD</h3>
-            <p className="text-sm text-gray-600">
-              Test all department management operations
-            </p>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <span className="text-xs text-orange-600 font-medium">Click to test →</span>
-            </div>
-          </div>
-        </Link>
       </div>
 
       {/* Quick Stats */}

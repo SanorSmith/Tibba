@@ -15,7 +15,9 @@ export const ROUTES = {
   STAFF: '/staff',
   LABORATORIES: '/laboratories',
   PHARMACIES: '/pharmacies',
-  DEPARTMENTS: '/departments',
+  // Departments live under HR. The tree that used to sit at /departments was
+  // a byte-identical duplicate and has been removed.
+  DEPARTMENTS: '/hr/departments',
 } as const;
 
 export const STATUS_COLORS = {

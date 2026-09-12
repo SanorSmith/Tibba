@@ -130,7 +130,7 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/departments">
+          <Link href="/hr/departments">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="flex items-center gap-4 p-6">
                 <div className="w-12 h-12 bg-info-100 rounded-lg flex items-center justify-center">
