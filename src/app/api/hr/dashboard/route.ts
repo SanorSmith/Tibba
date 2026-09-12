@@ -67,14 +67,21 @@ export async function GET(request: NextRequest) {
     return r.rows[0];
   }, { active: 0, medical: 0, nursing: 0, admin: 0, technical: 0, support: 0 });
 
-  // Who is away right now. There is no key joining `leave_requests` back to
-  // `staff` — the table carries a denormalised `employee_name` and an
-  // `employee_id` that pointed at the retired `employees` table — so this
-  // counts distinct names on approved leave spanning today. Two staff sharing
-  // a name would count once; linking leave to `staff.staffid` is the real fix.
+  // Who is away right now: approved leave spanning today, counted by person.
+  //
+  // It counted distinct `employee_name` instead. Two people sharing a name
+  // were one person to this query, and one person renamed became two. That is
+  // not hypothetical here - the leave records held two distinct employee ids
+  // under the single name "Sanor Smith".
+  //
+  // `leave_requests` still carries a denormalised name alongside an
+  // `employee_id` that once pointed at the retired `employees` table, so there
+  // is no foreign key to lean on. The id is nonetheless the only thing in the
+  // row that identifies a person; keying on it is right whether or not that
+  // key is ever enforced.
   const onLeave = await safe(async () => {
     const r = await pool.query(`
-      SELECT COUNT(DISTINCT employee_name) AS c FROM leave_requests
+      SELECT COUNT(DISTINCT employee_id) AS c FROM leave_requests
       WHERE workspaceid = $1 AND status = 'APPROVED'
         AND CURRENT_DATE BETWEEN start_date AND end_date`, [ws]);
     return parseInt(r.rows[0].c) || 0;

@@ -636,7 +636,24 @@ export default function NewEmployeePage() {
             <FormSection title="Position">
               <FormRow columns={2}>
                 <FormGroup label="Job Title" required error={errors.job_title}>
-                  <input className="tibbna-input" value={form.job_title} onChange={e => update('job_title', e.target.value)} placeholder="e.g. Senior Physician" />
+                  {/* Free text, because a real title is often more specific
+                      than a platform role - "Senior Consultant Cardiologist"
+                      is not in any catalogue. The suggestions exist so the
+                      common ones are spelled one way: three staff currently
+                      hold the same job recorded as Doctor, Dr and dr, and
+                      anything grouping by title counts them as three jobs. */}
+                  <input
+                    className="tibbna-input"
+                    list="job-title-suggestions"
+                    value={form.job_title}
+                    onChange={e => update('job_title', e.target.value)}
+                    placeholder="e.g. Senior Physician"
+                  />
+                  <datalist id="job-title-suggestions">
+                    {availableRoles.map(r => (
+                      <option key={r.name} value={r.label} />
+                    ))}
+                  </datalist>
                 </FormGroup>
                 <FormGroup label="Department" required error={errors.department_id}>
                   <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={form.department_id} onChange={e => update('department_id', e.target.value)}>
