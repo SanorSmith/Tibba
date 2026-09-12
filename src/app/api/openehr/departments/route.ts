@@ -1,306 +1,76 @@
+/**
+ * Departments, for the screens that book internal orders against them.
+ *
+ * Every query here named columns this schema does not have -
+ * `department_id`, `department_name`, `department_code`, `is_active` - against
+ * a table whose columns are `departmentid`, `name` and `description`. So the
+ * SELECT threw on every request and the handler answered with a hardcoded list
+ * of five invented departments instead. Emergency Medicine, Cardiology and the
+ * rest were never in the database; they were in this file.
+ *
+ * There was a POST too, and it was worse. It failed the same way, caught the
+ * error, and returned `success: true` with a department object it had just
+ * made up: nothing stored, success reported. It is gone rather than repaired,
+ * because nothing called it and departments are created from the HR screens.
+ *
+ * The GET now uses the real columns and invents nothing. A database error is
+ * returned as an error, because a screen showing five departments that do not
+ * exist is worse than a screen showing a failure.
+ *
+ * Three fields the callers read have nowhere to live in this table:
+ * `name_ar`, `code` and `manager`. They come back null rather than blank, so
+ * the difference between "not recorded" and "recorded as empty" survives on
+ * screen.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkspaceId } from '@/lib/workspace';
 import { pool } from '@/lib/db/pool';
 import { withTenant } from '@/lib/db/tenant';
 
-// Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  console.error('DATABASE_URL is not configured in environment variables');
-}
-
+/**
+ * The shape both order screens read. `description` carries the location,
+ * matching what /api/hospital/departments already does with the same column.
+ */
+const SELECT_DEPARTMENTS = `
+  SELECT d.departmentid          AS id,
+         d.name                  AS name,
+         NULL::text              AS name_ar,
+         NULL::text              AS code,
+         d.description           AS location,
+         NULL::text              AS manager,
+         true                    AS active,
+         d.phone,
+         d.email,
+         d.createdat             AS created_at,
+         d.updatedat             AS updated_at
+    FROM departments d
+   WHERE d.workspaceid = $1
+   ORDER BY d.name
+`;
 
 export async function GET(request: NextRequest) {
   try {
-    // These queries target columns this schema does not have, so they always
-    // throw and the handler falls back to static mock data. Gated anyway so
-    // the endpoint is not readable without a session.
     const workspaceId = await getWorkspaceId(request);
     if (!workspaceId) {
       return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
     }
 
-    // Carries this facility on the connection, so row-level security
-    // scopes every query below in the database rather than relying on
-    // each one remembering its WHERE clause.
+    // Carries this facility on the connection, so row-level security scopes
+    // the query in the database as well as in its WHERE clause.
     return await withTenant(workspaceId, async () => {
-
-    if (!pool) {
-      return NextResponse.json(
-        { 
-          error: 'Database not configured',
-          details: 'DATABASE_URL environment variable is missing'
-        },
-        { status: 500 }
-      );
-    }
-
-    // Try to get departments from database first
-    try {
-      const result = await pool.query(`
-        SELECT 
-          department_id as id,
-          department_name as name,
-          department_name_ar as name_ar,
-          department_code as code,
-          location,
-          manager,
-          is_active as active,
-          created_at,
-          updated_at
-        FROM departments 
-        ORDER BY department_name
-      `);
-
-      if (result.rows.length > 0) {
-        return NextResponse.json(result.rows);
-      }
-    } catch (dbError) {
-      console.log('Departments table not found, returning mock data');
-    }
-
-    // Mock data if table doesn't exist
-    const mockDepartments = [
-      {
-        id: 'dept-001',
-        name: 'Emergency Medicine',
-        name_ar: 'طب الطوارئ',
-        code: 'EMERGENCY',
-        location: 'Ground Floor, Building A',
-        manager: 'Dr. Ahmed Hassan',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-002',
-        name: 'Surgery',
-        name_ar: 'الجراحة',
-        code: 'SURGERY',
-        location: '2nd Floor, Building A',
-        manager: 'Dr. Sarah Johnson',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-003',
-        name: 'Internal Medicine',
-        name_ar: 'طب الباطنة',
-        code: 'INTERNAL',
-        location: '1st Floor, Building A',
-        manager: 'Dr. Mohammed Ali',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-004',
-        name: 'Pediatrics',
-        name_ar: 'طب الأطفال',
-        code: 'PEDIATRICS',
-        location: '3rd Floor, Building B',
-        manager: 'Dr. Layla Mahmoud',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-005',
-        name: 'Obstetrics & Gynecology',
-        name_ar: 'أمراض النساء والتوليد',
-        code: 'OBGYN',
-        location: '2nd Floor, Building B',
-        manager: 'Dr. Fatima Al-Rashid',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-006',
-        name: 'Cardiology',
-        name_ar: 'أمراض القلب',
-        code: 'CARDIO',
-        location: '1st Floor, Building B',
-        manager: 'Dr. Omar Khalid',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-007',
-        name: 'Neurology',
-        name_ar: 'الأعصاب',
-        code: 'NEURO',
-        location: '3rd Floor, Building A',
-        manager: 'Dr. Hana Ahmed',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-008',
-        name: 'Orthopedics',
-        name_ar: 'العظام',
-        code: 'ORTHO',
-        location: 'Ground Floor, Building B',
-        manager: 'Dr. Youssef Hassan',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-009',
-        name: 'Radiology',
-        name_ar: 'الأشعة',
-        code: 'RADIO',
-        location: 'Basement, Building A',
-        manager: 'Dr. Nour Al-Din',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-010',
-        name: 'Laboratory',
-        name_ar: 'المختبر',
-        code: 'LAB',
-        location: 'Basement, Building B',
-        manager: 'Dr. Rania Said',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-011',
-        name: 'Pharmacy',
-        name_ar: 'الصيدلية',
-        code: 'PHARMACY',
-        location: 'Ground Floor, Building A',
-        manager: 'Dr. Karim Mahmoud',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      },
-      {
-        id: 'dept-012',
-        name: 'Intensive Care Unit',
-        name_ar: 'العناية المركزة',
-        code: 'ICU',
-        location: '2nd Floor, Building A',
-        manager: 'Dr. Samir Hassan',
-        active: true,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z'
-      }
-    ];
-
-    return NextResponse.json(mockDepartments);
-
+      const result = await pool.query(SELECT_DEPARTMENTS, [workspaceId]);
+      return NextResponse.json(result.rows);
     });
   } catch (error) {
     console.error('Error fetching departments:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch departments',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: 'Could not load departments',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    // These queries target columns this schema does not have, so they always
-    // throw and the handler falls back to static mock data. Gated anyway so
-    // the endpoint is not readable without a session.
-    const workspaceId = await getWorkspaceId(request);
-    if (!workspaceId) {
-      return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
-    }
-
-    // Carries this facility on the connection, so row-level security
-    // scopes every query below in the database rather than relying on
-    // each one remembering its WHERE clause.
-    return await withTenant(workspaceId, async () => {
-
-    if (!pool) {
-      return NextResponse.json(
-        { 
-          error: 'Database not configured',
-          details: 'DATABASE_URL environment variable is missing'
-        },
-        { status: 500 }
-      );
-    }
-
-    const body = await request.json();
-    const { name, name_ar, code, location, manager } = body;
-
-    // Try to insert into database first
-    try {
-      const result = await pool.query(`
-        INSERT INTO departments (
-          department_id,
-          department_name,
-          department_name_ar,
-          department_code,
-          location,
-          manager,
-          is_active,
-          created_at,
-          updated_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, true, NOW(), NOW()
-        ) RETURNING *
-      `, [
-        `dept-${Math.floor(Math.random() * 100000)}`,
-        name,
-        name_ar || '',
-        code,
-        location || '',
-        manager || ''
-      ]);
-
-      return NextResponse.json({
-        success: true,
-        data: result.rows[0]
-      });
-    } catch (dbError) {
-      console.log('Cannot insert into departments table, returning mock response');
-    }
-
-    // Mock response if table doesn't exist
-    const newDepartment = {
-      id: `dept-${Math.floor(Math.random() * 100000)}`,
-      name,
-      name_ar: name_ar || '',
-      code,
-      location: location || '',
-      manager: manager || '',
-      active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: newDepartment
-    });
-
-    });
-  } catch (error) {
-    console.error('Error creating department:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to create department',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

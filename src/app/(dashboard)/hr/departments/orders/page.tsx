@@ -54,24 +54,39 @@ interface OrderItem {
   unit_price: number;
 }
 
+/**
+ * These two matched nothing the API returns.
+ *
+ * The endpoints behind this screen were querying columns the schema does not
+ * have, failing, and answering with hardcoded sample data whose field names
+ * these interfaces were written against. With the endpoints repaired the real
+ * shape shows up, and it is the one the other copy of this screen at
+ * /departments/orders was already using: `id` and `name`, not `staff_id` and
+ * `department_name`.
+ *
+ * `department_id` is null on a staff row. Since migration 004 a staff member's
+ * department is recorded as a name in `unit`, so the name is what identifies
+ * it here.
+ */
 interface StaffMember {
-  staff_id: string;
-  staff_name: string;
-  staff_email?: string;
-  staff_phone?: string;
-  department_id: string;
-  department_name: string;
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  department_id: string | null;
+  department_name: string | null;
   position?: string;
-  is_active: boolean;
+  active: boolean;
 }
 
 interface Department {
-  department_id: string;
-  department_name: string;
-  department_name_ar?: string;
-  location?: string;
-  manager_name?: string;
-  is_active: boolean;
+  id: string;
+  name: string;
+  name_ar?: string | null;
+  code?: string | null;
+  location?: string | null;
+  manager?: string | null;
+  active: boolean;
 }
 
 export default function DepartmentOrdersPage() {
@@ -171,12 +186,13 @@ export default function DepartmentOrdersPage() {
 
   const handleStaffSelect = (staffMember: StaffMember) => {
     setSelectedStaff(staffMember);
-    setRequestedBy(staffMember.staff_name);
-    setRequestedByEmail(staffMember.staff_email || '');
-    setDepartmentId(staffMember.department_id);
-    setDepartmentName(staffMember.department_name);
-    setDeliveryLocation(staffMember.department_name);
-    setStaffSearch(staffMember.staff_name);
+    setRequestedBy(staffMember.name);
+    setRequestedByEmail(staffMember.email || '');
+    // A staff row carries the department by name, so the name is the id here.
+    setDepartmentId(staffMember.department_id || staffMember.department_name || '');
+    setDepartmentName(staffMember.department_name || '');
+    setDeliveryLocation(staffMember.department_name || '');
+    setStaffSearch(staffMember.name);
     setShowStaffResults(false);
   };
 
@@ -434,17 +450,17 @@ export default function DepartmentOrdersPage() {
                   <select
                     value={departmentId}
                     onChange={(e) => {
-                      const dept = departments.find(d => d.department_id === e.target.value);
+                      const dept = departments.find(d => d.id === e.target.value);
                       setDepartmentId(e.target.value);
-                      setDepartmentName(dept?.department_name || '');
-                      setDeliveryLocation(dept?.department_name || '');
+                      setDepartmentName(dept?.name || '');
+                      setDeliveryLocation(dept?.name || '');
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Department</option>
                     {departments.map(dept => (
-                      <option key={dept.department_id} value={dept.department_id}>
-                        {dept.department_name}
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
                       </option>
                     ))}
                   </select>
@@ -479,20 +495,19 @@ export default function DepartmentOrdersPage() {
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {staff.map(staffMember => (
                         <button
-                          key={staffMember.staff_id}
+                          key={staffMember.id}
                           onClick={() => handleStaffSelect(staffMember)}
                           className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-0"
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="font-medium text-sm">{staffMember.staff_name}</p>
-                              <p className="text-xs text-gray-500">ID: {staffMember.staff_id}</p>
+                              <p className="font-medium text-sm">{staffMember.name}</p>
                               <p className="text-xs text-gray-500">{staffMember.position}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-gray-600">{staffMember.department_name}</p>
-                              {staffMember.staff_email && (
-                                <p className="text-xs text-gray-400">{staffMember.staff_email}</p>
+                              {staffMember.email && (
+                                <p className="text-xs text-gray-400">{staffMember.email}</p>
                               )}
                             </div>
                           </div>
