@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Calendar, Clock, MapPin, User, Stethoscope, Plus, Filter, X, Edit, Trash2, Search } from 'lucide-react';
 import { AppointmentCalendar } from '@/components/calendar/appointment-calendar';
 
@@ -226,6 +227,10 @@ export default function AppointmentsPage() {
         setDoctors(data.staff || []);
         if (data.message) {
         }
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load doctors');
       }
     } catch (error) {
       console.error('Error loading doctors:', error);
@@ -239,6 +244,10 @@ export default function AppointmentsPage() {
       if (response.ok) {
         const data = await response.json();
         setPatients(data.data || []);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load patients');
       }
     } catch (error) {
       console.error('Error loading patients:', error);

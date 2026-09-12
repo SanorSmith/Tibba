@@ -92,6 +92,10 @@ export default function PatientsPage() {
         
         setPatients(mappedPatients);
         toast.success(`Loaded ${mappedPatients.length} patients from Tibbna Non-Medical DB`);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load patients');
       }
     } catch (error) {
       console.error('Failed to load patients from Tibbna Non-Medical DB:', error);

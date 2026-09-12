@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { Search, Filter, Download, Upload, Users, Briefcase, Calendar, CheckCircle, XCircle, AlertTriangle, TrendingUp, FileText, Mail, Phone, Star, Eye, Edit, Trash2 } from 'lucide-react';
 import { SmartStatusBadge } from '@/components/modules/hr/shared/status-badge';
@@ -37,6 +38,9 @@ export default function ApplicantsManagementPage() {
       
       if (data.success) {
         setApplicants(data.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not fetch applicants');
       }
     } catch (error) {
       console.error('Error fetching applicants:', error);

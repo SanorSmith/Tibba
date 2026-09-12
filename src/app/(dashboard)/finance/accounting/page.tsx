@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { Eye, RefreshCw, Zap, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const fmt = (n: number | string) =>
@@ -137,6 +138,10 @@ export default function AccountingPage() {
         if (res.ok) {
           const d = await res.json();
           setViewJE(d.data);
+        } else {
+          // Was silent: the request failed and nothing on screen said so.
+          const problem = await res.json().catch(() => null);
+          toast.error(problem?.error || 'Could not open journal entry');
         }
       } finally {
         setLoadingJE(false);

@@ -124,6 +124,10 @@ export default function ShareholdersPage() {
           investment_amount: num(s.investment_amount),
           total_dividends_received: num(s.total_dividends_received),
         })));
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load shareholders');
       }
     } catch (error) {
       console.error('Load error:', error);

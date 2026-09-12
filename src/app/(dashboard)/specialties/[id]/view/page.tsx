@@ -73,6 +73,10 @@ export default function ViewSpecialtyPage({ params }: { params: Promise<{ id: st
         if (dept) {
           setDepartment(dept);
         }
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load department');
       }
     } catch (error) {
       console.error('Error loading department:', error);

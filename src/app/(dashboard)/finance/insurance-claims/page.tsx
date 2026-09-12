@@ -158,6 +158,10 @@ export default function InsuranceClaimsPage() {
       toast.success(successMsg);
       loadData();
       return true;
+    } else {
+      // Was silent: the request failed and nothing on screen said so.
+      const problem = await res.json().catch(() => null);
+      toast.error(problem?.error || 'Could not action');
     }
     const err = await res.json();
     toast.error(err.error || 'Action failed');

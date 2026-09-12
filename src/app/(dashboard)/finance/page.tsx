@@ -88,6 +88,10 @@ export default function FinancePage() {
         if (periods.length > 0) {
           setActiveBudget(periods[0]);
         }
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load active budget');
       }
     } catch (error) {
       console.error('Failed to load budget:', error);

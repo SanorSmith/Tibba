@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { ArrowLeft, Plus, DollarSign, Calendar, User, CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
 
@@ -35,6 +36,9 @@ export default function LoansPage() {
       const data = await res.json();
       if (data.success) {
         setLoans(data.data || []);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not load loans');
       }
     } catch (err) {
       console.error('Failed to load loans:', err);

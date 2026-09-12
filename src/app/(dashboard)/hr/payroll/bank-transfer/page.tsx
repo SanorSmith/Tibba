@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { ArrowLeft, Download, FileText, CheckCircle, Building2 } from 'lucide-react';
 
@@ -63,6 +64,9 @@ export default function BankTransferPage() {
         if (result.data.length > 0) {
           setSelectedPeriod(result.data[0].id);
         }
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load periods');
       }
     } catch (error) {
       console.error('Error loading periods:', error);
@@ -78,6 +82,9 @@ export default function BankTransferPage() {
       
       if (result.success) {
         setTransactions(result.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load transactions');
       }
     } catch (error) {
       console.error('Error loading transactions:', error);

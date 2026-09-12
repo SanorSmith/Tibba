@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { DollarSign, TrendingUp, Award, Calendar, CreditCard, AlertCircle } from 'lucide-react';
 
 interface Compensation {
@@ -77,6 +78,9 @@ function EmployeeCompensationPage() {
       
       if (result.success) {
         setLoans(result.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load loans');
       }
     } catch (error) {
       console.error('Error loading loans:', error);
@@ -90,6 +94,9 @@ function EmployeeCompensationPage() {
       
       if (result.success) {
         setAdvances(result.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load advances');
       }
     } catch (error) {
       console.error('Error loading advances:', error);

@@ -393,6 +393,10 @@ export default function InvoicesPage() {
         
         setPatientResults(mappedPatients);
         setShowPatientDropdown(mappedPatients.length > 0);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not search patients');
       }
     } catch (error) {
       console.error('Patient search error from Tibbna OpenEHR DB:', error);

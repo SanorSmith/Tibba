@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Download, DollarSign, Calendar, TrendingDown } from 'lucide-react';
@@ -66,6 +67,9 @@ export default function LoanDetailPage() {
       if (data.success) {
         const foundLoan = data.data.find((l: Loan) => l.loan_number === loanId || l.id === loanId);
         setLoan(foundLoan || null);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not load loan');
       }
     } catch (err) {
       console.error('Failed to load loan:', err);

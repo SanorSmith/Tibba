@@ -337,6 +337,10 @@ export default function InsurancePage() {
         const data = await res.json();
         const mappedData = data.map(mapInsuranceData);
         setCompanies(mappedData);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load companies');
       }
     } catch (error) {
       console.error('Failed to load insurance companies:', error);

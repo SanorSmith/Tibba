@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { TrendingUp, Users, Briefcase, Clock, DollarSign, Award, AlertTriangle, CheckCircle, BarChart3, PieChart, Activity, Download } from 'lucide-react';
 
 export default function RecruitmentAnalyticsPage() {
@@ -20,6 +21,9 @@ export default function RecruitmentAnalyticsPage() {
       
       if (data.success) {
         setAnalytics(data.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not fetch analytics');
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);

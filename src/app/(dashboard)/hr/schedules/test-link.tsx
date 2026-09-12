@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 
 export default function TestLinkPage() {
@@ -17,6 +18,9 @@ export default function TestLinkPage() {
       const result = await response.json();
       if (result.success) {
         setSchedules(result.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load schedules');
       }
     } catch (error) {
       console.error('Failed to load schedules:', error);

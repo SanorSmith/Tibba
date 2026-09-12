@@ -128,6 +128,10 @@ export default function DepartmentOrdersPage() {
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load orders');
       }
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -158,6 +162,10 @@ export default function DepartmentOrdersPage() {
       if (res.ok) {
         const data = await res.json();
         setDepartments(data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load departments');
       }
     } catch (error) {
       console.error('Error loading departments:', error);
@@ -178,6 +186,10 @@ export default function DepartmentOrdersPage() {
         const data = await res.json();
         setStaff(data);
         setShowStaffResults(true);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not search staff');
       }
     } catch (error) {
       console.error('Error searching staff:', error);

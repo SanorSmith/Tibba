@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { ArrowLeft, Save, DollarSign, Calculator } from 'lucide-react';
 import type { LoanFormData } from '@/types/hr';
@@ -40,6 +41,9 @@ export default function NewLoanPage() {
       const data = await res.json();
       if (data.success) {
         setEmployees(data.data || []);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not load employees');
       }
     } catch (err) {
       console.error('Failed to load employees:', err);

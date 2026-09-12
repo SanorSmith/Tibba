@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,10 @@ export default function AddServicePage() {
       if (response.ok) {
         const data = await response.json();
         setProviders(data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not fetch providers');
       }
     } catch (error) {
       console.error('Error fetching providers:', error);
@@ -66,6 +71,10 @@ export default function AddServicePage() {
       if (response.ok) {
         const result = await response.json();
         setDepartments(result.data || []);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not fetch departments');
       }
     } catch (error) {
       console.error('Error fetching departments:', error);

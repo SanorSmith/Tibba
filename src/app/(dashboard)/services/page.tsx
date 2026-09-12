@@ -54,6 +54,10 @@ export default function ServicesPage() {
       if (response.ok) {
         const data = await response.json();
         setServices(data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not fetch services');
       }
     } catch (error) {
       console.error('Error fetching services:', error);
@@ -66,6 +70,10 @@ export default function ServicesPage() {
       if (response.ok) {
         const result = await response.json();
         setDepartments(result.data || []);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not fetch departments');
       }
     } catch (error) {
       console.error('Error fetching departments:', error);

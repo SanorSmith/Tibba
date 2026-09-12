@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Clock, AlertTriangle, CheckCircle, Users, Search } from 'lucide-react';
 
@@ -69,6 +70,9 @@ export default function AttendanceReviewPage() {
       const data = await res.json();
       if (data.success) {
         setAttendanceData(data.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not load attendance');
       }
     } catch (err) {
       console.error('Failed to load attendance:', err);

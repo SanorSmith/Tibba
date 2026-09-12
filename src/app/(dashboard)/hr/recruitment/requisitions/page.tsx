@@ -37,6 +37,9 @@ export default function RequisitionsPage() {
       if (data.success) {
         setRequisitions(data.data || []);
         setStats(data.stats);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not fetch requisitions');
       }
     } catch (error) {
       console.error('Failed to fetch requisitions:', error);

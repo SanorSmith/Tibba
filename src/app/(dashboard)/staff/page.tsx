@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import {
@@ -339,6 +340,9 @@ export default function StaffPage() {
         setProfile(data.data);
         setEditingProfile(false);
         alert('Profile updated successfully!');
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not save profile');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -384,6 +388,9 @@ export default function StaffPage() {
       if (data.success) {
         setLeaveRequests(leaveRequests.filter(r => r.id !== requestId));
         alert('Leave request deleted successfully!');
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not delete leave request');
       }
     } catch (error) {
       console.error('Error deleting leave request:', error);

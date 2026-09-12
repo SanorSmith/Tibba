@@ -107,6 +107,10 @@ export default function BudgetPage() {
       if (res.ok) {
         const data = await res.json();
         setAllocations(data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load allocations');
       }
     } catch (error) {
       console.error('Load allocations error:', error);

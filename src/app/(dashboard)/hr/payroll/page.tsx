@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { DollarSign, TrendingUp, TrendingDown, CreditCard, FileText, Download, Plus, Calculator, CheckCircle, AlertCircle, Clock, Calendar } from 'lucide-react';
 // Using simple alerts for notifications
@@ -63,6 +64,9 @@ export default function PayrollDashboard() {
         if (result.data.length > 0) {
           setSelectedPeriod(result.data[0].id);
         }
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load periods');
       }
     } catch (error) {
       console.error('Error loading periods:', error);
@@ -79,6 +83,9 @@ export default function PayrollDashboard() {
       
       if (result.success) {
         setTransactions(result.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load transactions');
       }
     } catch (error) {
       console.error('Error loading transactions:', error);

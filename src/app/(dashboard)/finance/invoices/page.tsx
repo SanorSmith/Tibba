@@ -556,6 +556,10 @@ export default function InvoicesPage() {
         
         setPatientResults(mappedPatients);
         setShowPatientDropdown(mappedPatients.length > 0);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not search patients');
       }
     } catch (error) {
       console.error('Patient search error from Tibbna OpenEHR DB:', error);
@@ -620,6 +624,10 @@ export default function InvoicesPage() {
             `Insurance auto-filled: ${policy.company_name || 'Policy found'} · ${coverage}% coverage`
           );
         }
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not select patient');
       }
     } catch {
       // silent — insurance lookup is optional

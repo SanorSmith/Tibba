@@ -58,6 +58,10 @@ export default function ReturnsPage() {
       if (res.ok) {
         const data = await res.json();
         setReturns(data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not load returns');
       }
     } catch (error) {
       console.error('Failed to load returns:', error);
@@ -75,6 +79,10 @@ export default function ReturnsPage() {
       if (res.ok) {
         const data = await res.json();
         setSearchResults(data.slice(0, 5));
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not search invoice');
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -105,6 +113,10 @@ export default function ReturnsPage() {
           return_amount: 0,
         }));
         setReturnItems(returnItemsInit);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not select invoice');
       }
     } catch (error) {
       console.error('Failed to load invoice items:', error);

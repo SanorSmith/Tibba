@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { BarChart3, TrendingUp, Users, Calendar, Clock, Award } from 'lucide-react';
 
@@ -87,6 +88,9 @@ function AnalyticsPageContent() {
 
       if (result.success) {
         setAnalytics(result.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(result?.error || 'Could not load analytics');
       }
     } catch (error) {
       console.error('Error loading analytics:', error);

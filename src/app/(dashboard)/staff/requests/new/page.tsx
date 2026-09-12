@@ -130,6 +130,9 @@ export default function NewStaffLeaveRequestPage() {
           });
           setSearchResults(filtered.slice(0, 20)); // Limit to 20 results
           setShowSearchResults(true);
+        } else {
+          // Was silent: the request failed and nothing on screen said so.
+          toast.error(data?.error || 'Could not search employees');
         }
       } catch (error) {
         console.error('Error searching employees:', error);
@@ -162,6 +165,9 @@ export default function NewStaffLeaveRequestPage() {
       const data = await response.json();
       if (data.success) {
         setLeaveTypes(data.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not load leave types');
       }
     } catch (error) {
       console.error('Error loading leave types:', error);
@@ -176,6 +182,9 @@ export default function NewStaffLeaveRequestPage() {
       const data = await response.json();
       if (data.success) {
         setLeaveBalances(data.data);
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        toast.error(data?.error || 'Could not load leave balances');
       }
     } catch (error) {
       console.error('Error loading leave balances:', error);

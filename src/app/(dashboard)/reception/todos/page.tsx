@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { 
   Plus, 
   Calendar as CalendarIcon, 
@@ -146,6 +147,10 @@ export default function TodosPage() {
         setShowEditModal(false);
         setSelectedTodo(null);
         resetForm();
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not update todo');
       }
     } catch (error) {
       console.error('Error updating todo:', error);
@@ -162,6 +167,10 @@ export default function TodosPage() {
 
       if (response.ok) {
         await loadTodos();
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not delete todo');
       }
     } catch (error) {
       console.error('Error deleting todo:', error);
@@ -190,6 +199,10 @@ export default function TodosPage() {
 
       if (response.ok) {
         await loadTodos();
+      } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await response.json().catch(() => null);
+        toast.error(problem?.error || 'Could not toggle status');
       }
     } catch (error) {
       console.error('Error toggling status:', error);

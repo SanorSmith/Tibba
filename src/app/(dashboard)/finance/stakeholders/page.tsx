@@ -70,7 +70,11 @@ export default function StakeholdersPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/stakeholders');
-      if (res.ok) { const d = await res.json(); setList(d.data || []); }
+      if (res.ok) { const d = await res.json(); setList(d.data || []); } else {
+        // Was silent: the request failed and nothing on screen said so.
+        const problem = await res.json().catch(() => null);
+        toast.error(problem?.error || 'Could not reload');
+      }
     } catch { toast.error('Failed to load stakeholders'); }
     finally { setLoading(false); }
   };
